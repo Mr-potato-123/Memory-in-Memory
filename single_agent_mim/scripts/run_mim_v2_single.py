@@ -35,7 +35,7 @@ TRAIN_CONVS = ["conv-30", "conv-42", "conv-43", "conv-44", "conv-48", "conv-49"]
 VAL_CONVS = ["conv-26", "conv-41"]
 # The existing published Bank1 used as the starting skill set.
 BANK1_PUBLISHED = (
-    Path(r"D:/Documents/Project/Memory_in_Memory/exp/single-agent/bank1_draft_crud_v2/banks")
+    Path(r"D:/Documents/Project/Memory_in_Memory/exp/single-agent/bank_v1/banks")
 )
 
 

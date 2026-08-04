@@ -67,6 +67,7 @@ def train_one_conversation(
     qa_workers: int,
     split_name: str,
     resume_db_from: Path | None,
+    resume: bool,
     smoke_qa: int,
 ) -> dict:
     run = RunDir(conversation.conversation_id, run_dir)
@@ -106,7 +107,7 @@ def train_one_conversation(
         phase=split_name,
     )
 
-    resume_existing = resume_db_from is not None
+    resume_existing = resume_db_from is not None or resume
     runtime.ingest(conversation, resume_existing=resume_existing)
 
     completed = {
@@ -201,6 +202,9 @@ def main() -> int:
     parser.add_argument("--run-root", required=True)
     parser.add_argument("--skill-bank-dir")
     parser.add_argument("--resume-db-from")
+    parser.add_argument("--resume", action="store_true",
+                        help="Continue a run in place: skip committed construction "
+                             "and already-answered questions.")
     parser.add_argument("--build-workers", type=int, default=6)
     parser.add_argument("--qa-workers", type=int, default=6)
     parser.add_argument("--max-convs", type=int, default=0)
@@ -247,6 +251,7 @@ def main() -> int:
                 qa_workers=args.qa_workers,
                 split_name=args.split,
                 resume_db_from=resume_db_from,
+                resume=args.resume,
                 smoke_qa=args.smoke_qa,
             )
             futures[future] = cid
