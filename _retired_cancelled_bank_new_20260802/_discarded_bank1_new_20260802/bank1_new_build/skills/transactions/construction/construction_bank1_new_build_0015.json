@@ -1,0 +1,577 @@
+{
+  "batch": {
+    "batch_id": "construction_bank1_new_build_0015",
+    "side": "construction",
+    "base_bank_version": "v001",
+    "candidates": [
+      {
+        "candidate_id": "cand_construction_05a7cc72083f",
+        "skill_id": "sk_construction_271c4f1cb7",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Shared-habit confirmation to addressed person",
+          "description": "When a message uses 'same here, <Name>!' or 'me too, <Name>!' to confirm the addressed person shares the speaker's listed habits, extract memory candidates for both speaker and addressed person.",
+          "content": [
+            "During candidate extraction, when a speaker says 'same here, <Name>!' or 'me too, <Name>!' and then lists practices/habits, create a separate state candidate with <Name> as subject containing the same listed practices, in addition to the speaker's candidate.",
+            "Only generate the addressee candidate when the sharing phrase clearly refers to the same listed practices; do not expand to other people or invent practices not explicitly named."
+          ]
+        },
+        "solves": "Construction extraction omits memories for a named addressee when a speaker says 'same here, X!' or 'me too, X!' and lists practices, capturing only the speaker. Applies when a future message explicitly confirms the addressed person shares the listed durable practices: extract a candidate for both. Not applicable when agreement is about a one-off topic, or no addressee is explicitly named.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-48_conv-48_qa_0155",
+        "source_failure_id": "cons_conv-48_conv-48_qa_0155",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:46:30Z"
+      },
+      {
+        "candidate_id": "cand_construction_0b10a4e2ff3d",
+        "skill_id": "sk_construction_392d609b79",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Preserve co-participants in shared event memories",
+          "description": "When a message describes a travel, retreat, or activity shared with an explicit companion ('my partner and I'), keep the companion in the extracted event memory instead of attributing the event to the speaker alone.",
+          "content": [
+            "During extraction, when a message states that the speaker and an explicitly identified companion (partner, friend, family member, named person) experienced a shared event such as travel, a retreat, or an activity, include all participants in the event candidate content (e.g., 'Jolene and her partner traveled...').",
+            "Do not reduce the event to the speaker alone just because the memory subject is the speaker; preserve explicit companion details that are part of the event.",
+            "When updating an existing event memory with new information confirming a companion shared it, amend the content to add the companion rather than creating a new memory. Stop after capturing the explicitly stated participants; do not infer companions from pronouns alone unless the message identifies them."
+          ]
+        },
+        "solves": "Extraction candidates often drop explicit companions from shared events ('my partner and I traveled...' becomes 'Jolene attended...'), so later questions about joint travel cannot be answered. This applies when a future message describes an activity, trip, retreat, or experience shared by the speaker with a companion (e.g., 'my partner and I', 'my friend and I') and a memory candidate is being composed. It does not apply when the companion is only mentioned incidentally and did not share the event.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-48_conv-48_qa_0175",
+        "source_failure_id": "cons_conv-48_conv-48_qa_0175",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:41:43Z"
+      },
+      {
+        "candidate_id": "cand_construction_0d3225f8adf9",
+        "skill_id": "sk_construction_a3be6ca18d",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Infer informal shared activities in relationship contexts",
+          "description": "When a user describes a past shared activity with a named partner or family member and explicitly mentions bonding, making memories, or closeness, extract an event/relationship memory even if the activity term is informal or generic; use strong contextual clues such as 'gaming' to infer the concrete activity.",
+          "content": [
+            "During extraction, treat informal activity phrases (e.g., 'played games', 'gaming', 'used to do puzzles') as valid event/relationship candidates when the speaker links the activity to bonding, making memories, or spending time with a named person; do not skip them because the wording is generic.",
+            "Concretize the activity only when the wording strongly implies one specific type (e.g., 'gaming' → video games); if the activity is ambiguous (e.g., 'games' alone could be board or video), record the generic term as stated or skip instead of guessing.",
+            "Include the named person in the relationship and cite the bonding/memories purpose in the memory. Apply the same rule during CRUD: do not discard or over-merge such candidates merely because the activity was described informally."
+          ]
+        },
+        "solves": "Extraction can fail to create any candidate when a shared activity is described informally (e.g., 'played games', 'gaming') even though the speaker ties it to bonding with a named person. This Skill applies when a future message describes a past shared pastime with a partner or family member and mentions closeness, memories, or bonding. It must not apply when the activity term is genuinely ambiguous with no clarifying clue, or when the activity is already named formally and the base extraction rule already covers it.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-48_conv-48_qa_0151",
+        "source_failure_id": "cons_conv-48_conv-48_qa_0151",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:41:52Z"
+      },
+      {
+        "candidate_id": "cand_construction_16943cbc250e",
+        "skill_id": "sk_construction_a6e763987e",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Extract shared-activity relationship from casual enjoyment",
+          "description": "When a message says the speaker or a named person enjoys or regularly does an activity with another named person/pet, phrased casually like 'we have a great time doing X' or 'we love doing X together'.",
+          "content": [
+            "During extraction, when a message states that the speaker or another named person enjoys or regularly does an activity together with a second named person or pet, expressed with casual mutual-enjoyment language (e.g., 'we have a great time doing X', 'we love X together'), create one relationship memory linking both participants with attributes for the activity and the enjoyment. Link the memory to the source message and use the session timestamp.",
+            "Do not create this memory for a single past occurrence (e.g., 'we went to the beach yesterday') unless the message also asserts a general preference; treat such one-off events as event memories. Create at most one memory per distinct (participants, activity) pair."
+          ]
+        },
+        "solves": "Construction extraction skipped a durable shared-activity fact when it was phrased informally as mutual enjoyment ('we have a great time doing walks') rather than as a direct statement. This Skill applies to future messages in which a speaker states recurring, mutual enjoyment of an activity with another named entity, and instructs creation of a single relationship memory. It must not apply to one-off past activities or to a preference held by only one participant.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-44_conv-44_qa_0110",
+        "source_failure_id": "cons_conv-44_conv-44_qa_0110",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:39:59Z"
+      },
+      {
+        "candidate_id": "cand_construction_48cf629455cc",
+        "skill_id": "sk_construction_6978620e2e",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "PreserveSharedPartnerActivitiesInExtraction",
+          "description": "During extraction, when a speaker uses 'we' to describe an activity with a spouse/partner, generate a candidate memory that preserves the shared nature even if the partner is not named in the message.",
+          "content": [
+            "During candidate extraction, treat first-person plural statements ('we', 'us', 'our') about activities as candidates for a shared-activity memory when the speaker has a known spouse/partner or the surrounding context identifies one.",
+            "Do not silently rewrite 'we' as the speaker alone: preserve the joint subject by using a relationship memory or an event memory whose content states the activity is shared with the spouse/partner, even if the partner's name is absent from the message.",
+            "Skip this rule for generic/impersonal 'we' and for statements where no specific companion is identifiable; leave first-person singular activity statements to the normal extraction path."
+          ]
+        },
+        "solves": "Extraction sometimes drops or singularizes first-person plural statements, so memories of what a speaker and their spouse/partner do together are never created. Future questions asking about shared activities then have no supporting memory. This Skill applies when a speaker uses 'we' and the session context identifies the companion as a spouse/partner; it does not apply to generic or impersonal 'we' or to first-person singular statements about individual activities.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-48_conv-48_qa_0059",
+        "source_failure_id": "cons_conv-48_conv-48_qa_0059",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:40:48Z"
+      },
+      {
+        "candidate_id": "cand_construction_4e26488664ab",
+        "skill_id": "sk_construction_6b52780890",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Extract announced-event recipients from addressed messages",
+          "description": "When a user message directly addresses a named person (including the assistant) and announces a personal life event such as marriage, birth, or a move, extract a memory that records both the event and that it was told to that person.",
+          "content": [
+            "During candidate extraction, when a user message addresses a named person (for example 'Hey Sam!') and announces a personal life event such as a marriage, birth, or move, extract the disclosure as a durable fact: the event occurred and that named person was told about it.",
+            "Record the audience explicitly in the event memory or as a separate relationship/event memory (e.g., 'Evan told Sam he got married'), citing the message as the source.",
+            "Stop at recipients explicitly addressed or named as the audience; do not infer other recipients from general context, and do not apply when no addressee is present."
+          ]
+        },
+        "solves": "The general problem is that candidate extraction keeps the announced life event but drops the audience, so later questions such as 'who did X tell about Y?' become unanswerable. The Skill applies when a future user message names a specific addressee and announces a personal event like a marriage or a move. It must not apply when a message merely mentions an event without a named audience, because recording a recipient would fabricate evidence.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-49_conv-49_qa_0078",
+        "source_failure_id": "cons_conv-49_conv-49_qa_0078",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:42:20Z"
+      },
+      {
+        "candidate_id": "cand_construction_5b93960a3215",
+        "skill_id": "sk_construction_25bf1dcbb8",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Capture all participant roles in shared activities",
+          "description": "When extracting or updating a memory from a message where the speaker describes a shared activity or event (e.g., playdates, group outings) involving themselves and another party, and the source states what each party does.",
+          "content": [
+            "During extraction, when a statement describes a joint activity with the speaker and another party (people or pets), capture the speaker's own explicit action or benefit as well as the other party's, rather than summarizing only the setting or the other party's behavior.",
+            "When updating or enriching an existing event memory with such a statement, preserve the speaker's role and add any newly stated action; do not let a topic-focused paraphrase replace it.",
+            "Stop after recording the explicitly stated actions of all named participants; do not infer additional roles or add unstated details."
+          ]
+        },
+        "solves": "Extraction paraphrases sometimes collapse a jointly described activity and drop one participant's explicitly stated action—here the speaker's own role in a dog playdate was lost while the dogs' behavior was kept. This Skill applies when a future message describes a shared event or activity involving the speaker and another party (people or pets) and states what each does; it ensures both roles are captured in the extracted memory. It does not apply when the speaker only describes another party's activity or when the source does not state the speaker's own action.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-44_conv-44_qa_0065",
+        "source_failure_id": "cons_conv-44_conv-44_qa_0065",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:39:32Z"
+      },
+      {
+        "candidate_id": "cand_construction_77976f142fc6",
+        "skill_id": "sk_construction_52536a0d03",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Extract companion activity statements",
+          "description": "When a message contains an explicit statement by the speaker about taking a walk, hike, or similar activity with a named companion (pet or person), extract a state or event candidate during extraction, even if the statement is in a closing or small-talk phrase.",
+          "content": [
+            "During extraction, if a message explicitly states the speaker's activity with a named companion (e.g., walks, hikes, plays with), create one candidate memory even when the phrase is a sign-off or small talk.",
+            "Classify the candidate as event when the activity is one-off or explicitly planned, and as state when the phrasing implies a recurring habit; include the activity and companion in the memory content, and keep the source message ID.",
+            "Stop after the explicit activity: do not infer additional activities or habits beyond what the message states."
+          ]
+        },
+        "solves": "Extraction often skips explicit activity statements with a named companion when they appear in casual sign-offs or small talk, leaving later questions about the speaker's activities unsupported. This Skill applies when a message explicitly claims the speaker's activity (walking, hiking, etc.) with a named companion. It does not apply when the companion is mentioned without an activity verb or the message is purely phatic.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-44_conv-44_qa_0031",
+        "source_failure_id": "cons_conv-44_conv-44_qa_0031",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:39:33Z"
+      },
+      {
+        "candidate_id": "cand_construction_786cc0a49bd5",
+        "skill_id": "sk_construction_e6658ee283",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Extract explicit durations from group statements",
+          "description": "When a message states the speaker's past group involvement with an explicit duration, even if it also contains a question or filler, during extraction create a relationship/event candidate.",
+          "content": [
+            "During extraction, if a message states the speaker's past involvement in a group or relationship with an explicit duration (e.g., 'we were teammates for four years'), create a relationship or event candidate capturing the speaker, the group, and the duration, even when the utterance also ends with a question or casual filler.",
+            "Treat the explicit duration alone as sufficient evidence for a candidate; do not require additional corroborating sentences. Do not apply this to statements about another person's experience or to turns without a factual predicate."
+          ]
+        },
+        "solves": "This addresses the general failure mechanism where explicit duration facts about the speaker's past group involvement are skipped during extraction when the same utterance also contains a question or casual filler. It applies to future sessions when a message states something like 'We were teammates for four years' in first-person plural with an explicit time period. It must not apply to statements about another person's experience or to turns that contain no factual predicate.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-43_conv-43_qa_0100",
+        "source_failure_id": "cons_conv-43_conv-43_qa_0100",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:46:13Z"
+      },
+      {
+        "candidate_id": "cand_construction_83996e20aa4b",
+        "skill_id": "sk_construction_800e9643fb",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Multi-party first-person attribution",
+          "description": "When a multi-party conversation contains a message where a participant uses first-person language ('I', 'my', 'me') to state their own preference, opinion, or state, use the message's speaker as the memory subject during extraction and CRUD.",
+          "content": [
+            "During extraction, read the speaker of each message and, for any first-person statement ('I', 'my', 'me', 'we'), set the memory subject to that speaker, never to another participant.",
+            "When a candidate combines statements from multiple speakers, split it into one candidate per speaker; do not merge different speakers' views into a single profile memory.",
+            "Before accepting an ADD/UPDATE, compare the candidate subject with the source speaker: if a first-person statement is attributed to someone else, correct the subject or reject the candidate."
+          ]
+        },
+        "solves": "Generalizes extraction failures where a participant's self-expressed preference or opinion is stored under another participant's name, causing missing memories. Applies to future multi-party sessions in which a message uses first-person language ('I', 'my', 'me') to describe the speaker's admiration, preference, or state; the memory subject must be that speaker. Does not apply when the message explicitly attributes the statement to a different person (e.g., 'Tim loves LeBron'), where the named person is the subject.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-43_conv-43_qa_0132",
+        "source_failure_id": "cons_conv-43_conv-43_qa_0132",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:38:53Z"
+      },
+      {
+        "candidate_id": "cand_construction_c962acc8f56e",
+        "skill_id": "sk_construction_39d51f0b96",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "PreserveJointParticipantsWhenWeIsUsed",
+          "description": "When a user message describes an activity with first-person plural pronouns ('we', 'our') and the session establishes a specific partner/companion, include that companion in the event memory instead of attributing the activity to the speaker alone.",
+          "content": [
+            "During extraction and update, when a user uses 'we'/'our' for an activity and a specific partner, spouse, or companion is established in the session, record the event with the speaker and that companion as co-participants.",
+            "Add the co-participant only if their identity is explicit or directly implied by recent context (e.g., wedding, honeymoon, 'my partner'); stop if 'we' is generic or no specific companion is identifiable.",
+            "Do not invent participants for unnamed or collective groups; keep the memory at the level of evidence."
+          ]
+        },
+        "solves": "Prevents loss of joint participants when event memories are built from first-person plural statements; applies to future sessions where a user says 'we' about an activity and a partner/spouse is known; does not apply when 'we' is generic or no specific co-participant can be identified.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-49_conv-49_qa_0077",
+        "source_failure_id": "cons_conv-49_conv-49_qa_0077",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:42:10Z"
+      }
+    ],
+    "retrieved_skill_ids": [],
+    "relations": []
+  },
+  "plan": {
+    "transaction_id": "tx_construction_bank1_new_build_0015",
+    "side": "construction",
+    "base_bank_version": "v001",
+    "candidate_resolutions": [
+      {
+        "candidate_id": "cand_construction_05a7cc72083f",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_construction_shared_habit_confirmation"
+        ],
+        "reason": "No existing Skill covers extracting addressee memories from shared-habit confirmation phrases."
+      },
+      {
+        "candidate_id": "cand_construction_0b10a4e2ff3d",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_construction_preserve_co_participants"
+        ],
+        "reason": "No existing Skill covers preserving explicit companions in shared event memories."
+      },
+      {
+        "candidate_id": "cand_construction_0d3225f8adf9",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_construction_infer_informal_shared_activities"
+        ],
+        "reason": "No existing Skill covers extracting informal shared activities with bonding context."
+      },
+      {
+        "candidate_id": "cand_construction_16943cbc250e",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_construction_shared_activity_relationship"
+        ],
+        "reason": "No existing Skill covers extracting shared-activity relationships from casual mutual enjoyment."
+      },
+      {
+        "candidate_id": "cand_construction_48cf629455cc",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_preserve_we_shared_activities"
+        ],
+        "reason": "Merged with cand_construction_c962acc8f56e because both preserve joint participants when 'we' is used."
+      },
+      {
+        "candidate_id": "cand_construction_4e26488664ab",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_construction_announced_event_recipients"
+        ],
+        "reason": "No existing Skill covers recording the audience of an announced personal event."
+      },
+      {
+        "candidate_id": "cand_construction_5b93960a3215",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_construction_capture_all_participant_roles"
+        ],
+        "reason": "No existing Skill covers capturing all participants' explicit roles in shared activities."
+      },
+      {
+        "candidate_id": "cand_construction_77976f142fc6",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_construction_companion_activity_statements"
+        ],
+        "reason": "No existing Skill covers extracting explicit companion activity statements from casual phrases."
+      },
+      {
+        "candidate_id": "cand_construction_786cc0a49bd5",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_construction_explicit_durations_group"
+        ],
+        "reason": "No existing Skill covers extracting explicit durations from group statements with filler."
+      },
+      {
+        "candidate_id": "cand_construction_83996e20aa4b",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_construction_multi_party_first_person_attribution"
+        ],
+        "reason": "No existing Skill covers attributing first-person statements to the correct speaker in multi-party conversations."
+      },
+      {
+        "candidate_id": "cand_construction_c962acc8f56e",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_construction_preserve_we_shared_activities"
+        ],
+        "reason": "Creates merged Skill for preserving joint participants when 'we' is used."
+      }
+    ],
+    "operations": [
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_shared_habit_confirmation",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Shared-habit confirmation to addressed person",
+        "description": "When a message uses 'same here, <Name>!' or 'me too, <Name>!' to confirm the addressed person shares the speaker's listed habits, extract memory candidates for both speaker and addressed person.",
+        "content": [
+          "During candidate extraction, when a speaker says 'same here, <Name>!' or 'me too, <Name>!' and then lists practices/habits, create a separate state candidate with <Name> as subject containing the same listed practices, in addition to the speaker's candidate.",
+          "Only generate the addressee candidate when the sharing phrase clearly refers to the same listed practices; do not expand to other people or invent practices not explicitly named."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_05a7cc72083f"
+        ],
+        "reason": "Creating Skill for extracting addressee memories from shared-habit confirmation.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_preserve_co_participants",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Preserve co-participants in shared event memories",
+        "description": "When a message describes a travel, retreat, or activity shared with an explicit companion ('my partner and I'), keep the companion in the extracted event memory instead of attributing the event to the speaker alone.",
+        "content": [
+          "During extraction, when a message states that the speaker and an explicitly identified companion (partner, friend, family member, named person) experienced a shared event such as travel, a retreat, or an activity, include all participants in the event candidate content (e.g., 'Jolene and her partner traveled...').",
+          "Do not reduce the event to the speaker alone just because the memory subject is the speaker; preserve explicit companion details that are part of the event.",
+          "When updating an existing event memory with new information confirming a companion shared it, amend the content to add the companion rather than creating a new memory. Stop after capturing the explicitly stated participants; do not infer companions from pronouns alone unless the message identifies them."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_0b10a4e2ff3d"
+        ],
+        "reason": "Creating Skill for preserving explicit companions in shared events.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_infer_informal_shared_activities",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Infer informal shared activities in relationship contexts",
+        "description": "When a user describes a past shared activity with a named partner or family member and explicitly mentions bonding, making memories, or closeness, extract an event/relationship memory even if the activity term is informal or generic; use strong contextual clues such as 'gaming' to infer the concrete activity.",
+        "content": [
+          "During extraction, treat informal activity phrases (e.g., 'played games', 'gaming', 'used to do puzzles') as valid event/relationship candidates when the speaker links the activity to bonding, making memories, or spending time with a named person; do not skip them because the wording is generic.",
+          "Concretize the activity only when the wording strongly implies one specific type (e.g., 'gaming' → video games); if the activity is ambiguous (e.g., 'games' alone could be board or video), record the generic term as stated or skip instead of guessing.",
+          "Include the named person in the relationship and cite the bonding/memories purpose in the memory. Apply the same rule during CRUD: do not discard or over-merge such candidates merely because the activity was described informally."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_0d3225f8adf9"
+        ],
+        "reason": "Creating Skill for extracting informal shared activities with bonding context.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_shared_activity_relationship",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Extract shared-activity relationship from casual enjoyment",
+        "description": "When a message says the speaker or a named person enjoys or regularly does an activity with another named person/pet, phrased casually like 'we have a great time doing X' or 'we love doing X together'.",
+        "content": [
+          "During extraction, when a message states that the speaker or another named person enjoys or regularly does an activity together with a second named person or pet, expressed with casual mutual-enjoyment language (e.g., 'we have a great time doing X', 'we love X together'), create one relationship memory linking both participants with attributes for the activity and the enjoyment. Link the memory to the source message and use the session timestamp.",
+          "Do not create this memory for a single past occurrence (e.g., 'we went to the beach yesterday') unless the message also asserts a general preference; treat such one-off events as event memories. Create at most one memory per distinct (participants, activity) pair."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_16943cbc250e"
+        ],
+        "reason": "Creating Skill for extracting shared-activity relationships from casual mutual enjoyment.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_preserve_we_shared_activities",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Preserve joint participants when 'we' is used",
+        "description": "When a user message describes an activity with first-person plural pronouns ('we', 'our') and the session establishes a specific partner/companion, include that companion in the event memory instead of attributing the activity to the speaker alone.",
+        "content": [
+          "During extraction and update, when a user uses 'we'/'our' for an activity and a specific partner, spouse, or companion is established in the session, record the event with the speaker and that companion as co-participants.",
+          "Add the co-participant only if their identity is explicit or directly implied by recent context (e.g., wedding, honeymoon, 'my partner'); stop if 'we' is generic or no specific companion is identifiable.",
+          "Do not invent participants for unnamed or collective groups; keep the memory at the level of evidence."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_48cf629455cc",
+          "cand_construction_c962acc8f56e"
+        ],
+        "reason": "Creating merged Skill for preserving joint participants when 'we' is used.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_announced_event_recipients",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Extract announced-event recipients from addressed messages",
+        "description": "When a user message directly addresses a named person (including the assistant) and announces a personal life event such as marriage, birth, or a move, extract a memory that records both the event and that it was told to that person.",
+        "content": [
+          "During candidate extraction, when a user message addresses a named person (for example 'Hey Sam!') and announces a personal life event such as a marriage, birth, or move, extract the disclosure as a durable fact: the event occurred and that named person was told about it.",
+          "Record the audience explicitly in the event memory or as a separate relationship/event memory (e.g., 'Evan told Sam he got married'), citing the message as the source.",
+          "Stop at recipients explicitly addressed or named as the audience; do not infer other recipients from general context, and do not apply when no addressee is present."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_4e26488664ab"
+        ],
+        "reason": "Creating Skill for recording the audience of announced personal events.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_capture_all_participant_roles",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Capture all participant roles in shared activities",
+        "description": "When extracting or updating a memory from a message where the speaker describes a shared activity or event (e.g., playdates, group outings) involving themselves and another party, and the source states what each party does.",
+        "content": [
+          "During extraction, when a statement describes a joint activity with the speaker and another party (people or pets), capture the speaker's own explicit action or benefit as well as the other party's, rather than summarizing only the setting or the other party's behavior.",
+          "When updating or enriching an existing event memory with such a statement, preserve the speaker's role and add any newly stated action; do not let a topic-focused paraphrase replace it.",
+          "Stop after recording the explicitly stated actions of all named participants; do not infer additional roles or add unstated details."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_5b93960a3215"
+        ],
+        "reason": "Creating Skill for capturing all participants' explicit roles in shared activities.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_companion_activity_statements",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Extract companion activity statements",
+        "description": "When a message contains an explicit statement by the speaker about taking a walk, hike, or similar activity with a named companion (pet or person), extract a state or event candidate during extraction, even if the statement is in a closing or small-talk phrase.",
+        "content": [
+          "During extraction, if a message explicitly states the speaker's activity with a named companion (e.g., walks, hikes, plays with), create one candidate memory even when the phrase is a sign-off or small talk.",
+          "Classify the candidate as event when the activity is one-off or explicitly planned, and as state when the phrasing implies a recurring habit; include the activity and companion in the memory content, and keep the source message ID.",
+          "Stop after the explicit activity: do not infer additional activities or habits beyond what the message states."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_77976f142fc6"
+        ],
+        "reason": "Creating Skill for extracting explicit companion activity statements from casual phrases.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_explicit_durations_group",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Extract explicit durations from group statements",
+        "description": "When a message states the speaker's past group involvement with an explicit duration, even if it also contains a question or filler, during extraction create a relationship/event candidate.",
+        "content": [
+          "During extraction, if a message states the speaker's past involvement in a group or relationship with an explicit duration (e.g., 'we were teammates for four years'), create a relationship or event candidate capturing the speaker, the group, and the duration, even when the utterance also ends with a question or casual filler.",
+          "Treat the explicit duration alone as sufficient evidence for a candidate; do not require additional corroborating sentences. Do not apply this to statements about another person's experience or to turns without a factual predicate."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_786cc0a49bd5"
+        ],
+        "reason": "Creating Skill for extracting explicit durations from group statements with filler.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_multi_party_first_person_attribution",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Multi-party first-person attribution",
+        "description": "When a multi-party conversation contains a message where a participant uses first-person language ('I', 'my', 'me') to state their own preference, opinion, or state, use the message's speaker as the memory subject during extraction and CRUD.",
+        "content": [
+          "During extraction, read the speaker of each message and, for any first-person statement ('I', 'my', 'me', 'we'), set the memory subject to that speaker, never to another participant.",
+          "When a candidate combines statements from multiple speakers, split it into one candidate per speaker; do not merge different speakers' views into a single profile memory.",
+          "Before accepting an ADD/UPDATE, compare the candidate subject with the source speaker: if a first-person statement is attributed to someone else, correct the subject or reject the candidate."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_83996e20aa4b"
+        ],
+        "reason": "Creating Skill for attributing first-person statements to the correct speaker in multi-party conversations.",
+        "hard_delete": false
+      }
+    ]
+  },
+  "status": "planned"
+}

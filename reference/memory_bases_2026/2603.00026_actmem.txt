@@ -1,0 +1,912 @@
+                                         ActMem: Bridging the Gap Between Memory Retrieval and Reasoning in
+                                                                    LLM Agents
+                                         Xiaohui Zhang1 , Zequn Sun1 , Chengyuan Yang1 , Yaqin Jin2 , Yazhong Zhang2 , Wei Hu1,3
+                                              1
+                                                State Key Laboratory for Novel Software Technology, Nanjing University, China
+                                                                        2
+                                                                          Alibaba Group, Hangzhou, China
+                                                   3
+                                                     National Institute of Healthcare Data Science, Nanjing University, China
+                                                     {xhzhang, cyyang}.nju@gmail.com, {sunzq, whu}@nju.edu.cn,
+                                                                {jyq229592, zhangyazhong.zyz}@taobao.com
+
+                                                               Abstract                         it. Existing memory management methods typi-
+                                                                                                cally serve as a passive “recorder,” where the goal
+                                             Memory management is essential for LLM
+arXiv:2603.00026v2 [cs.CL] 17 Jun 2026
+
+
+
+
+                                                                                                is to compress, summarize, and retrieve historical
+                                             agents in long-term interactions. Current mem-
+                                             ory frameworks typically treat agents as passive   text (Fang et al., 2026; Yang et al., 2026). While
+                                             “recorders” and retrieve information without un-   RAG-based methods can fetch relevant dialogue
+                                             derstanding its deeper implications. They may      snippets (Gao et al., 2023), they often fail to un-
+                                             fail in scenarios requiring reasoning and com-     derstand the deeper implications of that memory
+                                             plex decision-making. To bridge this critical      for current decision-making. In real-world appli-
+                                             gap, we propose a novel actionable memory          cations, an agent acts as a human assistant, not
+                                             framework called ActMem that integrates mem-
+                                                                                                just an “archivist” (He et al., 2025). For instance,
+                                             ory retrieval with active causal reasoning. Act-
+                                             Mem transforms unstructured dialogue history
+                                                                                                when a user proposes a new schedule, the agent
+                                             into a structured causal and semantic graph. By    should not only recall previous similar ones but
+                                             leveraging counterfactual reasoning and com-       also find event conflicts. This requires the agent
+                                             monsense completion, it enables agents to de-      to go beyond memory retrieval and perform active
+                                             duce implicit constraints and resolve potential    reasoning based on historical states. We define this
+                                             conflicts between past states and current inten-   capability as the utility of memory for action.
+                                             tions. Furthermore, we introduce a compre-            This limitation is also reflected in current mem-
+                                             hensive dataset ActMemEval to evaluate agent
+                                                                                                ory benchmarks. Existing datasets, such as Lo-
+                                             reasoning capabilities in logic-driven scenar-
+                                             ios, moving beyond the fact-retrieval focus of     CoMo (Maharana et al., 2024), LongMemEval (Wu
+                                             existing memory benchmarks. Experiments            et al., 2025), and HaluMem (Chen et al., 2025), pri-
+                                             demonstrate that ActMem significantly outper-      marily evaluate the accuracy of memory retrieval
+                                             forms baselines in handling complex, memory-       through QA tasks. They assess whether the agent
+                                             dependent tasks, paving the way for more con-      can “find” the answer but overlook whether the
+                                             sistent and reliable intelligent assistants.       agent can “reason” upon it. They lack scenarios
+                                                                                                involving complex causal reasoning where the an-
+                                         1   Introduction
+                                                                                                swer is not explicitly stated in the history but must
+                                         Large language models (LLMs) have shown re-            be deduced. Their evaluations fail to measure how
+                                         markable capabilities in natural language under-       well an agent can utilize memory to assist in current
+                                         standing and generation, serving as the backbone       planning that may conflict with past state.
+                                         for various agents. To enable these agents to handle      To show the limitations of current benchmarks
+                                         long-term interactions, effective memory manage-       and the motivation of our work, we present a com-
+                                         ment is essential (Zhang et al., 2025c). Convention-   parison in Figure 1. Subfigure (a) shows an ex-
+                                         ally, memory frameworks in LLM agents focus on         ample from LongMemEval. The user’s query ex-
+                                         expanding context windows or utilizing retrieval-      plicitly matches a record in the past memory sum-
+                                         augmented generation (RAG) to store, update and        maries. The agent only needs to perform semantic
+                                         recall historical interactions. They aim to improve    or vectorized matching to retrieve the fact. This is
+                                         the capacity of memory recall, ensuring that the       a task that evaluates the capacity of memory recall.
+                                         agent can retrieve specific information from a vast       In contrast, Subfigure (b) shows a more realistic
+                                         repository of past dialogues (Hu et al., 2025).        and challenging scenario that necessitates mem-
+                                            However, a fundamental gap remains between          ory reasoning. The user asks where to buy “Sago
+                                         simply remembering the past and effectively using      Palms.” A retrieval-only agent may simply return
+                                 I’m trying to find a good way to display                                                                                                 ory management framework. By integrating a
+Past memory summaries
+
+
+
+
+                                                                                     Past memory summaries
+                                                                                                                My puppy is driving me crazy.
+                                     y vintage watch collection… I … just
+                                   got a rare blue Snaggletooth action
+                                 figure from a thrift store a few weeks ago.                                                             What’s he doing?
+
+                          Congratulations on your recent collectible
+                                                                                                                  He’s teething... He has started chewing on
+                                                                                                                  everything … —shoes, furniture, everything.
+                                                                                                                                                                          memory KG with causal and semantic edges,
+                        finds…! As for displaying your vintage
+                        watch collection, I’d be happy to help you
+                           find a suitable display case...
+                                                                                                                  That’s a rough phase. You’ll need to
+                                                                                                                  keep anything dangerous out of reach.                   ActMem enables agents to utilize past experi-
+                                                                                                                                                                          ences for robust decision-making.
+Current dialogue
+
+
+
+
+                                                                                     Current dialogue
+                              What type of action figure did I                                                     I’m buying some indoor plants ... Where can
+                              buy from a thrift store?                                                             I find “Sago Palms” on sale nearby?
+                                                                                                             You can find Sago Palms at several shops,
+                                                 A blue Snaggletooth.                                        including Fast Growing Trees and …
+
+                           (a) An example from LongMemEval                     (b) An example to show the necessary of memory reasoning
+                                                                                                                                                                     • We construct a comprehensive dataset Act-
+                                                                                                                                                                       MemEval to evaluate the reasoning capabili-
+Figure 1: A motivating comparison between memory                                                                                                                       ties of agents in long-term interactions, cov-
+retrieval and our memory reasoning. (a) A memory
+                                                                                                                                                                       ering complex tasks that require logic-driven
+retrieval example from LongMemEval. (b) A memory
+reasoning example. The current query (buying Sago                                                                                                                      memory utilization.
+Palms) has little semantic overlap with the past memory
+(a teething puppy), but the agent should still infer the                                                                                                             • Extensive experiments demonstrate that Act-
+hidden conflict because Sago Palms are toxic to dogs.                                                                                                                  Mem significantly outperforms existing base-
+                                                                                                                                                                       lines in handling complex, logic-driven tasks.
+                                                                                                                                                                       It also achieves competitive and even SOTA
+shopping information. However, the dialogue his-                                                                                                                       performance on conventional datasets.
+tory contains a critical information: the user has
+a puppy that is “teething” and “chewing on every-                                                                                                                   We hope this work will pave the way for future
+thing.” Given that Sago Palms are highly toxic to                                                                                                                research into more consistent and human-aligned
+dogs, a responsible agent should infer the poten-                                                                                                                intelligent assistants. Our source code and dataset
+tial danger and intervene with a warning. We find                                                                                                                is available at GitHub. 1
+that LLMs generally possess this commonsense
+knowledge, but current memory systems often fail                                                                                                                 2       Related Work
+to connect it with the stored history. The inability                                                                                                             2.1      Agent Memory Management
+to reason over memory can lead to conflicting or
+                                                                                                                                                                 Memory management is a core capability for intel-
+even dangerous advice. This is the gap we aim to
+                                                                                                                                                                 ligent agents in long-term interactions (Zhang et al.,
+bridge. We want to turn the agent from a passive
+                                                                                                                                                                 2025c; Hu et al., 2025). Existing studies mainly fall
+retriever into an active reasoner.
+                                                                                                                                                                 into three groups: retrieval-centric memory, struc-
+   To bridge this gap, we propose ActMem, a mem-
+                                                                                                                                                                 tured memory, and lightweight memory systems.
+ory framework that combines retrieval with causal
+reasoning. It first extracts memory facts from raw                                                                                                               Retrieval-centric memory management. These
+dialogue history. Then it clusters related facts and                                                                                                             methods mainly improve access to relevant history
+adds semantic edges between similar fact pairs. Af-                                                                                                              in long contexts. Methods such as Mem0 (Chhikara
+ter that, it mines causal relations of facts. Further-                                                                                                           et al., 2025) and MemoryBank (Zhong et al., 2024)
+more, it performs counterfactual reasoning, com-                                                                                                                 follow a RAG-style paradigm (Gao et al., 2023).
+monsense completion and PMI-based filtering to                                                                                                                   They focus on storing, retrieving, and updating
+refine cause edges. These facts and edges form                                                                                                                   memories. Their main goal is efficient and accurate
+a memory knowledge graph (KG). The KG helps                                                                                                                      recall from large memory banks.
+the agent find associations, detect conflicts, and                                                                                                               Structured memory management. To overcome
+infer hidden constraints for current actions. We                                                                                                                 the limits of flat text, recent work explores struc-
+also introduce a new dataset, ActMemEval, to eval-                                                                                                               tured memory formats. Examples include tree-
+uate this setting. Unlike traditional retrieval bench-                                                                                                           based methods like MemTree (Rezazadeh et al.,
+marks, it focuses on active reasoning and causal                                                                                                                 2025) and graph-based methods like A-Mem (Xu
+deduction. In summary, the contributions of this                                                                                                                 et al., 2025). Other studies use hierarchical or com-
+paper are as follows:                                                                                                                                            positional designs (Rasmussen et al., 2025; Zhang
+                                                                                                                                                                 et al., 2025a) to model dependencies across turns.
+                          • We identify the critical limitation of current                                                                                       These structures often improve retrieval precision
+                            agent memory systems: the disconnect be-                                                                                             over plain text chunks.
+                            tween memory retrieval and reasoning. We                                                                                             Lightweight memory systems. Another line of
+                            propose a shift in focus from the “capacity of                                                                                       work focuses on memory efficiency under lim-
+                            recall” to the “utility of memory for action.”                                                                                       ited token budgets. LightMem (Fang et al., 2026)
+                                                                                                                                                                     1
+                          • We introduce ActMem, an actionable mem-                                                                                                      https://github.com/nju-websoft/ActMem
+uses hierarchical compression to summarize dia-                    port complex decision-making.
+logue history and reduce storage and retrieval cost.
+SimpleMem (Liu et al., 2026) further adds seman-                   3.1    Memory Fact Extraction
+tic lossless compression, structured indexing, and                 Raw dialogue history often contains redundancy
+adaptive retrieval to improve token usage. These                   and noise that hinder effective reasoning. To ad-
+methods emphasize compact memory and efficient                     dress this, we first compress the raw history D into
+access. They are suitable for long-term interaction                a set of atomic memory facts F. We use an LLM-
+under limited computation.                                         based information extractor to parse the dialogue
+Discussions. Despite this progress, a key gap re-                  and generate declarative sentences containing key
+mains. Recent surveys (Hu et al., 2025) show that                  entities and facts following (Fang et al., 2026). Dur-
+most methods still treat memory as passive storage                 ing extraction, we resolve pronouns in person or
+with fixed representations. Whether they use RAG                   place mentions to explicit entities, and normalize
+or trajectory replay, retrieval still depends heavily              relative time expressions into absolute timestamps
+on surface semantic similarity. This makes it hard                 based on the dialogue time. We define an extraction
+to detect hidden conflicts or adapt past experience                function fext (·) powered by an LLM to map raw
+to changing situations. As a result, these methods                 dialogues into a set of atomic facts F. For each
+may suffer from negative transfer or hallucination.                dialogue turn (ut , at ), we extract a subset of facts:
+In contrast, ActMem uses an event-centric design                    Ft = LLM(pext , ut , at ) = {ft,1 , ft,2 , . . . , ft,k }, (1)
+that explicitly models logical structure and causal
+dependency. It turns memory from passive storage                   where pext denotes the extraction prompt designed
+into an active reasoning engine.                                                                 SThe global fact set is
+                                                                   to identify entities and events.
+                                                                   the union of all turns: F = N    t=1 Ft . Unlike tradi-
+2.2    Synthetic Evaluation Benchmark                              tional summarization which compresses the entire
+                                                                   context into a single paragraph, our method focuses
+Synthetic benchmarks are widely used to evalu-
+                                                                   on atomicity. This granular extraction serves as the
+ate LLMs in controlled settings. They have moved
+                                                                   foundation for subsequent causal mining.
+from simple information retention to more complex
+reasoning. Recent datasets like RULER (Hsieh                       3.2    Fact Clustering
+et al., 2024) and BABILong (Kuratov et al., 2024)
+                                                                   To model long-term interactions, we need to find
+test variable tracking and logical chaining. Datasets
+                                                                   relations between facts from different sessions. Be-
+like LoCoMo (Maharana et al., 2024) and Long-
+                                                                   sides, mining causal edges by computing relations
+MemEval (Wu et al., 2025) focus on long-term dia-
+                                                                   across all pairs of facts in the global history is
+logue consistency and memory retrieval. However,
+                                                                   time-consuming. To mitigate this, we introduce
+these datasets are mostly QA-oriented. They test
+                                                                   a fact clustering module. Let ϕ(·) be an embed-
+passive retrieval more than active use of memory
+                                                                   ding function, e.g., Qwen3-Embedding-8B (Zhang
+for decision-making. We address this issue with
+                                                                   et al., 2025b), that maps a textual fact fi to a d-
+ActMemEval. It evaluates the utility of memory for
+                                                                   dimensional vector hi ∈ Rd . We compute seman-
+action via implicit constraints and causal conflicts.
+                                                                   tic similarity with cosine similarity:
+We use human verification to improve reliability.
+                                                                                                             h⊤i hj
+3     The ActMem Framework                                               hi = ϕ(fi ), sim(fi , fj ) =                 .       (2)
+                                                                                                           ∥hi ∥∥hj ∥
+We present ActMem to bridge the gap between pas-                      To partition F into disjoint clusters C =
+sive retrieval and active reasoning in LLM agents.                 {C1 , . . . , CK } efficiently, we employ a single-pass
+As illustrated in Figure 2, the framework con-                     incremental clustering algorithm. We maintain a
+sists of four modules: (1) memory fact extraction,                 centroid vector ck for each cluster. For each incom-
+(2) fact clustering, (3) memory KG construction,                   ing fact fi , we calculate its similarity with existing
+and (4) counterfactual-based retrieval and reason-                 centroids. If the maximum similarity exceeds a
+ing. Formally, we define the raw dialogue history                  clustering threshold δ, the fact is assigned to the
+as D = {u1 , a1 , u2 , a2 , . . . , ut , at , . . . , uN , aN },   corresponding cluster; otherwise, a new cluster is
+where ui and ai denote the user and agent utter-                   initialized with fi as its centroid. This strategy en-
+ances at turn i, respectively. Our goal is to trans-               sures that facts related to the same topic are consol-
+form D into a structured memory graph G to sup-                    idated dynamically. It lets us mine causal relations
+      Raw dialogue history                                                                           Memory fact summaries
+
+                                                                                                        F1. User’s puppy drove him crazy on the morning of Jan. 24, 2025.
+               My puppy is driving me crazy.                                  Who? What?
+                                                                              Where? When?              F2. User's puppy is teething.
+                                                          What’s he doing?                              F3. User's puppy has started chewing on everything in the house.
+                 He’s teething, I think. He has started chewing on                                      F4. User needs to keep anything dangerous out of reach.
+                 everything in the house—shoes, furniture, everything.
+                                                                                                     Session1                               Session2                                Session3
+                         That’s a rough phase. You’ll need to keep anything
+                         dangerous out of reach.                                                          F1         F2    F3       F4            F5   F6         F7                      F8     F9
+
+      Current query                                                                                                               Raw causal graphs
+            I’m buying some indoor plants to brighten up the living room.                     PMI validation                                                                        Embeddings
+            Where can I find Sago Palms on sale nearby?                          For each 𝑥 𝑦 :
+                                                                                 𝑆 𝑥, 𝑦 ≈ ℒ!"#$"% 𝑦 − ℒ#$"% 𝑦 𝑥 > 𝜏 ?                                   Memory fact clusters
+                                                         irrelevant facts
+                                                                                                                                                                                Topic 1
+                      Counterfactual reasoning ?                                                               memory KG
+                                                             F13     F11
+                                                                                         F3                                                                       F1        F2       F3         F7
+                                                                                                        F2                F7             Why?
+      Sago Palms contain cycasin, which is toxic to humans and pets                                                                                    F4
+                                                                                    F4          F1              F6
+
+
+
+
+                                                                                                                                                                                           3
+      when ingested. Overwatering Sago Palms can lead to root rot…                                                                                                    F5                        F8
+
+
+
+
+                                                                                                                                                                                            c
+                                                                                                                                                                                         pi
+                                                                                                                                                        To
+
+
+
+
+                                                                                                                                                                                      To
+                                                                                                                           F8                              pi
+                                                                                                                                                              c                           F6
+      I don’t recommend you grow sago palms at home                                        F5                F9                                                   2
+                                                                                                                                                                           F9
+                                                             F4      F3
+      since sago palms are highly toxic to your dog…                                                              semantic edge
+                                                                                          causal edge
+
+
+
+                                                       Figure 2: The overview of our proposed framework.
+
+
+inside local clusters, which reduces computation                                         the causal dependency, we design specific prompt
+while keeping topical coherence.                                                         templates for the input contexts: (1) The con-
+                                                                                         ditional context Tcond constructs the sequence
+3.3   Memory KG Construction                                                             “fi . As a result, fj ”; (2) The unconditional context
+The core of ActMem is the construction of the                                            Tuncond uses a neutral prefix “The fact is that fj ”.
+memory KG, denoted as G = (V, E), where nodes                                            A positive SPMI means that fi clearly reduces the
+V correspond to memory facts and edges E repre-                                          uncertainty of fj . We keep only pairs whose PMI
+sent causal or semantic relations.                                                       score is above the threshold γ:
+Semantics edge generation. Following cluster-                                                                                               [
+                                                                                              Ecausal = {(fi , fj ) ∈                            Hk | SPMI (fi , fj ) > γ}. (5)
+ing, for each fact cluster, we calculate the pairwise
+similarity between facts and add a semantic edge                                          Finally, we merge these validated causal edges with
+between any two nodes whose similarity exceeds a                                          semantic edges to form the final memory graph G.
+semantic threshold τ .
+                                                                                          3.4             Counterfactual Retrieval and Reasoning
+Raw causal edge generation. Within each cluster
+Ck and each dialogue session, we prompt the LLM                                           Traditional RAG systems retrieve memories solely
+to identify potential causal edges. Let Hk be the set                                     based on the semantic similarity to the user’s cur-
+of candidate pairs (fi , fj ) identified by the model                                     rent query q, often missing implicit constraints. We
+as potentially causal (i.e., fi → fj ):                                                   propose a retrieval-reasoning-refinement loop to
+                                                                                          utilize the memory KG effectively.
+                     Hk = LLM(pcause , Ck ).                                  (3)         Step 1: Initial retrieval. We retrieve an initial fact
+                                                                                          set Vinit ⊂ V by vector similarity to the query q:
+PMI-based hallucination filtering. A major chal-
+lenge in using LLMs for causal mining is “causal                                                                Vinit = TopK(sim(q, fi ), fi ∈ V).                                                    (6)
+hallucination” where the model identifies spurious
+                                                                                          Step 2: Counterfactual reasoning. We then gener-
+correlations as causation. To verify the candidate
+                                                                                          ate commonsense knowledge with a counterfactual
+edges in Hk , we employ a verification mechanism
+                                                                                          question:
+based on Pointwise Mutual Information (PMI). It
+quantifies the information gain provided by the an-                                                                   kcs = LLM(pcounter , q, Vinit ).                                                (7)
+tecedent fact fi for generating the consequent fact
+fj . We define the verification score SPMI as the re-                                     pcounter can be briefly summarized as “If the user
+duction in the negative log-likelihood of generating                                      does q, what negative consequences might occur
+fj when conditioned on fi :                                                               considering Vinit or general knowledge?”
+                                                                                          Step 3: Refinement and response. We use kcs
+ SPMI (fi , fj ) = LM (fj | Tuncond ) − LM (fj | Tcond ), (4)                             as an enhanced query for secondary retrieval over
+                                                                                          the memory graph. First, we retrieve a seed set of
+where LM (·) denotes the cross-entropy loss of the
+                                                                                          nodes similar to kcs :
+target sequence fj computed by a pre-trained lan-
+guage model M (e.g., GPT2-Large). To model                                                                   Vseed = TopK(sim(kcs , fi ), fi ∈ V),                                                    (8)
+We then expand them with their structured graph                                            Step 1: Event Chain Generation. Unlike previ-
+information. Here, NG (v) denotes the neighbor                                             ous datasets that generate dialogues directly, we
+nodes of v in G. The refined set is                                                        first synthesize the underlying event logic. We em-
+                            [                                                              ploy an advanced LLM (Gemini 3.1 Pro) as the
+         Vrefine = Vseed ∪        NG (v).    (9)                                           event chain generator. It generates two types of
+                                          v∈Vseed                                          nodes: history events and reasoning triggers. For
+                                                                                           each sample, we randomly choose one category
+The final context is Cfinal = Vinit ∪ {kcs } ∪ Vrefine .
+                                                                                           and generate the event chain accordingly. History
+The agent generates ans given this context:
+                                                                                           events describe the background facts, such as “User
+                    ans = LLM(panswer , q, Cfinal ).                              (10)     adopted a puppy” and “Puppy is teething”. Rea-
+                                                                                           soning triggers represent the user’s current intent,
+With this mechanism, ActMem turns the agent                                                such as “User wants to buy Sago Palms”. The rea-
+from a passive retriever to an active reasoner, en-                                        soning trigger links the history events and forms a
+suring the utility of memory for decision-making.                                          complete reasoning chain. In later dialogue gener-
+                                                                                           ation, history events are converted into historical
+4      The ActMemEval Benchmark                                                            dialogues, while the reasoning trigger is converted
+In this section, we introduce the pipeline to con-                                         into the current user query.
+struct our ActMemEval and the evaluation results.                                          Step 2: Event Chain Validation. We then val-
+                                                                                           idate each chain from three aspects: logic, time,
+    Event Chain Generation                 Event Chain Validation
+                                                                                           and knowledge. Claude Sonnet 4.5 checks logical
+                                                                           KB              consistency directly. For time and knowledge val-
+      History event                                                     retriever
+      Reasoning trigger                                                                    idation, we provide two external tools: Temporal
+                                                                        Temporal
+      Causal transition                                                 Resolver           Resolver and KB retriever. The validator calls them
+      Constraint activation             Validator
+                                           Reason and filter
+                                                                    Tools                  when needed. Temporal Resolver normalizes time
+                                                                                           expressions into ISO dates and checks temporal or-
+                                       Logic broken?
+                                                                                           der. KB retriever queries Wikidata and Wikipedia
+                                       Time broken? t1         t2   ?
+
+    Reasoning topology
+                                                                             Verified      and returns evidence snippets. The validator keeps
+                                       Fact wrong?                          event chain
+        synthesizer
+                                                                                           only chains that are coherent, temporally valid, and
+                          Dialogue Generation                                              knowledge grounded.
+ Formality: Academic
+ Verbosity: Verbose                      History
+                                                                                           Step 3: Dialogue Generation. We convert the val-
+ Attitude: Cooperative                   sessions
+ Urgency: Relaxed                                         Raw dialogue                     idated topologies into natural-language dialogues
+ User linguistic style                    Query                               Manual
+                                                                            verification
+                                                                                           using a dialogue editor. To reflect real-world diver-
+                          Dialogue
+                           editor    Noise sessions                                        sity, we define a set of user linguistic styles along
+      Event chain                        pool             Final dataset
+                                                                                           four dimensions: formality, verbosity, attitude, and
+Figure 3: Pipeline to construct our ActMemEval dataset.                                    urgency. For each sample, we instantiate every
+                                                                                           node in the event chain as an anchor session. The
+                                                                                           user in each anchor session follows one randomly
+4.1       Dataset Construction                                                             sampled style combination. Each anchor session
+Figure 3 shows the construction pipeline, which                                            reflects the facts in its corresponding node. We
+has three steps. To avoid model self-bias and sam-                                         then randomly sample noise sessions from Ultra-
+ples that are easy for the same model to solve, we                                         Chat (Ding et al., 2023) and insert them between
+use different models for data generation and valida-                                       the anchor sessions to form a raw dialogue. Finally,
+tion. The generation model is also stronger than the                                       three NLP researchers manually verify each sample.
+model used in our method, which helps improve                                              We keep only the samples with no disagreement.
+data quality. Specifically, we use Gemini 3.1 Pro
+                                                                                           4.2   Dataset Evaluation
+for generation and Claude Sonnet 4.5 for validation.
+To improve diversity, we synthesize six categories:                                        We evaluate the dataset from two aspects: context
+safety-health risks, feasibility limits, time-space-                                       structure and query-history similarity. We compare
+procedure mismatches, access or availability gaps,                                         our ActMemEval with the retrieval-based bench-
+preference incompatibility, and benefit-reuse op-                                          marks LongMemEval (Wu et al., 2025) and Lo-
+portunities. Detailed definitions are in Appendix E.                                       CoMo. Table 1 reports the basic statistics, and
+ Dataset                     #Q Avg. Sess.       Avg. Tok. Avg. Evid. Sess. Avg. Evid. Pos.
+                                                                                                     5.2   Evaluation Metrics
+ ActMemEval   327                         67.25      120k               2.48                 34.53
+ LongMemEval 500                          47.73 115k/1.5M               1.90                 25.16
+ LoCoMo      7412                         27.20        10k              1.29                 14.14
+                                                                                                     We employ two key metrics to assess both the pre-
+                                                                                                     cision of recall and the effectiveness of reasoning:
+Table 1: Dataset statistics of ActMemEval and two re-
+lated benchmarks. #Q is the number of questions. Avg.                                                   • Retrieval accuracy: It tests whether the agent
+Sess. is the average number of sessions. Avg. Tok. is                                                     can recall the memory facts needed to answer
+the average number of tokens. Avg. Evid. Sess. is the                                                     the query. Following (Chen et al., 2025), re-
+average number of evidence sessions. Avg. Evid. Pos.                                                      trieval accuracy is the recall rate of ground-
+is the average position of evidence sessions.                                                             truth evidence facts in our dataset.
+
+              4
+                                                                           Dataset
+                                                                                                        • Question-answering accuracy: This metric
+                                                                         ActMemEval (Ours)
+                                                                         LoCoMo
+                                                                                                          measures the final utility of the memory. It
+              3
+                                                Reasoning gap            LongMemEval
+                                                                                                          assesses whether the generated response cor-
+    Density
+
+
+
+
+              2
+                                                                                                          rectly addresses the user intent while adhering
+              1                                                                                           to historical constraints.
+                   Requires reasoning                                  Direct retrieval
+                  (Implicit connection)                               (Explicit overlap)
+              0
+              0.0              0.2             0.4           0.6          0.8                1.0
+                                          Semantic similarity score                                  5.3   Implementation Details
+
+Figure 4: Distribution of semantic similarity scores
+                                                                                                     We employ two LLMs as backbones for reason-
+between each question and its supporting history context                                             ing and generation: DeepSeek-V3, representing
+in ActMemEval, LoCoMo, and LongMemEval.                                                              high-performance open-source models, and GPT-
+                                                                                                     4o-mini, representing efficient lightweight mod-
+                                                                                                     els. For memory representation, we utilize Qwen3-
+Figure 4 shows the similarity distribution between                                                   Embedding-8B (Zhang et al., 2025b) to generate
+each question and its supporting history context.                                                    semantic vectors. For hyperparameter settings, in
+   Table 1 shows that ActMemEval is structurally                                                     the event clustering module, we set the clustering
+denser. It has the largest average number of ses-                                                    threshold δ to 0.2. The semantic-edge threshold
+sions and much longer contexts. Its evidence                                                         τ is set to 0.3. For causal edge construction, the
+sessions are more numerous and appear later in                                                       PMI validation threshold γ is empirically set to 0.2.
+the dialogue. Compared with LongMemEval and                                                          During the retrieval phase, we set the number of
+LoCoMo, ActMemEval spreads supporting clues                                                          retrieved memory facts to 20 for the initial retrieval
+across more sessions.                                                                                step. The number of counterfactual facts retrieved
+                                                                                                     is set to 10. In the refinement step, we dynamically
+   Figure 4 compares semantic similarity distribu-
+                                                                                                     retrieve additional facts based on the generated KG.
+tions. ActMemEval has the lowest average sim-
+                                                                                                     For the baseline configuration, we preserve each
+ilarity (0.232) and LongMemEval is highest at
+                                                                                                     method’s original final QA prompt and make mini-
+0.347. The ActMemEval curve is shifted left,
+                                                                                                     mal incremental modifications. Specifically, we ap-
+which means the question is often semantically far
+                                                                                                     pend brief instructions on reasoning to better adapt
+from the key history. In other words, the evidence
+                                                                                                     the baselines to our dataset. This setting keeps
+cannot be found by simple similarity retrieval.
+                                                                                                     the original prompting design intact while making
+Thus, ActMemEval is less retrieval-oriented and
+                                                                                                     the required reasoning process more explicit. We
+better tests memory reasoning.
+                                                                                                     use DeepSeek-V3 as the judge to evaluate retrieval
+                                                                                                     results and generated responses, and we further ver-
+5         Experiments                                                                                ify its judgments through an agreement check with
+                                                                                                     human annotation; see Appendix F.
+5.1               Baselines
+                                                                                                     5.4   Main Results
+We compare ActMem with six representative base-                                                      Table 2 presents the results on ActMemEval. Al-
+lines: NaiveRAG, MemoryBank (Zhong et al.,                                                           though NaiveRAG achieves the highest retrieval
+2024), Mem0 (Chhikara et al., 2025), A-Mem (Xu                                                       accuracy by recalling extensive surface-level se-
+et al., 2025), SimpleMem (Liu et al., 2026), and                                                     mantic matches, its inferior QA performance indi-
+LightMem (Fang et al., 2026). Detailed descrip-                                                      cates a failure to synthesize these facts with noise to
+tions are provided in Appendix A.                                                                    deduce the implicit logical constraints required for
+ LLM Method                                       Overall          SHR              FL                     TSP                AA                      PI             BRO
+                                                  Ret / QA        Ret / QA        Ret / QA               Ret / QA           Ret / QA               Ret / QA         Ret / QA
+               NativeRAG                         85.57 / 61.79   79.89 / 63.22   80.85 / 55.32        92.86 / 66.67        95.45 / 68.18         91.67 / 53.33    86.11 / 66.67
+ DeepSeek-V3
+
+
+               MemoryBank (Zhong et al., 2024)   44.37 / 44.59   46.25 / 47.50   33.72 / 34.88        53.57 / 57.14        50.00 / 42.86         35.19 / 33.33    47.22 / 44.44
+               A-Mem (Xu et al., 2025)           46.30 / 32.27   48.15 / 41.10   39.29 / 18.92        52.70 / 29.41        44.44 / 35.29         51.79 / 37.04    40.54 / 25.00
+               Mem0 (Chhikara et al., 2025)      78.07 / 41.80   73.84 / 44.19   78.72 / 34.04        88.37 / 51.16        75.00 / 45.45         82.76 / 48.28    67.65 / 11.76
+               SimpleMem (Liu et al., 2026)      52.63 / 61.54   49.43 / 60.92   48.94 / 53.19        56.98 / 65.12        50.00 / 59.09         51.67 / 60.00    72.22 / 83.33
+               LightMem (Fang et al., 2026)      57.29 / 62.35   60.34 / 67.82   53.19 / 53.19        55.81 / 65.12        54.55 / 50.00         55.00 / 63.33    63.89 / 66.67
+               ActMem                            71.66 / 76.52 71.51 / 82.56 71.28 / 72.34 75.58 / 86.05 68.18 / 72.73 66.67 / 66.67 80.56 / 61.11
+               NativeRAG                         86.03 / 34.01   80.46 / 35.63   79.79 / 19.15        94.19 / 39.53        93.18 / 45.45         96.67 / 40.00    83.33 / 27.78
+ GPT-4o-mini
+
+
+
+
+               MemoryBank (Zhong et al., 2024)   32.32 / 33.49   25.00 / 31.58   25.00 / 31.71        33.82 / 42.86        41.18 / 33.33         24.07 / 30.00    63.57 / 33.33
+               A-Mem (Xu et al., 2025)           45.29 / 18.42   38.06 / 22.73   34.72 / 13.89        48.61 / 13.89        45.83 / 33.33         58.33 / 12.50    71.88 / 18.75
+               Mem0 (Chhikara et al., 2025)      78.95 / 31.10   79.58 / 38.03   81.71 / 29.75        80.77 / 30.77        72.50 / 25.00         88.10 / 33.33     61.76 / 5.88
+               SimpleMem (Liu et al., 2026)      54.93 / 40.36   52.44 / 48.78   46.34 / 26.83        60.53 / 42.11        57.50 / 45.00         51.79 / 32.14    82.14 / 35.71
+               LightMem (Fang et al., 2026)      63.36 / 40.49   63.79 / 44.83   58.51 / 27.66        67.44 / 41.86        63.64 / 54.55         63.33 / 40.00    63.89 / 29.11
+               ActMem                            76.92 / 66.80 75.29 / 79.31 77.66 / 65.96 81.40 / 74.42 77.27 / 50.00 73.33 / 53.33 77.78 / 33.33
+
+
+Table 2: Performance comparison on ActMemEval. We report retrieval accuracy (Ret) and QA accuracy (QA) for
+the overall dataset and for each category: safety-health risks (SHR), feasibility limits (FL), time-space-procedure
+mismatches (TSP), access or availability gaps (AA), preference incompatibility (PI), and benefit-reuse opportunities
+(BRO). Best results in each backbone block are highlighted in bold, and second-best results are underlined.
+
+                                                                                                 80
+                                                                                                                                                                 Full
+QA. Compared to LightMem, ActMem achieves                                             Acc. (%)                                         80
+
+
+
+
+                                                                                                                            Acc. (%)
+                                                                                                                                                                 w/o Reasoning
+                                                                                             70
+substantial improvements. Specifically, when us-                                                                                       60                        w/o Causal
+
+ing DeepSeek-V3, it substantially improves QA                                                                                                                    w/o Semantic
+                                                                                                 60                                    40
+                                                                                                       QA      Retrieval                    QA      Retrieval
+accuracy over LightMem while also delivering con-                                                     (a) DeepSeek-V3                       (b) GPT4o-mini
+sistently stronger retrieval quality across different
+categories. A similar trend is observed with GPT-                                  Figure 5: Ablation study on counterfactual reasoning,
+                                                                                   causal and semantic edge construction.
+4o-mini. In contrast, retrieval-based baselines ex-
+hibit relatively poor performance. We attribute
+their failure to the reasoning gap. These methods                                  trieved context to resolve conflicts, while weaker
+rely primarily on surface-level semantic matching,                                 LLMs may still fail even with correct evidence.
+which struggles to retrieve historical events that
+are logically related but semantically distant from                                5.5            Ablation Study
+the current query. For structured memory base-                                     To verify the contribution of each module, we de-
+lines, A-Mem underperforms ActMem because it                                       sign three variants by removing key modules:
+uses the graph merely as a retrieval aid, while Act-
+Mem employs it as a reasoning framework with                                            • w/o Reasoning: This variant removes the
+explicit causal and semantic edges. In summary,                                           counterfactual reasoning module. The agent
+the ability of ActMem to “reason before retrieving”                                       retrieves memory facts directly from the mem-
+allows it to identify implicit constraints that other                                     ory KG without intermediate reasoning.
+methods miss, thereby achieving state-of-the-art
+performance in complex, action-oriented scenarios.                                      • w/o Causal: It constructs the memory KG
+A qualitative case study is provided in Appendix B.                                       excluding causal edges. The graph uses only
+                                                                                          semantic similarity to connect nodes.
+   We also observe an interesting gap across dif-
+ferent LLM backbones. GPT-4o-mini attains high                                          • w/o Semantic: This variant constructs the
+retrieval accuracy, yet its QA accuracy is markedly                                       memory KG excluding semantic edges. The
+lower. In contrast, DeepSeek-V3 delivers balanced                                         graph consists only of extracted causal chains,
+and consistently superior results on both metrics.                                        making it a sparse causal network.
+We attribute this discrepancy to a reasoning bot-
+tleneck inherent in lightweight LLMs. The lower                                       Figure 5 presents the ablation results. First,
+QA accuracy suggests that GPT-4o-mini struggles                                    removing the reasoning module (w/o Reasoning)
+to integrate and reason over these memory clues.                                   with DeepSeek-V3 causes the largest drop in re-
+This phenomenon also reflects the difficulty of Act-                               trieval accuracy (about 9%), confirming our core
+MemEval that requires reasoning. With stronger                                     motivation. In complex scenarios, relevant memo-
+reasoning ability, DeepSeek-V3 can use the re-                                     ries (e.g., “owning a puppy”) may be semantically
+                                                                                                                                        83.57                               (a) Construction time                                    (b) Input tokens                                        (c) Output tokens
+                                                                        79.67    80                                             72.99                                       A-mem                                                   A-mem                                        4 × 101
+               80                                                                                                                                                                                                         2 × 102
+                                                                                                                                                                                                                                                                                                  SimpleMem
+                                                                68.64                       63.64           64.16 61.69 65.33
+                                          62.60                                                                                                                      3000
+QA Acc. (%)
+
+
+                          61.00
+                                                  53.61 56.00                    60                                                                                                                                                                                              3 × 101
+
+
+
+
+                                                                                                                                                Construct Time (s)
+
+
+
+
+                                                                                                                                                                                                                                                             Output Tokens (k)
+               60
+
+
+
+
+                                                                                                                                                                                                       Input Tokens (k)
+                                                                                                                                                                                                                                             ActMem (Ours)
+               40                 35.40                                          40                 31.50
+                                                                                                                                                                     2000                                                 102 MemoryBank                                         2 × 101
+
+               20                                                                20                                                                                                 MemoryBank
+                                                                                                                                                                                                                                                                                           MemoryBank ActMem (Ours)
+                                                                                            A G Ba nk M e m e m 0 M e m tM e m tM e m
+                                                                                                                                                                                                                                    Mem0
+                          A G Ba nk M e m e m 0 M e m tM e m tM e m                                                                                                  1000              ActMem (Ours)
+                                                                                                                                                                                                                          6 × 101
+                         eR    ry  A-    M     pl e Li gh                                  eR    ry  A-    M     pl e Li gh                                                                                                                                                                         LightMem
+                   tiv      mo                              Ac                       tiv      mo                              Ac
+              Na         Me                Sim                                  Na         Me                Sim                                                            Mem0 SimpleMem                                                      SimpleMem                                        Mem0
+                                                                                                                                                                                   LightMem                               4 × 101                 LightMem                       101 A-mem
+                              (a) LongMemEval                                                       (b) LoCoMo                                                                 40         60                                          40       60                                       40              60
+                                                                                                                                                                               QA accuracy (%)                                        QA accuracy (%)                                         QA accuracy (%)
+                                                                                                                                                                             ActMem (Ours)       LightMem                             Mem0      A-mem                 MemoryBank                      SimpleMem
+                    Figure 6: Performance on conventional datasets.
+                                                                                                                                                            Figure 7: Efficiency comparison using GPT-4o-mini.
+
+distant from the query (e.g., “buying plants”). With-
+out counterfactual reasoning and commonsense                                                                                                       ory KG is also effective in conventional retrieval-
+completion, the agent fails to uncover such “hidden”                                                                                               oriented settings. By organizing scattered mem-
+evidence. Second, removing causal edges (w/o                                                                                                       ories into connected fact structures, ActMem re-
+Causal) yields the lowest QA accuracy. Even when                                                                                                   duces retrieval noise and helps the model produce
+some facts are retrieved, the absence of explicit                                                                                                  more accurate final answers.
+causal links prevents the agent from forming coher-
+                                                                                                                                                   5.7                        Efficiency Comparison
+ent reasoning chains, leading to generic rather than
+conflict-aware decisions. We observe that when                                                                                                     Figure 7 compares efficiency and QA accuracy
+using GPT-4o-mini, removing causal edges actu-                                                                                                     from multiple views. Subfigure (a) shows that heav-
+ally yields better retrieval performance than the full                                                                                             ier frameworks such as A-Mem and MemoryBank
+model. We attribute this to the weaker reasoning                                                                                                   have much higher construction cost, but still do
+capability of GPT-4o-mini, which may introduce                                                                                                     not achieve competitive performance. In contrast,
+errors during world-knowledge completion, adding                                                                                                   ActMem achieves the best accuracy with moder-
+more noise and degrading the retrieval quality of                                                                                                  ate extra overhead. Although it needs more con-
+the full model. Third, the w/o Semantic variant also                                                                                               struction time than lightweight methods such as
+reduces retrieval accuracy, indicating that seman-                                                                                                 LightMem and SimpleMem, it is still much more
+tic edges serve as crucial connectors. They ensure                                                                                                 efficient than the most expensive baselines. The
+that topic-related but non-causal facts remain reach-                                                                                              second and third subfigures show the same trade-
+able, preserving the completeness of the retrieved                                                                                                 off in token usage. ActMem uses more input tokens
+context. In summary, causal edges provide logical                                                                                                  than compression-based methods because building
+backbone, semantic edges ensure coverage, and the                                                                                                  the causal graph needs more context. However,
+reasoning module guides inference. Their combina-                                                                                                  this extra cost brings clear gains in answer qual-
+tion gives ActMem strong performance. Additional                                                                                                   ity. At the same time, its output token usage stays
+analyses of PMI validation and semantic threshold                                                                                                  close to LightMem and is much lower than Simple-
+sensitivity are in Appendices C and D, respectively.                                                                                               Mem. This suggests that the gain does not come
+                                                                                                                                                   from longer responses. Overall, ActMem gives a
+ 5.6                           Results on Conventional Datasets                                                                                    good balance between reasoning performance and
+To test the generalization ability of ActMem, we                                                                                                   computational cost. It adds moderate overhead for
+run additional experiments on LongMemEval (Wu                                                                                                      causal and semantic reasoning, and converts that
+et al., 2025) (LongMemEval-S) and LoCoMo (Ma-                                                                                                      cost into strong performance.
+harana et al., 2024). For fairness, we use GPT-4o-
+                                                                                                                                                   6                        Conclusion and Future Work
+mini as the backbone LLM for all methods and
+keep the evaluation setting consistent. ActMem                                                                                                     In this paper, we identify a key limitation of current
+uses the same parameters on all three datasets,                                                                                                    agent memory systems: the gap between memory
+without dataset-specific tuning. As shown in Fig-                                                                                                  retrieval and reasoning. We argue that high retrieval
+ure 6(a), ActMem achieves the best QA accuracy                                                                                                     accuracy is not enough. Agents must not only re-
+on LongMemEval. It outperforms the strongest                                                                                                       call past information, but also understand what it
+baseline LightMem, and also exceeds NativeRAG                                                                                                      means for the present. To address this issue, we pro-
+and A-Mem. Figure 6(b) shows a similar trend on                                                                                                    pose ActMem, which transforms passive dialogue
+LoCoMo. ActMem reaches 83.57%, again ranking                                                                                                       history into an active memory KG with causal and
+first among all methods. These consistent gains                                                                                                    semantic edges. We also introduce ActMemEval to
+on both datasets indicate that our structured mem-                                                                                                 evaluate the utility of memory for action. Experi-
+ments on both our dataset and standard benchmarks        Cheng-Ping Hsieh, Simeng Sun, Samuel Kriman, Shan-
+show that ActMem outperforms baselines.                    tanu Acharya, Dima Rekesh, Fei Jia, and Boris Gins-
+                                                           burg. 2024. RULER: What’s the real context size of
+   In future work, we plan to explore lightweight
+                                                           your long-context language models? In CoLM.
+LLMs to improve KG construction efficiency with-
+out hurting reasoning quality. We also plan to ex-       Yuyang Hu, Shichun Liu, Yanwei Yue, Guibin Zhang,
+tend ActMem to multimodal scenarios and study              Boyang Liu, Fangyi Zhu, Jiahang Lin, Honglin Guo,
+                                                           Shihan Dou, Zhiheng Xi, and 1 others. 2025. Mem-
+fine-tuning strategies to improve causal reasoning.        ory in the age of AI agents. CoRR, abs/2512.13564.
+Limitations                                              Yuri Kuratov, Aydar Bulatov, Petr Anokhin, Dmitry
+                                                           Sorokin, Artyom Y. Sorokin, and Mikhail Burtsev.
+Our method still has several limitations. First, Act-      2024. In search of needles in a 11M haystack: Re-
+Mem relies on LLM-based fact extraction, com-              current memory finds what LLMs miss. CoRR,
+monsense completion, and causal analysis, so er-           abs/2402.10790.
+rors in these stages may propagate to the final graph    Jiaqi Liu, Yaofeng Su, Peng Xia, Siwei Han, Zeyu
+and response. Second, constructing and refining             Zheng, Cihang Xie, Mingyu Ding, and Huaxiu Yao.
+the memory KG introduces additional time and                2026. Simplemem: Efficient lifelong memory for
+                                                            LLM agents. CoRR, abs/2601.02553.
+token cost compared with simpler compression-
+based methods. Third, ActMemEval focused on              Adyasha Maharana, Dong-Ho Lee, Sergey Tulyakov,
+six predefined categories and cannot fully cover the       Mohit Bansal, Francesco Barbieri, and Yuwei Fang.
+diversity of real-world long-term interactions.            2024. Evaluating very long-term conversational
+                                                           memory of LLM agents. arxiv.
+
+                                                         Preston Rasmussen, Pavlo Paliychuk, Travis Beauvais,
+References                                                 Jack Ryan, and Daniel Chalef. 2025. Zep: A tempo-
+                                                           ral knowledge graph architecture for agent memory.
+Ding Chen, Simin Niu, Kehang Li, Peng Liu, Xiangping
+                                                           CoRR, abs/2501.13956.
+  Zheng, Bo Tang, Xinchi Li, Feiyu Xiong, and Zhiyu
+  Li. 2025. HaluMem: Evaluating hallucinations in        Alireza Rezazadeh, Zichao Li, Wei Wei, and Yujia Bao.
+  memory systems of agents. CoRR, abs/2511.03506.          2025. From isolated conversations to hierarchical
+                                                           schemas: Dynamic tree memory representation for
+Prateek Chhikara, Dev Khant, Saket Aryan, Taranjeet        LLMs. In ICLR.
+  Singh, and Deshraj Yadav. 2025. Mem0: Building
+  production-ready AI agents with scalable long-term     Di Wu, Hongwei Wang, Wenhao Yu, Yuwei Zhang, Kai-
+  memory. CoRR, abs/2504.19413.                            Wei Chang, and Dong Yu. 2025. LongMemEval:
+                                                           Benchmarking chat assistants on long-term interac-
+Ning Ding, Yulin Chen, Bokai Xu, Yujia Qin,                tive memory. In ICLR.
+  Shengding Hu, Zhiyuan Liu, Maosong Sun, and
+  Bowen Zhou. 2023. Enhancing chat language models       Wujiang Xu, Zujie Liang, Kai Mei, Hang Gao, Juntao
+  by scaling high-quality instructional conversations.    Tan, and Yongfeng Zhang. 2025. A-MEM: Agentic
+  In Proceedings of the 2023 Conference on Empirical      memory for LLM agents. CoRR, abs/2502.12110.
+  Methods in Natural Language Processing, EMNLP
+  2023, Singapore, December 6-10, 2023, pages 3029–      Chengyuan Yang, Zequn Sun, Wei Wei, and Wei Hu.
+  3051.                                                    2026. Beyond static summarization: Proactive mem-
+                                                           ory extraction for llm agents. CoRR, abs/2601.04463.
+Jizhan Fang, Xinle Deng, Haoming Xu, Ziyan Jiang,
+   Yuqi Tang, Ziwen Xu, Shumin Deng, Yunzhi Yao,         Guibin Zhang, Muxin Fu, Guancheng Wan, Miao Yu,
+   Mengru Wang, Shuofei Qiao, Huajun Chen, and             Kun Wang, and Shuicheng Yan. 2025a. G-Memory:
+   Ningyu Zhang. 2026. Lightmem: Lightweight and ef-       Tracing hierarchical memory for multi-agent systems.
+   ficient memory-augmented generation. In The Four-       CoRR, abs/2506.07398.
+   teenth International Conference on Learning Repre-
+   sentations.                                           Yanzhao Zhang, Mingxin Li, Dingkun Long, Xin
+                                                           Zhang, Huan Lin, Baosong Yang, Pengjun Xie,
+Yunfan Gao, Yun Xiong, Xinyu Gao, Kangxiang Jia,           An Yang, Dayiheng Liu, Junyang Lin, and 1 oth-
+  Jinliu Pan, Yuxi Bi, Yi Dai, Jiawei Sun, Qianyu          ers. 2025b. Qwen3 embedding: Advancing text em-
+  Guo, Meng Wang, and 1 others. 2023. Retrieval-           bedding and reranking through foundation models.
+  augmented generation for large language models: A        CoRR, abs/2506.05176.
+  survey. CoRR, abs/2312.10997.
+                                                         Zeyu Zhang, Quanyu Dai, Xiaohe Bo, Chen Ma, Rui Li,
+Gaole He, Gianluca Demartini, and Ujwal Gadiraju.          Xu Chen, Jieming Zhu, Zhenhua Dong, and Ji-Rong
+  2025. Plan-Then-Execute: An Empirical Study of           Wen. 2025c. A survey on the memory mechanism of
+  User Trust and Team Performance When Using LLM           large language model-based agents. ACM Trans. Inf.
+  Agents As A Daily Assistant.                             Syst., 43(6):155:1–155:47.
+Wanjun Zhong, Lianghong Guo, Qiqi Gao, He Ye, and        where to buy the plants. In contrast, ActMem suc-
+ Yanlin Wang. 2024. MemoryBank: Enhancing large          cessfully bridges this reasoning gap. Through the
+  language models with long-term memory. In AAAI,
+                                                         counterfactual reasoning, the agent first infers the
+  pages 19724–19731.
+                                                         potential consequence of the user’s intent (i.e., that
+A    Baseline Details                                    Sago Palms are toxic). This knowledge becomes
+                                                         a semantic anchor that guides retrieval of the spe-
+We compare ActMem with six representative base-          cific memory that the user’s puppy is chewing on
+lines:                                                   everything. By integrating this retrieved history
+                                                         with world knowledge, ActMem identifies the con-
+    • NaiveRAG: The standard baseline that re-           flict and produces a safety-aware response, advis-
+      trieves the top-k relevant dialogue snippets       ing against the purchase. This case highlights our
+      based on vector similarity and concatenates        ability to transform memory from passive storage
+      them into the context window.                      into an active reasoning engine for robust decision-
+                                                         making.
+    • MemoryBank (Zhong et al., 2024): A
+      summary-based memory framework that
+      stores historical interactions as evolving sum-    C    PMI Verification Case Study
+      maries with a forgetting-aware update mecha-
+      nism.                                              To further illustrate the effect of PMI validation,
+                                                         we randomly sampled five positive examples and
+    • Mem0 (Chhikara et al., 2025): A fact-level         five negative examples from candidate causal pairs.
+      memory framework for personalized agents,          Tables 4 and 5 report their PMI scores. The pos-
+      focusing on continuous memory storage, up-         itive examples all exceed the threshold γ = 0.2
+      dating, and retrieval.                             and correspond to clear causal relations, while the
+                                                         negative examples remain near zero or below zero
+    • A-Mem (Xu et al., 2025): An agentic mem-
+                                                         and are filtered out. This case study shows that
+      ory framework that models relations between
+                                                         PMI helps suppress weak or spurious causal pairs.
+      memories and emphasizes association-driven
+      retrieval.
+                                                         D    Analysis of Semantic Similarity
+    • SimpleMem (Liu et al., 2026): A lightweight             Thresholds
+      lifelong memory framework based on seman-
+      tic lossless compression, structured indexing,     We investigate the impact of the semantic similar-
+      and adaptive retrieval.                            ity threshold on QA accuracy and graph density
+                                                         metrics. As presented in Table 6, we observe a
+    • LightMem (Fang et al., 2026): A lightweight
+                                                         clear correlation between graph connectivity and
+      memory framework that uses hierarchical
+                                                         QA accuracy. A lower threshold (e.g., 0.3) yields
+      compression and summary-based retrieval to
+                                                         the optimal QA accuracy of 76.52%. This improve-
+      reduce token cost.
+                                                         ment stems from the richer retrieved context: a
+B    ActMem Case Study                                   relaxed threshold preserves more semantic edges,
+                                                         leading to a substantially higher average node de-
+Table 3 presents a case study from our dataset. The      gree (20.48) and more retrieved KG facts (5.21).
+user asks for a location to buy “Sago Palms.” Al-        The resulting dense connectivity provides the agent
+though the query appears simple, it contains a criti-    with broader semantically relevant background in-
+cal implicit constraint in the dialogue history: the     formation, reducing the risk of missing critical
+user owns a puppy that is “teething” and “chewing        clues. In contrast, a stricter threshold (e.g., 0.7)
+on everything.” As Sago Palms are toxic to dogs,         produces a much sparser graph, with the average
+an intelligent agent should detect this risk and issue   degree dropping to 2.34. Such aggressive pruning
+a warning. LightMem fails to retrieve the relevant       removes potential semantic associations, resulting
+evidence about the puppy, instead surfacing irrele-      in insufficient context retrieval (only 0.29 facts on
+vant noise such as “high-end hotels” and “cooking        average) and a corresponding decline in QA accu-
+meals.” It treats the query as a straightforward         racy. These results highlight the trade-off between
+information-seeking task and directly recommends         graph sparsity and information recall.
+            Query               History                                     ActMem                           Retrieved memory             Reasoning
+            I’m buying some     [User]: My puppy is driving me crazy.       I wouldn’t recommend a Sago      User is looking for high-    ... This is a great way to
+            indoor     plants   [Assistant]: What’s he doing?               Palm... You mentioned last       end hotels in Narva that     brighten up your living room
+ LightMem
+
+
+            to brighten up      [User]: He’s teething, I think. He has      week that your new puppy is      offer spa services or        and improve your environment!
+            the living room.    started chewing on everything in the        chewing on everything, and       other luxury amenities.      Given that you’ve been ... plan-
+            Where can I find    house—shoes, furniture, everything.         Sago Palms are extremely         User wants to make the       ning a trip to Narva and cook-
+            “Sago Palms” on     [Assistant]: That’s a rough phase. You’ll   toxic—often fatal—to dogs if     most of their time in        ing healthier meals ... Here are
+            sale nearby?        need to keep anything dangerous out of      ingested. Can I suggest a pet-   Narva and is seeking         some steps you can take to find
+                                reach.                                      safe alternative ... ?           suggestions ...              Sago Palms nearby: ...
+            I’m buying some     [User]: My puppy is driving me crazy.       I wouldn’t recommend a Sago      User is interested in cre-   ... The user’s request to buy
+            indoor     plants   [Assistant]: What’s he doing?               Palm... You mentioned last       ative ways to use zuc-       Sago Palms directly conflicts
+ ActMem
+
+
+
+
+            to brighten up      [User]: He’s teething, I think. He has      week that your new puppy is      chini in cooking.            with their current situation: The
+            the living room.    started chewing on everything in the        chewing on everything, and       User’s puppy has started     user has a puppy. World knowl-
+            Where can I find    house—shoes, furniture, everything.         Sago Palms are extremely         chewing on everything        edge indicates that Sago Palms
+            “Sago Palms” on     [Assistant]: That’s a rough phase. You’ll   toxic—often fatal—to dogs if     in the house, including      are highly toxic to dogs and
+            sale nearby?        need to keep anything dangerous out of      ingested. Can I suggest a pet-   shoes and furniture.         cats ...
+                                reach.                                      safe alternative ... ?           ...
+
+                                            Table 3: A case study from our ActMemEval benchmark.
+
+    PMI             Cause                                                                           Effect
+    0.9163          User had a scary reaction where their hands swelled up like User’s doctor advised them to banish all natural
+                    balloons after cleaning the bathroom yesterday.                  rubber from the house due to a reaction.
+    0.4278          User’s iron levels are critically low, and their supplements are User’s doctor advised them to eat steak twice a
+                    not absorbing effectively.                                       week to avoid needing hospital infusions.
+  1.4725            User’s grandmother’s mobility has worsened after a fall, and User’s family is adjusting travel arrangements for
+                    she is now permanently using a wheelchair.                       their grandmother due to her permanent use of a
+                                                                                     wheelchair.
+  1.3756            The railway workers’ union announced a total 24-hour strike No trains will be running tomorrow due to the
+                    for tomorrow.                                                    railway workers’ union strike.
+  1.2329            User’s professor emailed that all proctored exams must go to User needs to book a slot at the North Campus
+                    the North Campus facility during the downtown closure.           facility for May 18th at 9 AM.
+
+                                Table 4: Randomly sampled positive examples retained by PMI validation.
+
+
+E           Dataset Categories                                                              Safety-Health Risks
+                                                                                            Question. It’s cold in here. Search for tips on how to build
+                                                                                            a long-lasting wood fire in the fireplace.
+This section defines the six categories used in Act-                                        History events.
+MemEval. Each category reflects a different hidden                                          • Vet warned me that smoke can kill the cockatiel in-
+constraint in the user’s current request.                                                      stantly.
+                                                                                            • Threw out all my non-stick pans and scented candles.
+• Safety-Health Risks: the action may cause                                                 • Checking the air quality monitor constantly for the
+                                                                                               bird’s safety.
+  health, safety, toxic, material, or environmental                                         Gold answer. Urgent Stop; warn that smoke is fatal to the
+  risk.                                                                                     new parrot; suggest checking the thermostat instead.
+• Feasibility Limits: the action is impractical or
+  cannot be carried out in reality.                                                         Feasibility Limits
+• Time-Space-Procedure Mismatches: the action                                               Question. My nephew’s birthday is coming up. Can you
+  conflicts with time, place, procedure, permission,                                        recommend some popular Lego sets suitable for a 12-year-
+  policy, or order.                                                                         old?
+• Access or Availability Gaps: a required re-                                               History events.
+                                                                                            • Nephew broke his arm and is in a cast.
+  source, account, file, tool, item, or system is                                           • He is bored because he cannot use his right hand well.
+  unavailable.                                                                              Gold answer. Legos might be a bit frustrating for him
+                                                                                            right now. Maybe a digital gift card, an audiobook, or a
+• Preference Incompatibility: the plan conflicts                                            strategy board game would be better.
+  with stable preferences, habits, soft constraints,
+  or relationship context.                                                                 Time-Space-Procedure Mismatches
+• Benefit-Reuse Opportunities: an existing re-
+                                                                                            Question. Schedule a team brainstorming workshop in
+  source, right, reusable asset, or better option al-                                       Conference Room B for next Tuesday at 2 PM.
+  ready exists.                                                                             History events.
+                                                                                            • IT announced projector replacement next Tuesday after-
+      Representative cases are shown below.                                                   noon.
+                                                                                            • The workshop requires a projector.
+   PMI        Cause                                                  Effect
+  -0.0655     User used 2 tablespoons of vegetable oil.            User thinks the vegetable stir-fry recipe sounds delicious and
+                                                                   is seeking a protein option to pair with it, as well as tips for
+                                                                   making the veggies really crispy.
+   0.0738     The application will have a smooth, modern user User is seeking more information regarding the customizable
+              interface.                                           intervals in the time-lapse photography application.
+   0.0859     User found the comprehensive guide on how to User wants warm and cozy essential oil combinations to help
+              make a room diffuser very helpful.                   create a relaxing atmosphere in their home.
+   0.0646     User’s doctor said they have to eat a steak twice User felt like a traitor to the cause on March 22, 2023.
+              a week or they will need hospital infusions.
+   0.0923     User is really excited to get involved in reforesta- User is going to start researching local organizations and
+              tion efforts.                                        events to make a difference in their community.
+
+                       Table 5: Randomly sampled negative examples filtered out by PMI validation.
+
+
+ Threshold   QA acc.    Avg. node degree   Avg. retrieved KG facts             Metric                      κhh          κhl
+    0.3       76.52          20.48                  5.21
+    0.5       74.89           5.07                  1.24                       Retrieval accuracy        0.8956       0.8336
+    0.7       75.30           2.34                  0.29                       QA accuracy               0.8780       0.8410
+
+Table 6: QA accuracy and graph density metrics with                    Table 7: Cohen’s Kappa scores for human–human and
+different semantic similarity thresholds.                              human–LLM agreement.
+
+
+                                                                       F      Human–LLM Agreement
+ Gold answer. That time slot will not work for a presen-
+ tation. Conference Room B is scheduled for projector                  For both retrieval accuracy and QA accuracy, we
+ replacement maintenance.                                              conduct a stratified sampling evaluation and ran-
+                                                                       domly select 80 samples for each metric. We then
+                                                                       report Cohen’s Kappa between two human annota-
+ Access or Availability Gaps                                           tors (κhh ) and between the final human labels and
+ Question. I’m locked out of my Apple ID. Guide me                     the LLM judge (κhl ), as shown in Table 7.
+ on how to use the “Recovery Key” method to reset my
+ password.                                                             G      Artifact License and Usage
+ History events.
+ • User generated a Recovery Key and printed it on paper.              The ActMemEval dataset will be released under
+ • User shredded all old loose papers during an office
+   cleanup.
+                                                                       CC BY 4.0 and is intended for academic research
+ Gold answer. That might be a problem. Unless you saved                use only.
+ a digital copy, you might have destroyed the key.
+
+
+
+ Preference Incompatibility
+ Question. Book a table for two at “The Butcher’s Block”
+ steakhouse.
+ History events.
+ • New partner is strict vegetarian.
+ • Meat-only venues should be avoided.
+ Gold answer. Suggest an alternative restaurant with good
+ vegetarian options for the new partner.
+
+
+
+ Benefit-Reuse Opportunities
+ Question. I’m going to buy the “Shadows of Rose” DLC
+ for Resident Evil Village on the PS5 store right now.
+ History events.
+ • User bought the Gold Edition disc.
+ • User redeemed the code inside the box.
+ Gold answer. You do not need to buy that. The Gold
+ Edition already includes the DLC.
+

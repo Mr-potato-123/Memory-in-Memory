@@ -1,0 +1,316 @@
+{
+  "batch": {
+    "batch_id": "access_bank1_new_build_0010",
+    "side": "access",
+    "base_bank_version": "v000",
+    "candidates": [
+      {
+        "candidate_id": "cand_access_0b84df10728c",
+        "skill_id": "sk_access_35b20c0d0f",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Count-Event Synonym Retrieval",
+          "description": "When a user asks a count or frequency question about a person's experiences (e.g., 'how many times has X been rejected?') and the first keyword search returns no direct evidence, use this to search with the event noun and synonyms before answering 'no information'.",
+          "content": [
+            "If the question asks for a count of a repeated experience (how many times, how often, number of), search using the noun form of the event (e.g., 'rejection' for 'rejected') and synonyms for the object (e.g., 'screenplay', 'script', 'creative work') in addition to the literal wording.",
+            "If the first search returns no direct evidence, run at least one more retrieval with an expanded synonym query or a different strategy (e.g., hybrid or semantic) before concluding information is unavailable.",
+            "Stop expanding once the relevant event memories are found, usually after 2-3 distinct queries; do not exhaustively search for every possible synonym."
+          ]
+        },
+        "solves": "This addresses retrieval failure when a count/frequency question is answered with 'no information' because the only keyword search used exact question phrasing and missed memories stored with morphological or synonymous terms (e.g., 'rejection' vs 'rejected', 'screenplay' vs 'scripts'). It applies to future questions asking how many times a person experienced an event where the first search returns no direct evidence. It must not apply to non-count questions or when the first search already retrieves relevant memories.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-42_conv-42_qa_0049",
+        "source_failure_id": "access_conv-42_conv-42_qa_0049",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:31:31Z"
+      },
+      {
+        "candidate_id": "cand_access_27bdd8f19731",
+        "skill_id": "sk_access_619fe37c40",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Decompose composite questions into sub-searches",
+          "description": "When a question asks for an activity or item that must satisfy two independent conditions about the same person—such as something they would enjoy doing AND that benefits their pet—decompose retrieval into separate sub-searches before combining evidence.",
+          "content": [
+            "Before searching, split the question into its independent conditions (for example, 'activity Andrew enjoys' and 'activity involving his dog'). Do not rely on a single composite query.",
+            "Run at least one targeted search for each condition separately (e.g., hobbies/preferences/interests; pet-related memories), then intersect the returned memory sets to identify candidates satisfying both conditions.",
+            "Stop once each condition has at least one supporting memory; do not add further expansion searches."
+          ]
+        },
+        "solves": "Single composite queries for multi-condition questions (e.g., an activity a person enjoys that also involves their pet) over-weight one condition and miss memories supporting each condition separately. Applies when a question requires combining a person's enjoyment/hobby with a pet-related benefit. Does not apply when one memory already directly answers the question.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-44_conv-44_qa_0019",
+        "source_failure_id": "access_conv-44_conv-44_qa_0019",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:33:23Z"
+      },
+      {
+        "candidate_id": "cand_access_3d74823b0b01",
+        "skill_id": "sk_access_8ee396e60e",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Enumeration-of-Acquired-Items Retrieval",
+          "description": "When a user asks what items someone bought, made, or acquired for a specific person, pet, or household (e.g., 'what items has Audrey bought or made for her dogs?'), use category-expanded searches before concluding the list is complete.",
+          "content": [
+            "Before the first search on an enumeration question, add concrete category nouns for the recipient type (e.g., for pets: toys, beds, collars, tags, leashes, food, treats, bowls) plus synonyms of the action (bought/purchased/ordered/acquired, made/created/crafted/built) to both the query and keywords.",
+            "After the initial results, do not generate follow-up keywords solely from items already seen; instead, probe each remaining category from your expanded list that has not yet appeared with a keyword or structured search until it is covered or the memory pool is exhausted.",
+            "Stop when every candidate category has been probed or an additional category search returns no new relevant memories and the evidence already supports answering all parts of the question."
+          ]
+        },
+        "solves": "When a user asks for the complete set of items someone bought or made for a recipient (person, pet, household), the search may miss relevant memories because keywords echo only the first results and synonyms (e.g., 'purchased') or item categories (e.g., 'beds') are never probed. This Skill applies to such enumeration questions where completeness is expected. It must not be used for a single-fact confirmation (e.g., 'Did X buy a bed?') or when the user explicitly limits the question to one category.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-44_conv-44_qa_0051",
+        "source_failure_id": "access_conv-44_conv-44_qa_0051",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:33:27Z"
+      },
+      {
+        "candidate_id": "cand_access_87e83f992773",
+        "skill_id": "sk_access_6b332c0077",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Enumerate acquisition events for count questions",
+          "description": "When a question asks how many pets or other owned possessions a person has as of a specific date, and the answer requires counting acquisition events (adoptions, purchases) rather than an explicit stored count.",
+          "content": [
+            "Before answering a count question (e.g., 'how many pets does X have as of <date>?'), search for acquisition events for that person before the date using queries like 'adopted', 'adopted a dog/puppy/pup', 'got a pet', 'bought', or 'welcomed', plus the person's name; set structured entity to the person, memory_kind to 'event', and target_time to the date.",
+            "Enumerate all distinct named pets/items from those event memories with world_start before the target time; count each distinct name once. Do not stop after one existing pet or after a plan to get another; continue until no further acquisition events are found.",
+            "Do not rely on numeric phrasing ('how many', 'count', 'number of pets') as the only retrieval query, because memories rarely store such counts; use count searches only as a supplement after the acquisition-event search."
+          ]
+        },
+        "solves": "General failure: count questions are answered using only direct numeric phrasing like \"how many\" or \"count\", which misses the underlying acquisition events (adoptions, purchases) that determine the total. Applies when a future question asks for the number of a person's pets or similar possessions as of a specific date and the memory store contains multiple acquisition events rather than an explicit count. Do not apply when the store already has an explicit count memory or when the question asks for identity or attributes of a known pet rather than a count.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-44_conv-44_qa_0045",
+        "source_failure_id": "access_conv-44_conv-44_qa_0045",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:33:17Z"
+      },
+      {
+        "candidate_id": "cand_access_d53238e40ce9",
+        "skill_id": "sk_access_20ec079d84",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Count owned pets via acquisition events",
+          "description": "When a question asks how many of a pet/animal type a person has or owns, use acquisition/ownership event searches before concluding no information.",
+          "content": [
+            "When the question is a count of owned items (e.g., 'how many dogs does Andrew have?'), run an acquisition-focused search using the person's name plus ownership terms such as 'adopted', 'adoption', 'owns', 'got', and pet-type synonyms (dog/puppy/pup, cat/kitten).",
+            "Aggregate distinct named individuals from current (active) event memories about that person; exclude plans, considerations, other people's pets, and repeated mentions of the same pet.",
+            "Stop after one focused acquisition search if all owned items are identified or it returns no new candidates; do not exhaustively expand."
+          ]
+        },
+        "solves": "The failure mechanism is that count-of-owned-things questions are answered after a single generic keyword query that misses the adoption/ownership event memories naming each item, so the agent falsely reports no information. This Skill applies when a future question asks 'how many X does Y have/own' where X is a pet or possession, and the needed evidence is distributed across acquisition events. It must not apply to questions about a single known entity, someone else's pets, or plans/considerations that do not establish current ownership.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-44_conv-44_qa_0060",
+        "source_failure_id": "access_conv-44_conv-44_qa_0060",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:33:38Z"
+      },
+      {
+        "candidate_id": "cand_access_f1a0a8188710",
+        "skill_id": "sk_access_e9591dc777",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Broaden Memory Kind for Entity Attribute Queries",
+          "description": "When a question asks for a factual attribute of a named entity and the first search returns no evidence, retry without restricting memory_kinds to 'state'; include 'event' because such facts are often stored in event memories.",
+          "content": [
+            "If the first search for a factual attribute (age, ownership, origin) of a named entity returns no relevant evidence and the search was restricted by memory_kind, rerun it without the memory_kinds filter or with a broad set (state, event, relationship).",
+            "Only answer 'no information available' after at least one unrestricted follow-up search has failed to surface the attribute."
+          ]
+        },
+        "solves": "The general failure is over-narrow memory-kind filters causing entity attribute questions to be answered 'no information' when the fact lives in an event memory. This applies when a first search for a named entity's age, ownership, or origin returns no evidence. It does not apply when the question is explicitly about transient current state and the user confirms that scope.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-48_conv-48_qa_0164",
+        "source_failure_id": "access_conv-48_conv-48_qa_0164",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:34:25Z"
+      }
+    ],
+    "retrieved_skill_ids": [],
+    "relations": []
+  },
+  "plan": {
+    "transaction_id": "tx_access_bank1_new_build_0010",
+    "side": "access",
+    "base_bank_version": "v000",
+    "candidate_resolutions": [
+      {
+        "candidate_id": "cand_access_0b84df10728c",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_count_event_synonym"
+        ],
+        "reason": "No existing Skill covers count/frequency retrieval with synonym expansion."
+      },
+      {
+        "candidate_id": "cand_access_27bdd8f19731",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_decompose_composite"
+        ],
+        "reason": "No existing Skill covers decomposing multi-condition questions into sub-searches."
+      },
+      {
+        "candidate_id": "cand_access_3d74823b0b01",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_enumeration_items"
+        ],
+        "reason": "No existing Skill covers enumeration of acquired items with category expansion."
+      },
+      {
+        "candidate_id": "cand_access_87e83f992773",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_access_count_owned_via_events"
+        ],
+        "reason": "Merged with cand_access_d53238e40ce9 because both repair the same count-of-owned-items via acquisition events mechanism."
+      },
+      {
+        "candidate_id": "cand_access_d53238e40ce9",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_count_owned_via_events"
+        ],
+        "reason": "Creates one merged Skill for counting owned items via acquisition events."
+      },
+      {
+        "candidate_id": "cand_access_f1a0a8188710",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_broaden_memory_kind"
+        ],
+        "reason": "No existing Skill covers broadening memory-kind filters for entity attribute queries."
+      }
+    ],
+    "operations": [
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_count_event_synonym",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Count-Event Synonym Retrieval",
+        "description": "Use when a count/frequency question about a person's experiences returns no direct evidence on first search.",
+        "content": [
+          "If the question asks for a count of a repeated experience, search using the noun form of the event and synonyms for the object in addition to literal wording.",
+          "If the first search returns no direct evidence, run at least one more retrieval with an expanded synonym query or a different strategy before concluding information is unavailable.",
+          "Stop expanding once relevant event memories are found, usually after 2-3 distinct queries."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_0b84df10728c"
+        ],
+        "reason": "Creating retrieval strategy for count questions with synonym expansion.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_decompose_composite",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Decompose Composite Questions",
+        "description": "Use when a question requires satisfying two independent conditions about the same person, such as an activity they enjoy that also benefits their pet.",
+        "content": [
+          "Split the question into its independent conditions before searching; do not rely on a single composite query.",
+          "Run at least one targeted search for each condition separately, then intersect the returned memory sets to identify candidates satisfying both conditions.",
+          "Stop once each condition has at least one supporting memory; do not add further expansion searches."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_27bdd8f19731"
+        ],
+        "reason": "Creating Skill for decomposing multi-condition questions.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_enumeration_items",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Enumeration-of-Acquired-Items Retrieval",
+        "description": "Use when a user asks what items someone bought, made, or acquired for a specific recipient and completeness is expected.",
+        "content": [
+          "Before the first search, add concrete category nouns for the recipient type plus synonyms of the action to both the query and keywords.",
+          "After initial results, probe each remaining category from your expanded list that has not yet appeared with a keyword or structured search until covered or memory pool exhausted.",
+          "Stop when every candidate category has been probed or an additional category search returns no new relevant memories."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_3d74823b0b01"
+        ],
+        "reason": "Creating Skill for enumeration of acquired items with category expansion.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_count_owned_via_events",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Count Owned Items via Acquisition Events",
+        "description": "Use when a question asks how many of a pet/animal type or other possessions a person has or owns, and the answer requires counting acquisition events.",
+        "content": [
+          "Run an acquisition-focused search using the person's name plus ownership terms such as 'adopted', 'owns', 'got', and pet-type synonyms.",
+          "Aggregate distinct named individuals from current event memories about that person; exclude plans, considerations, other people's pets, and repeated mentions.",
+          "Stop after one focused acquisition search if all owned items are identified or it returns no new candidates; do not exhaustively expand."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_87e83f992773",
+          "cand_access_d53238e40ce9"
+        ],
+        "reason": "Creating merged Skill from two candidates sharing the same acquisition-event counting mechanism.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_broaden_memory_kind",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Broaden Memory Kind for Entity Attribute Queries",
+        "description": "Use when a factual attribute of a named entity returns no evidence on first search and the search was restricted by memory_kind.",
+        "content": [
+          "If the first search for a factual attribute of a named entity returns no relevant evidence and was restricted by memory_kind, rerun it without the memory_kinds filter or with a broad set (state, event, relationship).",
+          "Only answer 'no information available' after at least one unrestricted follow-up search has failed to surface the attribute."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_f1a0a8188710"
+        ],
+        "reason": "Creating Skill for broadening memory-kind filters.",
+        "hard_delete": false
+      }
+    ]
+  },
+  "status": "planned"
+}

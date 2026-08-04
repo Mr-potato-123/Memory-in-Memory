@@ -1,0 +1,776 @@
+{
+  "batch": {
+    "batch_id": "construction_bank1_new_build_0020",
+    "side": "construction",
+    "base_bank_version": "v001",
+    "candidates": [
+      {
+        "candidate_id": "cand_construction_060e20c18257",
+        "skill_id": "sk_construction_e3670d33a5",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Update completed ongoing events with duration",
+          "description": "When new evidence completes an ongoing event already stored in memory, update that existing event memory with end time or duration before adding a new completion event.",
+          "content": [
+            "During extraction and CRUD decisions, if a message states that an already-memorized ongoing event (same subject and activity) has finished, prefer UPDATE or MERGE the existing event memory to set world_end and record the duration.",
+            "Do not ADD a separate completion event unless it conveys new facts distinct from the existing event.",
+            "When the start date is known and the end is expressed relatively (e.g., 'last month'), resolve the end date from the message timestamp and compute the duration in the updated memory."
+          ]
+        },
+        "solves": "When later messages reveal the end of an already-stored ongoing event, the agent often adds a separate completion event and never records the duration, so future questions about how long the event lasted cannot be answered. This rule forces updating the existing event memory with its end time or duration, consolidating temporal facts in one memory. It applies whenever a stored ongoing event is later completed; it does not apply to unrelated new events.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-48_conv-48_qa_0046",
+        "source_failure_id": "cons_conv-48_conv-48_qa_0046",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:11:40Z"
+      },
+      {
+        "candidate_id": "cand_construction_0e70791dccac",
+        "skill_id": "sk_construction_08a45c166d",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Preserve time details when extracting event memories",
+          "description": "When a message describes an event, possession, or state and also states when it happened (explicit date or relative phrase such as 'a few years ago'), apply during extraction to keep that temporal detail in the memory instead of omitting it.",
+          "content": [
+            "During extraction of an event, possession, or state, if the source message states when it happened (explicit date or relative phrase like 'a few years ago', 'last month'), include that temporal detail in the memory content and/or set an accurate time field; do not omit it while summarizing meaning, symbolism, or other attributes.",
+            "Resolve relative time phrases from the message/session timestamp to compute the event time; if precision is uncertain, preserve the original phrase so the fact remains answerable."
+          ]
+        },
+        "solves": "Extraction dropped an explicit relative time ('a few years ago') while summarizing a tattoo's meaning, so the event memory couldn't answer 'when'. This generalizes to any event/possession/state where a stated time is omitted during summarization; such omissions always lose answerable facts. Boundary: applies only when the source explicitly states a time; not to memories without temporal cues or when a time is implied but not stated.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-30_conv-30_qa_0011",
+        "source_failure_id": "cons_conv-30_conv-30_qa_0011",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:08:49Z"
+      },
+      {
+        "candidate_id": "cand_construction_0e8dac41c59d",
+        "skill_id": "sk_construction_a54cd78a9e",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "ExtractAllStatedEventsSeparately",
+          "description": "When a message states a past event with a resolvable time reference alongside other content, create a separate event candidate during extraction.",
+          "content": [
+            "During candidate extraction, create a separate event candidate for every clearly stated event or fact in the message, even when the message's main topic is about something else.",
+            "Resolve relative time expressions (e.g., 'last Friday') using the message timestamp to set world_start.",
+            "Do not let a dominant topic cause you to drop secondary events."
+          ]
+        },
+        "solves": "Extraction often drops secondary stated events when a message focuses on another topic, leaving memory incomplete for future questions. This skill mandates creating a separate candidate for each explicitly stated event and resolving relative time references, making the rule applicable to any multi-fact message across domains.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-30_conv-30_qa_0038",
+        "source_failure_id": "cons_conv-30_conv-30_qa_0038",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:08:47Z"
+      },
+      {
+        "candidate_id": "cand_construction_1cb031d37047",
+        "skill_id": "sk_construction_e1af015f9a",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Extract completed personal events during extraction",
+          "description": "When a message explicitly states that someone finished or completed a specific project, task, or activity in the past, extract it as an event candidate during candidate extraction.",
+          "content": [
+            "During candidate extraction, treat any explicit statement that a person (speaker or discussed) finished or completed a concrete project, task, or activity as an event candidate; record the claim, any time reference, and the source message.",
+            "Do not omit such candidates because the memory store is empty or the message appears early or conversational."
+          ]
+        },
+        "solves": "Extraction produced zero candidates for a clear 'I finished an electrical engineering project last week' statement, so no event memory existed for later questions. This skill abstracts the missing rule that explicit past completions are durable event facts, not casual chatter. It applies whenever a session message states that someone completed a concrete project, task, or activity; it does not apply to opinions, preferences, or hypothetical statements.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-48_conv-48_qa_0100",
+        "source_failure_id": "cons_conv-48_conv-48_qa_0100",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:12:06Z"
+      },
+      {
+        "candidate_id": "cand_construction_2149b2382ced",
+        "skill_id": "sk_construction_3be4bdb76c",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Extract user-reported incident responses as events",
+          "description": "When a user's message explicitly describes how they handled a past incident (e.g., calming a pet, pacifying a person, fixing an issue), extract the actions as durable event memories.",
+          "content": [
+            "During extraction, if the user recounts actions they personally took to resolve a past situation (e.g., petting, hugging, speaking calmly, walking slowly), create a candidate event memory (kind: event) that captures the situation, the specific actions, and links to the source message.",
+            "Do not omit explicit details such as physical actions, tone, or sequence when they are in the source; these are the exact facts future questions may ask for.",
+            "Do not limit extraction to future plans or stated preferences; past self-reported responses to incidents are also durable state/event facts."
+          ]
+        },
+        "solves": "User's explicit account of how they handled a past incident produced no extraction candidate, so later questions about those actions were unanswerable. Rule: treat such retrospective self-reported response actions as durable event memories, not as merely conversational detail. Applies to narratives describing concrete calming, pacifying, or problem-fixing actions; does not apply to opinions, plans, or third-party accounts.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-44_conv-44_qa_0093",
+        "source_failure_id": "cons_conv-44_conv-44_qa_0093",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:11:14Z"
+      },
+      {
+        "candidate_id": "cand_construction_3331b78dfdad",
+        "skill_id": "sk_construction_0e7e774892",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Preserve distinct events when extracting timelines",
+          "description": "When a message contains multiple separate life events or milestones, do not merge them into one vague summary; capture each distinct fact as its own memory item.",
+          "content": [
+            "During extraction, if a message describes a sequence of distinct life events (e.g., how something started, a later sign-up or achievement), create a separate memory candidate for each distinct event rather than folding all details into one general profile statement.",
+            "When updating an existing memory with new facts from a timeline, verify that each explicitly stated milestone from the source is present in the resulting memory content; do not let a broad summary replace specific events.",
+            "If a candidate would overwrite a memory with a higher-level summary, first split the new facts into their own memory entries or clearly append them so no distinct event is lost."
+          ]
+        },
+        "solves": "When a message recounts multiple distinct life milestones, extraction may collapse them into one vague profile summary and lose specific facts. This rule prevents over-compression: each separate event should be captured as its own memory item or preserved when enriching an existing memory. Applies to any future extraction where a speaker mentions a timeline of discrete events, but not to single-event messages.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-43_conv-43_qa_0088",
+        "source_failure_id": "cons_conv-43_conv-43_qa_0088",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:10:07Z"
+      },
+      {
+        "candidate_id": "cand_construction_4a7ba31aa686",
+        "skill_id": "sk_construction_1b07fd15aa",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "ExtractBriefCompletedProjectStatements",
+          "description": "When a speaker mentions finishing or completing a concrete project in a brief aside with little detail, extract it as an event before recording only ongoing or detailed projects.",
+          "content": [
+            "During candidate extraction, create an event memory for any explicit statement that a person completed, finished, or achieved a specific project, even if the message is short and lacks detail; record subject, project type/name, and rough completion time resolved from the message timestamp. Do not require narrative description or future plans."
+          ]
+        },
+        "solves": "The diagnosed cause was that a compact statement about finishing an electrical engineering project generated no extraction candidate, while later detailed ongoing projects were stored. The underlying mechanism is extraction under-triggering on brief completion statements embedded in small talk. This skill applies whenever a future message explicitly reports a finished concrete project or achievement with minimal context, so the durable event is not lost.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-48_conv-48_qa_0084",
+        "source_failure_id": "cons_conv-48_conv-48_qa_0084",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:11:58Z"
+      },
+      {
+        "candidate_id": "cand_construction_4dac0da60fbc",
+        "skill_id": "sk_construction_16c11e3470",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Extract_Concrete_Possession_Events_Separately",
+          "description": "When a message contains a concrete gifting or acquisition event (someone gave, received, bought, or was given a specific item at a stated age or time) alongside abstract context, extract the concrete event as its own memory.",
+          "content": [
+            "During extraction, when a message states a concrete possession-transfer event—someone gave, received, bought, sold, or was given a specific item at an explicit age or time—create a separate event memory that records the recipient/participant, the specific item, and the age/time.",
+            "If the same message also expresses an abstract state (e.g., a passion, support, or feeling), do not let that state replace the concrete event; the concrete event and the abstract state may each be captured in separate memories, each with its own source link."
+          ]
+        },
+        "solves": "Extraction lost a concrete gift event (parents gave console at age 10) by merging it into an abstract passion/support memory. Reusable rule: when a message names a concrete possession-transfer event with explicit time, capture it as a separate event memory, even if the same sentence expresses an abstract state. Applies to future gift/acquisition statements, not to purely abstract commentary.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-48_conv-48_qa_0072",
+        "source_failure_id": "cons_conv-48_conv-48_qa_0072",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:11:59Z"
+      },
+      {
+        "candidate_id": "cand_construction_56c26be214d2",
+        "skill_id": "sk_construction_d504b39db7",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Extract start of specific project instances as events",
+          "description": "When a user confirms working on a numbered or specific instance of a recurring activity and mentions recently beginning it, extract an event memory for that start before enriching general interest or adding completion events.",
+          "content": [
+            "During extraction, when a speaker confirms they are working on a specific instance of a recurring activity (e.g., numbered screenplay, book, album) and mentions having recently begun it, create an event memory capturing the start of that instance and set world_start to the message timestamp. Do not only enrich a general profile interest.",
+            "Do not infer completion of a project unless the speaker explicitly states it is finished; phrases like 'just got the guts to write it' or 'I'm so proud of it' indicate work in progress, not completion."
+          ]
+        },
+        "solves": "During extraction, a speaker's confirmation that they are starting a specific instance of a recurring activity (e.g., a third screenplay or second novel) was reduced to a generic interest enrichment or an ungrounded completion event, losing the dated fact of when that instance began. This rule applies whenever a message indicates a person has begun work on a specific countable instance of an ongoing activity; it instructs the extractor to record the start as a dated event and to avoid inferring completion without explicit evidence.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-42_conv-42_qa_0022",
+        "source_failure_id": "cons_conv-42_conv-42_qa_0022",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:09:00Z"
+      },
+      {
+        "candidate_id": "cand_construction_8612209ff8a5",
+        "skill_id": "sk_construction_2b9b3e1516",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Preserve earliest world_start when enriching event memories",
+          "description": "When updating or enriching an existing event memory, keep the current world_start unless the new candidate date is earlier or explicitly corrects the same event; do not overwrite with an unrelated recomputed date.",
+          "content": [
+            "During UPDATE of an event memory, before changing world_start, compare the existing world_start with the candidate's resolved start date; keep the earlier date if the memory aggregates multiple distinct events.",
+            "Do not recompute or replace world_start during enrichment from a heuristic or default; use the candidate's resolved date only when it is earlier than the existing world_start or when new evidence explicitly corrects the date of the same event."
+          ]
+        },
+        "solves": "Construction sometimes overwrites an aggregate event memory's world_start with an incorrect recomputed date when appending newer events. This skill preserves the existing world_start unless the candidate date is earlier or corrects the same event, so aggregated memories keep a valid earliest start; it does not apply when new evidence explicitly corrects a single event's date.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-44_conv-44_qa_0038",
+        "source_failure_id": "cons_conv-44_conv-44_qa_0038",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:11:03Z"
+      },
+      {
+        "candidate_id": "cand_construction_961bcb6a1bc5",
+        "skill_id": "sk_construction_9e16ce5d6f",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Record time intervals between repeated events",
+          "description": "During extraction, when a new event repeats a previously recorded event of the same kind for the same subject, generate a memory capturing the elapsed time between the two occurrences.",
+          "content": [
+            "During extraction, if a new event has the same semantic type (e.g., appointment, visit, class, meeting) as an already-stored event for the same subject, resolve both occurrence times from message/session timestamps and compute the interval.",
+            "Generate a relationship or event memory stating the elapsed time (e.g., 'X weeks/months passed between the first and second occurrence') and link it to both stored events.",
+            "Do not create this candidate when the events are unrelated, the times cannot be resolved, or the interval is not derivable from the conversation."
+          ]
+        },
+        "solves": "When a session contains a repeated occurrence of the same type of event for the same person (e.g., a second doctor's appointment, a follow-up visit, a recurring class), extraction often records each event in isolation and drops the temporal relationship, making interval questions unanswerable. This rule applies whenever a new event matches an existing event of the same kind for the same subject and both occurrence times are resolvable from message timestamps; it does not apply to one-off events, unrelated same-type events, or intervals that require external knowledge.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-49_conv-49_qa_0039",
+        "source_failure_id": "cons_conv-49_conv-49_qa_0039",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:12:32Z"
+      },
+      {
+        "candidate_id": "cand_construction_965ea38b9e0e",
+        "skill_id": "sk_construction_7de863d834",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Preserve start-of-activity events with dates",
+          "description": "When a user says they started, began, or took up an activity or skill, capture the start as a dated event during extraction instead of only an ongoing state.",
+          "content": [
+            "During extraction, when the speaker states they started, began, or took up an activity or skill, emit a dated `event` memory with `world_start` resolved from the message/session timestamp and the activity named explicitly; do not reduce it to an ongoing state like 'enjoys X'.",
+            "During CRUD, when adding or updating an activity memory, if the source message contains a start statement, include the resolved start date; do not write only a generic ongoing-interest fact without the start."
+          ]
+        },
+        "solves": "The extraction of 'started learning/doing X' messages often records only an ongoing state, losing the start date and breaking future 'when did X start' or 'what started in <month>' queries. This rule captures the start as a dated event whenever a message contains a start expression with a resolvable timestamp; it does not apply to messages describing only current habits, preferences, or ongoing activities without an explicit start.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-43_conv-43_qa_0095",
+        "source_failure_id": "cons_conv-43_conv-43_qa_0095",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:10:30Z"
+      },
+      {
+        "candidate_id": "cand_construction_a2070608e158",
+        "skill_id": "sk_construction_dd09606af6",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "ExplicitEventIntervalExtraction",
+          "description": "When extracting a new dated event that relates to an existing dated event for the same subject, also propose an explicit duration/interval memory if dates or a stated gap make it computable.",
+          "content": [
+            "During candidate extraction, when the current message includes a dated event and an existing memory holds a related dated event for the same subject, also generate a candidate that explicitly records the time interval between the two dates (e.g., '3 months between ...').",
+            "Only create this interval candidate when the two dates are explicit in the evidence or the message states the gap; do not infer a precise interval from vague relative time words such as 'recently'.",
+            "Keep the interval as an additional compact, source-linked memory; do not replace or merge the two individual event memories."
+          ]
+        },
+        "solves": "Construction fails to store explicit time intervals between related dated events, leaving later temporal questions answerable only by derivation. This rule requires extraction to add an interval memory when a new event date and an existing related event date are both evident and the gap is computable. It applies to any evidence-backed dated event pairs (adoptions, moves, starts) and not to vague 'recently' references or unrelated events.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-44_conv-44_qa_0034",
+        "source_failure_id": "cons_conv-44_conv-44_qa_0034",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:11:02Z"
+      },
+      {
+        "candidate_id": "cand_construction_b7936abbf8eb",
+        "skill_id": "sk_construction_b09999b8c0",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "RecordPastCompletedEventsAsEventNotCurrentState",
+          "description": "Use during extraction when a message contains a past-time marker (e.g., 'two weeks ago', 'last month', 'yesterday') with a completed action verb (read, watched, finished, visited); record it as an event memory, not as a current ongoing state.",
+          "content": [
+            "During extraction, if a statement describes a completed action with a past-time reference (e.g., 'read', 'finished', 'watched', 'visited' plus 'two weeks ago', 'last month', 'yesterday'), create a memory of kind 'event' that captures the action and its past occurrence time.",
+            "Do not convert such completed actions into a 'preference' or 'currently' state, and do not merge them with ongoing activities unless the source explicitly links them; preserve the completion fact and its time."
+          ]
+        },
+        "solves": "When a message describes a completed action in the past (e.g., 'read', 'watched', 'finished' with 'two weeks ago', 'last month'), extraction may mistakenly turn it into a current ongoing state, losing the completion fact and its time. This rule applies to any past completed activity and instructs storing such facts as event memories instead of 'preference' or 'currently' states; it does not apply to statements about current, habitual, or future activities.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-48_conv-48_qa_0026",
+        "source_failure_id": "cons_conv-48_conv-48_qa_0026",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:11:28Z"
+      },
+      {
+        "candidate_id": "cand_construction_beee7973ebcf",
+        "skill_id": "sk_construction_31773ce28e",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Extract explicitly dated family life events",
+          "description": "When a user message states a past life event (wedding, anniversary, birth, graduation) of the user or family with a date or year, during extraction create an event memory; during CRUD, add it.",
+          "content": [
+            "During extraction: if a message explicitly states a past life event (e.g., wedding, birth, graduation, anniversary) of the user or a family member along with a time reference (year, date, age), generate an 'event' memory candidate capturing event type, people, and time; do not skip it because the surrounding language is emotional or reflective.",
+            "During CRUD: for such dated-life-event candidates, ADD a new 'event' memory linked to the relevant family member; do not SKIP or merge away the explicit date."
+          ]
+        },
+        "solves": "Extraction omitted a memory for an explicitly dated family life event because emotional wording masked the factual claim. The failure mechanism is missing explicit factual statements embedded in reflective messages. This rule applies whenever a message states a dated life event of the user or family; it does not apply to opinions, hypotheticals, or undated statements.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-48_conv-48_qa_0010",
+        "source_failure_id": "cons_conv-48_conv-48_qa_0010",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:11:36Z"
+      },
+      {
+        "candidate_id": "cand_construction_d13dacf6183a",
+        "skill_id": "sk_construction_d48d44a200",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "ExtractExplicitProjectMentions",
+          "description": "When the user explicitly mentions a project they are working on, worked on, or completed, extract an event memory with the project's domain/type and resolved time.",
+          "content": [
+            "During extraction, when the user's message explicitly states a project they are working on, worked on, or completed, always generate an event memory recording the project's domain or type (e.g., 'electrical engineering'). Resolve relative time phrases such as 'last week' from the message/session timestamp; do not drop the fact merely because the question may phrase the time differently."
+          ]
+        },
+        "solves": "The extraction stage generated no candidate from a message where the user explicitly stated the type of project they had finished, so that fact was never persisted and the reference claim was unsupported. The reusable failure is skipping explicit self-disclosed project/work statements when the verb tense or time phrase does not match the question's wording. Future sessions where the user mentions a project, assignment, or work product should trigger an event extraction regardless of wording.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-48_conv-48_qa_0000",
+        "source_failure_id": "cons_conv-48_conv-48_qa_0000",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:11:25Z"
+      },
+      {
+        "candidate_id": "cand_construction_d60fd4bf11e5",
+        "skill_id": "sk_construction_4aa09f7405",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "DistinctRepeatedEventsAsNewMemories",
+          "description": "When a candidate describes an event that is a distinct new occurrence (e.g., 'again', 'another', 'second', 'third', or a different date) of an activity already in memory, ADD a new event memory instead of UPDATEing the older one.",
+          "content": [
+            "During CRUD, before choosing UPDATE, check whether the candidate event is a separate occurrence (different date/time or an ordinal/again marker) of an existing event memory. If it is a new occurrence, ADD a new event memory; reserve UPDATE for revising or enriching the same single occurrence.",
+            "Do not overwrite an older event with a newer similar event merely because both concern the same subject or activity type; preserving the history of past occurrences is needed for future counts or timelines.",
+            "Update or enrich only when the candidate clearly refers to the same occurrence as the existing memory (same event, same time frame); otherwise default to ADD."
+          ]
+        },
+        "solves": "Construction CRUD decisions sometimes overwrite a prior distinct event memory (e.g., a first win) when a later ordinal occurrence arrives (e.g., a fourth win), erasing historical evidence needed for future count or timeline questions. The rule generalizes: an event with a different time or an ordinal/again marker is a new occurrence and must be ADDed as a new memory, not UPDATE the older event; this applies to any repeated activity domain where preserving each occurrence matters.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-42_conv-42_qa_0078",
+        "source_failure_id": "cons_conv-42_conv-42_qa_0078",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:09:16Z"
+      },
+      {
+        "candidate_id": "cand_construction_d945135607da",
+        "skill_id": "sk_construction_c5b64c912c",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Preserve explicit event facts during extraction",
+          "description": "When a message states a concrete past event with a time (who gave/received what, when), extract that event as a separate memory; do not let an interpretive summary replace it.",
+          "content": [
+            "During extraction, treat explicit factual claims about past events (e.g., 'my parents got me this when I was 10') as distinct durable event memories with subject, kind, and time.",
+            "When the same utterance also supports an interpretation (e.g., 'it was the start of my passion'), keep the concrete event and the interpretation as separate memories; never let an interpretive summary substitute for the factual event.",
+            "Resolve relative time expressions (e.g., 'when I was 10') to an absolute world_start using the speaker's age at message time."
+          ]
+        },
+        "solves": "The diagnosis showed extraction replacing a concrete, evidence-bound event (e.g., a parent giving a child an item at a specific age) with only an interpretive memory (e.g., the child developed an interest), losing the directly answerable fact. This skill applies to any future construction pass where a message states a specific past event with an explicit time: the factual event must be captured as its own memory even if an interpretive summary is also produced.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-48_conv-48_qa_0098",
+        "source_failure_id": "cons_conv-48_conv-48_qa_0098",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:11:54Z"
+      },
+      {
+        "candidate_id": "cand_construction_dc1f7d3ae359",
+        "skill_id": "sk_construction_4809993449",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Preserve concrete gift object and date in extraction",
+          "description": "Use when extracting an event where a person gives, buys, gets, or sends an item to another person; preserve the exact object and stated date.",
+          "content": [
+            "When extracting a giving/gifting event, record the exact item the speaker names (e.g., puppy, book, recipe), not a broader or inferred category such as 'stuffed animal' or 'gift' unless that exact term appears.",
+            "Include the date or relative time anchor stated in the same message as the event; do not reuse an earlier memory's date.",
+            "If the object is ambiguous, prefer the literal referent from the message and do not invent details; keep the extraction faithful to the source."
+          ]
+        },
+        "solves": "Extraction candidates sometimes replace the concrete object of a giving/gifting event with an inferred but incorrect category (e.g., calling a puppy a stuffed animal), and drop the stated date. This Skill addresses that by requiring extraction to preserve the exact item and temporal anchor the speaker states, and to avoid substituting a different object type without evidence. It applies to any event where someone gives, buys, gets, or sends something to someone.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-42_conv-42_qa_0051",
+        "source_failure_id": "cons_conv-42_conv-42_qa_0051",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:09:06Z"
+      },
+      {
+        "candidate_id": "cand_construction_e3d41765ed56",
+        "skill_id": "sk_construction_328a13ef78",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "CaptureStatedReasonsWithEvents",
+          "description": "When a message states an event and also explicitly gives its reason or motivation, include both in the extracted memory candidate.",
+          "content": [
+            "During candidate extraction, if a message reports that someone acquired, started, changed, or did something and also explicitly states why (e.g., because they saw, liked, needed, wanted it), capture both the event and the stated reason in the candidate, not just the event alone.",
+            "When updating an existing memory with a new event, append the explicitly stated reason to the new version so that future questions about the cause can be answered from the memory."
+          ]
+        },
+        "solves": "The diagnosis showed extraction captured a reported event (acquiring a pet) but omitted the explicitly stated reason behind it, leaving memory unable to answer why-questions. The general mechanism is dropping stated causes or motivations when summarizing event statements. This skill applies to any future message where an event and its reason appear together, ensuring the reason is retained for later retrieval.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-42_conv-42_qa_0194",
+        "source_failure_id": "cons_conv-42_conv-42_qa_0194",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:09:42Z"
+      }
+    ],
+    "retrieved_skill_ids": [],
+    "relations": []
+  },
+  "plan": {
+    "transaction_id": "tx_construction_bank1_new_build_0020",
+    "side": "construction",
+    "base_bank_version": "v001",
+    "candidate_resolutions": [
+      {
+        "candidate_id": "cand_construction_060e20c18257",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_construction_update_completed_events"
+        ],
+        "reason": "No existing Skill covers updating ongoing events with completion time."
+      },
+      {
+        "candidate_id": "cand_construction_0e70791dccac",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_preserve_time_details"
+        ],
+        "reason": "Merged with cand_construction_d945135607da and cand_construction_dc1f7d3ae359 because all address preserving explicit time details during extraction."
+      },
+      {
+        "candidate_id": "cand_construction_0e8dac41c59d",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_extract_all_stated_events"
+        ],
+        "reason": "Merged with cand_construction_1cb031d37047, cand_construction_4a7ba31aa686, cand_construction_d13dacf6183a, cand_construction_2149b2382ced, cand_construction_4dac0da60fbc, cand_construction_d945135607da, cand_construction_beee7973ebcf, cand_construction_b7936abbf8eb, cand_construction_965ea38b9e0e, cand_construction_56c26be214d2, cand_construction_e3d41765ed56, cand_construction_dc1f7d3ae359, cand_construction_3331b78dfdad because all share the mechanism of failing to extract explicit stated events."
+      },
+      {
+        "candidate_id": "cand_construction_1cb031d37047",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_extract_all_stated_events"
+        ],
+        "reason": "Merged with cand_construction_0e8dac41c59d and others because all share the mechanism of failing to extract explicit stated events."
+      },
+      {
+        "candidate_id": "cand_construction_2149b2382ced",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_extract_all_stated_events"
+        ],
+        "reason": "Merged with cand_construction_0e8dac41c59d and others because all share the mechanism of failing to extract explicit stated events."
+      },
+      {
+        "candidate_id": "cand_construction_3331b78dfdad",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_extract_all_stated_events"
+        ],
+        "reason": "Merged with cand_construction_0e8dac41c59d and others because all share the mechanism of failing to extract explicit stated events."
+      },
+      {
+        "candidate_id": "cand_construction_4a7ba31aa686",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_extract_all_stated_events"
+        ],
+        "reason": "Merged with cand_construction_0e8dac41c59d and others because all share the mechanism of failing to extract explicit stated events."
+      },
+      {
+        "candidate_id": "cand_construction_4dac0da60fbc",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_extract_all_stated_events"
+        ],
+        "reason": "Merged with cand_construction_0e8dac41c59d and others because all share the mechanism of failing to extract explicit stated events."
+      },
+      {
+        "candidate_id": "cand_construction_56c26be214d2",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_extract_all_stated_events"
+        ],
+        "reason": "Merged with cand_construction_0e8dac41c59d and others because all share the mechanism of failing to extract explicit stated events."
+      },
+      {
+        "candidate_id": "cand_construction_8612209ff8a5",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_construction_preserve_earliest_start"
+        ],
+        "reason": "No existing Skill covers preserving earliest world_start during enrichment."
+      },
+      {
+        "candidate_id": "cand_construction_961bcb6a1bc5",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_record_time_intervals"
+        ],
+        "reason": "Merged with cand_construction_a2070608e158 because both address recording time intervals between related events."
+      },
+      {
+        "candidate_id": "cand_construction_965ea38b9e0e",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_extract_all_stated_events"
+        ],
+        "reason": "Merged with cand_construction_0e8dac41c59d and others because all share the mechanism of failing to extract explicit stated events."
+      },
+      {
+        "candidate_id": "cand_construction_a2070608e158",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_construction_record_time_intervals"
+        ],
+        "reason": "Absorbing cand_construction_961bcb6a1bc5 into this merged Skill."
+      },
+      {
+        "candidate_id": "cand_construction_b7936abbf8eb",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_extract_all_stated_events"
+        ],
+        "reason": "Merged with cand_construction_0e8dac41c59d and others because all share the mechanism of failing to extract explicit stated events."
+      },
+      {
+        "candidate_id": "cand_construction_beee7973ebcf",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_extract_all_stated_events"
+        ],
+        "reason": "Merged with cand_construction_0e8dac41c59d and others because all share the mechanism of failing to extract explicit stated events."
+      },
+      {
+        "candidate_id": "cand_construction_d13dacf6183a",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_extract_all_stated_events"
+        ],
+        "reason": "Merged with cand_construction_0e8dac41c59d and others because all share the mechanism of failing to extract explicit stated events."
+      },
+      {
+        "candidate_id": "cand_construction_d60fd4bf11e5",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_construction_distinct_repeated_events"
+        ],
+        "reason": "No existing Skill covers adding distinct repeated events as new memories."
+      },
+      {
+        "candidate_id": "cand_construction_d945135607da",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_extract_all_stated_events"
+        ],
+        "reason": "Merged with cand_construction_0e8dac41c59d and others because all share the mechanism of failing to extract explicit stated events."
+      },
+      {
+        "candidate_id": "cand_construction_dc1f7d3ae359",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_extract_all_stated_events"
+        ],
+        "reason": "Merged with cand_construction_0e8dac41c59d and others because all share the mechanism of failing to extract explicit stated events."
+      },
+      {
+        "candidate_id": "cand_construction_e3d41765ed56",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_extract_all_stated_events"
+        ],
+        "reason": "Merged with cand_construction_0e8dac41c59d and others because all share the mechanism of failing to extract explicit stated events."
+      }
+    ],
+    "operations": [
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_update_completed_events",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Update completed ongoing events with duration",
+        "description": "When new evidence completes an ongoing event already stored in memory, update that existing event memory with end time or duration before adding a new completion event.",
+        "content": [
+          "During extraction and CRUD decisions, if a message states that an already-memorized ongoing event (same subject and activity) has finished, prefer UPDATE or MERGE the existing event memory to set world_end and record the duration.",
+          "Do not ADD a separate completion event unless it conveys new facts distinct from the existing event.",
+          "When the start date is known and the end is expressed relatively (e.g., 'last month'), resolve the end date from the message timestamp and compute the duration in the updated memory."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_060e20c18257"
+        ],
+        "reason": "Creating new Skill for updating completed ongoing events.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_preserve_time_details",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Preserve time details when extracting event memories",
+        "description": "When a message describes an event, possession, or state and also states when it happened (explicit date or relative phrase such as 'a few years ago'), apply during extraction to keep that temporal detail in the memory instead of omitting it.",
+        "content": [
+          "During extraction of an event, possession, or state, if the source message states when it happened (explicit date or relative phrase like 'a few years ago', 'last month'), include that temporal detail in the memory content and/or set an accurate time field; do not omit it while summarizing meaning, symbolism, or other attributes.",
+          "Resolve relative time phrases from the message/session timestamp to compute the event time; if precision is uncertain, preserve the original phrase so the fact remains answerable."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_0e70791dccac",
+          "cand_construction_d945135607da",
+          "cand_construction_dc1f7d3ae359"
+        ],
+        "reason": "Creating merged Skill for preserving time details.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_extract_all_stated_events",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Extract all explicitly stated events",
+        "description": "When a message states a concrete past event, completion, start, or possession transfer with a time reference, extract it as a separate event memory during candidate extraction.",
+        "content": [
+          "During candidate extraction, create a separate event candidate for every clearly stated event or fact in the message, even when the message's main topic is about something else.",
+          "Resolve relative time expressions (e.g., 'last Friday', 'when I was 10') using the message timestamp or speaker's age to set world_start.",
+          "Do not let a dominant topic, emotional wording, or lack of detail cause you to drop secondary events.",
+          "Record the exact item, action, and stated reason when present; do not substitute inferred categories or omit stated causes.",
+          "Do not convert completed past actions into current ongoing states; store them as event memories."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_0e8dac41c59d",
+          "cand_construction_1cb031d37047",
+          "cand_construction_2149b2382ced",
+          "cand_construction_3331b78dfdad",
+          "cand_construction_4a7ba31aa686",
+          "cand_construction_4dac0da60fbc",
+          "cand_construction_56c26be214d2",
+          "cand_construction_965ea38b9e0e",
+          "cand_construction_b7936abbf8eb",
+          "cand_construction_beee7973ebcf",
+          "cand_construction_d13dacf6183a",
+          "cand_construction_d945135607da",
+          "cand_construction_dc1f7d3ae359",
+          "cand_construction_e3d41765ed56"
+        ],
+        "reason": "Creating merged Skill for extracting all explicitly stated events.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_preserve_earliest_start",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Preserve earliest world_start when enriching event memories",
+        "description": "When updating or enriching an existing event memory, keep the current world_start unless the new candidate date is earlier or explicitly corrects the same event; do not overwrite with an unrelated recomputed date.",
+        "content": [
+          "During UPDATE of an event memory, before changing world_start, compare the existing world_start with the candidate's resolved start date; keep the earlier date if the memory aggregates multiple distinct events.",
+          "Do not recompute or replace world_start during enrichment from a heuristic or default; use the candidate's resolved date only when it is earlier than the existing world_start or when new evidence explicitly corrects the date of the same event."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_8612209ff8a5"
+        ],
+        "reason": "Creating new Skill for preserving earliest world_start.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_record_time_intervals",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Record time intervals between repeated events",
+        "description": "During extraction, when a new event repeats a previously recorded event of the same kind for the same subject, generate a memory capturing the elapsed time between the two occurrences.",
+        "content": [
+          "During extraction, if a new event has the same semantic type (e.g., appointment, visit, class, meeting) as an already-stored event for the same subject, resolve both occurrence times from message/session timestamps and compute the interval.",
+          "Generate a relationship or event memory stating the elapsed time (e.g., 'X weeks/months passed between the first and second occurrence') and link it to both stored events.",
+          "Do not create this candidate when the events are unrelated, the times cannot be resolved, or the interval is not derivable from the conversation."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_961bcb6a1bc5",
+          "cand_construction_a2070608e158"
+        ],
+        "reason": "Creating merged Skill for recording time intervals.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_distinct_repeated_events",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Distinct repeated events as new memories",
+        "description": "When a candidate describes an event that is a distinct new occurrence (e.g., 'again', 'another', 'second', 'third', or a different date) of an activity already in memory, ADD a new event memory instead of UPDATEing the older one.",
+        "content": [
+          "During CRUD, before choosing UPDATE, check whether the candidate event is a separate occurrence (different date/time or an ordinal/again marker) of an existing event memory. If it is a new occurrence, ADD a new event memory; reserve UPDATE for revising or enriching the same single occurrence.",
+          "Do not overwrite an older event with a newer similar event merely because both concern the same subject or activity type; preserving the history of past occurrences is needed for future counts or timelines.",
+          "Update or enrich only when the candidate clearly refers to the same occurrence as the existing memory (same event, same time frame); otherwise default to ADD."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_d60fd4bf11e5"
+        ],
+        "reason": "Creating new Skill for distinct repeated events.",
+        "hard_delete": false
+      }
+    ]
+  },
+  "status": "planned"
+}

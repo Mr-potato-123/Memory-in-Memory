@@ -1,0 +1,614 @@
+{
+  "schema_version": "access_diagnosis_v3",
+  "diagnosis_id": "access_conv-42_conv-42_qa_0099",
+  "diagnosis_type": "ACCESS_FAILURE",
+  "status": "completed",
+  "judge_run_id": "bank2_from_v1_new_train_judge",
+  "diagnosis_run_id": "bank2_from_v1_new_diag",
+  "source_runtime_run": "bank2_v1new_train_seq_conv-42",
+  "conversation_id": "conv-42",
+  "qa_id": "conv-42_qa_0099",
+  "snapshot_commit_id": 29,
+  "question": "What are Joanna's plans for her finished screenplay in January 2022?",
+  "reference_answer": "submit it to film festivals and get producers and directors to check it out",
+  "problem_found": true,
+  "reason": "The current memory version mem_conv-42_0006_v1 directly states Joanna's plans to submit her screenplay to film festivals and attract producers and directors, which matches the reference answer. Other current memories are not relevant to the specific plans for the finished screenplay in January 2022.",
+  "confidence": 1.0,
+  "review_required": false,
+  "skill_trace": {
+    "trace_id": "skilltrace_access_bank2_v1new_train_seq_conv-42_conv-42_conv-42_qa_0099",
+    "side": "access",
+    "bank_version": "bank1",
+    "query": "What are Joanna's plans for her finished screenplay in January 2022?",
+    "top_k": 2,
+    "disclose_k": 5,
+    "min_score": 0.2,
+    "scored_fields": [
+      "name",
+      "description"
+    ],
+    "scoring_weights": {
+      "semantic": 0.7,
+      "bm25": 0.3
+    },
+    "retrieval_method": "bank1_hybrid_router",
+    "candidate_k": 10,
+    "reranker": "bank1_applicability_router",
+    "reranker_error": "",
+    "selected": [
+      {
+        "skill_id": "sk_access_post_event_plan",
+        "version_id": "sk_access_post_event_plan_v1",
+        "rank": 1,
+        "score": 0.3777325749397278,
+        "semantic_score": 0.1847229301929474,
+        "lexical_score": 0.8280883431434631,
+        "name": "Re-search post-event plans with domain terms",
+        "description": "When a question asks about a subject's plans after a specific event and the first search returns only the event memory, use domain/goal terms and time-bounded retrieval to locate the post-event plan memory.",
+        "content": [
+          "When a question asks what plans or actions a subject has after a specific event (e.g., after advice, a meeting, a networking event), and the first search returns the event memory but no resulting plans, run an additional search using domain/goal terms inferred from the event context and the subject's goals, and restrict the time window to memories with world_start on or after the event date.",
+          "Do not answer with older, unrelated plan memories; if the re-search still yields no post-event plan memory, inspect the subject's memories dated from the event onward before finalizing an answer."
+        ],
+        "selected": true,
+        "rerank_rank": 1,
+        "rerank_reason": "The question asks about Joanna's plans for her finished screenplay in January 2022, which involves searching for post-event plans after a specific date. This Skill is specifically applicable for locating such plans using domain terms and time-bounded retrieval."
+      }
+    ],
+    "nearby_not_selected": [
+      {
+        "skill_id": "sk_access_non_primary_goals",
+        "version_id": "sk_access_non_primary_goals_v1",
+        "rank": 2,
+        "score": 0.35726073384284973,
+        "semantic_score": 0.08180104196071625,
+        "lexical_score": 1.0,
+        "name": "Non-primary goal search across memory kinds",
+        "description": "When a question asks about a person's goals, plans, or aspirations that are distinct from their primary skill/domain, include preference, event, and plan memory kinds and search concrete non-primary activity terms before answering.",
+        "content": [
+          "When answering questions about a person's goals, aspirations, career plans, or intentions (especially goals distinct from their primary skill), do not restrict retrieval to only 'profile' and 'state' memory kinds. Include 'preference', 'event', and 'plan' kinds, because goals and off-the-field ambitions are commonly stored there.",
+          "When the question contrasts goals with the person's main domain, search with concrete terms for that person's non-primary activities (e.g., endorsements, charity, brand, business, community) in addition to negated goal phrases, and inspect memories that mention these activities even if initial scores are low."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_explicit_timing",
+        "version_id": "sk_access_explicit_timing_v1",
+        "rank": 3,
+        "score": 0.33088240027427673,
+        "semantic_score": 0.0703229159116745,
+        "lexical_score": 0.938854455947876,
+        "name": "Verify explicit event timing evidence",
+        "description": "When a question asks when an event happened (finished, completed, started), require evidence that explicitly states that event's timing; do not substitute a related event's date (publication, exhibit, announcement).",
+        "content": [
+          "When a question asks when an event happened (finished, completed, started, created), verify the cited memory explicitly describes that event and its timing. Do not answer with the date of a related event (publication, exhibition, announcement) unless a memory explicitly equates that date with the requested event's time.",
+          "If retrieved memories only concern related events or lack explicit timing for the requested event, judge the evidence insufficient and run additional searches using temporal/completion phrases (e.g., 'completed', 'finished', 'a few days ago', 'recently') and structured filters on the relevant subject/predicate (e.g., artwork/created/completed).",
+          "When a search returns a memory with explicit relative timing (e.g., 'a few days ago'), resolve the date from the memory/session timestamp and cite that memory as evidence rather than the related-event memory."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_creative_work",
+        "version_id": "sk_access_creative_work_v1",
+        "rank": 4,
+        "score": 0.3185192048549652,
+        "semantic_score": 0.1517253816127777,
+        "lexical_score": 0.7077047824859619,
+        "name": "Retrieve Generic Creative Work Descriptions",
+        "description": "When a question asks what a specific creative work (screenplay, book, film, project) is about, use before hybrid search to also query generic descriptors like 'creative project' and 'completed project' and inspect event/achievement memories.",
+        "content": [
+          "When the user asks about the subject of a specific creative work, do not restrict search to the exact artifact term and ordinal; include query expansions and keywords using generic descriptors such as 'creative project', 'completed project', 'recent work', plus thematic/content words from the question.",
+          "If initial results contain no memory stating the completed work's subject, search or inspect event memories with predicates like achievement or completion rather than only in-progress plans or titles, since completed works may be stored generically.",
+          "Judge evidence sufficiency against all retrieved current related memories, not only those mentioning the exact artifact type; a memory describing a completed creative project with matching themes can satisfy the question."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_current_activity_kinds",
+        "version_id": "sk_access_current_activity_kinds_v1",
+        "rank": 5,
+        "score": 0.296368271112442,
+        "semantic_score": 0.07548777014017105,
+        "lexical_score": 0.8117560744285583,
+        "name": "Include event memories for current-activity queries",
+        "description": "When a query asks what someone is currently reading, doing, working on, or otherwise engaged in, do not restrict memory_kinds to 'state'; search both 'state' and 'event' memories because ongoing activities are often stored as events.",
+        "content": [
+          "If a question asks about a person's current activity (e.g., currently reading, working on, building, studying), set memory_kinds to include both 'state' and 'event', or omit the memory_kinds filter, since ongoing activities are typically stored as event memories.",
+          "If a search restricted to 'state' returns no supporting evidence for an activity question, retry with broader memory_kinds before answering 'no information available'."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_future_plan_kinds",
+        "version_id": "sk_access_future_plan_kinds_v1",
+        "rank": 6,
+        "score": 0.2925504744052887,
+        "semantic_score": 0.19384673237800598,
+        "lexical_score": 0.5228591561317444,
+        "name": "Search plan and event kinds for future-plan questions",
+        "description": "When answering questions about future events, planned activities, or what someone is planning for an upcoming time, include plan memories in retrieval; do not restrict memory_kinds to event only.",
+        "content": [
+          "If the question asks about a future event, plan, or upcoming activity, search with memory_kinds covering both 'plan' and 'event' (for example [\"plan\", \"event\"]).",
+          "Do not filter memory_kinds to only 'event' for forward-looking questions; planned future events are often stored as 'plan' memories.",
+          "Before answering, check whether an additional retrieval over 'plan' memories could supply direct evidence, especially when initial results contain only related context."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      }
+    ]
+  },
+  "repair_package": {
+    "question": "What are Joanna's plans for her finished screenplay in January 2022?",
+    "reference_answer": "submit it to film festivals and get producers and directors to check it out",
+    "missing_useful_current_memories": [
+      {
+        "version_id": "mem_conv-42_0006_v1",
+        "memory_id": "mem_conv-42_0006",
+        "version_no": 1,
+        "content": "Joanna plans to submit her screenplay to film festivals and hopes to attract producers and directors.",
+        "memory_kind": "event",
+        "subject": "Joanna",
+        "predicate": "plan",
+        "object_text": "film festivals",
+        "world_start": "2022-01-23",
+        "world_end": null,
+        "update_type": "add"
+      }
+    ],
+    "retrieved_current_version_ids": [
+      "mem_conv-42_0018_v2",
+      "mem_conv-42_0054_v1",
+      "mem_conv-42_0074_v2"
+    ],
+    "search_steps": [
+      {
+        "action_id": "access_bank2_v1new_train_seq_conv-42_conv-42_conv-42_qa_0099_a000",
+        "step_index": 0,
+        "action_type": "search_memory",
+        "request": {
+          "action": "search_memory",
+          "arguments": {
+            "strategy": "hybrid",
+            "query": "Joanna's plans for her finished screenplay in January 2022",
+            "query_expansions": [
+              "What does Joanna intend to do with her completed screenplay in January 2022?",
+              "What are Joanna's future steps for her finished screenplay in January 2022?",
+              "What actions is Joanna planning to take with her completed screenplay in January 2022?"
+            ],
+            "keywords": [
+              "Joanna",
+              "screenplay",
+              "January 2022",
+              "plans"
+            ],
+            "depth": "standard",
+            "entities": [
+              "Joanna"
+            ],
+            "memory_kinds": [
+              "plan"
+            ],
+            "time_mode": "point",
+            "target_time": "2022-01-01",
+            "top_k": 8
+          },
+          "reason": "To find Joanna's plans for her finished screenplay in January 2022"
+        },
+        "returned_memories": [
+          {
+            "version_id": "mem_conv-42_0018_v2",
+            "memory_id": "mem_conv-42_0018",
+            "content": "Joanna is writing a new screenplay about a thirty-year-old woman on a journey of self-discovery after a loss, inspired by her own experiences. She advises aspiring writers to read extensively, try different genres, write frequently, and seek feedback to improve their skills.",
+            "memory_kind": "plan",
+            "subject": "Joanna",
+            "world_start": "2022-02-25",
+            "world_end": null,
+            "score": 0.009,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0054_v1",
+            "memory_id": "mem_conv-42_0054",
+            "content": "Joanna invited Nate to join her on future hikes, suggesting they go together sometime.",
+            "memory_kind": "plan",
+            "subject": "Joanna",
+            "world_start": "2022-05-12",
+            "world_end": null,
+            "score": 0.0089,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0074_v2",
+            "memory_id": "mem_conv-42_0074",
+            "content": "Nate expressed an intention to create his own cork board, inspired by Joanna's example, and mentioned he would explain its purpose to his friends. He is also considering joining a new gaming team after the next tourney and has received several offers.",
+            "memory_kind": "plan",
+            "subject": "Nate",
+            "world_start": "2022-11-09",
+            "world_end": null,
+            "score": 0.0056,
+            "paths": [
+              "semantic",
+              "keyword",
+              "structured"
+            ]
+          }
+        ],
+        "returned_version_ids": [
+          "mem_conv-42_0018_v2",
+          "mem_conv-42_0054_v1",
+          "mem_conv-42_0074_v2"
+        ]
+      },
+      {
+        "action_id": "access_bank2_v1new_train_seq_conv-42_conv-42_conv-42_qa_0099_a001",
+        "step_index": 1,
+        "action_type": "inspect_memory",
+        "request": {
+          "action": "inspect_memory",
+          "arguments": {
+            "memory_id": "mem_conv-42_0018",
+            "include_versions": true,
+            "include_sources": true
+          },
+          "reason": "To verify the details of Joanna's plans for her screenplay and ensure they are relevant to January 2022"
+        },
+        "returned_memories": [
+          {
+            "version_id": "mem_conv-42_0018_v2",
+            "version_no": 2,
+            "content": "Joanna is writing a new screenplay about a thirty-year-old woman on a journey of self-discovery after a loss, inspired by her own experiences. She advises aspiring writers to read extensively, try different genres, write frequently, and seek feedback to improve their skills.",
+            "world_start": "2022-02-25",
+            "world_end": null
+          }
+        ],
+        "returned_version_ids": [
+          "mem_conv-42_0018_v2"
+        ]
+      },
+      {
+        "action_id": "access_bank2_v1new_train_seq_conv-42_conv-42_conv-42_qa_0099_a002",
+        "step_index": 2,
+        "action_type": "answer",
+        "request": {
+          "action": "answer",
+          "arguments": {
+            "answer": "Joanna is writing a new screenplay about a thirty-year-old woman on a journey of self-discovery after a loss, inspired by her own experiences. She advises aspiring writers to read extensively, try different genres, write frequently, and seek feedback to improve their skills.",
+            "evidence_version_ids": [
+              "mem_conv-42_0018_v2"
+            ],
+            "confidence": 0.95
+          },
+          "reason": "The evidence shows Joanna's plans for her finished screenplay in January 2022 include writing a new screenplay and offering advice to aspiring writers."
+        },
+        "returned_memories": [],
+        "returned_version_ids": []
+      }
+    ],
+    "reason": "The current memory version mem_conv-42_0006_v1 directly states Joanna's plans to submit her screenplay to film festivals and attract producers and directors, which matches the reference answer. Other current memories are not relevant to the specific plans for the finished screenplay in January 2022.",
+    "skill_trace": {
+      "trace_id": "skilltrace_access_bank2_v1new_train_seq_conv-42_conv-42_conv-42_qa_0099",
+      "side": "access",
+      "bank_version": "bank1",
+      "query": "What are Joanna's plans for her finished screenplay in January 2022?",
+      "top_k": 2,
+      "disclose_k": 5,
+      "min_score": 0.2,
+      "scored_fields": [
+        "name",
+        "description"
+      ],
+      "scoring_weights": {
+        "semantic": 0.7,
+        "bm25": 0.3
+      },
+      "retrieval_method": "bank1_hybrid_router",
+      "candidate_k": 10,
+      "reranker": "bank1_applicability_router",
+      "reranker_error": "",
+      "selected": [
+        {
+          "skill_id": "sk_access_post_event_plan",
+          "version_id": "sk_access_post_event_plan_v1",
+          "rank": 1,
+          "score": 0.3777325749397278,
+          "semantic_score": 0.1847229301929474,
+          "lexical_score": 0.8280883431434631,
+          "name": "Re-search post-event plans with domain terms",
+          "description": "When a question asks about a subject's plans after a specific event and the first search returns only the event memory, use domain/goal terms and time-bounded retrieval to locate the post-event plan memory.",
+          "content": [
+            "When a question asks what plans or actions a subject has after a specific event (e.g., after advice, a meeting, a networking event), and the first search returns the event memory but no resulting plans, run an additional search using domain/goal terms inferred from the event context and the subject's goals, and restrict the time window to memories with world_start on or after the event date.",
+            "Do not answer with older, unrelated plan memories; if the re-search still yields no post-event plan memory, inspect the subject's memories dated from the event onward before finalizing an answer."
+          ],
+          "selected": true,
+          "rerank_rank": 1,
+          "rerank_reason": "The question asks about Joanna's plans for her finished screenplay in January 2022, which involves searching for post-event plans after a specific date. This Skill is specifically applicable for locating such plans using domain terms and time-bounded retrieval."
+        }
+      ],
+      "nearby_not_selected": [
+        {
+          "skill_id": "sk_access_non_primary_goals",
+          "version_id": "sk_access_non_primary_goals_v1",
+          "rank": 2,
+          "score": 0.35726073384284973,
+          "semantic_score": 0.08180104196071625,
+          "lexical_score": 1.0,
+          "name": "Non-primary goal search across memory kinds",
+          "description": "When a question asks about a person's goals, plans, or aspirations that are distinct from their primary skill/domain, include preference, event, and plan memory kinds and search concrete non-primary activity terms before answering.",
+          "content": [
+            "When answering questions about a person's goals, aspirations, career plans, or intentions (especially goals distinct from their primary skill), do not restrict retrieval to only 'profile' and 'state' memory kinds. Include 'preference', 'event', and 'plan' kinds, because goals and off-the-field ambitions are commonly stored there.",
+            "When the question contrasts goals with the person's main domain, search with concrete terms for that person's non-primary activities (e.g., endorsements, charity, brand, business, community) in addition to negated goal phrases, and inspect memories that mention these activities even if initial scores are low."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_explicit_timing",
+          "version_id": "sk_access_explicit_timing_v1",
+          "rank": 3,
+          "score": 0.33088240027427673,
+          "semantic_score": 0.0703229159116745,
+          "lexical_score": 0.938854455947876,
+          "name": "Verify explicit event timing evidence",
+          "description": "When a question asks when an event happened (finished, completed, started), require evidence that explicitly states that event's timing; do not substitute a related event's date (publication, exhibit, announcement).",
+          "content": [
+            "When a question asks when an event happened (finished, completed, started, created), verify the cited memory explicitly describes that event and its timing. Do not answer with the date of a related event (publication, exhibition, announcement) unless a memory explicitly equates that date with the requested event's time.",
+            "If retrieved memories only concern related events or lack explicit timing for the requested event, judge the evidence insufficient and run additional searches using temporal/completion phrases (e.g., 'completed', 'finished', 'a few days ago', 'recently') and structured filters on the relevant subject/predicate (e.g., artwork/created/completed).",
+            "When a search returns a memory with explicit relative timing (e.g., 'a few days ago'), resolve the date from the memory/session timestamp and cite that memory as evidence rather than the related-event memory."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_creative_work",
+          "version_id": "sk_access_creative_work_v1",
+          "rank": 4,
+          "score": 0.3185192048549652,
+          "semantic_score": 0.1517253816127777,
+          "lexical_score": 0.7077047824859619,
+          "name": "Retrieve Generic Creative Work Descriptions",
+          "description": "When a question asks what a specific creative work (screenplay, book, film, project) is about, use before hybrid search to also query generic descriptors like 'creative project' and 'completed project' and inspect event/achievement memories.",
+          "content": [
+            "When the user asks about the subject of a specific creative work, do not restrict search to the exact artifact term and ordinal; include query expansions and keywords using generic descriptors such as 'creative project', 'completed project', 'recent work', plus thematic/content words from the question.",
+            "If initial results contain no memory stating the completed work's subject, search or inspect event memories with predicates like achievement or completion rather than only in-progress plans or titles, since completed works may be stored generically.",
+            "Judge evidence sufficiency against all retrieved current related memories, not only those mentioning the exact artifact type; a memory describing a completed creative project with matching themes can satisfy the question."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_current_activity_kinds",
+          "version_id": "sk_access_current_activity_kinds_v1",
+          "rank": 5,
+          "score": 0.296368271112442,
+          "semantic_score": 0.07548777014017105,
+          "lexical_score": 0.8117560744285583,
+          "name": "Include event memories for current-activity queries",
+          "description": "When a query asks what someone is currently reading, doing, working on, or otherwise engaged in, do not restrict memory_kinds to 'state'; search both 'state' and 'event' memories because ongoing activities are often stored as events.",
+          "content": [
+            "If a question asks about a person's current activity (e.g., currently reading, working on, building, studying), set memory_kinds to include both 'state' and 'event', or omit the memory_kinds filter, since ongoing activities are typically stored as event memories.",
+            "If a search restricted to 'state' returns no supporting evidence for an activity question, retry with broader memory_kinds before answering 'no information available'."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_future_plan_kinds",
+          "version_id": "sk_access_future_plan_kinds_v1",
+          "rank": 6,
+          "score": 0.2925504744052887,
+          "semantic_score": 0.19384673237800598,
+          "lexical_score": 0.5228591561317444,
+          "name": "Search plan and event kinds for future-plan questions",
+          "description": "When answering questions about future events, planned activities, or what someone is planning for an upcoming time, include plan memories in retrieval; do not restrict memory_kinds to event only.",
+          "content": [
+            "If the question asks about a future event, plan, or upcoming activity, search with memory_kinds covering both 'plan' and 'event' (for example [\"plan\", \"event\"]).",
+            "Do not filter memory_kinds to only 'event' for forward-looking questions; planned future events are often stored as 'plan' memories.",
+            "Before answering, check whether an additional retrieval over 'plan' memories could supply direct evidence, especially when initial results contain only related context."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        }
+      ]
+    }
+  },
+  "access_run_id": "access_bank2_v1new_train_seq_conv-42_conv-42_conv-42_qa_0099",
+  "claims": [
+    {
+      "claim": "Joanna plans to submit her finished screenplay to film festivals.",
+      "supporting_version_ids": [
+        "mem_conv-42_0006_v1"
+      ],
+      "coverage": null
+    },
+    {
+      "claim": "Joanna hopes to attract producers and directors to check out her screenplay.",
+      "supporting_version_ids": [
+        "mem_conv-42_0006_v1"
+      ],
+      "coverage": null
+    }
+  ],
+  "current_related_memories": [
+    {
+      "version_id": "mem_conv-42_0006_v1",
+      "memory_id": "mem_conv-42_0006",
+      "version_no": 1,
+      "content": "Joanna plans to submit her screenplay to film festivals and hopes to attract producers and directors.",
+      "memory_kind": "event",
+      "subject": "Joanna",
+      "predicate": "plan",
+      "object_text": "film festivals",
+      "world_start": "2022-01-23",
+      "world_end": null,
+      "update_type": "add"
+    }
+  ],
+  "useful_current_version_ids": [
+    "mem_conv-42_0006_v1"
+  ],
+  "retrieved_current_version_ids": [
+    "mem_conv-42_0018_v2",
+    "mem_conv-42_0054_v1",
+    "mem_conv-42_0074_v2"
+  ],
+  "missing_useful_current_version_ids": [
+    "mem_conv-42_0006_v1"
+  ],
+  "search_steps": [
+    {
+      "action_id": "access_bank2_v1new_train_seq_conv-42_conv-42_conv-42_qa_0099_a000",
+      "step_index": 0,
+      "action_type": "search_memory",
+      "request": {
+        "action": "search_memory",
+        "arguments": {
+          "strategy": "hybrid",
+          "query": "Joanna's plans for her finished screenplay in January 2022",
+          "query_expansions": [
+            "What does Joanna intend to do with her completed screenplay in January 2022?",
+            "What are Joanna's future steps for her finished screenplay in January 2022?",
+            "What actions is Joanna planning to take with her completed screenplay in January 2022?"
+          ],
+          "keywords": [
+            "Joanna",
+            "screenplay",
+            "January 2022",
+            "plans"
+          ],
+          "depth": "standard",
+          "entities": [
+            "Joanna"
+          ],
+          "memory_kinds": [
+            "plan"
+          ],
+          "time_mode": "point",
+          "target_time": "2022-01-01",
+          "top_k": 8
+        },
+        "reason": "To find Joanna's plans for her finished screenplay in January 2022"
+      },
+      "returned_memories": [
+        {
+          "version_id": "mem_conv-42_0018_v2",
+          "memory_id": "mem_conv-42_0018",
+          "content": "Joanna is writing a new screenplay about a thirty-year-old woman on a journey of self-discovery after a loss, inspired by her own experiences. She advises aspiring writers to read extensively, try different genres, write frequently, and seek feedback to improve their skills.",
+          "memory_kind": "plan",
+          "subject": "Joanna",
+          "world_start": "2022-02-25",
+          "world_end": null,
+          "score": 0.009,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0054_v1",
+          "memory_id": "mem_conv-42_0054",
+          "content": "Joanna invited Nate to join her on future hikes, suggesting they go together sometime.",
+          "memory_kind": "plan",
+          "subject": "Joanna",
+          "world_start": "2022-05-12",
+          "world_end": null,
+          "score": 0.0089,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0074_v2",
+          "memory_id": "mem_conv-42_0074",
+          "content": "Nate expressed an intention to create his own cork board, inspired by Joanna's example, and mentioned he would explain its purpose to his friends. He is also considering joining a new gaming team after the next tourney and has received several offers.",
+          "memory_kind": "plan",
+          "subject": "Nate",
+          "world_start": "2022-11-09",
+          "world_end": null,
+          "score": 0.0056,
+          "paths": [
+            "semantic",
+            "keyword",
+            "structured"
+          ]
+        }
+      ],
+      "returned_version_ids": [
+        "mem_conv-42_0018_v2",
+        "mem_conv-42_0054_v1",
+        "mem_conv-42_0074_v2"
+      ]
+    },
+    {
+      "action_id": "access_bank2_v1new_train_seq_conv-42_conv-42_conv-42_qa_0099_a001",
+      "step_index": 1,
+      "action_type": "inspect_memory",
+      "request": {
+        "action": "inspect_memory",
+        "arguments": {
+          "memory_id": "mem_conv-42_0018",
+          "include_versions": true,
+          "include_sources": true
+        },
+        "reason": "To verify the details of Joanna's plans for her screenplay and ensure they are relevant to January 2022"
+      },
+      "returned_memories": [
+        {
+          "version_id": "mem_conv-42_0018_v2",
+          "version_no": 2,
+          "content": "Joanna is writing a new screenplay about a thirty-year-old woman on a journey of self-discovery after a loss, inspired by her own experiences. She advises aspiring writers to read extensively, try different genres, write frequently, and seek feedback to improve their skills.",
+          "world_start": "2022-02-25",
+          "world_end": null
+        }
+      ],
+      "returned_version_ids": [
+        "mem_conv-42_0018_v2"
+      ]
+    },
+    {
+      "action_id": "access_bank2_v1new_train_seq_conv-42_conv-42_conv-42_qa_0099_a002",
+      "step_index": 2,
+      "action_type": "answer",
+      "request": {
+        "action": "answer",
+        "arguments": {
+          "answer": "Joanna is writing a new screenplay about a thirty-year-old woman on a journey of self-discovery after a loss, inspired by her own experiences. She advises aspiring writers to read extensively, try different genres, write frequently, and seek feedback to improve their skills.",
+          "evidence_version_ids": [
+            "mem_conv-42_0018_v2"
+          ],
+          "confidence": 0.95
+        },
+        "reason": "The evidence shows Joanna's plans for her finished screenplay in January 2022 include writing a new screenplay and offering advice to aspiring writers."
+      },
+      "returned_memories": [],
+      "returned_version_ids": []
+    }
+  ]
+}

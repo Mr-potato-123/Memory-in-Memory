@@ -1,0 +1,867 @@
+{
+  "schema_version": "access_diagnosis_v3",
+  "diagnosis_id": "access_conv-42_conv-42_qa_0000",
+  "diagnosis_type": "ACCESS_FAILURE",
+  "status": "completed",
+  "judge_run_id": "judge",
+  "diagnosis_run_id": "bank1_train_flash",
+  "source_runtime_run": "conv-42",
+  "conversation_id": "conv-42",
+  "qa_id": "conv-42_qa_0000",
+  "snapshot_commit_id": 29,
+  "question": "Is it likely that Nate has friends besides Joanna?",
+  "reference_answer": "Yesteammates on hisvideo game team.",
+  "problem_found": true,
+  "reason": "The reference answer states that Nate has teammates on his video game team. The current memory version mem_conv-42_0001_v4 mentions Nate's participation in video game tournaments, which implies he has teammates. This memory is the only one that provides evidence of other people in Nate's life besides Joanna.",
+  "confidence": 0.9,
+  "review_required": false,
+  "skill_trace": {
+    "trace_id": "skilltrace_access_conv-42_conv-42_conv-42_qa_0000",
+    "side": "access",
+    "bank_version": "bank1",
+    "query": "Is it likely that Nate has friends besides Joanna?",
+    "top_k": 2,
+    "disclose_k": 5,
+    "min_score": 0.2,
+    "scored_fields": [
+      "name",
+      "description"
+    ],
+    "scoring_weights": {
+      "semantic": 0.7,
+      "bm25": 0.3
+    },
+    "retrieval_method": "bank1_hybrid_router",
+    "candidate_k": 10,
+    "reranker": "bank1_applicability_router",
+    "reranker_error": "",
+    "selected": [
+      {
+        "skill_id": "sk_access_broaden_multi_person_retrieval",
+        "version_id": "sk_access_broaden_multi_person_retrieval_v1",
+        "rank": 1,
+        "score": 0.284685879945755,
+        "semantic_score": 0.14768356084823608,
+        "lexical_score": 0.6043579578399658,
+        "name": "Broaden Multi-Person Retrieval",
+        "description": "When a query names a recipient or secondary participant and initial results omit that person, retry without that name before concluding no information.",
+        "content": [
+          "If a query includes a recipient or secondary participant and no retrieved memory mentions that person, do not conclude no information yet.",
+          "Retry hybrid search with the recipient removed, keeping the subject, action, and object, and also run a structured search for the action predicate within the query's time window.",
+          "Answer only if a retrieved memory matches the subject and action and its time range overlaps the query; do not fabricate the recipient's identity."
+        ],
+        "selected": true,
+        "rerank_rank": 1,
+        "rerank_reason": "The question asks about Nate's friends besides Joanna, implying a need to search for additional friends beyond the named individual. This Skill is specifically designed to handle such scenarios by retrying searches without the excluded name."
+      }
+    ],
+    "nearby_not_selected": [
+      {
+        "skill_id": "sk_access_count_entity_instances_acquisition",
+        "version_id": "sk_access_count_entity_instances_acquisition_v1",
+        "rank": 2,
+        "score": 0.24363821744918823,
+        "semantic_score": -0.08051685988903046,
+        "lexical_score": 1.0,
+        "name": "Count Entity Instances by Acquisition Events",
+        "description": "Use when a question asks how many of a category an entity has or owns as of a target date and no direct summary count is found.",
+        "content": [
+          "When asked for a count of items an entity has as of a target date, search for individual membership-changing events (adoption, purchase, acquisition, birth, receipt, loss, sale) using structured queries with the entity and memory_kinds=['event'], plus keywords like 'adopted', 'bought', 'got', 'welcomed', 'acquired', 'sold', or 'gave away'.",
+          "Enumerate distinct instances whose event world_start is on or before the target date and whose world_end, if any, is after the target date; count those instances.",
+          "Do not count plans, considerations, or intentions to acquire as current possessions. If a retrieved memory mentions a plan or a named companion, inspect related memories to verify whether the acquisition already occurred before answering.",
+          "Stop after retrieving all candidate instances or after one additional targeted search that returns no new acquisition events; avoid exhaustive expansion."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_date_consistent_evidence",
+        "version_id": "sk_access_date_consistent_evidence_v1",
+        "rank": 3,
+        "score": 0.22924086451530457,
+        "semantic_score": -0.0957331582903862,
+        "lexical_score": 0.987513542175293,
+        "name": "Date-consistent evidence selection",
+        "description": "When a question specifies a particular date, use only memories that were valid at that date, discard later memories, and re-search without a time filter if the initial search is inconclusive.",
+        "content": [
+          "When the user question contains a specific date, treat it as a hard temporal constraint: consider only memories with world_start <= date and (world_end is null or world_end >= date).",
+          "If the initial date-constrained search does not yield sufficient evidence, run one additional hybrid search with time_mode='none' to surface all candidate memories, then filter the results to the target date before judging sufficiency.",
+          "When multiple candidate facts could answer the question, prefer the memory whose world_start is closest to and not after the question date; discard memories from after that date even if they are more semantically similar."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_duration_questions",
+        "version_id": "sk_access_duration_questions_v1",
+        "rank": 4,
+        "score": 0.22229605913162231,
+        "semantic_score": 0.0006517721340060234,
+        "lexical_score": 0.7394660115242004,
+        "name": "Duration questions search profile and state memories",
+        "description": "When a question asks how long a person has had, owned, or possessed something (e.g., 'how long has X had Y?'), search profile and state memories as well as event memories.",
+        "content": [
+          "When a question asks how long a subject has had, owned, or possessed an item (e.g., 'how long has Nate had his turtles?'), interpret it as asking for a duration, not a specific acquisition date.",
+          "Do not restrict the search to event memories for such duration/tenure questions; include profile and state memory kinds because ownership duration is commonly stored as a profile or state fact.",
+          "If a profile or state memory directly states the duration, stop searching and answer with that duration; do not substitute a recent event date."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_creator_genre_inference",
+        "version_id": "sk_access_creator_genre_inference_v1",
+        "rank": 5,
+        "score": 0.16130267083644867,
+        "semantic_score": 0.0957922413945198,
+        "lexical_score": 0.3141603171825409,
+        "name": "Infer Preference for Named Creator",
+        "description": "When a question asks whether a user would enjoy a specific author, artist, or work, and retrieval returns the user's genre/taste preferences but no direct mention of that name, infer alignment using general knowledge of the creator's genre instead of returning 'no information'.",
+        "content": [
+          "When asked whether a user would enjoy a named author/creator/work, first retrieve the user's reading/viewing preferences and genres; do not require the name itself to appear in a memory.",
+          "If the retrieved preferences show a clear genre, use general knowledge of the named creator's typical genre to judge alignment: answer with the option whose genre matches the user's stated preference, and explain the match briefly.",
+          "Stop after one preference-retrieval pass and one alignment judgment; avoid repeated searches for the author's name or genre in memory."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_retry_event_queries_synonyms_time",
+        "version_id": "sk_access_retry_event_queries_synonyms_time_v1",
+        "rank": 6,
+        "score": 0.15201148390769958,
+        "semantic_score": 0.016356488689780235,
+        "lexical_score": 0.4685397744178772,
+        "name": "Retry Event Queries with Synonyms and Time Filters",
+        "description": "Use when a question asks which holiday season or calendar period coincides with a person's event and the first search is inconclusive.",
+        "content": [
+          "If the first memory search returns no clear match, retry with synonyms and related forms (e.g., wedding → married, marriage, got married; trip → vacation, travel).",
+          "If the question or any retrieved memory mentions relative time, run a structured search filtering world_start to the corresponding recent window.",
+          "After finding an event memory, determine its world_start and identify which major holiday season contains that date.",
+          "Stop after at most two retry attempts without a match; do not keep expanding indefinitely."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      }
+    ]
+  },
+  "repair_package": {
+    "question": "Is it likely that Nate has friends besides Joanna?",
+    "reference_answer": "Yesteammates on hisvideo game team.",
+    "missing_useful_current_memories": [
+      {
+        "version_id": "mem_conv-42_0001_v4",
+        "memory_id": "mem_conv-42_0001",
+        "version_no": 4,
+        "content": "Nate won his fourth video game tournament on Friday, July 8, 2022, showcasing his skills and making money through his passion. This achievement highlights his dedication and growth in the competitive gaming scene. Nate has saved some of his tournament winnings but does not have specific plans for the money, as he is content with his current financial state.",
+        "memory_kind": "event",
+        "subject": "Nate",
+        "predicate": "achievement",
+        "object_text": "video game tournament win",
+        "world_start": "2022-10-05",
+        "world_end": null,
+        "update_type": "enrichment"
+      }
+    ],
+    "retrieved_current_version_ids": [
+      "mem_conv-42_0020_v1",
+      "mem_conv-42_0024_v3",
+      "mem_conv-42_0030_v2",
+      "mem_conv-42_0047_v2",
+      "mem_conv-42_0055_v1",
+      "mem_conv-42_0107_v1",
+      "mem_conv-42_0126_v1",
+      "mem_conv-42_0130_v1"
+    ],
+    "search_steps": [
+      {
+        "action_id": "access_conv-42_conv-42_conv-42_qa_0000_a000",
+        "step_index": 0,
+        "action_type": "search_memory",
+        "request": {
+          "action": "search_memory",
+          "arguments": {
+            "strategy": "hybrid",
+            "query": "Nate's friends besides Joanna",
+            "query_expansions": [
+              "friends of Nate other than Joanna",
+              "Nate's social circle excluding Joanna"
+            ],
+            "keywords": [
+              "Nate",
+              "friend",
+              "Joanna"
+            ],
+            "depth": "standard",
+            "top_k": 8
+          },
+          "reason": "To determine if Nate has friends besides Joanna, we need to search for evidence of other friends or social connections."
+        },
+        "returned_memories": [
+          {
+            "version_id": "mem_conv-42_0020_v1",
+            "memory_id": "mem_conv-42_0020",
+            "content": "Nate and Joanna have a friendly relationship where they exchange ideas and support each other's creative endeavors. Nate appreciates Joanna's screenplays and encourages her to keep writing.",
+            "memory_kind": "relationship",
+            "subject": "Nate",
+            "world_start": "2022-02-25",
+            "world_end": null,
+            "score": 0.0155,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0126_v1",
+            "memory_id": "mem_conv-42_0126",
+            "content": "Nate and Joanna have a friendly relationship where they share interests in games, movies, and comfort.",
+            "memory_kind": "relationship",
+            "subject": "Nate",
+            "world_start": "2022-10-09",
+            "world_end": null,
+            "score": 0.0154,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0107_v1",
+            "memory_id": "mem_conv-42_0107",
+            "content": "Nate and Joanna share a friendly connection, with Nate offering advice on dairy-free baking and expressing interest in collaborating on recipes.",
+            "memory_kind": "relationship",
+            "subject": "Nate",
+            "world_start": "2022-09-05",
+            "world_end": null,
+            "score": 0.0148,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0024_v3",
+            "memory_id": "mem_conv-42_0024",
+            "content": "Joanna values Nate's support throughout her creative process, finding motivation in having someone to encourage her. Nate encourages her creative work and acknowledges her achievements. Joanna values Nate's support throughout her writing journey and acknowledges his presence as a source of encouragement.",
+            "memory_kind": "relationship",
+            "subject": "Joanna",
+            "world_start": "2022-10-05",
+            "world_end": null,
+            "score": 0.0148,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0055_v1",
+            "memory_id": "mem_conv-42_0055",
+            "content": "Joanna invited Nate to join her on hiking trails, suggesting they go together sometime.",
+            "memory_kind": "plan",
+            "subject": "Joanna",
+            "world_start": "2022-05-12",
+            "world_end": null,
+            "score": 0.0147,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0030_v2",
+            "memory_id": "mem_conv-42_0030",
+            "content": "Nate supports Joanna in her writing endeavors and encourages her to keep working hard on her project. He expressed pride and support for her creative efforts, assuring her of continued encouragement and belief in her talent.",
+            "memory_kind": "event",
+            "subject": "Nate",
+            "world_start": "2022-03-24",
+            "world_end": null,
+            "score": 0.0145,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0047_v2",
+            "memory_id": "mem_conv-42_0047",
+            "content": "Joanna plans to check out the book series recommended by Nate and intends to share her thoughts on it. She also requested the recipe for Nate's vegan ice cream on June 24, 2022, and agreed to make it for her family this weekend.",
+            "memory_kind": "plan",
+            "subject": "Joanna",
+            "world_start": "2022-04-21",
+            "world_end": null,
+            "score": 0.0141,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0130_v1",
+            "memory_id": "mem_conv-42_0130",
+            "content": "Nate reiterated his support for Joanna, expressing respect for her resilience and ability to bounce back from setbacks.",
+            "memory_kind": "event",
+            "subject": "Nate",
+            "world_start": "2022-06-03",
+            "world_end": null,
+            "score": 0.014,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          }
+        ],
+        "returned_version_ids": [
+          "mem_conv-42_0020_v1",
+          "mem_conv-42_0126_v1",
+          "mem_conv-42_0107_v1",
+          "mem_conv-42_0024_v3",
+          "mem_conv-42_0055_v1",
+          "mem_conv-42_0030_v2",
+          "mem_conv-42_0047_v2",
+          "mem_conv-42_0130_v1"
+        ]
+      },
+      {
+        "action_id": "access_conv-42_conv-42_conv-42_qa_0000_a001",
+        "step_index": 1,
+        "action_type": "inspect_memory",
+        "request": {
+          "action": "inspect_memory",
+          "arguments": {
+            "memory_id": "mem_conv-42_0020",
+            "include_versions": true,
+            "include_sources": true
+          },
+          "reason": "To check if there are any other friends of Nate mentioned in the memory or its versions."
+        },
+        "returned_memories": [
+          {
+            "version_id": "mem_conv-42_0020_v1",
+            "version_no": 1,
+            "content": "Nate and Joanna have a friendly relationship where they exchange ideas and support each other's creative endeavors. Nate appreciates Joanna's screenplays and encourages her to keep writing.",
+            "world_start": "2022-02-25",
+            "world_end": null
+          }
+        ],
+        "returned_version_ids": [
+          "mem_conv-42_0020_v1"
+        ]
+      },
+      {
+        "action_id": "access_conv-42_conv-42_conv-42_qa_0000_a002",
+        "step_index": 2,
+        "action_type": "inspect_memory",
+        "request": {
+          "action": "inspect_memory",
+          "arguments": {
+            "memory_id": "mem_conv-42_0126",
+            "include_versions": true,
+            "include_sources": true
+          },
+          "reason": "To check if there are any other friends of Nate mentioned in the memory or its versions."
+        },
+        "returned_memories": [
+          {
+            "version_id": "mem_conv-42_0126_v1",
+            "version_no": 1,
+            "content": "Nate and Joanna have a friendly relationship where they share interests in games, movies, and comfort.",
+            "world_start": "2022-10-09",
+            "world_end": null
+          }
+        ],
+        "returned_version_ids": [
+          "mem_conv-42_0126_v1"
+        ]
+      },
+      {
+        "action_id": "access_conv-42_conv-42_conv-42_qa_0000_a003",
+        "step_index": 3,
+        "action_type": "inspect_memory",
+        "request": {
+          "action": "inspect_memory",
+          "arguments": {
+            "memory_id": "mem_conv-42_0107",
+            "include_versions": true,
+            "include_sources": true
+          },
+          "reason": "To check if there are any other friends of Nate mentioned in the memory or its versions."
+        },
+        "returned_memories": [],
+        "returned_version_ids": []
+      },
+      {
+        "action_id": "access_conv-42_conv-42_conv-42_qa_0000_a004",
+        "step_index": 4,
+        "action_type": "answer",
+        "request": {
+          "action": "answer",
+          "arguments": {
+            "answer": "No",
+            "evidence_version_ids": [
+              "mem_conv-42_0020_v1",
+              "mem_conv-42_0126_v1",
+              "mem_conv-42_0107_v1"
+            ],
+            "confidence": 0.95
+          },
+          "reason": "All retrieved memories indicate that Nate's primary friend is Joanna, with no mention of other friends."
+        },
+        "returned_memories": [],
+        "returned_version_ids": []
+      }
+    ],
+    "reason": "The reference answer states that Nate has teammates on his video game team. The current memory version mem_conv-42_0001_v4 mentions Nate's participation in video game tournaments, which implies he has teammates. This memory is the only one that provides evidence of other people in Nate's life besides Joanna.",
+    "skill_trace": {
+      "trace_id": "skilltrace_access_conv-42_conv-42_conv-42_qa_0000",
+      "side": "access",
+      "bank_version": "bank1",
+      "query": "Is it likely that Nate has friends besides Joanna?",
+      "top_k": 2,
+      "disclose_k": 5,
+      "min_score": 0.2,
+      "scored_fields": [
+        "name",
+        "description"
+      ],
+      "scoring_weights": {
+        "semantic": 0.7,
+        "bm25": 0.3
+      },
+      "retrieval_method": "bank1_hybrid_router",
+      "candidate_k": 10,
+      "reranker": "bank1_applicability_router",
+      "reranker_error": "",
+      "selected": [
+        {
+          "skill_id": "sk_access_broaden_multi_person_retrieval",
+          "version_id": "sk_access_broaden_multi_person_retrieval_v1",
+          "rank": 1,
+          "score": 0.284685879945755,
+          "semantic_score": 0.14768356084823608,
+          "lexical_score": 0.6043579578399658,
+          "name": "Broaden Multi-Person Retrieval",
+          "description": "When a query names a recipient or secondary participant and initial results omit that person, retry without that name before concluding no information.",
+          "content": [
+            "If a query includes a recipient or secondary participant and no retrieved memory mentions that person, do not conclude no information yet.",
+            "Retry hybrid search with the recipient removed, keeping the subject, action, and object, and also run a structured search for the action predicate within the query's time window.",
+            "Answer only if a retrieved memory matches the subject and action and its time range overlaps the query; do not fabricate the recipient's identity."
+          ],
+          "selected": true,
+          "rerank_rank": 1,
+          "rerank_reason": "The question asks about Nate's friends besides Joanna, implying a need to search for additional friends beyond the named individual. This Skill is specifically designed to handle such scenarios by retrying searches without the excluded name."
+        }
+      ],
+      "nearby_not_selected": [
+        {
+          "skill_id": "sk_access_count_entity_instances_acquisition",
+          "version_id": "sk_access_count_entity_instances_acquisition_v1",
+          "rank": 2,
+          "score": 0.24363821744918823,
+          "semantic_score": -0.08051685988903046,
+          "lexical_score": 1.0,
+          "name": "Count Entity Instances by Acquisition Events",
+          "description": "Use when a question asks how many of a category an entity has or owns as of a target date and no direct summary count is found.",
+          "content": [
+            "When asked for a count of items an entity has as of a target date, search for individual membership-changing events (adoption, purchase, acquisition, birth, receipt, loss, sale) using structured queries with the entity and memory_kinds=['event'], plus keywords like 'adopted', 'bought', 'got', 'welcomed', 'acquired', 'sold', or 'gave away'.",
+            "Enumerate distinct instances whose event world_start is on or before the target date and whose world_end, if any, is after the target date; count those instances.",
+            "Do not count plans, considerations, or intentions to acquire as current possessions. If a retrieved memory mentions a plan or a named companion, inspect related memories to verify whether the acquisition already occurred before answering.",
+            "Stop after retrieving all candidate instances or after one additional targeted search that returns no new acquisition events; avoid exhaustive expansion."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_date_consistent_evidence",
+          "version_id": "sk_access_date_consistent_evidence_v1",
+          "rank": 3,
+          "score": 0.22924086451530457,
+          "semantic_score": -0.0957331582903862,
+          "lexical_score": 0.987513542175293,
+          "name": "Date-consistent evidence selection",
+          "description": "When a question specifies a particular date, use only memories that were valid at that date, discard later memories, and re-search without a time filter if the initial search is inconclusive.",
+          "content": [
+            "When the user question contains a specific date, treat it as a hard temporal constraint: consider only memories with world_start <= date and (world_end is null or world_end >= date).",
+            "If the initial date-constrained search does not yield sufficient evidence, run one additional hybrid search with time_mode='none' to surface all candidate memories, then filter the results to the target date before judging sufficiency.",
+            "When multiple candidate facts could answer the question, prefer the memory whose world_start is closest to and not after the question date; discard memories from after that date even if they are more semantically similar."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_duration_questions",
+          "version_id": "sk_access_duration_questions_v1",
+          "rank": 4,
+          "score": 0.22229605913162231,
+          "semantic_score": 0.0006517721340060234,
+          "lexical_score": 0.7394660115242004,
+          "name": "Duration questions search profile and state memories",
+          "description": "When a question asks how long a person has had, owned, or possessed something (e.g., 'how long has X had Y?'), search profile and state memories as well as event memories.",
+          "content": [
+            "When a question asks how long a subject has had, owned, or possessed an item (e.g., 'how long has Nate had his turtles?'), interpret it as asking for a duration, not a specific acquisition date.",
+            "Do not restrict the search to event memories for such duration/tenure questions; include profile and state memory kinds because ownership duration is commonly stored as a profile or state fact.",
+            "If a profile or state memory directly states the duration, stop searching and answer with that duration; do not substitute a recent event date."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_creator_genre_inference",
+          "version_id": "sk_access_creator_genre_inference_v1",
+          "rank": 5,
+          "score": 0.16130267083644867,
+          "semantic_score": 0.0957922413945198,
+          "lexical_score": 0.3141603171825409,
+          "name": "Infer Preference for Named Creator",
+          "description": "When a question asks whether a user would enjoy a specific author, artist, or work, and retrieval returns the user's genre/taste preferences but no direct mention of that name, infer alignment using general knowledge of the creator's genre instead of returning 'no information'.",
+          "content": [
+            "When asked whether a user would enjoy a named author/creator/work, first retrieve the user's reading/viewing preferences and genres; do not require the name itself to appear in a memory.",
+            "If the retrieved preferences show a clear genre, use general knowledge of the named creator's typical genre to judge alignment: answer with the option whose genre matches the user's stated preference, and explain the match briefly.",
+            "Stop after one preference-retrieval pass and one alignment judgment; avoid repeated searches for the author's name or genre in memory."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_retry_event_queries_synonyms_time",
+          "version_id": "sk_access_retry_event_queries_synonyms_time_v1",
+          "rank": 6,
+          "score": 0.15201148390769958,
+          "semantic_score": 0.016356488689780235,
+          "lexical_score": 0.4685397744178772,
+          "name": "Retry Event Queries with Synonyms and Time Filters",
+          "description": "Use when a question asks which holiday season or calendar period coincides with a person's event and the first search is inconclusive.",
+          "content": [
+            "If the first memory search returns no clear match, retry with synonyms and related forms (e.g., wedding → married, marriage, got married; trip → vacation, travel).",
+            "If the question or any retrieved memory mentions relative time, run a structured search filtering world_start to the corresponding recent window.",
+            "After finding an event memory, determine its world_start and identify which major holiday season contains that date.",
+            "Stop after at most two retry attempts without a match; do not keep expanding indefinitely."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        }
+      ]
+    }
+  },
+  "access_run_id": "access_conv-42_conv-42_conv-42_qa_0000",
+  "claims": [
+    {
+      "claim": "Nate has teammates on his video game team.",
+      "supporting_version_ids": [
+        "mem_conv-42_0001_v4"
+      ],
+      "coverage": null
+    }
+  ],
+  "current_related_memories": [
+    {
+      "version_id": "mem_conv-42_0001_v4",
+      "memory_id": "mem_conv-42_0001",
+      "version_no": 4,
+      "content": "Nate won his fourth video game tournament on Friday, July 8, 2022, showcasing his skills and making money through his passion. This achievement highlights his dedication and growth in the competitive gaming scene. Nate has saved some of his tournament winnings but does not have specific plans for the money, as he is content with his current financial state.",
+      "memory_kind": "event",
+      "subject": "Nate",
+      "predicate": "achievement",
+      "object_text": "video game tournament win",
+      "world_start": "2022-10-05",
+      "world_end": null,
+      "update_type": "enrichment"
+    }
+  ],
+  "useful_current_version_ids": [
+    "mem_conv-42_0001_v4"
+  ],
+  "retrieved_current_version_ids": [
+    "mem_conv-42_0020_v1",
+    "mem_conv-42_0024_v3",
+    "mem_conv-42_0030_v2",
+    "mem_conv-42_0047_v2",
+    "mem_conv-42_0055_v1",
+    "mem_conv-42_0107_v1",
+    "mem_conv-42_0126_v1",
+    "mem_conv-42_0130_v1"
+  ],
+  "missing_useful_current_version_ids": [
+    "mem_conv-42_0001_v4"
+  ],
+  "search_steps": [
+    {
+      "action_id": "access_conv-42_conv-42_conv-42_qa_0000_a000",
+      "step_index": 0,
+      "action_type": "search_memory",
+      "request": {
+        "action": "search_memory",
+        "arguments": {
+          "strategy": "hybrid",
+          "query": "Nate's friends besides Joanna",
+          "query_expansions": [
+            "friends of Nate other than Joanna",
+            "Nate's social circle excluding Joanna"
+          ],
+          "keywords": [
+            "Nate",
+            "friend",
+            "Joanna"
+          ],
+          "depth": "standard",
+          "top_k": 8
+        },
+        "reason": "To determine if Nate has friends besides Joanna, we need to search for evidence of other friends or social connections."
+      },
+      "returned_memories": [
+        {
+          "version_id": "mem_conv-42_0020_v1",
+          "memory_id": "mem_conv-42_0020",
+          "content": "Nate and Joanna have a friendly relationship where they exchange ideas and support each other's creative endeavors. Nate appreciates Joanna's screenplays and encourages her to keep writing.",
+          "memory_kind": "relationship",
+          "subject": "Nate",
+          "world_start": "2022-02-25",
+          "world_end": null,
+          "score": 0.0155,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0126_v1",
+          "memory_id": "mem_conv-42_0126",
+          "content": "Nate and Joanna have a friendly relationship where they share interests in games, movies, and comfort.",
+          "memory_kind": "relationship",
+          "subject": "Nate",
+          "world_start": "2022-10-09",
+          "world_end": null,
+          "score": 0.0154,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0107_v1",
+          "memory_id": "mem_conv-42_0107",
+          "content": "Nate and Joanna share a friendly connection, with Nate offering advice on dairy-free baking and expressing interest in collaborating on recipes.",
+          "memory_kind": "relationship",
+          "subject": "Nate",
+          "world_start": "2022-09-05",
+          "world_end": null,
+          "score": 0.0148,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0024_v3",
+          "memory_id": "mem_conv-42_0024",
+          "content": "Joanna values Nate's support throughout her creative process, finding motivation in having someone to encourage her. Nate encourages her creative work and acknowledges her achievements. Joanna values Nate's support throughout her writing journey and acknowledges his presence as a source of encouragement.",
+          "memory_kind": "relationship",
+          "subject": "Joanna",
+          "world_start": "2022-10-05",
+          "world_end": null,
+          "score": 0.0148,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0055_v1",
+          "memory_id": "mem_conv-42_0055",
+          "content": "Joanna invited Nate to join her on hiking trails, suggesting they go together sometime.",
+          "memory_kind": "plan",
+          "subject": "Joanna",
+          "world_start": "2022-05-12",
+          "world_end": null,
+          "score": 0.0147,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0030_v2",
+          "memory_id": "mem_conv-42_0030",
+          "content": "Nate supports Joanna in her writing endeavors and encourages her to keep working hard on her project. He expressed pride and support for her creative efforts, assuring her of continued encouragement and belief in her talent.",
+          "memory_kind": "event",
+          "subject": "Nate",
+          "world_start": "2022-03-24",
+          "world_end": null,
+          "score": 0.0145,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0047_v2",
+          "memory_id": "mem_conv-42_0047",
+          "content": "Joanna plans to check out the book series recommended by Nate and intends to share her thoughts on it. She also requested the recipe for Nate's vegan ice cream on June 24, 2022, and agreed to make it for her family this weekend.",
+          "memory_kind": "plan",
+          "subject": "Joanna",
+          "world_start": "2022-04-21",
+          "world_end": null,
+          "score": 0.0141,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0130_v1",
+          "memory_id": "mem_conv-42_0130",
+          "content": "Nate reiterated his support for Joanna, expressing respect for her resilience and ability to bounce back from setbacks.",
+          "memory_kind": "event",
+          "subject": "Nate",
+          "world_start": "2022-06-03",
+          "world_end": null,
+          "score": 0.014,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        }
+      ],
+      "returned_version_ids": [
+        "mem_conv-42_0020_v1",
+        "mem_conv-42_0126_v1",
+        "mem_conv-42_0107_v1",
+        "mem_conv-42_0024_v3",
+        "mem_conv-42_0055_v1",
+        "mem_conv-42_0030_v2",
+        "mem_conv-42_0047_v2",
+        "mem_conv-42_0130_v1"
+      ]
+    },
+    {
+      "action_id": "access_conv-42_conv-42_conv-42_qa_0000_a001",
+      "step_index": 1,
+      "action_type": "inspect_memory",
+      "request": {
+        "action": "inspect_memory",
+        "arguments": {
+          "memory_id": "mem_conv-42_0020",
+          "include_versions": true,
+          "include_sources": true
+        },
+        "reason": "To check if there are any other friends of Nate mentioned in the memory or its versions."
+      },
+      "returned_memories": [
+        {
+          "version_id": "mem_conv-42_0020_v1",
+          "version_no": 1,
+          "content": "Nate and Joanna have a friendly relationship where they exchange ideas and support each other's creative endeavors. Nate appreciates Joanna's screenplays and encourages her to keep writing.",
+          "world_start": "2022-02-25",
+          "world_end": null
+        }
+      ],
+      "returned_version_ids": [
+        "mem_conv-42_0020_v1"
+      ]
+    },
+    {
+      "action_id": "access_conv-42_conv-42_conv-42_qa_0000_a002",
+      "step_index": 2,
+      "action_type": "inspect_memory",
+      "request": {
+        "action": "inspect_memory",
+        "arguments": {
+          "memory_id": "mem_conv-42_0126",
+          "include_versions": true,
+          "include_sources": true
+        },
+        "reason": "To check if there are any other friends of Nate mentioned in the memory or its versions."
+      },
+      "returned_memories": [
+        {
+          "version_id": "mem_conv-42_0126_v1",
+          "version_no": 1,
+          "content": "Nate and Joanna have a friendly relationship where they share interests in games, movies, and comfort.",
+          "world_start": "2022-10-09",
+          "world_end": null
+        }
+      ],
+      "returned_version_ids": [
+        "mem_conv-42_0126_v1"
+      ]
+    },
+    {
+      "action_id": "access_conv-42_conv-42_conv-42_qa_0000_a003",
+      "step_index": 3,
+      "action_type": "inspect_memory",
+      "request": {
+        "action": "inspect_memory",
+        "arguments": {
+          "memory_id": "mem_conv-42_0107",
+          "include_versions": true,
+          "include_sources": true
+        },
+        "reason": "To check if there are any other friends of Nate mentioned in the memory or its versions."
+      },
+      "returned_memories": [],
+      "returned_version_ids": []
+    },
+    {
+      "action_id": "access_conv-42_conv-42_conv-42_qa_0000_a004",
+      "step_index": 4,
+      "action_type": "answer",
+      "request": {
+        "action": "answer",
+        "arguments": {
+          "answer": "No",
+          "evidence_version_ids": [
+            "mem_conv-42_0020_v1",
+            "mem_conv-42_0126_v1",
+            "mem_conv-42_0107_v1"
+          ],
+          "confidence": 0.95
+        },
+        "reason": "All retrieved memories indicate that Nate's primary friend is Joanna, with no mention of other friends."
+      },
+      "returned_memories": [],
+      "returned_version_ids": []
+    }
+  ]
+}

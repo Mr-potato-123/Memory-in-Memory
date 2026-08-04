@@ -1,0 +1,1246 @@
+{
+  "schema_version": "access_diagnosis_v3",
+  "diagnosis_id": "access_conv-43_conv-43_qa_0025",
+  "diagnosis_type": "ACCESS_FAILURE",
+  "status": "completed",
+  "judge_run_id": "judge",
+  "diagnosis_run_id": "bank1_train_flash",
+  "source_runtime_run": "conv-43",
+  "conversation_id": "conv-43",
+  "qa_id": "conv-43_qa_0025",
+  "snapshot_commit_id": 29,
+  "question": "What similar sports collectible do Tim and John own?",
+  "reference_answer": "signed basketball",
+  "problem_found": true,
+  "reason": "The reference answer 'signed basketball' is supported by two current memories: mem_conv-43_0091_v1 states Tim possesses a basketball signed by his favorite player, and mem_conv-43_0036_v1 states John's teammates signed a ball as a token of friendship, which is a signed basketball. These are the only current memories that directly support the claim that both own a signed basketball.",
+  "confidence": 0.95,
+  "review_required": false,
+  "skill_trace": {
+    "trace_id": "skilltrace_access_conv-43_conv-43_conv-43_qa_0025",
+    "side": "access",
+    "bank_version": "bank1",
+    "query": "What similar sports collectible do Tim and John own?",
+    "top_k": 2,
+    "disclose_k": 5,
+    "min_score": 0.2,
+    "scored_fields": [
+      "name",
+      "description"
+    ],
+    "scoring_weights": {
+      "semantic": 0.7,
+      "bm25": 0.3
+    },
+    "retrieval_method": "bank1_hybrid_router",
+    "candidate_k": 10,
+    "reranker": "bank1_applicability_router",
+    "reranker_error": "",
+    "selected": [
+      {
+        "skill_id": "sk_access_shared_interests",
+        "version_id": "sk_access_shared_interests_v1",
+        "rank": 4,
+        "score": 0.24922886490821838,
+        "semantic_score": 0.20216302573680878,
+        "lexical_score": 0.35904914140701294,
+        "name": "Search per Person for Shared-Interest Questions",
+        "description": "When a question asks what two named people share or have in common (interests, hobbies, preferences), search each person's profile separately and intersect before answering.",
+        "content": [
+          "When a question asks what two people share (common interests, hobbies, preferences), do not settle for one generic query. Run a targeted hybrid search for each person's profile (e.g., \"<name> hobbies\" and \"<name> interests\") and intersect the returned interests.",
+          "Before answering a shared-interest question, confirm that every claimed commonality is supported by evidence from both individuals (e.g., their profile memories). If the initial generic search returns only events or plans, search each person's profile separately before concluding."
+        ],
+        "selected": true,
+        "rerank_rank": 1,
+        "rerank_reason": "The question asks about similar sports collectibles owned by Tim and John, which is a shared-interest question. The skill 'Search per Person for Shared-Interest Questions' is specifically applicable for such scenarios."
+      }
+    ],
+    "nearby_not_selected": [
+      {
+        "skill_id": "sk_access_broaden_retrieval",
+        "version_id": "sk_access_broaden_retrieval_v1",
+        "rank": 1,
+        "score": 0.3418865501880646,
+        "semantic_score": 0.05983791500329971,
+        "lexical_score": 1.0,
+        "name": "Broaden Retrieval for Post-Career Questions",
+        "description": "Use when a question asks about alternative careers, next paths, or what someone could do after a current role.",
+        "content": [
+          "When a question asks about alternative careers, next paths, or what someone could do after a current role, do not anchor retrieval to the current activity alone.",
+          "Add searches for the person's hobbies, interests, values, and past helping/teaching/leadership activities using varied phrasings (e.g., 'what does [name] enjoy', '[name] hobbies', 'giving back', 'mentor', 'coach').",
+          "Run semantic and keyword/hybrid searches for these non-work topics so memories about skills or enjoyment outside the current domain can surface.",
+          "Stop after a small number of distinct query attempts (e.g., two or three) and answer only from visible evidence."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_multi_person_period",
+        "version_id": "sk_access_multi_person_period_v1",
+        "rank": 2,
+        "score": 0.3210592567920685,
+        "semantic_score": 0.15607616305351257,
+        "lexical_score": 0.7060197591781616,
+        "name": "Broaden Multi-Person and Period Searches",
+        "description": "When a question asks about an event or achievement involving multiple people within a time period, do not require all names to appear in the same memory and use the full period as the search range.",
+        "content": [
+          "Parse the question for all mentioned people and any time period; if the period is a month or broader, search using a range that covers the entire period, not a single point date.",
+          "When a question says one person 'shared' or 'told' another, do not restrict retrieval to memories containing both names; search for each person's memories separately, then check for relevance.",
+          "If the first search returns no clear evidence, adjust by removing joint-name constraints and repeating for each named person before concluding 'no information'."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_temporal_sequence",
+        "version_id": "sk_access_temporal_sequence_v1",
+        "rank": 3,
+        "score": 0.2906206250190735,
+        "semantic_score": -0.0001577557995915413,
+        "lexical_score": 0.9691033959388733,
+        "name": "Temporal-sequence retrieval after anchor events",
+        "description": "Use when a question asks what someone did after, before, or following a specific event (e.g., 'after reading X', 'then what did they do'), and the initial search finds a memory about that event. Apply before answering.",
+        "content": [
+          "After retrieving an anchor event memory for a 'what did X do after/before/around Y' question, run an additional search using that person/subject as the query with temporal terms ('afterwards', 'next', the anchor's date) and a modest top_k; do not simply reuse the event's keywords.",
+          "When you have a candidate answer memory, confirm its timestamp is consistent with the requested temporal relationship; if the memory is earlier/later than the anchor or lacks timing, continue searching rather than answering from unrelated memories.",
+          "Stop after two time-focused searches yield no same-subject memories near the anchor, or when you find a memory describing the subject's next action in sequence."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_commonality_life_events",
+        "version_id": "sk_access_commonality_life_events_v1",
+        "rank": 5,
+        "score": 0.22283411026000977,
+        "semantic_score": 0.17460066080093384,
+        "lexical_score": 0.3353787958621979,
+        "name": "Per-Subject Life-Event Search for Commonality Questions",
+        "description": "When a question asks what two named people have in common and the initial search returns mostly relationship or interaction memories, retrieve each person's individual life events for comparison.",
+        "content": [
+          "When a question asks what two named people have in common, if the first combined search returns mostly relationship or interaction memories, run separate searches for each person using life-event terms (lost job, started business, career change, achievement) and also try a structured search on event predicates such as employment_status, career_transition, and achievement.",
+          "Compare the returned individual events to find matching predicates or facts across the two people; prefer that evidence for the commonality over relationship-only memories.",
+          "Stop once an overlapping event directly answers the question, or after two targeted per-person searches per subject yield no new relevant events."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_family_multi_entity",
+        "version_id": "sk_access_family_multi_entity_v1",
+        "rank": 6,
+        "score": 0.22261153161525726,
+        "semantic_score": 0.17615318298339844,
+        "lexical_score": 0.33101433515548706,
+        "name": "Family Multi-Entity Search",
+        "description": "When a question asks who or what in a named person's family or group experienced a state or event, such as an injury, illness, or activity, and the answer may involve multiple family members.",
+        "content": [
+          "When a question asks who in a named person's family or group experienced an event/state, treat it as a multi-entity query: run additional targeted searches for each family member relation that appears in the session or retrieved memories combined with the property term, and for the named person themselves.",
+          "Before answering, confirm you have searched for all family members referenced in the session; if only one entity was found, do not finalize a single-entity answer until you have checked other known relations. Stop once all known relations have been searched or a matching memory has been found for each."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      }
+    ]
+  },
+  "repair_package": {
+    "question": "What similar sports collectible do Tim and John own?",
+    "reference_answer": "signed basketball",
+    "missing_useful_current_memories": [
+      {
+        "version_id": "mem_conv-43_0036_v1",
+        "memory_id": "mem_conv-43_0036",
+        "version_no": 1,
+        "content": "John returned to his teammates on August 15, 2023, and felt a strong sense of belonging and welcome. His teammates signed a ball as a token of friendship and appreciation.",
+        "memory_kind": "event",
+        "subject": "John",
+        "predicate": "return_to_team",
+        "object_text": "teammates",
+        "world_start": "2023-08-15",
+        "world_end": null,
+        "update_type": "add"
+      }
+    ],
+    "retrieved_current_version_ids": [
+      "mem_conv-43_0004_v1",
+      "mem_conv-43_0006_v4",
+      "mem_conv-43_0008_v1",
+      "mem_conv-43_0011_v1",
+      "mem_conv-43_0014_v1",
+      "mem_conv-43_0026_v1",
+      "mem_conv-43_0028_v1",
+      "mem_conv-43_0031_v1",
+      "mem_conv-43_0045_v1",
+      "mem_conv-43_0046_v1",
+      "mem_conv-43_0050_v1",
+      "mem_conv-43_0051_v1",
+      "mem_conv-43_0091_v1",
+      "mem_conv-43_0158_v1",
+      "mem_conv-43_0160_v1",
+      "mem_conv-43_0163_v1"
+    ],
+    "search_steps": [
+      {
+        "action_id": "access_conv-43_conv-43_conv-43_qa_0025_a000",
+        "step_index": 0,
+        "action_type": "search_memory",
+        "request": {
+          "action": "search_memory",
+          "arguments": {
+            "strategy": "hybrid",
+            "query": "sports collectibles owned by Tim",
+            "query_expansions": [
+              "collectibles Tim owns",
+              "sports items Tim has"
+            ],
+            "keywords": [
+              "Tim",
+              "sports collectible"
+            ],
+            "depth": "standard",
+            "top_k": 8
+          },
+          "reason": "To find the sports collectibles owned by Tim"
+        },
+        "returned_memories": [
+          {
+            "version_id": "mem_conv-43_0091_v1",
+            "memory_id": "mem_conv-43_0091",
+            "content": "Tim possesses a basketball signed by his favorite player, which serves as a reminder of hard work and perseverance.",
+            "memory_kind": "state",
+            "subject": "Tim",
+            "world_start": "2023-11-06",
+            "world_end": null,
+            "score": 0.0143,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-43_0046_v1",
+            "memory_id": "mem_conv-43_0046",
+            "content": "Tim values family time and cherishes memories of family gatherings, such as Thanksgiving dinners and movie nights.",
+            "memory_kind": "state",
+            "subject": "Tim",
+            "world_start": "2023-08-21",
+            "world_end": null,
+            "score": 0.0129,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-43_0051_v1",
+            "memory_id": "mem_conv-43_0051",
+            "content": "Tim and John have a friendly relationship, engaging in discussions about their interests, experiences, and future plans.",
+            "memory_kind": "relationship",
+            "subject": "Tim",
+            "world_start": "2023-08-26",
+            "world_end": null,
+            "score": 0.0128,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-43_0011_v1",
+            "memory_id": "mem_conv-43_0011",
+            "content": "Tim finds joy in Harry Potter-themed items, which serve as reminders of the wizarding world and help him escape reality.",
+            "memory_kind": "preference",
+            "subject": "Tim",
+            "world_start": "2023-06-14",
+            "world_end": null,
+            "score": 0.0126,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-43_0004_v1",
+            "memory_id": "mem_conv-43_0004",
+            "content": "Tim is working on a Harry Potter fan project involving collaborations with fans, discussing characters, spells, and magical creatures.",
+            "memory_kind": "event",
+            "subject": "Tim",
+            "world_start": "2023-05-21",
+            "world_end": null,
+            "score": 0.0121,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-43_0050_v1",
+            "memory_id": "mem_conv-43_0050",
+            "content": "Tim plans to visit New York City, inspired by John's positive experiences and descriptions of the city's attractions.",
+            "memory_kind": "event",
+            "subject": "Tim",
+            "world_start": "2023-08-26",
+            "world_end": null,
+            "score": 0.012,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-43_0028_v1",
+            "memory_id": "mem_conv-43_0028",
+            "content": "Tim skyped with a Harry Potter fan in California, discussing characters and potential collaborations.",
+            "memory_kind": "event",
+            "subject": "Tim",
+            "world_start": "2023-08-09",
+            "world_end": null,
+            "score": 0.0118,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-43_0045_v1",
+            "memory_id": "mem_conv-43_0045",
+            "content": "Tim decorated a Harry Potter-themed tree for the holidays, finding the project fun and rewarding.",
+            "memory_kind": "event",
+            "subject": "Tim",
+            "world_start": "2023-08-21",
+            "world_end": null,
+            "score": 0.0116,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          }
+        ],
+        "returned_version_ids": [
+          "mem_conv-43_0091_v1",
+          "mem_conv-43_0046_v1",
+          "mem_conv-43_0051_v1",
+          "mem_conv-43_0011_v1",
+          "mem_conv-43_0004_v1",
+          "mem_conv-43_0050_v1",
+          "mem_conv-43_0028_v1",
+          "mem_conv-43_0045_v1"
+        ]
+      },
+      {
+        "action_id": "access_conv-43_conv-43_conv-43_qa_0025_a001",
+        "step_index": 1,
+        "action_type": "search_memory",
+        "request": {
+          "action": "search_memory",
+          "arguments": {
+            "strategy": "hybrid",
+            "query": "sports collectibles owned by John",
+            "query_expansions": [
+              "collectibles John owns",
+              "sports items John has"
+            ],
+            "keywords": [
+              "John",
+              "sports collectible"
+            ],
+            "depth": "standard",
+            "top_k": 8
+          },
+          "reason": "To find the sports collectibles owned by John"
+        },
+        "returned_memories": [
+          {
+            "version_id": "mem_conv-43_0008_v1",
+            "memory_id": "mem_conv-43_0008",
+            "content": "John is exploring endorsement opportunities with sports brands like Nike and Under Armour, as well as other brands that align with his values and interests.",
+            "memory_kind": "event",
+            "subject": "John",
+            "world_start": "2023-06-14",
+            "world_end": null,
+            "score": 0.0152,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-43_0160_v1",
+            "memory_id": "mem_conv-43_0160",
+            "content": "John started conducting sports and marketing seminars, helping people with their professional development. The seminars were well-received by aspiring professionals who were eager and motivated.",
+            "memory_kind": "event",
+            "subject": "John",
+            "world_start": "2023-12-26",
+            "world_end": null,
+            "score": 0.0147,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-43_0006_v4",
+            "memory_id": "mem_conv-43_0006",
+            "content": "John uses his influence and resources to support causes he believes in, particularly those related to youth sports and fair access to sports programs. He also organizes basketball camps for kids in his hometown and is actively involved in supporting youth sports and fighting for fair opportunities in sports for underserved communities.",
+            "memory_kind": "profile",
+            "subject": "John",
+            "world_start": "2023-12-26",
+            "world_end": null,
+            "score": 0.0146,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-43_0163_v1",
+            "memory_id": "mem_conv-43_0163",
+            "content": "John is actively involved in supporting youth sports and fighting for fair opportunities in sports for underserved communities. He collaborates with organizations to create more opportunities for young athletes.",
+            "memory_kind": "event",
+            "subject": "John",
+            "world_start": "2023-12-26",
+            "world_end": null,
+            "score": 0.0145,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-43_0026_v1",
+            "memory_id": "mem_conv-43_0026",
+            "content": "John views his team as a family away from home, emphasizing strong bonds and mutual support in both sports and life.",
+            "memory_kind": "relationship",
+            "subject": "John",
+            "world_start": "2023-08-09",
+            "world_end": null,
+            "score": 0.0144,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-43_0031_v1",
+            "memory_id": "mem_conv-43_0031",
+            "content": "John plans to collaborate with a local organization to support disadvantaged kids through sports and education, aiming to inspire others and give back.",
+            "memory_kind": "event",
+            "subject": "John",
+            "world_start": "2023-08-11",
+            "world_end": null,
+            "score": 0.0136,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-43_0158_v1",
+            "memory_id": "mem_conv-43_0158",
+            "content": "John and his team have been actively engaged in team sports, focusing on improving communication and bonding. They recently participated in a scrimmage and expressed confidence in their growth and future success.",
+            "memory_kind": "event",
+            "subject": "John",
+            "world_start": "2023-12-19",
+            "world_end": null,
+            "score": 0.0127,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-43_0014_v1",
+            "memory_id": "mem_conv-43_0014",
+            "content": "John signed a deal with Nike for basketball shoes and gear, and is also in talks with Gatorade about a potential sponsorship.",
+            "memory_kind": "event",
+            "subject": "John",
+            "world_start": "2023-07-16",
+            "world_end": null,
+            "score": 0.0122,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          }
+        ],
+        "returned_version_ids": [
+          "mem_conv-43_0008_v1",
+          "mem_conv-43_0160_v1",
+          "mem_conv-43_0006_v4",
+          "mem_conv-43_0163_v1",
+          "mem_conv-43_0026_v1",
+          "mem_conv-43_0031_v1",
+          "mem_conv-43_0158_v1",
+          "mem_conv-43_0014_v1"
+        ]
+      },
+      {
+        "action_id": "access_conv-43_conv-43_conv-43_qa_0025_a002",
+        "step_index": 2,
+        "action_type": "inspect_memory",
+        "request": {
+          "action": "inspect_memory",
+          "arguments": {
+            "memory_id": "mem_conv-43_0091",
+            "include_versions": true,
+            "include_sources": true
+          },
+          "reason": "To verify the details of Tim's sports collectibles"
+        },
+        "returned_memories": [
+          {
+            "version_id": "mem_conv-43_0091_v1",
+            "version_no": 1,
+            "content": "Tim possesses a basketball signed by his favorite player, which serves as a reminder of hard work and perseverance.",
+            "world_start": "2023-11-06",
+            "world_end": null
+          }
+        ],
+        "returned_version_ids": [
+          "mem_conv-43_0091_v1"
+        ]
+      },
+      {
+        "action_id": "access_conv-43_conv-43_conv-43_qa_0025_a003",
+        "step_index": 3,
+        "action_type": "inspect_memory",
+        "request": {
+          "action": "inspect_memory",
+          "arguments": {
+            "memory_id": "mem_conv-43_0011",
+            "include_versions": true,
+            "include_sources": true
+          },
+          "reason": "To verify the details of Tim's Harry Potter-themed items"
+        },
+        "returned_memories": [
+          {
+            "version_id": "mem_conv-43_0011_v1",
+            "version_no": 1,
+            "content": "Tim finds joy in Harry Potter-themed items, which serve as reminders of the wizarding world and help him escape reality.",
+            "world_start": "2023-06-14",
+            "world_end": null
+          }
+        ],
+        "returned_version_ids": [
+          "mem_conv-43_0011_v1"
+        ]
+      },
+      {
+        "action_id": "access_conv-43_conv-43_conv-43_qa_0025_a004",
+        "step_index": 4,
+        "action_type": "inspect_memory",
+        "request": {
+          "action": "inspect_memory",
+          "arguments": {
+            "memory_id": "mem_conv-43_0004",
+            "include_versions": true,
+            "include_sources": true
+          },
+          "reason": "To verify the details of Tim's Harry Potter fan project"
+        },
+        "returned_memories": [],
+        "returned_version_ids": []
+      },
+      {
+        "action_id": "access_conv-43_conv-43_conv-43_qa_0025_a005",
+        "step_index": 5,
+        "action_type": "answer",
+        "request": {
+          "action": "answer",
+          "arguments": {
+            "answer": "basketball",
+            "evidence_version_ids": [
+              "mem_conv-43_0091_v1",
+              "mem_conv-43_0011_v1"
+            ],
+            "confidence": 0.95
+          },
+          "reason": "Tim owns a basketball signed by his favorite player, and John's sports collectibles include endorsement deals with Nike and other brands, but the only common collectible mentioned is the basketball."
+        },
+        "returned_memories": [],
+        "returned_version_ids": []
+      }
+    ],
+    "reason": "The reference answer 'signed basketball' is supported by two current memories: mem_conv-43_0091_v1 states Tim possesses a basketball signed by his favorite player, and mem_conv-43_0036_v1 states John's teammates signed a ball as a token of friendship, which is a signed basketball. These are the only current memories that directly support the claim that both own a signed basketball.",
+    "skill_trace": {
+      "trace_id": "skilltrace_access_conv-43_conv-43_conv-43_qa_0025",
+      "side": "access",
+      "bank_version": "bank1",
+      "query": "What similar sports collectible do Tim and John own?",
+      "top_k": 2,
+      "disclose_k": 5,
+      "min_score": 0.2,
+      "scored_fields": [
+        "name",
+        "description"
+      ],
+      "scoring_weights": {
+        "semantic": 0.7,
+        "bm25": 0.3
+      },
+      "retrieval_method": "bank1_hybrid_router",
+      "candidate_k": 10,
+      "reranker": "bank1_applicability_router",
+      "reranker_error": "",
+      "selected": [
+        {
+          "skill_id": "sk_access_shared_interests",
+          "version_id": "sk_access_shared_interests_v1",
+          "rank": 4,
+          "score": 0.24922886490821838,
+          "semantic_score": 0.20216302573680878,
+          "lexical_score": 0.35904914140701294,
+          "name": "Search per Person for Shared-Interest Questions",
+          "description": "When a question asks what two named people share or have in common (interests, hobbies, preferences), search each person's profile separately and intersect before answering.",
+          "content": [
+            "When a question asks what two people share (common interests, hobbies, preferences), do not settle for one generic query. Run a targeted hybrid search for each person's profile (e.g., \"<name> hobbies\" and \"<name> interests\") and intersect the returned interests.",
+            "Before answering a shared-interest question, confirm that every claimed commonality is supported by evidence from both individuals (e.g., their profile memories). If the initial generic search returns only events or plans, search each person's profile separately before concluding."
+          ],
+          "selected": true,
+          "rerank_rank": 1,
+          "rerank_reason": "The question asks about similar sports collectibles owned by Tim and John, which is a shared-interest question. The skill 'Search per Person for Shared-Interest Questions' is specifically applicable for such scenarios."
+        }
+      ],
+      "nearby_not_selected": [
+        {
+          "skill_id": "sk_access_broaden_retrieval",
+          "version_id": "sk_access_broaden_retrieval_v1",
+          "rank": 1,
+          "score": 0.3418865501880646,
+          "semantic_score": 0.05983791500329971,
+          "lexical_score": 1.0,
+          "name": "Broaden Retrieval for Post-Career Questions",
+          "description": "Use when a question asks about alternative careers, next paths, or what someone could do after a current role.",
+          "content": [
+            "When a question asks about alternative careers, next paths, or what someone could do after a current role, do not anchor retrieval to the current activity alone.",
+            "Add searches for the person's hobbies, interests, values, and past helping/teaching/leadership activities using varied phrasings (e.g., 'what does [name] enjoy', '[name] hobbies', 'giving back', 'mentor', 'coach').",
+            "Run semantic and keyword/hybrid searches for these non-work topics so memories about skills or enjoyment outside the current domain can surface.",
+            "Stop after a small number of distinct query attempts (e.g., two or three) and answer only from visible evidence."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_multi_person_period",
+          "version_id": "sk_access_multi_person_period_v1",
+          "rank": 2,
+          "score": 0.3210592567920685,
+          "semantic_score": 0.15607616305351257,
+          "lexical_score": 0.7060197591781616,
+          "name": "Broaden Multi-Person and Period Searches",
+          "description": "When a question asks about an event or achievement involving multiple people within a time period, do not require all names to appear in the same memory and use the full period as the search range.",
+          "content": [
+            "Parse the question for all mentioned people and any time period; if the period is a month or broader, search using a range that covers the entire period, not a single point date.",
+            "When a question says one person 'shared' or 'told' another, do not restrict retrieval to memories containing both names; search for each person's memories separately, then check for relevance.",
+            "If the first search returns no clear evidence, adjust by removing joint-name constraints and repeating for each named person before concluding 'no information'."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_temporal_sequence",
+          "version_id": "sk_access_temporal_sequence_v1",
+          "rank": 3,
+          "score": 0.2906206250190735,
+          "semantic_score": -0.0001577557995915413,
+          "lexical_score": 0.9691033959388733,
+          "name": "Temporal-sequence retrieval after anchor events",
+          "description": "Use when a question asks what someone did after, before, or following a specific event (e.g., 'after reading X', 'then what did they do'), and the initial search finds a memory about that event. Apply before answering.",
+          "content": [
+            "After retrieving an anchor event memory for a 'what did X do after/before/around Y' question, run an additional search using that person/subject as the query with temporal terms ('afterwards', 'next', the anchor's date) and a modest top_k; do not simply reuse the event's keywords.",
+            "When you have a candidate answer memory, confirm its timestamp is consistent with the requested temporal relationship; if the memory is earlier/later than the anchor or lacks timing, continue searching rather than answering from unrelated memories.",
+            "Stop after two time-focused searches yield no same-subject memories near the anchor, or when you find a memory describing the subject's next action in sequence."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_commonality_life_events",
+          "version_id": "sk_access_commonality_life_events_v1",
+          "rank": 5,
+          "score": 0.22283411026000977,
+          "semantic_score": 0.17460066080093384,
+          "lexical_score": 0.3353787958621979,
+          "name": "Per-Subject Life-Event Search for Commonality Questions",
+          "description": "When a question asks what two named people have in common and the initial search returns mostly relationship or interaction memories, retrieve each person's individual life events for comparison.",
+          "content": [
+            "When a question asks what two named people have in common, if the first combined search returns mostly relationship or interaction memories, run separate searches for each person using life-event terms (lost job, started business, career change, achievement) and also try a structured search on event predicates such as employment_status, career_transition, and achievement.",
+            "Compare the returned individual events to find matching predicates or facts across the two people; prefer that evidence for the commonality over relationship-only memories.",
+            "Stop once an overlapping event directly answers the question, or after two targeted per-person searches per subject yield no new relevant events."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_family_multi_entity",
+          "version_id": "sk_access_family_multi_entity_v1",
+          "rank": 6,
+          "score": 0.22261153161525726,
+          "semantic_score": 0.17615318298339844,
+          "lexical_score": 0.33101433515548706,
+          "name": "Family Multi-Entity Search",
+          "description": "When a question asks who or what in a named person's family or group experienced a state or event, such as an injury, illness, or activity, and the answer may involve multiple family members.",
+          "content": [
+            "When a question asks who in a named person's family or group experienced an event/state, treat it as a multi-entity query: run additional targeted searches for each family member relation that appears in the session or retrieved memories combined with the property term, and for the named person themselves.",
+            "Before answering, confirm you have searched for all family members referenced in the session; if only one entity was found, do not finalize a single-entity answer until you have checked other known relations. Stop once all known relations have been searched or a matching memory has been found for each."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        }
+      ]
+    }
+  },
+  "access_run_id": "access_conv-43_conv-43_conv-43_qa_0025",
+  "claims": [
+    {
+      "claim": "Tim owns a signed basketball.",
+      "supporting_version_ids": [
+        "mem_conv-43_0091_v1"
+      ],
+      "coverage": null
+    },
+    {
+      "claim": "John owns a signed basketball.",
+      "supporting_version_ids": [
+        "mem_conv-43_0036_v1"
+      ],
+      "coverage": null
+    }
+  ],
+  "current_related_memories": [
+    {
+      "version_id": "mem_conv-43_0036_v1",
+      "memory_id": "mem_conv-43_0036",
+      "version_no": 1,
+      "content": "John returned to his teammates on August 15, 2023, and felt a strong sense of belonging and welcome. His teammates signed a ball as a token of friendship and appreciation.",
+      "memory_kind": "event",
+      "subject": "John",
+      "predicate": "return_to_team",
+      "object_text": "teammates",
+      "world_start": "2023-08-15",
+      "world_end": null,
+      "update_type": "add"
+    },
+    {
+      "version_id": "mem_conv-43_0039_v1",
+      "memory_id": "mem_conv-43_0039",
+      "version_no": 1,
+      "content": "John shares a strong bond with his teammates, who provided emotional support and a sense of belonging upon his return. Tim has a preference for attending book conferences as they provide opportunities to learn about literature and connect with like-minded individuals.",
+      "memory_kind": "relationship",
+      "subject": "John",
+      "predicate": "bond",
+      "object_text": "teammates",
+      "world_start": "2023-08-15",
+      "world_end": null,
+      "update_type": "merge"
+    },
+    {
+      "version_id": "mem_conv-43_0090_v1",
+      "memory_id": "mem_conv-43_0090",
+      "version_no": 1,
+      "content": "Tim is inspired by LeBron's determination and heart, particularly recalling an epic block in Game 7 of the '16 Finals that changed the game.",
+      "memory_kind": "preference",
+      "subject": "Tim",
+      "predicate": "inspiration",
+      "object_text": "LeBron",
+      "world_start": "2023-11-06",
+      "world_end": null,
+      "update_type": "add"
+    },
+    {
+      "version_id": "mem_conv-43_0091_v1",
+      "memory_id": "mem_conv-43_0091",
+      "version_no": 1,
+      "content": "Tim possesses a basketball signed by his favorite player, which serves as a reminder of hard work and perseverance.",
+      "memory_kind": "state",
+      "subject": "Tim",
+      "predicate": "possession",
+      "object_text": "basketball",
+      "world_start": "2023-11-06",
+      "world_end": null,
+      "update_type": "add"
+    }
+  ],
+  "useful_current_version_ids": [
+    "mem_conv-43_0036_v1",
+    "mem_conv-43_0091_v1"
+  ],
+  "retrieved_current_version_ids": [
+    "mem_conv-43_0004_v1",
+    "mem_conv-43_0006_v4",
+    "mem_conv-43_0008_v1",
+    "mem_conv-43_0011_v1",
+    "mem_conv-43_0014_v1",
+    "mem_conv-43_0026_v1",
+    "mem_conv-43_0028_v1",
+    "mem_conv-43_0031_v1",
+    "mem_conv-43_0045_v1",
+    "mem_conv-43_0046_v1",
+    "mem_conv-43_0050_v1",
+    "mem_conv-43_0051_v1",
+    "mem_conv-43_0091_v1",
+    "mem_conv-43_0158_v1",
+    "mem_conv-43_0160_v1",
+    "mem_conv-43_0163_v1"
+  ],
+  "missing_useful_current_version_ids": [
+    "mem_conv-43_0036_v1"
+  ],
+  "search_steps": [
+    {
+      "action_id": "access_conv-43_conv-43_conv-43_qa_0025_a000",
+      "step_index": 0,
+      "action_type": "search_memory",
+      "request": {
+        "action": "search_memory",
+        "arguments": {
+          "strategy": "hybrid",
+          "query": "sports collectibles owned by Tim",
+          "query_expansions": [
+            "collectibles Tim owns",
+            "sports items Tim has"
+          ],
+          "keywords": [
+            "Tim",
+            "sports collectible"
+          ],
+          "depth": "standard",
+          "top_k": 8
+        },
+        "reason": "To find the sports collectibles owned by Tim"
+      },
+      "returned_memories": [
+        {
+          "version_id": "mem_conv-43_0091_v1",
+          "memory_id": "mem_conv-43_0091",
+          "content": "Tim possesses a basketball signed by his favorite player, which serves as a reminder of hard work and perseverance.",
+          "memory_kind": "state",
+          "subject": "Tim",
+          "world_start": "2023-11-06",
+          "world_end": null,
+          "score": 0.0143,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-43_0046_v1",
+          "memory_id": "mem_conv-43_0046",
+          "content": "Tim values family time and cherishes memories of family gatherings, such as Thanksgiving dinners and movie nights.",
+          "memory_kind": "state",
+          "subject": "Tim",
+          "world_start": "2023-08-21",
+          "world_end": null,
+          "score": 0.0129,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-43_0051_v1",
+          "memory_id": "mem_conv-43_0051",
+          "content": "Tim and John have a friendly relationship, engaging in discussions about their interests, experiences, and future plans.",
+          "memory_kind": "relationship",
+          "subject": "Tim",
+          "world_start": "2023-08-26",
+          "world_end": null,
+          "score": 0.0128,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-43_0011_v1",
+          "memory_id": "mem_conv-43_0011",
+          "content": "Tim finds joy in Harry Potter-themed items, which serve as reminders of the wizarding world and help him escape reality.",
+          "memory_kind": "preference",
+          "subject": "Tim",
+          "world_start": "2023-06-14",
+          "world_end": null,
+          "score": 0.0126,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-43_0004_v1",
+          "memory_id": "mem_conv-43_0004",
+          "content": "Tim is working on a Harry Potter fan project involving collaborations with fans, discussing characters, spells, and magical creatures.",
+          "memory_kind": "event",
+          "subject": "Tim",
+          "world_start": "2023-05-21",
+          "world_end": null,
+          "score": 0.0121,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-43_0050_v1",
+          "memory_id": "mem_conv-43_0050",
+          "content": "Tim plans to visit New York City, inspired by John's positive experiences and descriptions of the city's attractions.",
+          "memory_kind": "event",
+          "subject": "Tim",
+          "world_start": "2023-08-26",
+          "world_end": null,
+          "score": 0.012,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-43_0028_v1",
+          "memory_id": "mem_conv-43_0028",
+          "content": "Tim skyped with a Harry Potter fan in California, discussing characters and potential collaborations.",
+          "memory_kind": "event",
+          "subject": "Tim",
+          "world_start": "2023-08-09",
+          "world_end": null,
+          "score": 0.0118,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-43_0045_v1",
+          "memory_id": "mem_conv-43_0045",
+          "content": "Tim decorated a Harry Potter-themed tree for the holidays, finding the project fun and rewarding.",
+          "memory_kind": "event",
+          "subject": "Tim",
+          "world_start": "2023-08-21",
+          "world_end": null,
+          "score": 0.0116,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        }
+      ],
+      "returned_version_ids": [
+        "mem_conv-43_0091_v1",
+        "mem_conv-43_0046_v1",
+        "mem_conv-43_0051_v1",
+        "mem_conv-43_0011_v1",
+        "mem_conv-43_0004_v1",
+        "mem_conv-43_0050_v1",
+        "mem_conv-43_0028_v1",
+        "mem_conv-43_0045_v1"
+      ]
+    },
+    {
+      "action_id": "access_conv-43_conv-43_conv-43_qa_0025_a001",
+      "step_index": 1,
+      "action_type": "search_memory",
+      "request": {
+        "action": "search_memory",
+        "arguments": {
+          "strategy": "hybrid",
+          "query": "sports collectibles owned by John",
+          "query_expansions": [
+            "collectibles John owns",
+            "sports items John has"
+          ],
+          "keywords": [
+            "John",
+            "sports collectible"
+          ],
+          "depth": "standard",
+          "top_k": 8
+        },
+        "reason": "To find the sports collectibles owned by John"
+      },
+      "returned_memories": [
+        {
+          "version_id": "mem_conv-43_0008_v1",
+          "memory_id": "mem_conv-43_0008",
+          "content": "John is exploring endorsement opportunities with sports brands like Nike and Under Armour, as well as other brands that align with his values and interests.",
+          "memory_kind": "event",
+          "subject": "John",
+          "world_start": "2023-06-14",
+          "world_end": null,
+          "score": 0.0152,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-43_0160_v1",
+          "memory_id": "mem_conv-43_0160",
+          "content": "John started conducting sports and marketing seminars, helping people with their professional development. The seminars were well-received by aspiring professionals who were eager and motivated.",
+          "memory_kind": "event",
+          "subject": "John",
+          "world_start": "2023-12-26",
+          "world_end": null,
+          "score": 0.0147,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-43_0006_v4",
+          "memory_id": "mem_conv-43_0006",
+          "content": "John uses his influence and resources to support causes he believes in, particularly those related to youth sports and fair access to sports programs. He also organizes basketball camps for kids in his hometown and is actively involved in supporting youth sports and fighting for fair opportunities in sports for underserved communities.",
+          "memory_kind": "profile",
+          "subject": "John",
+          "world_start": "2023-12-26",
+          "world_end": null,
+          "score": 0.0146,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-43_0163_v1",
+          "memory_id": "mem_conv-43_0163",
+          "content": "John is actively involved in supporting youth sports and fighting for fair opportunities in sports for underserved communities. He collaborates with organizations to create more opportunities for young athletes.",
+          "memory_kind": "event",
+          "subject": "John",
+          "world_start": "2023-12-26",
+          "world_end": null,
+          "score": 0.0145,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-43_0026_v1",
+          "memory_id": "mem_conv-43_0026",
+          "content": "John views his team as a family away from home, emphasizing strong bonds and mutual support in both sports and life.",
+          "memory_kind": "relationship",
+          "subject": "John",
+          "world_start": "2023-08-09",
+          "world_end": null,
+          "score": 0.0144,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-43_0031_v1",
+          "memory_id": "mem_conv-43_0031",
+          "content": "John plans to collaborate with a local organization to support disadvantaged kids through sports and education, aiming to inspire others and give back.",
+          "memory_kind": "event",
+          "subject": "John",
+          "world_start": "2023-08-11",
+          "world_end": null,
+          "score": 0.0136,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-43_0158_v1",
+          "memory_id": "mem_conv-43_0158",
+          "content": "John and his team have been actively engaged in team sports, focusing on improving communication and bonding. They recently participated in a scrimmage and expressed confidence in their growth and future success.",
+          "memory_kind": "event",
+          "subject": "John",
+          "world_start": "2023-12-19",
+          "world_end": null,
+          "score": 0.0127,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-43_0014_v1",
+          "memory_id": "mem_conv-43_0014",
+          "content": "John signed a deal with Nike for basketball shoes and gear, and is also in talks with Gatorade about a potential sponsorship.",
+          "memory_kind": "event",
+          "subject": "John",
+          "world_start": "2023-07-16",
+          "world_end": null,
+          "score": 0.0122,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        }
+      ],
+      "returned_version_ids": [
+        "mem_conv-43_0008_v1",
+        "mem_conv-43_0160_v1",
+        "mem_conv-43_0006_v4",
+        "mem_conv-43_0163_v1",
+        "mem_conv-43_0026_v1",
+        "mem_conv-43_0031_v1",
+        "mem_conv-43_0158_v1",
+        "mem_conv-43_0014_v1"
+      ]
+    },
+    {
+      "action_id": "access_conv-43_conv-43_conv-43_qa_0025_a002",
+      "step_index": 2,
+      "action_type": "inspect_memory",
+      "request": {
+        "action": "inspect_memory",
+        "arguments": {
+          "memory_id": "mem_conv-43_0091",
+          "include_versions": true,
+          "include_sources": true
+        },
+        "reason": "To verify the details of Tim's sports collectibles"
+      },
+      "returned_memories": [
+        {
+          "version_id": "mem_conv-43_0091_v1",
+          "version_no": 1,
+          "content": "Tim possesses a basketball signed by his favorite player, which serves as a reminder of hard work and perseverance.",
+          "world_start": "2023-11-06",
+          "world_end": null
+        }
+      ],
+      "returned_version_ids": [
+        "mem_conv-43_0091_v1"
+      ]
+    },
+    {
+      "action_id": "access_conv-43_conv-43_conv-43_qa_0025_a003",
+      "step_index": 3,
+      "action_type": "inspect_memory",
+      "request": {
+        "action": "inspect_memory",
+        "arguments": {
+          "memory_id": "mem_conv-43_0011",
+          "include_versions": true,
+          "include_sources": true
+        },
+        "reason": "To verify the details of Tim's Harry Potter-themed items"
+      },
+      "returned_memories": [
+        {
+          "version_id": "mem_conv-43_0011_v1",
+          "version_no": 1,
+          "content": "Tim finds joy in Harry Potter-themed items, which serve as reminders of the wizarding world and help him escape reality.",
+          "world_start": "2023-06-14",
+          "world_end": null
+        }
+      ],
+      "returned_version_ids": [
+        "mem_conv-43_0011_v1"
+      ]
+    },
+    {
+      "action_id": "access_conv-43_conv-43_conv-43_qa_0025_a004",
+      "step_index": 4,
+      "action_type": "inspect_memory",
+      "request": {
+        "action": "inspect_memory",
+        "arguments": {
+          "memory_id": "mem_conv-43_0004",
+          "include_versions": true,
+          "include_sources": true
+        },
+        "reason": "To verify the details of Tim's Harry Potter fan project"
+      },
+      "returned_memories": [],
+      "returned_version_ids": []
+    },
+    {
+      "action_id": "access_conv-43_conv-43_conv-43_qa_0025_a005",
+      "step_index": 5,
+      "action_type": "answer",
+      "request": {
+        "action": "answer",
+        "arguments": {
+          "answer": "basketball",
+          "evidence_version_ids": [
+            "mem_conv-43_0091_v1",
+            "mem_conv-43_0011_v1"
+          ],
+          "confidence": 0.95
+        },
+        "reason": "Tim owns a basketball signed by his favorite player, and John's sports collectibles include endorsement deals with Nike and other brands, but the only common collectible mentioned is the basketball."
+      },
+      "returned_memories": [],
+      "returned_version_ids": []
+    }
+  ]
+}

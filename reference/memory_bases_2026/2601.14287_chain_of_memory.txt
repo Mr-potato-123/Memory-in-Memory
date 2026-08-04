@@ -1,0 +1,878 @@
+                                                        Chain-of-Memory: Lightweight Memory Construction with
+                                                                  Dynamic Evolution for LLM Agents
+                                                           Xiucheng Xu1,2,3 , Bingbing Xu1,2 * , Xueyun Tian1,2,3 , Zihe Huang1,2,3 ,
+                                                                      Rongxin Chen1,2,3 , Yunfan Li1,2,3 , Huawei Shen1,2,3
+                                                                      1
+                                                                        State Key Laboratory of AI Safety, Beijing, 100086
+                                                             2
+                                                               Institute of Computing Technology, Chinese Academy of Sciences
+                                                                           3
+                                                                             University of Chinese Academy of Sciences
+                                                                           {xuxiucheng24s,xubingbing}@ict.ac.cn
+
+                                                                    Abstract                           windows (Fei et al., 2024; Zhang et al., 2025c) in
+                                                                                                       LLMs reduce their ability to retain vast amounts
+arXiv:2601.14287v2 [cs.LG] 24 Apr 2026
+
+
+
+
+                                                 External memory systems are pivotal for en-           of information, which limits their potential for
+                                                 abling Large Language Model (LLM) agents
+                                                                                                       long-term knowledge accumulation and adaptabil-
+                                                 to maintain persistent knowledge and per-
+                                                 form long-horizon decision-making. Existing           ity (Wang et al., 2024; Liu et al., 2024). As a result,
+                                                 paradigms typically follow a two-stage pro-           equipping agents with explicit external memory
+                                                 cess: computationally expensive memory con-           systems (Zhong et al., 2024; Li et al., 2025) has
+                                                 struction (e.g., structuring data into graphs) fol-   emerged as a critical component for enabling per-
+                                                 lowed by naive retrieval-augmented generation.        sistent knowledge accumulation and long-horizon
+                                                 However, our empirical analysis reveals two           decision-making in LLM-based agents.
+                                                 fundamental limitations: complex construction            Existing works on agent memory generally adopt
+                                                 incurs high costs with marginal performance
+                                                                                                       a two-stage paradigm: memory construction fol-
+                                                 gains, and simple context concatenation fails to
+                                                 bridge the gap between retrieval recall and rea-      lowed by memory utilization. During construc-
+                                                 soning accuracy. To address above challenges,         tion, raw interaction traces are often transformed
+                                                 we propose CoM (Chain-of-Memory), a novel             into structured formats, such as trees or graphs,
+                                                 framework that advocates for a paradigm shift         to capture semantic connections (Chhikara et al.,
+                                                 toward lightweight construction paired with           2025; Xu et al., 2025), resulting in high computa-
+                                                 sophisticated utilization. CoM introduces a           tional costs. Conversely, memory utilization typ-
+                                                 Chain-of-Memory mechanism that organizes re-
+                                                                                                       ically adopts naive Retrieval-Augmented Gener-
+                                                 trieved fragments into coherent inference paths
+                                                 through dynamic evolution, utilizing adaptive         ation (RAG) (Gao et al., 2023), a conventional
+                                                 truncation to prune irrelevant noise. Exten-          retrieve-and-concatenate paradigm where retrieved
+                                                 sive experiments on the LongMemEval and               fragments are directly incorporated into prompts.
+                                                 LoCoMo benchmarks demonstrate that CoM                   However, as Fig. 1 illustrated, we find that the
+                                                 outperforms strong baselines with accuracy            above methods suffer from two fundamental lim-
+                                                 gains of 7.5%–10.4%, while drastically reduc-         itations: First, our empirical observations reveal
+                                                 ing computational overhead to approximately           that the heavy cost incurred by elaborate memory
+                                                 2.7% of token consumption and 6.0% of la-
+                                                                                                       construction is not matched by commensurate per-
+                                                 tency compared to complex memory architec-
+                                                 tures. Code is available at https://github.           formance gains. Specifically, on long-term memory
+                                                 com/Xiucheng-Xu/CoM.                                  QA benchmarks, such structured memories lead to
+                                                                                                       significantly higher token usage and latency, while
+                                         1       Introduction                                          yielding negligible accuracy improvements over a
+                                                                                                       naive RAG baseline. Second, there exists a clear
+                                         Large Language Model (LLM)-driven agents are                  gap between the retrieval effectiveness and final re-
+                                         evolving from simple conversational interfaces into           sponse accuracy: even when ground-truth evidence
+                                         autonomous entities capable of handling complex,              is successfully retrieved, directly injecting retrieved
+                                         long-horizon tasks (Yang et al., 2024; Singh et al.,          fragments into the prompt often fails to translate
+                                         2025; Zhang et al., 2025a). Effective decision-               recall into accurate answers, suggesting that the
+                                         making in such scenarios necessitates the contin-             prevailing practice of merely inserting fragments
+                                         uous integration of extensive interaction histories.          into prompts is insufficient for reasoning.
+                                         However, the inherent constraints of finite context              Motivated by these observations, we argue
+                                             *    Corresponding author.                                for a paradigm shift in memory design: rather
+                                    (a)                                                       (b)
+
+
+Figure 1: Empirical limitations of existing paradigms. (a) Heavy-weight memory construction strategies fail
+to demonstrate cost-effectiveness. (b) Naive retrieval strategies exhibit a reasoning bottleneck, where retrieved
+evidence is not effectively utilized for answer generation.
+
+
+than investing in costly and elaborate mem-               memory architectures.
+ory construction coupled with naive retrieve-and-          Our contributions can be summarized as follows:
+concatenate utilization, memory systems should
+adopt lightweight construction with more princi-              • Paradigm-Shifting: We advocate for a fun-
+pled and effective utilization. This shift requires             damental shift away from costly, structured
+rethinking how retrieved memories are organized                 memory construction coupled with naive re-
+and consumed during generation. In particular, we               trieval, towards a principle of lightweight con-
+identify two key limitations in existing memory                 struction paired with systematic and dynamic
+utilization strategies. First, retrieved memories are           memory utilization.
+processed largely in isolation, without explicit rela-        • Methodologically Novel: We propose the
+tional structures to support compositional or multi-            Chain-of-Memory framework, which orga-
+hop reasoning. Second, relevant evidence is often               nizes retrieved fragments into coherent infer-
+embedded within long and noisy contexts, where                  ence paths through dynamic memory chain
+excessive and irrelevant information obscures crit-             evolution and prunes non-essential contexts
+ical signals, making it difficult for the model to              via adaptive truncation.
+effectively leverage retrieved memories.
+                                                              • Empirically Effective: The framework deliv-
+   Inspired by these, we propose a Chain-of-                    ers substantial accuracy gains (7.5%–10.4%)
+Memory framework, named CoM, featuring                          while drastically reducing computational costs
+lightweight memory construction for retrieval and               (to 2.7% token usage and 6.0% runtime) com-
+a dynamic memory chain evolution mechanism                      pared to existing complex memory structures.
+for organizing isolated fragments into coherent
+inference paths. Specifically, we construct these         2     Related Work
+memory chains by jointly evaluating query rele-
+vance and contextual consistency. Furthermore,            2.1    Retrieval-Augmented Generation
+to mitigate information redundancy, we adopt an           Standard Retrieval-Augmented Generation (RAG)
+adaptive truncation mechanism that prunes non-            systems (Gao et al., 2023; Yu et al., 2024) partition
+essential contexts, preventing critical information       external corpora into discrete segments, retrieving
+from being diluted. Extensive experiments on the          relevant chunks based on semantic similarity to aug-
+LongMemEval (Wu et al., 2024) and LoCoMo (Ma-             ment LLM prompts. Prevailing chunking strategies
+harana et al., 2024) benchmarks demonstrate that          include rule-based methods that generate fixed-size
+CoM consistently outperforms the strongest base-          segments (Sarthi et al., 2024; Liu et al., 2025b),
+lines, yielding absolute accuracy gains of 7.5%–          semantic-based approaches that cluster content by
+10.0% with GPT-4o-mini and 9.1%–10.4% with                topic (Qu et al., 2025), and LLM-driven techniques
+Qwen3-32B. Meanwhile, CoM reduces the com-                that leverage parametric knowledge for segmenta-
+putational footprint drastically, requiring approxi-      tion (Pan et al., 2025; Duarte et al., 2024; Zhao
+mately 2.7% of the token consumption and merely           et al., 2024b). Some approaches adopt GraphRAG
+6.0% of the time compared to prevailing complex           systems (Guo et al., 2024; Dong et al., 2025) to
+enhance recall through extensive relationship pre-      plex pre-built structures, CoM constructs query-
+computation. However, these frameworks operate          oriented dependencies among memory nodes to
+on static data and lack mechanisms to maintain          synthesize coherent reasoning paths. As illustrated
+an evolving memory of historical interactions. In       in Figure 2, the framework comprises two core
+contrast, agent memory systems are grounded in en-      stages: (1) Memory Construction and Retrieval,
+vironmental interaction, dynamically assimilating       and (2) Dynamic Memory Chain Evolution.
+information from agent actions and environmen-
+tal feedback into a persistent memory store (Wang       3.1   Memory Construction and Retrieval
+et al., 2025; Zhao et al., 2024a; Sun et al., 2025).    To minimize computational overhead and tempo-
+                                                        ral latency, we adopt a lightweight, flat memory
+2.2    Memory for LLM Agents
+                                                        architecture that stores raw conversation data with-
+Memory systems enable LLM-driven agents to              out complex pre-structuring. By leveraging direct
+maintain persistent context and perform consistent      semantic similarity for retrieval, this streamlined
+decision-making in complex environments (Liu            approach ensures rapid access to relevant context,
+et al., 2025a; Mei et al., 2025). Early approaches      avoiding the heavy computational burden associ-
+typically organize historical experiences as linear     ated with hierarchical or graph-based modeling.
+sequences, occasionally augmented with hierarchi-
+cal structures. For instance, MemGPT (Packer            Construction. We formalize the raw conversa-
+et al., 2023) draws inspiration from operating sys-     tion history as H = {S1 , . . . , SM }. Each session
+tem virtual memory to manage context paging,            Si = (ti,1 , . . . , ti,Ni ) consists of a chronological
+while frameworks like SCM (Wang et al., 2023)           sequence of Ni turns, where the turn ti,j is a sin-
+employ controller-based mechanisms to optimize          gle utterance generated by either the user or the
+information retention. While implementationally         assistant. To facilitate efficient indexing, we treat
+efficient, these linear methods often struggle to       a single turn as the atomic granularity for mem-
+capture explicit semantic dependencies between          ory construction . Specifically, each turn ti,j is
+temporally distant fragments. To address this,          transformed into a Memory Node:
+some approaches organize memory into complex
+structures, such as trees or graphs. Systems such                        mi,j = (x, τ, ρ, e),               (1)
+as MemTree (Rezazadeh et al., 2024), Zep (Ras-
+mussen et al., 2025), A-Mem (Xu et al., 2025),          where x denotes the raw textual content, τ is the
+Mem0 (Chhikara et al., 2025) construct temporal         timestamp, ρ ∈ {User, Assistant} indicates the
+knowledge trees, graphs or networks to permit dy-       speaker role, and e ∈ Rd is the embedding of
+namic updates and relational retrieval.                 x. We define the resulting memory database as
+   Although these structured approaches signifi-        M = {(mi,1 , . . . , mi,Ni )}M
+                                                                                     i=1 and simplify this no-
+cantly improve reasoning consistency, they typi-        tation to M = {m1 , . . . , mn }. This organization
+cally incur high computational costs during the         preserves the raw structure of the original conver-
+memory construction phase, making them less prac-       sation, supporting both context-aware filtering and
+tical for real-time applications. Furthermore, de-      efficient retrieval of atomic memory nodes.
+spite the sophisticated organization, the utilization
+stage frequently relies on naive retrieval paradigms    Retrieval. For a given query q, we employ an
+that fail to support compositional reasoning. Di-       embedding model to obtain its vector representa-
+verging from these heavy-construction frameworks,       tion q = E(q), and compute the relevance score
+our CoM proposes a paradigm shift: minimizing           for each memory node mi via cosine similarity:
+construction overhead while enhancing utilization
+through a dynamic chain of memory evolution                               si = cos(q, ei ).                 (2)
+chain-of-evidence mechanism.
+                                                        The Top-K memory nodes with the highest scores
+3     Methodology                                       are selected to form a candidate pool P =
+                                                        {m1 , m2 , . . . , mK } ⊂ M. Although P provides
+We propose CoM, a framework that integrates a           the necessary context, memory nodes within this
+lightweight flat index with a dynamic post-retrieval    pool remain isolated, lacking explicit logical con-
+chaining mechanism. Instead of relying on com-          nections to guide the reasoning process.
+                                                              Memory Chain 1
+
+
+
+
+                                                                                                                                    Truncate
+                                                                Anchor 1             Node 1            Node 2           Ghost n
+                                                                                                                                                                      System
+                                                                                                                                                                      prompt
+
+                     Text      Role
+                                                  Memory
+                                                  node 1                                                                                                              Chain 1
+                                                                                      State-Aware Gating Evolution
+                     Time   Embedding                                                                                                                      Append
+
+
+
+
+                                                                                                                                                                        ...
+                                                             Query(q)                                                                                      to chain
+                                                  Memory                                                              Multiplayer
+                                                  node 2                                                                                       Score Bar
+                                                                                              Node m
+                                                                        Global Relevance                                                                              Chain L
+                                        top-K                                                                            (×)
+
+
+
+
+                                                    ......
+                                                                  Node 1            Node 2    …    Node m                                Threshold Line
+                                                                                                                Consistency                                           Query
+
+                                                  Memory
+                                                  node K
+                                                              Memory Chain L
+
+
+
+
+                                                                                                                                    Truncate
+                                                                Anchor L             Node 1            Node 2           Ghost n
+
+
+
+
+Figure 2: The overview architecture of CoM. The workflow consists of two stages: (1) Memory Construction and
+Retrieval, and (2) Dynamic Memory Chain Evolution. The dashed Ghost n denotes a candidate node whose gating
+score sharply drops below the adaptive threshold, thereby triggering path truncation.
+
+
+3.2   Dynamic Memory Chain Evolution                                                          two essential criteria: alignment with the user’s
+To construct coherent and contextually relevant rea-                                          query (Global Relevance) and coherence with the
+soning paths from the retrieved memories, we pro-                                             current reasoning context (Contextual Consistency).
+pose a Dynamic Memory Chain Evolution mech-                                                   Consequently, the candidate m∗ maximizing Sgate
+anism. This stage iteratively expands memory                                                  is selected as the next node.
+chains by selecting subsequent nodes that adhere                                              Adaptive Path Truncation. To mitigate the risk
+to the user’s original intent, while maintaining log-                                         of semantic drift—where the chain diverges into
+ically contextual coherence with the ongoing rea-                                             irrelevant topics, we implement a relative threshold
+soning path. By dynamically evolving these chains,                                            termination strategy. Let st−1 denote the gating
+we model long-range dependencies while pruning                                                score of the node appended in the previous step,
+irrelevant information which ensures high quality                                             and s∗t be the optimal score among candidates in
+context for reasoning.                                                                        the current step. The expansion terminates if the
+Initialization. The process commences by se-                                                  relevance exhibits a sharp attenuation:
+lecting the Top-L memory nodes from the candi-
+date pool P according to their retrieval scores to                                                                                  s∗t < β · st−1 ,                            (4)
+serve as starting anchors. Consequently, L distinct
+                                                                                              where β ∈ [0, 1] is a hyperparameter controlling
+memory chains are constructed, each initialized as
+  (0)                                                                                         the sensitivity of the truncation. This condition
+Cz = {mz }. These initial anchors serve as the                                                identifies "cliff-like" drops in semantic relevance,
+foundation for the subsequent iterative expansion,                                            indicating that further expansion would yield di-
+where each chain evolves step-by-step to incorpo-                                             minishing returns. Thus, we finalize the chain at
+rate complementary information.                                                               this point to preserve the integrity and quality of
+State-Aware Gating Evolution. At expansion                                                    the reasoning path.
+                               (t)
+step t for a specific chain Cz , we aim to iden-                                              3.3           Complexity Analysis
+tify the optimal successor from the candidates. To
+strictly control chain growth quality, we compute a                                           We analyze the complexity of the dynamic mem-
+gating score Sgate for each candidate m:                                                      ory chain evolution process. Let K be the size
+                                                                                              of the retrieved candidate pool, L the number of
+  Sgate (m) =     cos(m, q)             ×       cos(m, C(t)
+                                                        z )             , (3)                 initialized memory chains, and d the embedding
+                  | {z }                        |    {z     }
+                Global Relevance            Contextual Consistency                            dimension. Within each chain, selected candidates
+                                                                                              are removed from that chain’s candidate set, while
+         (t)                                                            (t)
+where Cz denotes the embedding of chain Cz at                                                 different chains may still reuse the same candi-
+step t. This multiplicative formulation acts as a soft                                        dates. If adaptive truncation isPnever triggered, a
+logical gate, ensuring that a valid successor satisfies                                       single chain evaluates at most K−1t=1 (K − t) can-
+    Dataset             Category
+                                                     # Questions             Baselines. We compare our approach against the
+                                                   Count       Ratio         following baselines: (1) Full Context, which in-
+                        Single-hop (S-hop)            156      31.2%         puts the complete conversation history directly;
+    LongMemEval
+                        Multi-hop (M-hop)             133      26.6%         (2) Naive RAG (Gao et al., 2023), evaluated with
+                        Temporal (Temp)               133      26.6%         both session-level and turn-level retrieval granu-
+                        Knowledge (Kno)                78      15.6%
+                                                                             larities; (3) LangMem (Chase, 2022), which ex-
+                        Single-hop (S-hop)            841      54.6%
+                        Multi-hop (M-hop)             282      18.3%         tracts salient facts for vector-based retrieval; (4)
+    LoCoMo
+                        Temporal (Temp)               321      20.8%         A-Mem (Xu et al., 2025), which builds knowl-
+                        Knowledge (Kno)                96       6.2%         edge graphs with dynamic note linking; and (5)
+Note: LongMemEval ‘Single-hop’ aggregates all single-session subtypes. Lo-
+CoMo excludes 446 ‘Adversarial’ samples.
+                                                                             Mem0 (Chhikara et al., 2025), which utilizes incre-
+                                                                             mental fact compression with graph extensions.
+Table 1: Distribution of unified question categories for
+LongMemEval and LoCoMo.
+                                                                             Metrics. We evaluate performance based on both
+                                                                             effectiveness and efficiency. For effectiveness, we
+didates, resulting in O(K 2 d) vector similarity oper-                       report Accuracy (ACC), utilizing LLM-as-LLM-
+ations. Across L independently evolved chains, the                           Judge to determine if the response correctly an-
+worst-case complexity is therefore O(LK 2 d). If                             swers the question. Unlike surface-level metrics
+a maximum chain length T is imposed, the bound                               such as F1 or BLEU which rely on lexical over-
+becomes O(LT Kd), where T ≤ K.                                               lap, this approach better captures semantic align-
+                                                                             ment. For efficiency, we report Token Consump-
+   In practice, both L and K are deliberately kept
+                                                                             tion and Total Runtime as end-to-end metrics, en-
+small, and adaptive truncation usually stops chain
+                                                                             compassing memory construction, retrieval, and
+expansion before the worst case is reached. More-
+                                                                             LLM generation. We include these metrics because
+over, query-candidate relevance scores can be pre-
+                                                                             many existing memory architectures prioritize per-
+computed once for the retrieved pool, so the main
+                                                                             formance over efficiency, often overlooking the
+repeated computation comes from contextual con-
+                                                                             significant computational overhead and latency as-
+sistency scoring during chain evolution. As shown
+                                                                             sociated with building and maintaining complex
+by the end-to-end runtime results, this overhead
+                                                                             memory structures. Such neglect limits their prac-
+remains close to that of naive RAG and is substan-
+                                                                             tical deployment in real-world scenarios.
+tially lower than methods that require expensive
+graph or tree memory construction.
+                                                                             Implementation Details. We employ GPT-4o-
+                                                                             mini (Hurst et al., 2024) and Qwen3-32B (Non-
+4     Experiments
+                                                                             Thinking Mode) (Team, 2025) as the backbone
+4.1     Experimental Setup                                                   Large Language Models (LLMs) for both an-
+                                                                             swer generation and the LLM-as-Judge evalua-
+Datasets. We evaluate our method on two long-                                tion.For semantic representation, we utilize Qwen3-
+term memory benchmarks: LongMemEval (specif-                                 Embedding-8B (Zhang et al., 2025b) to encode
+ically the LongMemEval-S split) (Wu et al., 2024)                            memory nodes and queries. Regarding retrieval,
+and LoCoMo (Maharana et al., 2024). Long-                                    the number of retrieved segments (k) is set to 20
+MemEval consists of 500 QA pairs derived from                                across all datasets. To ensure a fair comparison, we
+500 distinct conversation histories, with an aver-                           standardize the answer generation prompts for all
+age context length of approximately 115k tokens.                             experiments. Detailed prompts for generation and
+LoCoMo contains 1,986 QA instances from 10 con-                              judge are provided in Appendix A.1
+versation sets, averaging approximately 26k tokens
+per context. To maintain consistency across bench-                           4.2   Main Results
+marks, we map the diverse original question types
+into four unified categories: single-hop, multi-hop,                         Table 2 presents the comparative performance
+temporal reasoning, and knowledge. Following                                 of CoM against various baselines on the Long-
+Mem0 (Chhikara et al., 2025), we exclude the ad-                             MemEval and LoCoMo benchmarks. CoM demon-
+versarial category from LoCoMo to ensure fair                                strates a superior trade-off between effectiveness
+comparison with baselines. Table 1 presents the                              and efficiency, achieving state-of-the-art accuracy
+statistics of these unified categories.                                      while maintaining a minimal computational cost.
+                                  LongMemEval                                         LoCoMo
+  Method
+                          Accuracy (%) ↑                Cost ↓               Accuracy (%) ↑             Cost ↓
+                 S-hop M-hop Temp Kno Total Token Time             S-hop M-hop Temp Kno Total Token Time
+  Backbone: GPT-4o-mini
+  Full-Context 68.59    39.85   44.36 76.92 55.80   112.7 8154     88.59   53.55   50.78 50.00 71.88 31.8 4933
+  RAG (session) 75.64   54.89   44.36 57.69 59.00    26.6 1512     78.83   52.02   47.16 44.79 65.32   7.5 2601
+  RAG (turn)    79.49   54.14   48.87 76.92 64.20     7.6 1293     77.76   41.13   44.79 60.44 65.39   1.4 2304
+  LangMem       49.35   38.35   33.83 35.89 40.20   124.7 8914     66.46   36.17   41.74 38.54 54.02 286.8 3318
+  A-Mem         73.72   42.86   34.59 55.13 52.20   289.2 41768    74.31   37.58   44.54 37.50 59.09 357.0 8787
+  Mem0          41.67   45.11   54.14 64.10 49.40   149.5 28377    73.72   40.07   61.05 47.91 63.31 388.4 6326
+  CoM           84.62   65.41   65.41 83.33 74.20     8.2 2730     83.59   48.94   73.52 46.88 72.86   4.4 3058
+
+  Backbone: Qwen3-32B
+  Full-Context 73.72    41.35   38.35 70.51 55.20   119.6 11504    86.44   51.06   49.53 45.83 69.74 36.0 2981
+  RAG (session) 78.21   54.89   47.37 66.67 62.00    27.3 1598     78.83   45.39   44.85 39.58 63.18   7.8 1816
+  RAG (turn)    82.05   59.40   48.87 74.36 66.00     7.9 2891     75.26   34.04   57.32 41.66 61.88   1.7 2604
+  LangMem       51.28   39.10   35.33 37.17 41.60   150.2 7635     67.89   38.65   42.05 37.50 55.25 336.6 3850
+  A-Mem         78.20   39.10   30.08 66.67 53.20   331.8 32949    77.88   41.48   40.49 36.45 60.84 409.7 9721
+  Mem0          54.49   45.86   43.61 62.82 50.60   156.0 19721    75.74   45.74   53.27 42.70 63.51 456.0 8739
+  CoM           86.54   69.92   69.17 79.49 76.40     8.8 2002     81.45   46.09   71.96 48.95 70.97   4.8 2050
+
+Table 2: Main results on the LongMemEval and LoCoMo benchmarks. We report Accuracy (%) across four
+sub-tasks: S-hop (Single-hop), M-hop (Multi-hop), Temp (Temporal), and Kno (Knowledge). Total denotes the
+accuracy calculated across the entire dataset (all samples). Token refers to the total end-to-end token consumption
+(in thousands, k), and Time indicates the total runtime in seconds (s). Best results are highlighted in bold.
+
+
+Performance and Effectiveness. Our method                  spite their intricate designs, methods like A-Mem
+demonstrates significant improvements over ex-             and Mem0 perform comparably to—or sometimes
+isting state-of-the-art baselines. On the Long-            worse than—simple baselines, failing to justify
+MemEval benchmark, CoM secures the highest                 their complexity. More strikingly, these struc-
+total accuracy. With the Qwen3-32B backbone, it            tures incur prohibitive computational costs that
+achieves 76.40%, exceeding the strongest baseline          can exceed even the Full-Context baseline. For
+by approximately 15.8%. These gains are particu-           example, constructing and querying A-Mem with
+larly pronounced in logic-intensive sub-tasks, such        Qwen3 requires nearly 332k tokens—almost 3×
+as Multi-hop and Temporal Reasoning, where our             the consumption of processing the entire full con-
+method effectively bridges information gaps that           text (119.56k)—yet it yields lower accuracy on
+limit other approaches. Similarly, on the LoCoMo           LongMemEval. In sharp contrast, CoM maintains
+benchmark, CoM continues to lead, outperform-              a highly efficient profile. It operates with a minimal
+ing the best baseline by over 14% in total accu-           token footprint (approx. 8.8k), which is compara-
+racy (70.97% vs. 61.88% for Qwen3-32B). No-                ble to the most lightweight baselines. Furthermore,
+tably, in the challenging Temporal task, our method        regarding latency, CoM significantly reduces the
+shows a remarkable advantage, improving accu-              total runtime compared to graph-based methods
+racy by nearly 25% compared to the closest com-            (e.g., 2,002s vs. 32,949s for A-Mem), avoiding the
+petitor. These consistent improvements show our            overhead of complex structure traversal.
+dynamic chaining mechanism successfully orga-
+nizes isolated fragments into coherent inference
+paths, addressing the "isolated memory" limitation         Comparison with re-ranking. We further com-
+observed in prior works.                                   pare CoM with a cross-encoder re-ranking baseline
+                                                           in Appendix A.2. The results show that stronger
+Efficiency and Cost-Benefit Analysis. A crit-              post-retrieval scoring alone cannot match CoM,
+ical observation from Table 2 is the inefficiency          suggesting that context-aware chain organization
+of existing complex memory organizations. De-              is essential for the observed gains.
+ Gating Variant                LongMemEval LoCoMo           Dataset            β = 0.3     β = 0.5      β = 0.7
+ Only Global Relevance            66.15       65.26         LongMemEval         73.95       76.40        70.14
+ Only Contextual Consistency      69.35       66.84         LoCoMo              67.52       70.97        66.48
+ Weighted Average                 72.55       68.17
+ Multiplicative Combination       76.40       70.97       Table 4: Analysis of the adaptive truncation threshold β
+                                                          using Qwen3-32B. Accuracy is reported in percentage.
+Table 3: Ablation of the state-aware gating formulation
+using Qwen3-32B. Accuracy is reported in percentage.
+                                                          saturate, suggesting that pivotal information is pre-
+                                                          dominantly concentrated within the top retrieved
+4.3   Ablation Study                                      chunks. Consequently, excessively increasing k
+Effect of framework components. To rigorously             yields diminishing returns, as the inclusion of ir-
+assess the contribution of each component, Figure 3       relevant context introduces noise that may hamper
+details our ablation study on Dynamic Memory              reasoning. In terms of efficiency, although token
+Chain Evolution (DMCE) and Adaptive Path Trun-            consumption grows linearly with k, total runtime
+cation (APT). First, removing the entire framework        remains largely stable because latency is dominated
+causes accuracy on GPT-4o-mini to plummet to              by LLM inference and network overhead rather
+55.80%, accompanied by a massive 13× surge in             than retrieval. Thus, a moderate k provides an ef-
+token consumption (112.66 vs. 8.24). This con-            fective trade-off between context sufficiency and
+firms that our architecture is foundational for main-     computational efficiency.
+taining long-context coherence while minimizing
+                                                          Sensitivity to the truncation threshold. We
+redundancy. Second, excluding DMCE leads to
+                                                          evaluate the adaptive truncation threshold β, which
+a significant degradation, with accuracy falling to
+                                                          controls when chain expansion stops after a sharp
+59.00%. Although the w/o DMCE variant yields
+                                                          score drop. Table 4 shows that β = 0.5 per-
+marginally lower latency on Qwen3-32B, it suf-
+                                                          forms best on both LongMemEval and LoCoMo. A
+fers a severe drop in answer quality, proving that
+                                                          smaller threshold tends to under-truncate and intro-
+Chain Evolution is critical for sustaining informa-
+                                                          duce noisy evidence, while a larger threshold may
+tion density without imposing heavy overhead. Fi-
+                                                          stop expansion too early and miss necessary inter-
+nally, omitting the APT stage results in suboptimal
+                                                          mediate evidence. The consistent trend across two
+accuracy (72.75%) and increased computational
+                                                          benchmarks suggests that CoM does not require
+costs. This outcome underscores the necessity of
+                                                          dataset-specific tuning of β.
+Path Truncation in filtering out irrelevant noise and
+balancing efficiency with precision.                      Robustness across embedding models. To ex-
+                                                          amine whether CoM depends on a particular em-
+Effect of the gating formulation. We further an-
+                                                          bedding model, we replace Qwen3-Embedding-8B
+alyze the state-aware gating score by replacing the
+                                                          with text-embedding-3-small, keeping Qwen3-
+multiplicative formulation with three alternatives:
+                                                          32B as the backbone LLM. As shown in Ap-
+using only global relevance, using only contextual
+                                                          pendix A.3, CoM consistently outperforms RAG on
+consistency, and using a weighted average of the
+                                                          both LongMemEval and LoCoMo. This suggests
+two scores. As shown in Table 3, the multiplica-
+                                                          that CoM’s gains do not rely on a specific embed-
+tive formulation performs best on both datasets.
+                                                          ding backbone, but stem from organizing retrieved
+This supports our design choice of treating query
+                                                          fragments into context-aware memory chains.
+relevance and contextual consistency as a soft con-
+junction: a useful successor should be relevant to        4.5   Upper Bound Analysis
+the original query while also coherent with the           To rigorously benchmark the theoretical limits and
+evolving reasoning chain.                                 efficacy of our approach, we establish two distinct
+4.4   Hyperparameter Analysis                             baselines: a state-of-the-art long-context model and
+                                                          an oracle setting for our backbone models.
+Effect of retrieval size. We investigate the im-
+pact of the retrieval hyperparameter k (k ∈               Long-Context Baseline. We employ Gemini-2.5-
+{1, 5, 10, 20, 50}) on LongMemEval using the              pro, utilizing its 1M token context window to pro-
+Qwen3-32B backbone. As illustrated in Figure 4,           cess the full input without truncation. Given that
+the performance gains from increasing k eventually        LongMemEval samples average 105k tokens, this
+                                                                                                               w/o framework                                        w/o DMCE                          w/o APT                 ours
+                                                                                   112.66                                                                                                                    76.40%      119.56                               11503.80
+                                                   74.20%
+                                                                                                                                     8154.43                                                        72.75%
+                                     70.49%
+                                                                                                                                                                                           66.00%
+                            64.20%                                                                                                                       2730.03                                                                                                     2890.87
+                                                                                                                                                  1870.06                                                                                                                         2002.45
+                                                                                                       9.45                                1292.57                                                                                        9.60                             1130.06
+             55.80%                                                                         7.57               8.24                                                                                                               7.90           8.81
+                                                                                                                                                                                  55.20%
+
+
+                            Acc(%)                                                   Tokens(k)                                        Runtime(s)                                        Acc(%)                             Tokens(k)                             Runtime(s)
+                                                       (a) Ablation results with GPT-4o-mini                                                                                                                   (b) Ablation results with Qwen3-32B
+
+ Figure 3: Ablation Study Results. We compare the performance of our full method against variants removing
+ specific components (w/o Framework, w/o DMCE, w/o APT) on GPT-4o-mini (a) and Qwen3-32B (b). The
+ metrics include Accuracy (Acc), Token consumption, and Runtime. Our method achieves the best trade-off between
+ accuracy and efficiency.
+
+                                                                                                                                                             
+                                                  $ F F X U D F \
+                                               7 R N H Q V                                                                                             
+                                                                                                                                               
+                                                                                                                                                       
+                                                                                                                                                     
+ $ F F X U D F \
+
+
+
+
+                                                                                                                                                             
+                                                                                                                                                                    7 R N H Q V
+
+
+
+
+                                                                                                                                                            
+                                                                                                                            
+                                     
+                                                                                                                                                            
+                                                                                                     
+                                                                                                                                                                                 (a) Distribution of Error Sources                   (b) Fine-grained Breakdown of Reasoning Failure
+                                                                                                                                                            
+                                          
+                                                                                                                                                                              Figure 5: Distribution of error types on the Long-
+                                                                                                                                              
+                                                                                    + \ S H U S D U D P H W H U  N                                                               MemEval dataset. Reasoning failures constitute the
+                                                                                                                                                                                  majority of errors compared to retrieval failure.
+ Figure 4: The impact of hyperparameter k on model
+ accuracy and computational cost (tokens).
+                                                                                                                                                                                  ficient—reducing token consumption by 14× and
+                                                                                                                                                                                  latency by 4×. This presents a superior trade-off
+ baseline effectively bypasses retrieval-induced in-
+                                                                                                                                                                                  for practical applications where the overhead of
+ formation loss, serving as a robust upper bound for
+                                                                                                                                                                                  processing massive contexts is prohibitive.
+ lossless context understanding.
+                                                                                                                                                                                  4.6         Error Analysis
+ Oracle Setting (Evidence Only). To isolate the
+ intrinsic reasoning capabilities of our backbones                                                                                                                                To systematically diagnose failure modes, we con-
+ (GPT-4o-mini and Qwen3-32B) from retrieval er-                                                                                                                                   ducted a comprehensive analysis of 118 error sam-
+ rors, we evaluate an Oracle setting. Here, mod-                                                                                                                                  ples from the LongMemEval dataset. As illustrated
+ els are fed only the manually annotated ground-                                                                                                                                  in Figure 5(a), reasoning failures constitute the vast
+ truth evidence. This configuration eliminates noise,                                                                                                                             majority of errors (74.6%), whereas retrieval fail-
+ quantifying the performance ceiling achievable                                                                                                                                   ures account for a relatively minor portion (25.4%).
+ when perfect information is guaranteed.                                                                                                                                          This distribution suggests that the primary perfor-
+                                                                                                                                                                                  mance bottleneck lies in the model’s capability to
+ Analysis and Conclusion. As detailed in Table 5,                                                                                                                                 interpret and reason over context, rather than the
+ Gemini-2.5-pro achieves the highest accuracy (To-                                                                                                                                inability to access relevant information.
+ tal: 89.20%), confirming the advantage of full-
+                                                                                                                                                                                  Retrieval Failure This category accounts for a
+ context processing. However, this precision en-
+                                                                                                                                                                                  minority of errors. Primary causes for retrieval
+ tails steep computational costs (122.89k tokens,
+                                                                                                                                                                                  failure include information dispersion in multi-hop
+ 8512.10s). The Oracle results demarcate the rea-
+                                                                                                                                                                                  questions, middle-position information loss in long
+ soning limits of the smaller backbones; our method
+                                                                                                                                                                                  contexts, and the semantic misalignment often en-
+ approaches this ceiling (e.g., 76.40% vs. 81.80%
+                                                                                                                                                                                  countered between queries and source documents.
+ for Qwen3), indicating that our approach success-
+ fully captures the majority of critical information.                                                                                                                             Reasoning Failure Reasoning errors dominate
+ Crucially, while Gemini-2.5-pro offers marginal                                                                                                                                  the failure modes, persisting even after successful
+ accuracy gains, our method is significantly more ef-                                                                                                                             evidence retrieval. In these cases, the model ac-
+                                              Sub-category Acc (%)                  Total    Tokens    RunTime
+ Method
+                                 Single-hop   Multi-hop    Temporal   Knowledge    Acc (%)       (k)         (s)
+ Full Context (Gemini-2.5-pro)     90.38        86.47       90.98       88.46       89.20    122.89     8512.10
+ Evidence Only (GPT-4o-mini)       83.33        82.71       69.17       88.46       80.20       0.30     668.36
+ Ours (GPT-4o-mini)                84.62        65.41       65.41       83.33       74.20       8.24    2730.03
+ Evidence Only (Qwen3-32B)         89.74        81.20       70.68       85.90       81.80       0.35     456.20
+ Ours (Qwen3-32B)                  86.54        69.92       69.17       79.49       76.40       8.81    2002.45
+
+Table 5: Performance comparison between Full-Context SOTA (Gemini-2.5-pro), Evidence-Only (with only the
+ground-truth target information required to answer the question), and our method on LongMemEval dataset.
+
+
+cesses the context but fails to effectively extract or      heavier memory structures, CoM improves how
+interpret the information. We categorize these fail-        retrieved fragments are connected, filtered, and pre-
+ures into five subtypes: (1) Temporal Reasoning             sented to the LLM. Overall, our findings highlight
+(30.7%): Models struggle to reconstruct accurate            lightweight construction, context-aware memory
+chronological timelines, frequently misinterpret-           organization, and system-level efficiency as practi-
+ing relative expressions or misordering sequential          cal directions for building efficient long-term mem-
+events; (2) Aggregation & Counting (29.5%):                 ory systems for LLM agents.
+Prominent in questions requiring statistical syn-
+thesis, this error arises when models fail to distin-       Limitations
+guish between entities actively acquired and those
+merely mentioned, resulting in systematic over-             Despite its effectiveness, CoM still has several lim-
+counting; (3) Implicit Information (17.0%): Mod-            itations. First, CoM relies on embedding-based
+els lack the sensitivity to infer latent user intents or    semantic similarity to retrieve and evolve mem-
+constraints from behavioral patterns, consequently          ory chains. Its performance may therefore degrade
+generating generic responses that lack necessary            when the embedding model fails to capture fine-
+personalization; (4) Knowledge Update (13.6%):              grained temporal, pragmatic, or implicit relations
+Models exhibit inertia in tracking dynamic state            between memory fragments. Second, although
+changes, often prioritizing semantically relevant           adaptive truncation helps reduce noise and redun-
+but outdated information over the most recent evi-          dancy, it may discard subtle evidence in cases that
+dence; and (5) Hallucination (9.1%): Occurring              require unusually long or weakly connected rea-
+primarily in abstention tasks, models fabricate de-         soning paths. Third, our experiments focus on
+tails based on tangential associations instead of           textual long-term memory benchmarks, leaving
+correctly acknowledging the lack of evidence.               multi-modal memories, such as vision-language
+                                                            interaction histories and tool-use traces, for future
+5   Conclusion                                              work. Finally, real-world agents may involve more
+                                                            open-ended goals, evolving user preferences, and
+This work shows that effective agent memory can             noisier memory updates than current benchmarks
+be achieved without increasingly complex mem-               cover. Further validation in interactive deployment
+ory construction. We propose CoM, a Chain-                  settings is needed to assess the practical robustness
+of-Memory framework that shifts the focus to                of CoM under such conditions.
+lightweight retrieval and principled memory uti-
+lization by organizing retrieved fragments into dy-         Acknowledgments
+namic inference paths and pruning distracting con-
+texts through adaptive truncation. Experiments on           We would like to thank the Director’s Fund Project
+LongMemEval and LoCoMo show that CoM im-                    of State Key Laboratory of AI Safety for their sup-
+proves reasoning accuracy, especially on multi-hop          port. This work was also supported in part by the
+and temporal questions, while substantially reduc-          Strategic Priority Research Program of the CAS
+ing token consumption and runtime. These results            (No. XDB0680302) and the Young Elite Scientists
+demonstrate that structured memory utilization can          Sponsorship Program of the Beijing High Innova-
+bridge the gap between retrieved evidence and fi-           tion Plan (No. 20250924).
+nal reasoning accuracy. Rather than relying on
+References                                                 Zuhong Liu, Charles-Elie Simon, and Fabien Caspani.
+                                                             2025b. Passage segmentation of documents for ex-
+Harrison Chase. 2022. LangChain.                             tractive question answering. In European Conference
+                                                             on Information Retrieval, pages 345–352. Springer.
+Prateek Chhikara, Dev Khant, Saket Aryan, Taranjeet
+  Singh, and Deshraj Yadav. 2025. Mem0: Building           Adyasha Maharana, Dong-Ho Lee, Sergey Tulyakov,
+  production-ready ai agents with scalable long-term         Mohit Bansal, Francesco Barbieri, and Yuwei
+  memory. arXiv preprint arXiv:2504.19413.                   Fang. 2024. Evaluating very long-term conver-
+                                                             sational memory of llm agents. arXiv preprint
+Junnan Dong, Siyu An, Yifei Yu, Qian-Wen Zhang,              arXiv:2402.17753.
+  Linhao Luo, Xiao Huang, Yunsheng Wu, Di Yin,
+  and Xing Sun. 2025. Youtu-graphrag: Vertically           Lingrui Mei, Jiayu Yao, Yuyao Ge, Yiwei Wang, Bao-
+  unified agents for graph retrieval-augmented complex       long Bi, Yujun Cai, Jiazhi Liu, Mingyu Li, Zhong-Zhi
+  reasoning. arXiv preprint arXiv:2508.19855.                Li, Duzhen Zhang, and 1 others. 2025. A survey of
+                                                             context engineering for large language models. arXiv
+André V Duarte, João DS Marques, Miguel Graça,               preprint arXiv:2507.13334.
+  Miguel Freire, Lei Li, and Arlindo L Oliveira. 2024.
+  Lumberchunker: Long-form narrative document seg-         Charles Packer, Vivian Fang, Shishir_G Patil, Kevin
+  mentation. In Findings of the Association for Com-         Lin, Sarah Wooders, and Joseph_E Gonzalez. 2023.
+  putational Linguistics: EMNLP 2024, pages 6473–            Memgpt: Towards llms as operating systems.
+  6486.
+                                                           Zhuoshi Pan, Qianhui Wu, Huiqiang Jiang, Xufang Luo,
+Weizhi Fei, Xueyan Niu, Pingyi Zhou, Lu Hou, Bo Bai,         Hao Cheng, Dongsheng Li, Yuqing Yang, Chin-Yew
+  Lei Deng, and Wei Han. 2024. Extending context             Lin, H Vicky Zhao, Lili Qiu, and 1 others. 2025.
+ window of large language models via semantic com-           Secom: On memory construction and retrieval for
+  pression. In Findings of the Association for Compu-        personalized conversational agents. In The Thir-
+  tational Linguistics: ACL 2024, pages 5169–5181.           teenth International Conference on Learning Rep-
+                                                             resentations.
+Yunfan Gao, Yun Xiong, Xinyu Gao, Kangxiang Jia,
+  Jinliu Pan, Yuxi Bi, Yixin Dai, Jiawei Sun, Haofen       Renyi Qu, Ruixuan Tu, and Forrest Bao. 2025. Is se-
+  Wang, and Haofen Wang. 2023. Retrieval-augmented           mantic chunking worth the computational cost? In
+  generation for large language models: A survey.            Findings of the Association for Computational Lin-
+  arXiv preprint arXiv:2312.10997, 2(1).                     guistics: NAACL 2025, pages 2155–2177.
+Zirui Guo, Lianghao Xia, Yanhua Yu, Tu Ao, and             Preston Rasmussen, Pavlo Paliychuk, Travis Beauvais,
+   Chao Huang. 2024. Lightrag: Simple and fast               Jack Ryan, and Daniel Chalef. 2025. Zep: a tempo-
+   retrieval-augmented generation. arXiv preprint            ral knowledge graph architecture for agent memory.
+   arXiv:2410.05779.                                         arXiv preprint arXiv:2501.13956.
+Aaron Hurst, Adam Lerer, Adam P Goucher, Adam              Alireza Rezazadeh, Zichao Li, Wei Wei, and Yujia Bao.
+  Perelman, Aditya Ramesh, Aidan Clark, AJ Ostrow,           2024. From isolated conversations to hierarchical
+  Akila Welihinda, Alan Hayes, Alec Radford, and 1           schemas: Dynamic tree memory representation for
+  others. 2024. Gpt-4o system card. arXiv preprint           llms. arXiv preprint arXiv:2410.14052.
+  arXiv:2410.21276.
+                                                           Parth Sarthi, Salman Abdullah, Aditi Tuli, Shubh
+Zhiyu Li, Shichao Song, Hanyu Wang, Simin Niu, Ding          Khanna, Anna Goldie, and Christopher D Manning.
+  Chen, Jiawei Yang, Chenyang Xi, Huayi Lai, Jihao           2024. Raptor: Recursive abstractive processing for
+  Zhao, Yezhaohui Wang, and 1 others. 2025. Memos:           tree-organized retrieval. In The Twelfth International
+  An operating system for memory-augmented genera-           Conference on Learning Representations.
+  tion (mag) in large language models. arXiv preprint
+  arXiv:2505.22101.                                        Joykirat Singh, Raghav Magazine, Yash Pandya, and
+                                                             Akshay Nambi. 2025. Agentic reasoning and tool
+Bang Liu, Xinfeng Li, Jiayi Zhang, Jinlin Wang,              integration for llms via reinforcement learning. arXiv
+  Tanjin He, Sirui Hong, Hongzhang Liu, Shaokun              preprint arXiv:2505.01441.
+  Zhang, Kaitao Song, Kunlun Zhu, and 1 others.
+  2025a. Advances and challenges in foundation             Zhongxiang Sun, Qipeng Wang, Weijie Yu, Xiaoxue
+  agents: From brain-inspired intelligence to evolution-     Zang, Kai Zheng, Jun Xu, Xiao Zhang, Yang Song,
+  ary, collaborative, and safe systems. arXiv preprint       and Han Li. 2025. Rearter: Retrieval-augmented
+  arXiv:2504.01990.                                          reasoning with trustworthy process rewarding. In
+                                                             Proceedings of the 48th International ACM SIGIR
+Nelson F Liu, Kevin Lin, John Hewitt, Ashwin Paran-          Conference on Research and Development in Infor-
+  jape, Michele Bevilacqua, Fabio Petroni, and Percy         mation Retrieval, pages 1251–1261.
+  Liang. 2024. Lost in the middle: How language mod-
+  els use long contexts. Transactions of the Association   Qwen Team. 2025. Qwen3 technical report. Preprint,
+  for Computational Linguistics, 12:157–173.                arXiv:2505.09388.
+Bing Wang, Xinnian Liang, Jian Yang, Hui Huang,           Jihao Zhao, Zhiyuan Ji, Yuchen Feng, Pengnian Qi,
+  Shuangzhi Wu, Peihao Wu, Lu Lu, Zejun Ma, and              Simin Niu, Bo Tang, Feiyu Xiong, and Zhiyu Li.
+  Zhoujun Li. 2023. Enhancing large language model           2024b. Meta-chunking: Learning text segmenta-
+  with self-controlled memory framework. arXiv               tion and semantic completion via logical perception.
+  preprint arXiv:2304.13343.                                 arXiv preprint arXiv:2410.12788.
+Cangqing Wang, Yutian Yang, Ruisi Li, Dan Sun,            Wanjun Zhong, Lianghong Guo, Qiqi Gao, He Ye, and
+  Ruicong Cai, Yuzhu Zhang, and Chengqian Fu.              Yanlin Wang. 2024. Memorybank: Enhancing large
+  2024. Adapting llms for efficient context processing      language models with long-term memory. In Pro-
+  through soft prompt compression. In Proceedings of        ceedings of the AAAI Conference on Artificial Intelli-
+  the International Conference on Modeling, Natural         gence, volume 38, pages 19724–19731.
+  Language Processing and Machine Learning, pages
+  91–97.
+Zora Zhiruo Wang, Apurva Gandhi, Graham Neu-
+  big, and Daniel Fried. 2025. Inducing program-
+  matic skills for agentic tasks. arXiv preprint
+  arXiv:2504.06821.
+Di Wu, Hongwei Wang, Wenhao Yu, Yuwei Zhang,
+  Kai-Wei Chang, and Dong Yu. 2024. Longmemeval:
+  Benchmarking chat assistants on long-term interac-
+  tive memory. arXiv preprint arXiv:2410.10813.
+Wujiang Xu, Zujie Liang, Kai Mei, Hang Gao, Jun-
+ tao Tan, and Yongfeng Zhang. 2025. A-mem:
+ Agentic memory for llm agents. arXiv preprint
+ arXiv:2502.12110.
+John Yang, Carlos E Jimenez, Alexander Wettig, Kilian
+  Lieret, Shunyu Yao, Karthik Narasimhan, and Ofir
+  Press. 2024. Swe-agent: Agent-computer interfaces
+  enable automated software engineering. Advances in
+  Neural Information Processing Systems, 37:50528–
+  50652.
+Wenhao Yu, Hongming Zhang, Xiaoman Pan, Peixin
+ Cao, Kaixin Ma, Jian Li, Hongwei Wang, and Dong
+ Yu. 2024. Chain-of-note: Enhancing robustness in
+ retrieval-augmented language models. In Proceed-
+ ings of the 2024 conference on empirical methods in
+ natural language processing, pages 14672–14685.
+Guibin Zhang, Hejia Geng, Xiaohang Yu, Zhenfei Yin,
+  Zaibin Zhang, Zelin Tan, Heng Zhou, Zhongzhi Li,
+  Xiangyuan Xue, Yijiang Li, and 1 others. 2025a. The
+  landscape of agentic reinforcement learning for llms:
+  A survey. arXiv preprint arXiv:2509.02547.
+Yanzhao Zhang, Mingxin Li, Dingkun Long, Xin Zhang,
+  Huan Lin, Baosong Yang, Pengjun Xie, An Yang,
+  Dayiheng Liu, Junyang Lin, Fei Huang, and Jingren
+  Zhou. 2025b. Qwen3 embedding: Advancing text
+  embedding and reranking through foundation models.
+  arXiv preprint arXiv:2506.05176.
+Zeyu Zhang, Quanyu Dai, Xiaohe Bo, Chen Ma, Rui Li,
+  Xu Chen, Jieming Zhu, Zhenhua Dong, and Ji-Rong
+  Wen. 2025c. A survey on the memory mechanism of
+  large language model-based agents. ACM Transac-
+  tions on Information Systems, 43(6):1–47.
+Andrew Zhao, Daniel Huang, Quentin Xu, Matthieu
+  Lin, Yong-Jin Liu, and Gao Huang. 2024a. Expel:
+  Llm agents are experiential learners. In Proceedings
+  of the AAAI Conference on Artificial Intelligence,
+  volume 38, pages 19632–19642.
+A     Appendix
+A.1     Prompts
+    LongMemEval Answer Prompt
+
+    System Prompt:
+    You are a helpful expert assistant answering questions from the user based on the provided context.
+    User Prompt:
+    Your task is to briefly answer the question. You are given the following context from the previous conversation. If you
+    don’t know how to answer the question, abstain from answering.
+    Context: {context}
+    Question: {question}
+
+
+    LoCoMo Answer Prompt
+
+    System Prompt:
+    You are a Memory-Based Question Answering Agent. Answer questions based on the provided memories.
+    <Instructions>
+    1. For time-related questions (with words like “when”):
+       • Step 1: Identify the Timestamp of the memory.
+       • Step 2: Identify any relative time reference.
+       • Step 3: Calculate the EXACT ABSOLUTE date.
+       • Example 1: [Timestamp: 4 May 2022] + “last year” → Answer: “last year before 4 May 2022”
+    2. Extract specific details: Use exact names, dates, places from memories.
+    3. Be comprehensive for list questions: List ALL activities found.
+    4. Contradictions: If memories conflict, use the most recent one.
+    </Instructions>
+
+
+    User Prompt:
+    <Memories>
+    {memories}
+    </Memories>
+    <Question>{question}</Question>
+    Answer:
+
+
+    LongMemEval Judge Prompt
+
+    You are an expert judge evaluating whether a model’s response correctly answers a question according to the reference
+    answer or rubric.
+
+    1. Basic Evaluation
+    I will give you a question, a correct answer, and a response from a model. Please answer yes if the response contains the
+    correct answer.
+    Question: {}
+    Correct Answer: {}
+    Model Response: {}
+    Is the model response correct? Answer yes or no only.
+
+
+
+    2. Temporal Reasoning
+    I will give you a question, a correct answer, and a response from a model. If the response is equivalent or contains all
+    intermediate steps, answer yes. Do not penalize off-by-one errors for the number of days.
+    Question: {}
+    Correct Answer: {}
+    Model Response: {}
+    Is the model response correct? Answer yes or no only.
+3. Knowledge Update
+If the response contains some previous information along with an updated answer, the response should be considered
+correct.
+Question: {}
+Correct Answer: {}
+Model Response: {}
+Is the model response correct? Answer yes or no only.
+
+
+
+4. User Preference
+Please answer yes if the response satisfies the desired response based on the rubric.
+Question: {}
+Rubric: {}
+Model Response: {}
+Is the model response correct? Answer yes or no only.
+
+
+
+5. Abstention (Unanswerable)
+Please answer yes if the model correctly identifies the question as unanswerable.
+Question: {}
+Explanation: {}
+Model Response: {}
+Does the model correctly identify the question as unanswerable? Answer yes or no only.
+
+
+LoCoMo Judge Prompt
+
+You are an expert judge evaluating whether a model’s prediction correctly answers a question compared to the reference
+answer.
+
+Question: {}
+Reference Answer: {}
+Model Prediction: {}
+
+Your task is to determine if the model’s prediction is semantically equivalent to the reference answer. Consider the
+following:
+1. The prediction may be phrased differently but convey the same meaning.
+2. Minor differences in wording are acceptable if the core information matches.
+3. For dates, consider different formats as equivalent (e.g., “7 May 2023” vs “May 7, 2023”).
+4. For numbers, consider “2022” vs “Last year” as potentially equivalent depending on context.
+5. For descriptive answers, check if the key information is present.
+
+Respond with ONLY ONE WORD:
+   - “CORRECT” if the prediction matches the reference answer.
+   - “INCORRECT” if the prediction does not match the reference answer.
+
+Your response:
+  Method                  Acc.   Tokens     Time         Method   S-hop   M-hop   Temp    Kno     Overall
+  Rerank (GPT-4o-mini)   62.73    11.01    3967.52       RAG      80.77   54.14   53.38   74.36    65.40
+  CoM (GPT-4o-mini)      74.20     8.24    2730.03       CoM      84.62   68.42   67.67   79.49    75.00
+  Rerank (Qwen3-32B)     63.20    10.95    2702.47
+  CoM (Qwen3-32B)        76.40     8.81    2002.45      Table 8: Performance on LongMemEval using
+                                                        text-embedding-3-small with Qwen3-32B.
+Table 6: Comparison with a cross-encoder re-ranking
+baseline on LongMemEval. Tokens are reported in thou-    Method   S-hop   M-hop   Temp    Kno     Overall
+sands.
+                                                         RAG      74.31   43.26   66.35   43.75    65.06
+                                                         CoM      81.92   43.61   69.47   46.87    70.12
+  Method                  Acc.   Tokens     Time
+  Rerank (GPT-4o-mini)   68.31     3.53    3413.43      Table 9:     Performance on LoCoMo           using
+  CoM (GPT-4o-mini)      72.86     4.35    3057.50      text-embedding-3-small with Qwen3-32B.
+  Rerank (Qwen3-32B)     65.32     3.69    2805.66
+  CoM (Qwen3-32B)        70.97     4.77    2050.48
+                                                        8B with text-embedding-3-small and compare
+Table 7: Comparison with a cross-encoder re-ranking     CoM with RAG using Qwen3-32B as the backbone
+baseline on LoCoMo. Tokens are reported in thousands.   LLM. Tables 8 and 9 show that CoM consistently
+                                                        improves overall accuracy on both benchmarks.
+A.2   Comparison with Re-ranking and
+      Iterative Retrieval
+CoM is related to post-retrieval re-ranking and it-
+erative retrieval, but differs in both objective and
+operation. Re-ranking methods typically assign
+each retrieved segment an independent relevance
+score with respect to the query, and then select a
+reordered top-k set. Iterative retrieval methods of-
+ten expand or reformulate the retrieval query over
+multiple rounds to retrieve additional evidence. In
+contrast, CoM keeps memory construction and ini-
+tial retrieval lightweight, and focuses on organizing
+the retrieved fragments into chain-structured infer-
+ence paths. Each expansion step is conditioned not
+only on the original query but also on the evolving
+chain context, allowing CoM to recover multi-hop
+and temporal dependencies that may not be cap-
+tured by global relevance alone.
+   To test whether stronger post-retrieval scoring
+can explain CoM’s gains, we compare with a cross-
+encoder re-ranking baseline. This baseline first
+retrieves an expanded candidate pool and then uses
+bge-reranker-base to select the final top-k seg-
+ments for generation. As shown in Table 6 and
+Table 7, even with a dedicated re-ranker, this base-
+line remains below CoM on both benchmarks. This
+suggests that CoM’s improvements do not merely
+come from assigning better independent relevance
+scores, but from dynamically organizing retrieved
+fragments into context-aware memory chains.
+
+A.3   Robustness Across Embedding Models
+To evaluate whether CoM depends on a specific
+embedding model, we replace Qwen3-Embedding-
+

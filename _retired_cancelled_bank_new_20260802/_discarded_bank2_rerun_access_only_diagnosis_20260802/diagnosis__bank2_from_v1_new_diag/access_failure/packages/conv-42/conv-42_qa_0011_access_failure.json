@@ -1,0 +1,736 @@
+{
+  "schema_version": "access_diagnosis_v3",
+  "diagnosis_id": "access_conv-42_conv-42_qa_0011",
+  "diagnosis_type": "ACCESS_FAILURE",
+  "status": "completed",
+  "judge_run_id": "bank2_from_v1_new_train_judge",
+  "diagnosis_run_id": "bank2_from_v1_new_diag",
+  "source_runtime_run": "bank2_v1new_train_seq_conv-42",
+  "conversation_id": "conv-42",
+  "qa_id": "conv-42_qa_0011",
+  "snapshot_commit_id": 29,
+  "question": "What is Joanna allergic to?",
+  "reference_answer": "Most reptiles,animals with fur,cockroaches, dairy",
+  "problem_found": true,
+  "reason": "The current memory versions directly support each claim: mem_conv-42_0008_v1 states allergies to reptiles and fur animals; mem_conv-42_0022_v1 mentions cockroach allergy; mem_conv-42_0017_v3 indicates lactose intolerance/dairy allergy.",
+  "confidence": 1.0,
+  "review_required": false,
+  "skill_trace": {
+    "trace_id": "skilltrace_access_bank2_v1new_train_seq_conv-42_conv-42_conv-42_qa_0011",
+    "side": "access",
+    "bank_version": "bank1",
+    "query": "What is Joanna allergic to?",
+    "top_k": 2,
+    "disclose_k": 5,
+    "min_score": 0.2,
+    "scored_fields": [
+      "name",
+      "description"
+    ],
+    "scoring_weights": {
+      "semantic": 0.7,
+      "bm25": 0.3
+    },
+    "retrieval_method": "bank1_hybrid_router",
+    "candidate_k": 10,
+    "reranker": "bank1_applicability_router",
+    "reranker_error": "",
+    "selected": [],
+    "nearby_not_selected": [
+      {
+        "skill_id": "sk_access_current_activity_kinds",
+        "version_id": "sk_access_current_activity_kinds_v1",
+        "rank": 1,
+        "score": 0.31175923347473145,
+        "semantic_score": 0.042474403977394104,
+        "lexical_score": 0.9400904774665833,
+        "name": "Include event memories for current-activity queries",
+        "description": "When a query asks what someone is currently reading, doing, working on, or otherwise engaged in, do not restrict memory_kinds to 'state'; search both 'state' and 'event' memories because ongoing activities are often stored as events.",
+        "content": [
+          "If a question asks about a person's current activity (e.g., currently reading, working on, building, studying), set memory_kinds to include both 'state' and 'event', or omit the memory_kinds filter, since ongoing activities are typically stored as event memories.",
+          "If a search restricted to 'state' returns no supporting evidence for an activity question, retry with broader memory_kinds before answering 'no information available'."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_creative_work",
+        "version_id": "sk_access_creative_work_v1",
+        "rank": 2,
+        "score": 0.2885788679122925,
+        "semantic_score": -0.005662787239998579,
+        "lexical_score": 0.9751426577568054,
+        "name": "Retrieve Generic Creative Work Descriptions",
+        "description": "When a question asks what a specific creative work (screenplay, book, film, project) is about, use before hybrid search to also query generic descriptors like 'creative project' and 'completed project' and inspect event/achievement memories.",
+        "content": [
+          "When the user asks about the subject of a specific creative work, do not restrict search to the exact artifact term and ordinal; include query expansions and keywords using generic descriptors such as 'creative project', 'completed project', 'recent work', plus thematic/content words from the question.",
+          "If initial results contain no memory stating the completed work's subject, search or inspect event memories with predicates like achievement or completion rather than only in-progress plans or titles, since completed works may be stored generically.",
+          "Judge evidence sufficiency against all retrieved current related memories, not only those mentioning the exact artifact type; a memory describing a completed creative project with matching themes can satisfy the question."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_future_plan_kinds",
+        "version_id": "sk_access_future_plan_kinds_v1",
+        "rank": 3,
+        "score": 0.2798040509223938,
+        "semantic_score": -0.028851386159658432,
+        "lexical_score": 1.0,
+        "name": "Search plan and event kinds for future-plan questions",
+        "description": "When answering questions about future events, planned activities, or what someone is planning for an upcoming time, include plan memories in retrieval; do not restrict memory_kinds to event only.",
+        "content": [
+          "If the question asks about a future event, plan, or upcoming activity, search with memory_kinds covering both 'plan' and 'event' (for example [\"plan\", \"event\"]).",
+          "Do not filter memory_kinds to only 'event' for forward-looking questions; planned future events are often stored as 'plan' memories.",
+          "Before answering, check whether an additional retrieval over 'plan' memories could supply direct evidence, especially when initial results contain only related context."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_instead_questions",
+        "version_id": "sk_access_instead_questions_v1",
+        "rank": 4,
+        "score": 0.21414043009281158,
+        "semantic_score": 0.10020871460437775,
+        "lexical_score": 0.47998106479644775,
+        "name": "Search beyond excluded activity for alternatives",
+        "description": "When a question asks what activity a person or group planned/did instead of a known activity, use this to avoid over-anchoring retrieval on the excluded activity.",
+        "content": [
+          "If the user asks for an alternative, replacement, or activity done instead of a previously mentioned activity, do not build all searches and keywords around the excluded activity; the supporting memory may omit that activity entirely.",
+          "Run additional searches using the subject person/group plus substitution intent terms such as 'instead', 'alternative', 'planned to', and 'decided to', and search broadly for shared plans, preferences, or recent events involving the same people.",
+          "Before answering, inspect retrieved memories that mention plans or shared activities for those people even if they do not mention the excluded activity; select the memory that explicitly states the alternative plan rather than the first semantically similar result."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_future_plan",
+        "version_id": "sk_access_future_plan_v1",
+        "rank": 5,
+        "score": 0.2094288170337677,
+        "semantic_score": -0.06543508172035217,
+        "lexical_score": 0.8507779240608215,
+        "name": "Search plan memories for future attendance questions",
+        "description": "When a user asks when someone is attending, going to, or planning a future event, include plan memories in retrieval and expand around intention verbs.",
+        "content": [
+          "When a question asks about a future or scheduled activity (e.g., 'when is X attending...', 'when will X go to...'), run retrieval with memory_kind including both 'plan' and 'event' since future intentions may be stored as plan memories with world_start dates.",
+          "If the initial results contain no direct date, re-query with expansions such as 'plans to attend', 'will attend', 'scheduled to attend', 'next month/week' and do not restrict to event kind.",
+          "Use the world_start of a retrieved plan memory as the temporal anchor for answering 'when' questions."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      }
+    ]
+  },
+  "repair_package": {
+    "question": "What is Joanna allergic to?",
+    "reference_answer": "Most reptiles,animals with fur,cockroaches, dairy",
+    "missing_useful_current_memories": [
+      {
+        "version_id": "mem_conv-42_0017_v3",
+        "memory_id": "mem_conv-42_0017",
+        "version_no": 3,
+        "content": "Joanna requested a dairy-free ice cream recipe from Nate, as she is lactose intolerant and cannot have dairy. She is experimenting with dairy-free dessert recipes and appreciates Nate's recommendation of coconut for its use in desserts.",
+        "memory_kind": "preference",
+        "subject": "Joanna",
+        "predicate": "dietary",
+        "object_text": "dairy-free",
+        "world_start": "2022-05-02",
+        "world_end": null,
+        "update_type": "enrichment"
+      }
+    ],
+    "retrieved_current_version_ids": [
+      "mem_conv-42_0008_v1",
+      "mem_conv-42_0022_v1",
+      "mem_conv-42_0023_v1",
+      "mem_conv-42_0032_v1",
+      "mem_conv-42_0058_v1",
+      "mem_conv-42_0114_v1",
+      "mem_conv-42_0116_v1",
+      "mem_conv-42_0144_v1"
+    ],
+    "search_steps": [
+      {
+        "action_id": "access_bank2_v1new_train_seq_conv-42_conv-42_conv-42_qa_0011_a000",
+        "step_index": 0,
+        "action_type": "search_memory",
+        "request": {
+          "action": "search_memory",
+          "arguments": {
+            "strategy": "hybrid",
+            "query": "What is Joanna allergic to?",
+            "query_expansions": [
+              "What food is Joanna allergic to?",
+              "What substances does Joanna have an allergy to?"
+            ],
+            "keywords": [
+              "Joanna",
+              "allergy"
+            ],
+            "depth": "standard",
+            "top_k": 8
+          },
+          "reason": "To find information about Joanna's allergies"
+        },
+        "returned_memories": [
+          {
+            "version_id": "mem_conv-42_0008_v1",
+            "memory_id": "mem_conv-42_0008",
+            "content": "Joanna is allergic to most reptiles and animals with fur, causing facial swelling and itching.",
+            "memory_kind": "event",
+            "subject": "Joanna",
+            "world_start": "2022-01-23",
+            "world_end": null,
+            "score": 0.0163,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0144_v1",
+            "memory_id": "mem_conv-42_0144",
+            "content": "Joanna expressed interest in visiting Nate's home to watch him play with his turtles from a distance due to an allergy.",
+            "memory_kind": "event",
+            "subject": "Joanna",
+            "world_start": "2022-11-09",
+            "world_end": null,
+            "score": 0.0155,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0022_v1",
+            "memory_id": "mem_conv-42_0022",
+            "content": "Joanna expressed interest in getting turtles but mentioned she is allergic to cockroaches and is unsure if she will ever have a pet.",
+            "memory_kind": "preference",
+            "subject": "Joanna",
+            "world_start": "2022-03-18",
+            "world_end": null,
+            "score": 0.0143,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0058_v1",
+            "memory_id": "mem_conv-42_0058",
+            "content": "Joanna does not want to get a pet due to allergies and is too lazy to research alternative pets for her condition.",
+            "memory_kind": "preference",
+            "subject": "Joanna",
+            "world_start": "2022-05-20",
+            "world_end": null,
+            "score": 0.0142,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0114_v1",
+            "memory_id": "mem_conv-42_0114",
+            "content": "Joanna named her stuffed animal dog Tilly after her former dog in Michigan that she was allergic to.",
+            "memory_kind": "event",
+            "subject": "Joanna",
+            "world_start": "2022-10-21",
+            "world_end": null,
+            "score": 0.0141,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0032_v1",
+            "memory_id": "mem_conv-42_0032",
+            "content": "Joanna is currently focused on writing, which is consuming her time and attention.",
+            "memory_kind": "state",
+            "subject": "Joanna",
+            "world_start": "2022-04-15",
+            "world_end": null,
+            "score": 0.0141,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0116_v1",
+            "memory_id": "mem_conv-42_0116",
+            "content": "Joanna is resilient and determined to keep pushing forward despite facing rejections.",
+            "memory_kind": "event",
+            "subject": "Joanna",
+            "world_start": "2022-10-21",
+            "world_end": null,
+            "score": 0.0141,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0023_v1",
+            "memory_id": "mem_conv-42_0023",
+            "content": "Joanna is actively researching and networking for her next script project, showing determination to make it happen.",
+            "memory_kind": "event",
+            "subject": "Joanna",
+            "world_start": "2022-03-18",
+            "world_end": null,
+            "score": 0.0136,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          }
+        ],
+        "returned_version_ids": [
+          "mem_conv-42_0008_v1",
+          "mem_conv-42_0144_v1",
+          "mem_conv-42_0022_v1",
+          "mem_conv-42_0058_v1",
+          "mem_conv-42_0114_v1",
+          "mem_conv-42_0032_v1",
+          "mem_conv-42_0116_v1",
+          "mem_conv-42_0023_v1"
+        ]
+      },
+      {
+        "action_id": "access_bank2_v1new_train_seq_conv-42_conv-42_conv-42_qa_0011_a001",
+        "step_index": 1,
+        "action_type": "answer",
+        "request": {
+          "action": "answer",
+          "arguments": {
+            "answer": "reptiles, animals with fur, cockroaches, and dogs",
+            "evidence_version_ids": [
+              "mem_conv-42_0008_v1",
+              "mem_conv-42_0022_v1",
+              "mem_conv-42_0058_v1",
+              "mem_conv-42_0114_v1"
+            ],
+            "confidence": 0.95
+          },
+          "reason": "The evidence indicates Joanna is allergic to reptiles, animals with fur, cockroaches, and dogs."
+        },
+        "returned_memories": [],
+        "returned_version_ids": []
+      }
+    ],
+    "reason": "The current memory versions directly support each claim: mem_conv-42_0008_v1 states allergies to reptiles and fur animals; mem_conv-42_0022_v1 mentions cockroach allergy; mem_conv-42_0017_v3 indicates lactose intolerance/dairy allergy.",
+    "skill_trace": {
+      "trace_id": "skilltrace_access_bank2_v1new_train_seq_conv-42_conv-42_conv-42_qa_0011",
+      "side": "access",
+      "bank_version": "bank1",
+      "query": "What is Joanna allergic to?",
+      "top_k": 2,
+      "disclose_k": 5,
+      "min_score": 0.2,
+      "scored_fields": [
+        "name",
+        "description"
+      ],
+      "scoring_weights": {
+        "semantic": 0.7,
+        "bm25": 0.3
+      },
+      "retrieval_method": "bank1_hybrid_router",
+      "candidate_k": 10,
+      "reranker": "bank1_applicability_router",
+      "reranker_error": "",
+      "selected": [],
+      "nearby_not_selected": [
+        {
+          "skill_id": "sk_access_current_activity_kinds",
+          "version_id": "sk_access_current_activity_kinds_v1",
+          "rank": 1,
+          "score": 0.31175923347473145,
+          "semantic_score": 0.042474403977394104,
+          "lexical_score": 0.9400904774665833,
+          "name": "Include event memories for current-activity queries",
+          "description": "When a query asks what someone is currently reading, doing, working on, or otherwise engaged in, do not restrict memory_kinds to 'state'; search both 'state' and 'event' memories because ongoing activities are often stored as events.",
+          "content": [
+            "If a question asks about a person's current activity (e.g., currently reading, working on, building, studying), set memory_kinds to include both 'state' and 'event', or omit the memory_kinds filter, since ongoing activities are typically stored as event memories.",
+            "If a search restricted to 'state' returns no supporting evidence for an activity question, retry with broader memory_kinds before answering 'no information available'."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_creative_work",
+          "version_id": "sk_access_creative_work_v1",
+          "rank": 2,
+          "score": 0.2885788679122925,
+          "semantic_score": -0.005662787239998579,
+          "lexical_score": 0.9751426577568054,
+          "name": "Retrieve Generic Creative Work Descriptions",
+          "description": "When a question asks what a specific creative work (screenplay, book, film, project) is about, use before hybrid search to also query generic descriptors like 'creative project' and 'completed project' and inspect event/achievement memories.",
+          "content": [
+            "When the user asks about the subject of a specific creative work, do not restrict search to the exact artifact term and ordinal; include query expansions and keywords using generic descriptors such as 'creative project', 'completed project', 'recent work', plus thematic/content words from the question.",
+            "If initial results contain no memory stating the completed work's subject, search or inspect event memories with predicates like achievement or completion rather than only in-progress plans or titles, since completed works may be stored generically.",
+            "Judge evidence sufficiency against all retrieved current related memories, not only those mentioning the exact artifact type; a memory describing a completed creative project with matching themes can satisfy the question."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_future_plan_kinds",
+          "version_id": "sk_access_future_plan_kinds_v1",
+          "rank": 3,
+          "score": 0.2798040509223938,
+          "semantic_score": -0.028851386159658432,
+          "lexical_score": 1.0,
+          "name": "Search plan and event kinds for future-plan questions",
+          "description": "When answering questions about future events, planned activities, or what someone is planning for an upcoming time, include plan memories in retrieval; do not restrict memory_kinds to event only.",
+          "content": [
+            "If the question asks about a future event, plan, or upcoming activity, search with memory_kinds covering both 'plan' and 'event' (for example [\"plan\", \"event\"]).",
+            "Do not filter memory_kinds to only 'event' for forward-looking questions; planned future events are often stored as 'plan' memories.",
+            "Before answering, check whether an additional retrieval over 'plan' memories could supply direct evidence, especially when initial results contain only related context."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_instead_questions",
+          "version_id": "sk_access_instead_questions_v1",
+          "rank": 4,
+          "score": 0.21414043009281158,
+          "semantic_score": 0.10020871460437775,
+          "lexical_score": 0.47998106479644775,
+          "name": "Search beyond excluded activity for alternatives",
+          "description": "When a question asks what activity a person or group planned/did instead of a known activity, use this to avoid over-anchoring retrieval on the excluded activity.",
+          "content": [
+            "If the user asks for an alternative, replacement, or activity done instead of a previously mentioned activity, do not build all searches and keywords around the excluded activity; the supporting memory may omit that activity entirely.",
+            "Run additional searches using the subject person/group plus substitution intent terms such as 'instead', 'alternative', 'planned to', and 'decided to', and search broadly for shared plans, preferences, or recent events involving the same people.",
+            "Before answering, inspect retrieved memories that mention plans or shared activities for those people even if they do not mention the excluded activity; select the memory that explicitly states the alternative plan rather than the first semantically similar result."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_future_plan",
+          "version_id": "sk_access_future_plan_v1",
+          "rank": 5,
+          "score": 0.2094288170337677,
+          "semantic_score": -0.06543508172035217,
+          "lexical_score": 0.8507779240608215,
+          "name": "Search plan memories for future attendance questions",
+          "description": "When a user asks when someone is attending, going to, or planning a future event, include plan memories in retrieval and expand around intention verbs.",
+          "content": [
+            "When a question asks about a future or scheduled activity (e.g., 'when is X attending...', 'when will X go to...'), run retrieval with memory_kind including both 'plan' and 'event' since future intentions may be stored as plan memories with world_start dates.",
+            "If the initial results contain no direct date, re-query with expansions such as 'plans to attend', 'will attend', 'scheduled to attend', 'next month/week' and do not restrict to event kind.",
+            "Use the world_start of a retrieved plan memory as the temporal anchor for answering 'when' questions."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        }
+      ]
+    }
+  },
+  "access_run_id": "access_bank2_v1new_train_seq_conv-42_conv-42_conv-42_qa_0011",
+  "claims": [
+    {
+      "claim": "Joanna is allergic to most reptiles.",
+      "supporting_version_ids": [
+        "mem_conv-42_0008_v1"
+      ],
+      "coverage": null
+    },
+    {
+      "claim": "Joanna is allergic to animals with fur.",
+      "supporting_version_ids": [
+        "mem_conv-42_0008_v1"
+      ],
+      "coverage": null
+    },
+    {
+      "claim": "Joanna is allergic to cockroaches.",
+      "supporting_version_ids": [
+        "mem_conv-42_0022_v1"
+      ],
+      "coverage": null
+    },
+    {
+      "claim": "Joanna is allergic to dairy.",
+      "supporting_version_ids": [
+        "mem_conv-42_0017_v3"
+      ],
+      "coverage": null
+    }
+  ],
+  "current_related_memories": [
+    {
+      "version_id": "mem_conv-42_0008_v1",
+      "memory_id": "mem_conv-42_0008",
+      "version_no": 1,
+      "content": "Joanna is allergic to most reptiles and animals with fur, causing facial swelling and itching.",
+      "memory_kind": "event",
+      "subject": "Joanna",
+      "predicate": "allergy",
+      "object_text": "reptiles and fur animals",
+      "world_start": "2022-01-23",
+      "world_end": null,
+      "update_type": "add"
+    },
+    {
+      "version_id": "mem_conv-42_0017_v3",
+      "memory_id": "mem_conv-42_0017",
+      "version_no": 3,
+      "content": "Joanna requested a dairy-free ice cream recipe from Nate, as she is lactose intolerant and cannot have dairy. She is experimenting with dairy-free dessert recipes and appreciates Nate's recommendation of coconut for its use in desserts.",
+      "memory_kind": "preference",
+      "subject": "Joanna",
+      "predicate": "dietary",
+      "object_text": "dairy-free",
+      "world_start": "2022-05-02",
+      "world_end": null,
+      "update_type": "enrichment"
+    },
+    {
+      "version_id": "mem_conv-42_0022_v1",
+      "memory_id": "mem_conv-42_0022",
+      "version_no": 1,
+      "content": "Joanna expressed interest in getting turtles but mentioned she is allergic to cockroaches and is unsure if she will ever have a pet.",
+      "memory_kind": "preference",
+      "subject": "Joanna",
+      "predicate": "pet_interest",
+      "object_text": "turtles",
+      "world_start": "2022-03-18",
+      "world_end": null,
+      "update_type": "add"
+    }
+  ],
+  "useful_current_version_ids": [
+    "mem_conv-42_0008_v1",
+    "mem_conv-42_0017_v3",
+    "mem_conv-42_0022_v1"
+  ],
+  "retrieved_current_version_ids": [
+    "mem_conv-42_0008_v1",
+    "mem_conv-42_0022_v1",
+    "mem_conv-42_0023_v1",
+    "mem_conv-42_0032_v1",
+    "mem_conv-42_0058_v1",
+    "mem_conv-42_0114_v1",
+    "mem_conv-42_0116_v1",
+    "mem_conv-42_0144_v1"
+  ],
+  "missing_useful_current_version_ids": [
+    "mem_conv-42_0017_v3"
+  ],
+  "search_steps": [
+    {
+      "action_id": "access_bank2_v1new_train_seq_conv-42_conv-42_conv-42_qa_0011_a000",
+      "step_index": 0,
+      "action_type": "search_memory",
+      "request": {
+        "action": "search_memory",
+        "arguments": {
+          "strategy": "hybrid",
+          "query": "What is Joanna allergic to?",
+          "query_expansions": [
+            "What food is Joanna allergic to?",
+            "What substances does Joanna have an allergy to?"
+          ],
+          "keywords": [
+            "Joanna",
+            "allergy"
+          ],
+          "depth": "standard",
+          "top_k": 8
+        },
+        "reason": "To find information about Joanna's allergies"
+      },
+      "returned_memories": [
+        {
+          "version_id": "mem_conv-42_0008_v1",
+          "memory_id": "mem_conv-42_0008",
+          "content": "Joanna is allergic to most reptiles and animals with fur, causing facial swelling and itching.",
+          "memory_kind": "event",
+          "subject": "Joanna",
+          "world_start": "2022-01-23",
+          "world_end": null,
+          "score": 0.0163,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0144_v1",
+          "memory_id": "mem_conv-42_0144",
+          "content": "Joanna expressed interest in visiting Nate's home to watch him play with his turtles from a distance due to an allergy.",
+          "memory_kind": "event",
+          "subject": "Joanna",
+          "world_start": "2022-11-09",
+          "world_end": null,
+          "score": 0.0155,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0022_v1",
+          "memory_id": "mem_conv-42_0022",
+          "content": "Joanna expressed interest in getting turtles but mentioned she is allergic to cockroaches and is unsure if she will ever have a pet.",
+          "memory_kind": "preference",
+          "subject": "Joanna",
+          "world_start": "2022-03-18",
+          "world_end": null,
+          "score": 0.0143,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0058_v1",
+          "memory_id": "mem_conv-42_0058",
+          "content": "Joanna does not want to get a pet due to allergies and is too lazy to research alternative pets for her condition.",
+          "memory_kind": "preference",
+          "subject": "Joanna",
+          "world_start": "2022-05-20",
+          "world_end": null,
+          "score": 0.0142,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0114_v1",
+          "memory_id": "mem_conv-42_0114",
+          "content": "Joanna named her stuffed animal dog Tilly after her former dog in Michigan that she was allergic to.",
+          "memory_kind": "event",
+          "subject": "Joanna",
+          "world_start": "2022-10-21",
+          "world_end": null,
+          "score": 0.0141,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0032_v1",
+          "memory_id": "mem_conv-42_0032",
+          "content": "Joanna is currently focused on writing, which is consuming her time and attention.",
+          "memory_kind": "state",
+          "subject": "Joanna",
+          "world_start": "2022-04-15",
+          "world_end": null,
+          "score": 0.0141,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0116_v1",
+          "memory_id": "mem_conv-42_0116",
+          "content": "Joanna is resilient and determined to keep pushing forward despite facing rejections.",
+          "memory_kind": "event",
+          "subject": "Joanna",
+          "world_start": "2022-10-21",
+          "world_end": null,
+          "score": 0.0141,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0023_v1",
+          "memory_id": "mem_conv-42_0023",
+          "content": "Joanna is actively researching and networking for her next script project, showing determination to make it happen.",
+          "memory_kind": "event",
+          "subject": "Joanna",
+          "world_start": "2022-03-18",
+          "world_end": null,
+          "score": 0.0136,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        }
+      ],
+      "returned_version_ids": [
+        "mem_conv-42_0008_v1",
+        "mem_conv-42_0144_v1",
+        "mem_conv-42_0022_v1",
+        "mem_conv-42_0058_v1",
+        "mem_conv-42_0114_v1",
+        "mem_conv-42_0032_v1",
+        "mem_conv-42_0116_v1",
+        "mem_conv-42_0023_v1"
+      ]
+    },
+    {
+      "action_id": "access_bank2_v1new_train_seq_conv-42_conv-42_conv-42_qa_0011_a001",
+      "step_index": 1,
+      "action_type": "answer",
+      "request": {
+        "action": "answer",
+        "arguments": {
+          "answer": "reptiles, animals with fur, cockroaches, and dogs",
+          "evidence_version_ids": [
+            "mem_conv-42_0008_v1",
+            "mem_conv-42_0022_v1",
+            "mem_conv-42_0058_v1",
+            "mem_conv-42_0114_v1"
+          ],
+          "confidence": 0.95
+        },
+        "reason": "The evidence indicates Joanna is allergic to reptiles, animals with fur, cockroaches, and dogs."
+      },
+      "returned_memories": [],
+      "returned_version_ids": []
+    }
+  ]
+}

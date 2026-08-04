@@ -1,0 +1,729 @@
+{
+  "batch": {
+    "batch_id": "construction_bank1_new_build_0016",
+    "side": "construction",
+    "base_bank_version": "v001",
+    "candidates": [
+      {
+        "candidate_id": "cand_construction_0194d58601f9",
+        "skill_id": "sk_construction_c33b3442a0",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Extract entity status from explicit condition statements",
+          "description": "During candidate extraction, when a user or assistant explicitly states the current condition, performance, or status of a specific entity they own or manage (e.g., 'the store's doing great', 'the project is on track'), use this Skill to create a state memory.",
+          "content": [
+            "When a message from any participant explicitly states the current condition or performance of a specific entity they own or manage, extract a `state` memory candidate with the entity, the stated condition, the speaker, and the message timestamp.",
+            "Apply this even if the statement appears in casual greetings or small talk; do not wait for a later question about the entity.",
+            "Do not extract vague sentiment without a specific entity, and do not infer conditions that are not explicitly stated."
+          ]
+        },
+        "solves": "Construction extraction omits explicit statements about an entity's current condition (e.g., 'The store's doing great!'), leaving later questions like 'How is Gina's store doing?' unsupported. This Skill applies when a participant states the status of an entity they own or manage, and records it as a state memory. It does not apply to vague opinions without a specific entity, already-captured facts, or hypothetical/future conditions.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-30_conv-30_qa_0054",
+        "source_failure_id": "cons_conv-30_conv-30_qa_0054",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:36:31Z"
+      },
+      {
+        "candidate_id": "cand_construction_10a78344962f",
+        "skill_id": "sk_construction_c4637007c3",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Extract explicit future activity proposals",
+          "description": "During extraction, when a speaker states a concrete proposed future activity with another person, including tentative or alternative phrasings (e.g., 'maybe we can ... or ...'), create a plan candidate.",
+          "content": [
+            "In the extraction stage, when a message contains a concrete proposal for a future activity involving the speaker and another person (e.g., 'we can do X together', 'maybe we can Y or Z'), create a single `plan` candidate capturing the proposed action(s) and participants, even if phrased tentatively.",
+            "If the proposal offers multiple alternatives as one intention (e.g., 'X or Y'), keep them in one plan candidate rather than dropping the message.",
+            "Skip only vague or purely hypothetical remarks (e.g., 'someday we might...') and re-statements of already-stored plans."
+          ]
+        },
+        "solves": "General failure mechanism: extraction misses an explicit future activity proposal because it is phrased tentatively or with alternatives, leaving the memory without a plan. This applies when a future construction session processes a message where a speaker concretely proposes doing something together (with options). It must not apply to vague hypothetical statements or to clearly past or completed events, which are not plans.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-42_conv-42_qa_0195",
+        "source_failure_id": "cons_conv-42_conv-42_qa_0195",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:37:57Z"
+      },
+      {
+        "candidate_id": "cand_construction_634ba86a7fe5",
+        "skill_id": "sk_construction_7f7fb64d6d",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Extract Explicit Resource Suggestions",
+          "description": "When a message contains an explicit suggestion or recommendation from one speaker to another to check out a specific resource (e.g., a book, article, website) for insights on a topic, extract it as a candidate event memory during construction.",
+          "content": [
+            "During extraction, if any message explicitly recommends or suggests that the main user (or another named speaker) consult a specific, named resource (book, article, website, video, etc.) for insights on a topic, create a candidate event memory capturing: who made the suggestion, to whom, the resource mentioned, and the topic it addresses.",
+            "Do not skip such candidates merely because the recommended resource appears only as advice, because the message is from a speaker other than the main user, or because the topic (e.g., a dream) is personal.",
+            "Stop after one candidate per suggestion; do not expand to every noun or mentioned item. If no concrete resource is named, or the message only asks for a recommendation without making one, no candidate is needed."
+          ]
+        },
+        "solves": "The general failure is that explicit suggestions of concrete resources are missed during extraction, so later questions about who recommended what cannot be answered. This Skill applies when a speaker explicitly tells another to check out a named resource for insights on a topic. It does not apply when no concrete resource is named or when the message merely asks for a recommendation.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-49_conv-49_qa_0099",
+        "source_failure_id": "cons_conv-49_conv-49_qa_0099",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:42:15Z"
+      },
+      {
+        "candidate_id": "cand_construction_6961d5a5c21d",
+        "skill_id": "sk_construction_5b4bcc1dba",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Enumerated Routine Steps Extraction",
+          "description": "When a speaker answers a question by enumerating steps of a routine or care process, extract each step as a separate memory candidate and capture any overall evaluation.",
+          "content": [
+            "During extraction, if a speaker (not the user) answers a question by listing multiple components of a routine or care process (often using imperatives like 'keep...', 'feed...', 'make sure...'), create a separate candidate memory for each component, attributed to the speaker as a preference, state, or plan.",
+            "Also extract any explicit overall evaluation of the process (e.g., 'not tough', 'easy') as its own candidate memory.",
+            "Stop after the enumerated items and the evaluation; do not add inferred steps. Do not apply when the speaker is giving a direct command to the user without describing their own practice, or when the items are one-time events."
+          ]
+        },
+        "solves": "The general failure is that extraction misses all candidate memories when a speaker describes a routine or care process through an imperative enumeration, leaving no durable record. Applies to future sessions where a speaker answers a question with two or more direct steps (e.g., 'keep clean', 'feed properly', 'give light') and possibly an overall judgment. Does not apply to direct commands in an ongoing interaction or to transient event descriptions.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-42_conv-42_qa_0108",
+        "source_failure_id": "cons_conv-42_conv-42_qa_0108",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:37:54Z"
+      },
+      {
+        "candidate_id": "cand_construction_7c887f408e90",
+        "skill_id": "sk_construction_f1edfcdc7e",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Extract Activity Domain Disclosures",
+          "description": "When a user explicitly states what they write about, study, research, or recommend, extract a preference or state memory for that activity domain during candidate extraction.",
+          "content": [
+            "During extraction, treat explicit first-person statements of ongoing activities (writing about, studying, researching, recommending, focusing on) as candidate memories, even if phrased conversationally in a list.",
+            "Emit one memory using preference or state that records the activity and its subjects; do not require a follow-up question before extracting.",
+            "If an existing candidate or memory already covers the same fact, skip; otherwise always generate the candidate so the fact is preserved."
+          ]
+        },
+        "solves": "The extraction stage occasionally emits zero candidates from a message where the user explicitly states an ongoing activity domain (e.g., what they write about, study, or recommend), causing later questions about that domain to be unanswerable. This skill applies when a future message contains an explicit first-person statement of such an activity; it should then generate a preference/state memory capturing the activity and subjects. It must not apply to messages that only mention a subject with no stated activity or personal involvement.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-43_conv-43_qa_0083",
+        "source_failure_id": "cons_conv-43_conv-43_qa_0083",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:38:34Z"
+      },
+      {
+        "candidate_id": "cand_construction_8751496a5f92",
+        "skill_id": "sk_construction_17b80d1ab2",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Extract explicit advice from one speaker to another",
+          "description": "When a message contains explicit advice, recommendation, or instruction from one speaker to another about how to do something, and that advice is not already captured in memory, extract it as a candidate memory.",
+          "content": [
+            "During extraction, treat explicit advice or directives from one speaker to another as a candidate memory (e.g., relationship or event) that records who advised whom and the actionable content.",
+            "Only extract when the advice is specific and actionable, not for generic pleasantries, questions, or non-directive opinions.",
+            "Bind the candidate to the source message and the recipient so later questions about 'what advice did X give Y' can retrieve it."
+          ]
+        },
+        "solves": "This solves extraction omissions where explicit advice from one speaker to another is not turned into a candidate memory, causing later questions about that advice to be unanswerable. It applies when a message directly advises or instructs a named recipient on how to do something (e.g., 'Make sure you watch other people's videos first...'). It does not apply to general statements, opinions, or rhetorical suggestions that are not actionable directives, nor to advice that is already represented in existing memories.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-42_conv-42_qa_0191",
+        "source_failure_id": "cons_conv-42_conv-42_qa_0191",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:37:52Z"
+      },
+      {
+        "candidate_id": "cand_construction_96dc3dd563c8",
+        "skill_id": "sk_construction_ed487fd6c9",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Extract Explicit Advice Between Speakers",
+          "description": "When a user message records one character giving explicit advice or a recommendation to another, extract it as a relationship/event memory during extraction.",
+          "content": [
+            "During extraction, for each user message that contains one character giving explicit advice, recommendation, or guidance to another character, create a candidate memory preserving the advice near-verbatim.",
+            "Record the advisor as the source and the advisee as the target; use memory type 'relationship' for the advisor-advisee link or 'event' for the act of advising, and link the candidate to the source message ID.",
+            "Only apply when the advice is explicitly stated; do not infer advice from tone, implied intent, or general encouragement without a concrete directive."
+          ]
+        },
+        "solves": "The extraction stage skips direct advice one character gives to another in a user turn, so later questions asking for that advice find no supporting memory. Apply to future sessions where a user message contains an explicit advice or recommendation directed from one speaker to another and a question may target it. Do not apply to third-person narration, implied sentiment, or comments with no concrete directive.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-49_conv-49_qa_0086",
+        "source_failure_id": "cons_conv-49_conv-49_qa_0086",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:42:09Z"
+      },
+      {
+        "candidate_id": "cand_construction_97911fdb0f21",
+        "skill_id": "sk_construction_4a96d6a95f",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Extract explicit action commitments as plan memories",
+          "description": "When a message contains a speaker's explicit commitment or offer to perform a specific future action for someone, apply this Skill during extraction to ensure a plan memory is created.",
+          "content": [
+            "During extraction, when a speaker states an explicit commitment or offer to perform a concrete future action for another person (e.g., 'I will write it down and mail it to you'), create a plan memory capturing the action, recipient, and any time reference in the message.",
+            "Do not create a plan memory for hypothetical, conditional, or non-committal statements (e.g., 'I could help', 'I sometimes share recipes') unless they contain a definite future action."
+          ]
+        },
+        "solves": "The general failure is that explicit future commitments made by a speaker during conversation are not extracted as plan memories, leaving later questions about the speaker's intended actions unanswered. This Skill applies when a future session contains a concrete offer or promise to perform an action for someone (e.g., 'I will write it down and mail it to you'); in that case extract a plan memory. It must not apply to hypothetical, conditional, or generic ability statements that do not commit the speaker to a specific future action.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-43_conv-43_qa_0129",
+        "source_failure_id": "cons_conv-43_conv-43_qa_0129",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:38:55Z"
+      },
+      {
+        "candidate_id": "cand_construction_9df7fdab07d7",
+        "skill_id": "sk_construction_a583d94209",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Extract explicit offers of help or support",
+          "description": "When a participant explicitly offers help, support, tips, or assistance on a specific topic to another participant, create a memory candidate for the offer.",
+          "content": [
+            "During extraction, treat explicit offers of help, support, tips, or assistance directed at the other participant as memory-worthy facts.",
+            "Signal words include 'if you need', 'let me know', 'happy to help', 'just ask', or 'offer'; when such an offer names a concrete topic, create one relationship or event candidate capturing the offerer, the topic, and the recipient, linked to the source message.",
+            "Do not extract generic polite closings without a concrete offer (e.g., 'let me know if you need anything') or messages that merely thank or acknowledge the other participant."
+          ]
+        },
+        "solves": "Construction extraction misses explicit offers of help, support, or tips, so later questions about the offer (e.g., 'What did Sam offer Evan?') cannot be answered from memory. Applies to future sessions where one participant makes a concrete offer of assistance or tips on a named topic; does not apply to generic pleasantries or mere thanks where no specific offer is extended.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-49_conv-49_qa_0132",
+        "source_failure_id": "cons_conv-49_conv-49_qa_0132",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:42:36Z"
+      },
+      {
+        "candidate_id": "cand_construction_a2ceb2ae3c89",
+        "skill_id": "sk_construction_ef9df7abf9",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Extract explicit requests for help or discussion",
+          "description": "During extraction, when a message contains an explicit ask from one person to another for help, advice, or to discuss a specific topic, create an event candidate recording the ask as a distinct memory.",
+          "content": [
+            "If a message contains an explicit request such as 'Can we talk about X?', 'Can you help me with X?', or 'Please help me with X', extract an event memory with subject as the speaker, content stating 'asked [recipient] for help with X' or 'asked [recipient] about X', and world_start set to the message timestamp.",
+            "Keep this request memory separate from any memory about the speaker's struggle or intention to reach out later; do not merge them.",
+            "Do not create a request memory when the message only expresses a need, difficulty, or future intention (e.g., 'I'm struggling' or 'I will reach out') without an explicit ask directed at a recipient."
+          ]
+        },
+        "solves": "Extraction often captures a speaker's struggle or future intention but omits the explicit request itself, leaving the ask unrecorded and unanswerable later. This skill applies to any future message where a speaker explicitly asks another person for help, advice, or to discuss a specific topic (e.g., 'Can we talk about X?'). It must not apply when only a need, struggle, or intention to reach out is expressed without a direct request.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-48_conv-48_qa_0121",
+        "source_failure_id": "cons_conv-48_conv-48_qa_0121",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:41:09Z"
+      },
+      {
+        "candidate_id": "cand_construction_a64db554c7dd",
+        "skill_id": "sk_construction_2cc5ef97ca",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Record advice details when offer contains tips",
+          "description": "Use during construction extraction when a message contains an offer or plan plus concrete advice, tips, or steps; store the advice as its own memory instead of only logging the offer.",
+          "content": [
+            "During extraction, if a speaker offers help or proposes a plan and also lists specific advice, tips, or steps, create a separate memory candidate for that advice (e.g., as an event or state) in addition to any memory for the offer or plan.",
+            "Do not let the offer memory absorb the advice: preserve the concrete details, such as the method or strategy recommended, because they are the durable facts.",
+            "Skip this when the advice is only a generic courtesy (e.g., 'let me know if you need help') with no substantive content."
+          ]
+        },
+        "solves": "Extraction often records that someone offered help or a plan but drops the concrete advice stated in the same message, so later questions about the discussed strategies lack evidence. This Skill applies when a message combines an offer/plan with explicit tips or steps and the memory must keep the advice as its own fact. It does not apply to purely generic offers with no substantive advice, or when the advice is already captured in another candidate.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-48_conv-48_qa_0120",
+        "source_failure_id": "cons_conv-48_conv-48_qa_0120",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:41:11Z"
+      },
+      {
+        "candidate_id": "cand_construction_aae62917993c",
+        "skill_id": "sk_construction_82696a5e17",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Extract hedged suggestions as event memories",
+          "description": "When a participant gives advice or a suggestion to another participant, especially phrased as a question or with hedges like maybe/could/perhaps, use this during extraction to create an event candidate.",
+          "content": [
+            "During extraction, when a speaker gives advice, a recommendation, or a suggestion to another speaker, create an event candidate even if the utterance is phrased as a question or uses hedges like 'maybe', 'could', 'perhaps', or 'might'.",
+            "Capture the speaker, the recipient, and the recommended course of action; if the advice refers to a condition or problem the recipient previously mentioned, include that context in the memory.",
+            "Stop after recording the suggestion; do not infer outcomes, acceptance, or additional facts beyond what the utterance states."
+          ]
+        },
+        "solves": "Construction extraction misses suggestions phrased as hedged questions or tentative advice, leaving factual conversational events unrecorded. This Skill applies whenever one participant recommends an action to another, especially about the recipient's earlier-mentioned problem, in any future session. It does not apply to declarative general advice without a specific recipient or non-advice questions.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-49_conv-49_qa_0112",
+        "source_failure_id": "cons_conv-49_conv-49_qa_0112",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:42:34Z"
+      },
+      {
+        "candidate_id": "cand_construction_ac00f08a987a",
+        "skill_id": "sk_construction_eefaf1bf57",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Extract explicit advice as a memory candidate",
+          "description": "When extracting candidates from a conversation, if a message contains explicit advice or a suggestion from one named participant to another about a specific action, create a candidate for that advice.",
+          "content": [
+            "Generate one extraction candidate for any clear, specific suggestion or directive from one named participant to another (e.g., 'keep doing X', 'you should try Y'); record it as an 'event' for the advice or as 'preference'/'state' if it reflects a stable inclination of the advisee.",
+            "Skip generic fillers, rhetorical statements, and advice lacking a named recipient or a specific action; do not create more than one candidate per advice speech act.",
+            "Do not infer acceptance or commitment unless the advisee later agrees; then add a separate 'plan' candidate for the advisee."
+          ]
+        },
+        "solves": "Construction extraction sometimes skips explicit advice or suggestions from one participant to another, leaving later questions about what someone advised unanswerable. This Skill applies when a future message contains a clear directive or suggestion (e.g., 'keep doing X') from a named speaker to a named recipient. It must not apply to conversational fillers, rhetorical statements, or advice without a specific action or recipient.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-49_conv-49_qa_0141",
+        "source_failure_id": "cons_conv-49_conv-49_qa_0141",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:42:51Z"
+      },
+      {
+        "candidate_id": "cand_construction_c55237a3c915",
+        "skill_id": "sk_construction_050a40caf6",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Extract explicit suggestions and advice as memory candidates",
+          "description": "Use during extraction when a speaker suggests, advises, or recommends a specific action for someone (e.g., 'you should', 'I would', 'you'd better'). Extract the suggestion as a memory candidate even if hypothetical.",
+          "content": [
+            "During extraction, treat explicit suggestions or advice to a specific person as memory candidates even when phrased hypothetically or colloquially.",
+            "Signal phrases include 'you should', 'I would', 'you'd better', 'why don't you', 'I suggest', 'I recommend'. Capture the speaker, addressee, and the recommended action.",
+            "Store as an event (or plan if agreed) with a source link. Do not discard merely because the suggestion was not executed."
+          ]
+        },
+        "solves": "The failure mechanism is that explicit suggestion/advice utterances are skipped during candidate extraction, leaving the advised action absent from memory. Applies to future sessions where a speaker proposes a concrete action for another person using should/would/suggest/recommend phrasing. Does not apply to generic opinions, rhetorical questions, or statements with no recommended action.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-49_conv-49_qa_0139",
+        "source_failure_id": "cons_conv-49_conv-49_qa_0139",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:42:26Z"
+      },
+      {
+        "candidate_id": "cand_construction_d4437b2af443",
+        "skill_id": "sk_construction_545feaaa1c",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Extract progress evaluations",
+          "description": "When a speaker explicitly evaluates someone's progress or success on a named project during conversation, extract a memory for that evaluation during construction.",
+          "content": [
+            "During extraction, when a speaker explicitly evaluates another person's progress, condition, or success on a named project (e.g., 'hard work's paying off'), create a candidate memory recording the speaker, the subject, the evaluation, and the project topic, bound to the source message.",
+            "Choose type `event` for the reported speech (X said ...) or `state` for the underlying condition; exclude generic praise with no named project."
+          ]
+        },
+        "solves": "General failure: extraction skips explicit statements where one person evaluates another person's progress on a named project, losing evidence for later questions like \"What did X say about Y's Z?\". Applies to future sessions where a speaker uses evaluative phrasing about progress/success; excluded when the statement contains no referenced project or when the only needed memory is the project's existence.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-30_conv-30_qa_0050",
+        "source_failure_id": "cons_conv-30_conv-30_qa_0050",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:36:30Z"
+      }
+    ],
+    "retrieved_skill_ids": [],
+    "relations": []
+  },
+  "plan": {
+    "transaction_id": "construction_bank1_new_build_0016",
+    "side": "construction",
+    "base_bank_version": "v001",
+    "candidate_resolutions": [
+      {
+        "candidate_id": "cand_construction_0194d58601f9",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_construction_entity_status"
+        ],
+        "reason": "No existing Skill covers extracting explicit entity status statements as state memories."
+      },
+      {
+        "candidate_id": "cand_construction_10a78344962f",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_construction_future_activity_proposal"
+        ],
+        "reason": "No existing Skill covers extracting tentative future activity proposals as plan memories."
+      },
+      {
+        "candidate_id": "cand_construction_634ba86a7fe5",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_construction_resource_suggestion"
+        ],
+        "reason": "No existing Skill covers extracting explicit resource suggestions as event memories."
+      },
+      {
+        "candidate_id": "cand_construction_6961d5a5c21d",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_construction_enumerated_routine_steps"
+        ],
+        "reason": "No existing Skill covers extracting enumerated routine steps as separate memories."
+      },
+      {
+        "candidate_id": "cand_construction_7c887f408e90",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_construction_activity_domain_disclosure"
+        ],
+        "reason": "No existing Skill covers extracting explicit activity domain disclosures as preference/state memories."
+      },
+      {
+        "candidate_id": "cand_construction_8751496a5f92",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_advice_between_speakers"
+        ],
+        "reason": "Merged with cand_construction_96dc3dd563c8 and others because all repair the same mechanism of extracting explicit advice between speakers."
+      },
+      {
+        "candidate_id": "cand_construction_96dc3dd563c8",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_advice_between_speakers"
+        ],
+        "reason": "Merged with cand_construction_8751496a5f92 and others because all repair the same mechanism of extracting explicit advice between speakers."
+      },
+      {
+        "candidate_id": "cand_construction_97911fdb0f21",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_construction_action_commitment_plan"
+        ],
+        "reason": "No existing Skill covers extracting explicit action commitments as plan memories."
+      },
+      {
+        "candidate_id": "cand_construction_9df7fdab07d7",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_construction_offer_help_support"
+        ],
+        "reason": "No existing Skill covers extracting explicit offers of help or support as memory candidates."
+      },
+      {
+        "candidate_id": "cand_construction_a2ceb2ae3c89",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_construction_request_help_discussion"
+        ],
+        "reason": "No existing Skill covers extracting explicit requests for help or discussion as event memories."
+      },
+      {
+        "candidate_id": "cand_construction_a64db554c7dd",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_construction_advice_details_in_offer"
+        ],
+        "reason": "No existing Skill covers preserving concrete advice details when an offer contains tips."
+      },
+      {
+        "candidate_id": "cand_construction_aae62917993c",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_advice_between_speakers"
+        ],
+        "reason": "Merged with cand_construction_8751496a5f92 and others because all repair the same mechanism of extracting explicit advice between speakers."
+      },
+      {
+        "candidate_id": "cand_construction_ac00f08a987a",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_advice_between_speakers"
+        ],
+        "reason": "Merged with cand_construction_8751496a5f92 and others because all repair the same mechanism of extracting explicit advice between speakers."
+      },
+      {
+        "candidate_id": "cand_construction_c55237a3c915",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_advice_between_speakers"
+        ],
+        "reason": "Merged with cand_construction_8751496a5f92 and others because all repair the same mechanism of extracting explicit advice between speakers."
+      },
+      {
+        "candidate_id": "cand_construction_d4437b2af443",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_construction_progress_evaluation"
+        ],
+        "reason": "No existing Skill covers extracting explicit progress evaluations as memory candidates."
+      }
+    ],
+    "operations": [
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_entity_status",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Extract Entity Status Statements",
+        "description": "Use when a participant explicitly states the current condition or performance of an entity they own or manage.",
+        "content": [
+          "When a message explicitly states the current condition or performance of a specific entity the speaker owns or manages, extract a state memory with the entity, condition, speaker, and timestamp.",
+          "Apply even in casual greetings; do not wait for a later question.",
+          "Do not extract vague sentiment without a specific entity or infer unstated conditions."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_0194d58601f9"
+        ],
+        "reason": "Creating Skill for explicit entity status extraction.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_future_activity_proposal",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Extract Future Activity Proposals",
+        "description": "Use when a speaker concretely proposes a future activity with another person, including tentative or alternative phrasings.",
+        "content": [
+          "When a message contains a concrete proposal for a future activity involving the speaker and another person, create a plan candidate even if tentative.",
+          "If the proposal offers multiple alternatives as one intention, keep them in one plan candidate.",
+          "Skip vague hypothetical remarks and re-statements of already-stored plans."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_10a78344962f"
+        ],
+        "reason": "Creating Skill for future activity proposal extraction.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_resource_suggestion",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Extract Resource Suggestions",
+        "description": "Use when a speaker explicitly recommends a specific named resource to another for insights on a topic.",
+        "content": [
+          "When a message explicitly recommends a specific named resource to another speaker, create an event candidate capturing who suggested, to whom, the resource, and the topic.",
+          "Do not skip because the resource appears as advice or the topic is personal.",
+          "Stop after one candidate per suggestion; skip if no concrete resource is named or the message only asks for a recommendation."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_634ba86a7fe5"
+        ],
+        "reason": "Creating Skill for resource suggestion extraction.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_enumerated_routine_steps",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Extract Enumerated Routine Steps",
+        "description": "Use when a speaker answers a question by enumerating steps of a routine or care process.",
+        "content": [
+          "When a speaker lists multiple components of a routine or care process, create a separate candidate memory for each component.",
+          "Also extract any explicit overall evaluation as its own candidate.",
+          "Stop after enumerated items and evaluation; do not apply to direct commands or one-time events."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_6961d5a5c21d"
+        ],
+        "reason": "Creating Skill for enumerated routine steps extraction.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_activity_domain_disclosure",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Extract Activity Domain Disclosures",
+        "description": "Use when a user explicitly states what they write about, study, research, or recommend.",
+        "content": [
+          "Treat explicit first-person statements of ongoing activities as candidate memories, even if conversational.",
+          "Emit one preference or state memory recording the activity and subjects.",
+          "Skip if an existing candidate or memory already covers the same fact."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_7c887f408e90"
+        ],
+        "reason": "Creating Skill for activity domain disclosure extraction.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_advice_between_speakers",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Extract Advice Between Speakers",
+        "description": "Use when a message contains explicit advice, recommendation, or suggestion from one speaker to another about a specific action.",
+        "content": [
+          "When a speaker gives explicit advice or a suggestion to another speaker, create an event candidate capturing the advisor, advisee, and the recommended action.",
+          "Apply even if phrased as a question or with hedges like maybe/could/perhaps.",
+          "Skip generic pleasantries, rhetorical statements, or advice without a specific action or recipient."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_8751496a5f92",
+          "cand_construction_96dc3dd563c8",
+          "cand_construction_aae62917993c",
+          "cand_construction_ac00f08a987a",
+          "cand_construction_c55237a3c915"
+        ],
+        "reason": "Creating merged Skill for advice extraction from multiple candidates.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_action_commitment_plan",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Extract Action Commitments as Plans",
+        "description": "Use when a speaker explicitly commits or offers to perform a concrete future action for someone.",
+        "content": [
+          "When a speaker states an explicit commitment or offer to perform a concrete future action, create a plan memory with the action, recipient, and time reference.",
+          "Do not create a plan for hypothetical, conditional, or non-committal statements."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_97911fdb0f21"
+        ],
+        "reason": "Creating Skill for action commitment plan extraction.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_offer_help_support",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Extract Offers of Help or Support",
+        "description": "Use when a participant explicitly offers help, support, tips, or assistance on a specific topic to another participant.",
+        "content": [
+          "When a message contains an explicit offer of help or tips on a named topic, create one relationship or event candidate capturing the offerer, topic, and recipient.",
+          "Signal words include 'if you need', 'let me know', 'happy to help', 'just ask'.",
+          "Do not extract generic polite closings without a concrete offer."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_9df7fdab07d7"
+        ],
+        "reason": "Creating Skill for offer of help extraction.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_request_help_discussion",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Extract Requests for Help or Discussion",
+        "description": "Use when a message contains an explicit ask from one person to another for help, advice, or to discuss a specific topic.",
+        "content": [
+          "When a message contains an explicit request like 'Can we talk about X?' or 'Can you help me with X?', extract an event memory with the speaker, recipient, and topic.",
+          "Keep this request memory separate from memories about struggle or intention to reach out.",
+          "Do not create a request memory when only a need or future intention is expressed without a direct ask."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_a2ceb2ae3c89"
+        ],
+        "reason": "Creating Skill for request extraction.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_advice_details_in_offer",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Preserve Advice Details in Offers",
+        "description": "Use when a message contains an offer or plan plus concrete advice, tips, or steps.",
+        "content": [
+          "When a speaker offers help and also lists specific advice or steps, create a separate memory candidate for that advice.",
+          "Do not let the offer memory absorb the advice; preserve concrete details.",
+          "Skip when the advice is only a generic courtesy with no substantive content."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_a64db554c7dd"
+        ],
+        "reason": "Creating Skill for preserving advice details in offers.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_progress_evaluation",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Extract Progress Evaluations",
+        "description": "Use when a speaker explicitly evaluates someone's progress or success on a named project.",
+        "content": [
+          "When a speaker explicitly evaluates another person's progress or success on a named project, create a candidate memory recording the speaker, subject, evaluation, and project topic.",
+          "Choose type event for reported speech or state for underlying condition.",
+          "Exclude generic praise with no named project."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_d4437b2af443"
+        ],
+        "reason": "Creating Skill for progress evaluation extraction.",
+        "hard_delete": false
+      }
+    ]
+  },
+  "status": "planned"
+}

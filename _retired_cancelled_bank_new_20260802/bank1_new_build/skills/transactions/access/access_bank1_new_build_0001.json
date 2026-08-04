@@ -1,0 +1,174 @@
+{
+  "batch": {
+    "batch_id": "access_bank1_new_build_0001",
+    "side": "access",
+    "base_bank_version": "v000",
+    "candidates": [
+      {
+        "candidate_id": "cand_access_94c9af53cd3d",
+        "skill_id": "sk_access_377417af45",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Attribute-synonym search expansion",
+          "description": "When a question asks for a specific attribute value (breed, type, color, age) of an entity and initial searches return only generic mentions, re-search with synonym families of the attribute and likely value descriptors before answering.",
+          "content": [
+            "When a user asks for a specific attribute (breed, type, color, age, etc.) of an entity and retrieved memories mention the entity but none explicitly state the attribute, run additional searches using synonym families of the attribute and common value descriptors (e.g., mix, mutt, cross for breed; approximate age phrases for age) instead of repeating the question's exact wording.",
+            "After each expanded search, inspect the full text of candidate memories, including their subject and object fields, for any explicit attribute statement; use only evidence from retrieved/current versions when answering, and if the value is still absent, say it is not found rather than guessing."
+          ]
+        },
+        "solves": "Questions asking for a concrete attribute (breed, type, color, age) of an entity can miss memories that phrase the value differently (e.g., 'mutt/mix' vs 'breeds'), so generic searches return only entity-level mentions. This rule requires synonym-family expansion of the attribute and likely value descriptors before answering, surfacing such memories without knowing the answer. Applies to any entity-attribute query; not needed when explicit values are already retrieved.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-44_conv-44_qa_0041",
+        "source_failure_id": "access_conv-44_conv-44_qa_0041",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:07:27Z"
+      },
+      {
+        "candidate_id": "cand_access_d4a39175b231",
+        "skill_id": "sk_access_c408710163",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "SearchShortPhrasesWithBaseNoun",
+          "description": "When a question asks for a short attribute like a motto, slogan, nickname, or title, include the standalone base noun in keyword searches and try a semantic/hybrid search if the exact phrase misses.",
+          "content": [
+            "If the query asks about a short named attribute (motto, slogan, nickname, title), add the bare noun (e.g., 'motto') as a keyword in addition to any full phrase like 'family motto'.",
+            "When the first keyword search does not return a memory containing that attribute word, re-run with the base word alone and also perform a semantic or hybrid search before concluding no information is available."
+          ]
+        },
+        "solves": "The failure occurred because a keyword search for 'family motto' missed an existing memory containing 'family's motto' — the possessive form blocked exact phrase matching. Future questions about short attributes such as a motto, slogan, nickname, or title face the same risk when the stored text uses a possessive or inflected variant. This rule applies when the target is a retrievable short phrase; it does not apply when the answer must be synthesized from multiple facts.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-49_conv-49_qa_0135",
+        "source_failure_id": "access_conv-49_conv-49_qa_0135",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:08:08Z"
+      },
+      {
+        "candidate_id": "cand_access_e61f0c1eab5e",
+        "skill_id": "sk_access_6a1ef3be81",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Category-instance search diversification",
+          "description": "When a question asks for instances of a category (e.g., activities, hobbies, interests, foods) and initial retrieval yields no clear instance, run additional searches with concrete candidate terms and synonyms, not repeated identical queries.",
+          "content": [
+            "When a question asks to enumerate instances of a category (activities, hobbies, interests, foods, etc.), derive candidate instance terms from the question, from any retrieved memories, and from common subcategories; run separate searches for each candidate term combined with the subject.",
+            "If a search for category instances returns only peripherally related memories (e.g., a company, a place) and no concrete instance, reformulate the query with synonyms and specific examples of the category before concluding; do not rerun the same query with only depth or top_k changed."
+          ]
+        },
+        "solves": "The agent failed to retrieve a memory naming a concrete outdoor activity because it repeated the same category-label query with only depth changed. Category-enumeration questions (activities, hobbies, interests, features, items) often have evidence stored under specific instance terms rather than the category label, so retrieval must diversify into candidate instance terms. This applies to any future question asking for examples of a category; it does not apply to single-entity lookups or when evidence is explicitly labeled.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-43_conv-43_qa_0035",
+        "source_failure_id": "access_conv-43_conv-43_qa_0035",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:06:27Z"
+      }
+    ],
+    "retrieved_skill_ids": [],
+    "relations": []
+  },
+  "plan": {
+    "transaction_id": "tx_access_bank1_new_build_0001",
+    "side": "access",
+    "base_bank_version": "v000",
+    "candidate_resolutions": [
+      {
+        "candidate_id": "cand_access_94c9af53cd3d",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_attribute_synonym"
+        ],
+        "reason": "No existing Skill covers attribute-synonym expansion for entity-attribute queries."
+      },
+      {
+        "candidate_id": "cand_access_d4a39175b231",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_short_phrase_search"
+        ],
+        "reason": "No existing Skill covers searching short named attributes with base noun and semantic fallback."
+      },
+      {
+        "candidate_id": "cand_access_e61f0c1eab5e",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_category_instance_search"
+        ],
+        "reason": "No existing Skill covers category-instance search diversification."
+      }
+    ],
+    "operations": [
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_attribute_synonym",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Attribute-Synonym Search Expansion",
+        "description": "Use when a question asks for a specific attribute value (breed, type, color, age) and initial searches return only generic entity mentions.",
+        "content": [
+          "When a user asks for a specific attribute (breed, type, color, age, etc.) of an entity and retrieved memories mention the entity but none explicitly state the attribute, run additional searches using synonym families of the attribute and common value descriptors (e.g., mix, mutt, cross for breed; approximate age phrases for age) instead of repeating the question's exact wording.",
+          "After each expanded search, inspect the full text of candidate memories, including their subject and object fields, for any explicit attribute statement; use only evidence from retrieved/current versions when answering, and if the value is still absent, say it is not found rather than guessing."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_94c9af53cd3d"
+        ],
+        "reason": "Creating new Skill for attribute-synonym expansion.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_short_phrase_search",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Short Phrase Search with Base Noun",
+        "description": "Use when a question asks for a short named attribute like a motto, slogan, nickname, or title and exact phrase search may miss inflected forms.",
+        "content": [
+          "If the query asks about a short named attribute (motto, slogan, nickname, title), add the bare noun (e.g., 'motto') as a keyword in addition to any full phrase like 'family motto'.",
+          "When the first keyword search does not return a memory containing that attribute word, re-run with the base word alone and also perform a semantic or hybrid search before concluding no information is available."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_d4a39175b231"
+        ],
+        "reason": "Creating new Skill for short phrase search.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_category_instance_search",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Category-Instance Search Diversification",
+        "description": "Use when a question asks to enumerate instances of a category (activities, hobbies, interests, foods) and initial retrieval yields no clear instance.",
+        "content": [
+          "When a question asks to enumerate instances of a category (activities, hobbies, interests, foods, etc.), derive candidate instance terms from the question, from any retrieved memories, and from common subcategories; run separate searches for each candidate term combined with the subject.",
+          "If a search for category instances returns only peripherally related memories (e.g., a company, a place) and no concrete instance, reformulate the query with synonyms and specific examples of the category before concluding; do not rerun the same query with only depth or top_k changed."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_e61f0c1eab5e"
+        ],
+        "reason": "Creating new Skill for category-instance search diversification.",
+        "hard_delete": false
+      }
+    ]
+  },
+  "status": "planned"
+}

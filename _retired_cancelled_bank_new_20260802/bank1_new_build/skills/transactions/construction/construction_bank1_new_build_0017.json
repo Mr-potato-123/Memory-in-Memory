@@ -1,0 +1,295 @@
+{
+  "batch": {
+    "batch_id": "construction_bank1_new_build_0017",
+    "side": "construction",
+    "base_bank_version": "v001",
+    "candidates": [
+      {
+        "candidate_id": "cand_construction_0fcb5aff625d",
+        "skill_id": "sk_construction_ad422a15d5",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Resolve pronoun antecedents before extracting claims",
+          "description": "When a statement uses 'they/them' or other pronouns to refer to a previously mentioned entity, use this before extracting a memory to attribute the predicate to the correct subject rather than the speaker.",
+          "content": [
+            "Before extracting a memory candidate, resolve every pronoun in the source message to its nearest plausible antecedent in the same or preceding messages; do not default to the speaker.",
+            "When the speaker describes other entities (pets, family, friends) and then uses 'they/them', attribute the predicate to that entity, not the speaker.",
+            "If the antecedent is ambiguous or unverifiable, do not guess; either omit the claim or mark it for review instead of assigning a wrong subject."
+          ]
+        },
+        "solves": "The extraction stage misattributed the pronoun 'They' in 'They definitely prefer nice, sunny days in the grass' to the speaker instead of her dogs, producing an incorrect memory. The abstract mechanism is failing to resolve anaphoric pronouns to their antecedents before assigning a memory subject. This rule applies to any future construction pass where a speaker mentions entities (pets, people, objects) and later refers to them with pronouns, ensuring claims are stored under the true referent.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-44_conv-44_qa_0108",
+        "source_failure_id": "cons_conv-44_conv-44_qa_0108",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:11:14Z"
+      },
+      {
+        "candidate_id": "cand_construction_3a3e5b448e57",
+        "skill_id": "sk_construction_c3c93dffc7",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Resolve-anaphora-before-memory-extraction",
+          "description": "When a user statement uses a pronoun or demonstrative (this, it, that) to refer to an object or possession mentioned earlier, resolve the referent from the full conversation before extracting a memory candidate. Use during extraction to avoid mis-attributing the fact.",
+          "content": [
+            "During candidate extraction, if a user statement contains a pronoun or demonstrative (this, it, that, those) referring to an object or possession, resolve it to its antecedent using the full session context before forming the candidate.",
+            "Do not assign the nearest noun in the same message automatically; check earlier user or assistant messages for the intended referent, preferring the most recent contextually relevant entity.",
+            "Write the extracted candidate with the resolved referent as the subject or object so the expressed fact (reason, motivation, preference) is attributed to the correct entity."
+          ]
+        },
+        "solves": "Diagnosed cause: 'this' was resolved to the wrong object, creating a false candidate and losing the true claim. Mechanism: resolve anaphoric references (this, it, that) from the full conversation before extraction, or facts get mis-attributed. Applies to extraction of reasons, motivations, or attributes about previously mentioned entities; not applicable when referents are unambiguous.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-49_conv-49_qa_0097",
+        "source_failure_id": "cons_conv-49_conv-49_qa_0097",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:12:55Z"
+      },
+      {
+        "candidate_id": "cand_construction_6adcae605391",
+        "skill_id": "sk_construction_8b240db830",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Include recipient in recommendation event extraction",
+          "description": "When a speaker recommends, suggests, or advises something to the conversation partner using second-person pronouns, resolve the addressee from session context and include the recipient in the extracted event memory.",
+          "content": [
+            "During extraction of event memories, when a message contains a recommendation, suggestion, or advice expressed with second-person pronouns (you/your), resolve the addressee from the conversation participants and include the recipient explicitly in the event memory.",
+            "Record the event as speaker recommended [object] to [addressee], with the world_start from the message timestamp; do not omit the indirect object.",
+            "Add the recipient only when the session context supports it; do not fabricate an addressee when the addressee is ambiguous or unknown."
+          ]
+        },
+        "solves": "Recommendation events are extracted without the recipient, even when the message uses second-person pronouns to the conversation partner. Resolve the addressee from session context and include it, because later questions need the indirect object. Applies to recommendations/suggestions/advice with an identifiable recipient; not to general opinions without a clear addressee.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-43_conv-43_qa_0177",
+        "source_failure_id": "cons_conv-43_conv-43_qa_0177",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:10:49Z"
+      },
+      {
+        "candidate_id": "cand_construction_838e5fa9975f",
+        "skill_id": "sk_construction_1f316d98fb",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Attribute first-person preferences to the speaker",
+          "description": "When extracting a preference or opinion expressed in first person, set the memory subject to the speaker, not to other entities mentioned in the message.",
+          "content": [
+            "During extraction, if a message states a preference or opinion in first person (e.g., 'I love', 'my team'), the memory subject must be the speaker of that message.",
+            "Do not assign the preference to another participant mentioned in the same or nearby messages unless the message explicitly attributes the opinion to that participant (e.g., 'Tim thinks...').",
+            "If the speaker reports someone else's preference (e.g., 'John loves...'), then that named person is the subject; first-person attribution applies only when the speaker talks about themselves."
+          ]
+        },
+        "solves": "Extraction misattributed a first-person preference (John speaking about LeBron) to another participant (Tim), creating a memory about the wrong person and losing the required fact. The reusable rule is to bind first-person statements to the speaker during extraction. This applies whenever a user expresses an opinion or preference about any topic; it does not apply when the message explicitly reports another person's stated preference.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-43_conv-43_qa_0043",
+        "source_failure_id": "cons_conv-43_conv-43_qa_0043",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:10:03Z"
+      },
+      {
+        "candidate_id": "cand_construction_9cc81063dc0c",
+        "skill_id": "sk_construction_3e5662a3ef",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Attribute-reported-state-to-referent-subject",
+          "description": "When a message replies about or reports another person's condition, injury, or state, use the person the statement is about as the memory subject before extracting.",
+          "content": [
+            "Before creating a state, event, or relationship memory, identify the actual person the statement is about; if the speaker is reporting, reassuring, or replying about another person, set subject to that other person, not the speaker.",
+            "Resolve pronouns and references by checking the preceding turns; when an utterance attributes a fact or condition to a third party, that third party is the subject even though the statement is spoken by someone else."
+          ]
+        },
+        "solves": "Construction extraction often attributes a state mentioned in a reply to the speaker rather than the person it concerns, causing missing memories. This rule forces subject resolution from referents and preceding context so relayed or reported states are stored under the correct person; applies to any multi-party conversation with conditions, injuries, feelings, or facts reported by another speaker, but not when the speaker is the actual subject.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-43_conv-43_qa_0136",
+        "source_failure_id": "cons_conv-43_conv-43_qa_0136",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:10:29Z"
+      },
+      {
+        "candidate_id": "cand_construction_d7e3b1f18fb0",
+        "skill_id": "sk_construction_3312d980db",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Resolve pronoun referents before writing extraction candidates",
+          "description": "When a user statement in the session uses a pronoun or demonstrative ('it', 'this', 'that', 'they') to refer to an object, resolve the exact referent from conversation context before writing any memory candidate.",
+          "content": [
+            "Before finalizing an extraction candidate, check whether the source sentence contains a pronoun or demonstrative ('it', 'this', 'that', 'they'); if it does, trace the antecedent through the immediate conversation and set the candidate's object to that resolved referent.",
+            "Anchor each candidate in its own message: do not substitute a noun from an earlier or later message merely because it appears in a similar 'I got X…' statement; verify the object against the quoted evidence.",
+            "If the referent cannot be resolved confidently, stay close to the literal wording or skip the candidate rather than asserting a different object."
+          ]
+        },
+        "solves": "Cause: the candidate replaced the true referent (bonsai tree) with 'ginger snaps' when the user said 'I got this…'. Abstract mechanism: extraction fails to resolve a pronoun/demonstrative from conversation context and to ground the candidate in its source message. Applies to any future session where a candidate depends on 'it/this/that/they' or similar 'I got X…' statements could be cross-contaminated.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-49_conv-49_qa_0096",
+        "source_failure_id": "cons_conv-49_conv-49_qa_0096",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:12:58Z"
+      }
+    ],
+    "retrieved_skill_ids": [],
+    "relations": []
+  },
+  "plan": {
+    "transaction_id": "construction_bank1_new_build_0017",
+    "side": "construction",
+    "base_bank_version": "v001",
+    "candidate_resolutions": [
+      {
+        "candidate_id": "cand_construction_0fcb5aff625d",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_anaphora_resolution"
+        ],
+        "reason": "Merged with other candidates that share the same anaphora resolution mechanism."
+      },
+      {
+        "candidate_id": "cand_construction_3a3e5b448e57",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_anaphora_resolution"
+        ],
+        "reason": "Merged with other candidates that share the same anaphora resolution mechanism."
+      },
+      {
+        "candidate_id": "cand_construction_6adcae605391",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_construction_recipient_in_recommendation"
+        ],
+        "reason": "Distinct mechanism: include recipient in recommendation events."
+      },
+      {
+        "candidate_id": "cand_construction_838e5fa9975f",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_construction_first_person_attribution"
+        ],
+        "reason": "Distinct mechanism: attribute first-person preferences to the speaker."
+      },
+      {
+        "candidate_id": "cand_construction_9cc81063dc0c",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_construction_reported_state_subject"
+        ],
+        "reason": "Distinct mechanism: attribute reported states to the referent subject."
+      },
+      {
+        "candidate_id": "cand_construction_d7e3b1f18fb0",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_anaphora_resolution"
+        ],
+        "reason": "Merged with other candidates that share the same anaphora resolution mechanism."
+      }
+    ],
+    "operations": [
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_anaphora_resolution",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Resolve Anaphora Before Extraction",
+        "description": "Use when a user statement contains a pronoun or demonstrative (it, this, that, they) referring to a previously mentioned entity.",
+        "content": [
+          "Before extracting a memory candidate, resolve every pronoun and demonstrative to its nearest plausible antecedent in the conversation context; do not default to the speaker or the nearest noun in the same message.",
+          "Ground each candidate in its own source message; do not substitute nouns from other messages that appear in similar statements.",
+          "If the referent is ambiguous or unverifiable, omit the claim or mark it for review rather than assigning a wrong subject or object."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_0fcb5aff625d",
+          "cand_construction_3a3e5b448e57",
+          "cand_construction_d7e3b1f18fb0"
+        ],
+        "reason": "Creating one Skill from three candidates that all repair the same anaphora resolution mechanism.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_recipient_in_recommendation",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Include Recipient in Recommendation Events",
+        "description": "Use when extracting an event where the speaker recommends, suggests, or advises something to the conversation partner.",
+        "content": [
+          "When a message contains a recommendation, suggestion, or advice expressed with second-person pronouns (you/your), resolve the addressee from session context and include the recipient explicitly in the event memory.",
+          "Record the event as speaker recommended [object] to [addressee], with the world_start from the message timestamp; do not omit the indirect object.",
+          "Add the recipient only when the session context supports it; do not fabricate an addressee when ambiguous or unknown."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_6adcae605391"
+        ],
+        "reason": "Creating a distinct Skill for including recipients in recommendation events.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_first_person_attribution",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Attribute First-Person Preferences to Speaker",
+        "description": "Use when extracting a preference or opinion expressed in first person (I, my).",
+        "content": [
+          "During extraction, if a message states a preference or opinion in first person, set the memory subject to the speaker of that message.",
+          "Do not assign the preference to another participant mentioned in the same or nearby messages unless the message explicitly attributes the opinion to that participant.",
+          "If the speaker reports someone else's preference, that named person is the subject; first-person attribution applies only when the speaker talks about themselves."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_838e5fa9975f"
+        ],
+        "reason": "Creating a distinct Skill for attributing first-person preferences to the speaker.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_reported_state_subject",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Attribute Reported States to Referent Subject",
+        "description": "Use when a message replies about or reports another person's condition, injury, or state.",
+        "content": [
+          "Before creating a state, event, or relationship memory, identify the actual person the statement is about; if the speaker is reporting, reassuring, or replying about another person, set subject to that other person, not the speaker.",
+          "Resolve pronouns and references by checking the preceding turns; when an utterance attributes a fact or condition to a third party, that third party is the subject even though the statement is spoken by someone else."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_9cc81063dc0c"
+        ],
+        "reason": "Creating a distinct Skill for attributing reported states to the referent subject.",
+        "hard_delete": false
+      }
+    ]
+  },
+  "status": "planned"
+}

@@ -1,0 +1,854 @@
+{
+  "schema_version": "access_diagnosis_v3",
+  "diagnosis_id": "access_conv-44_conv-44_qa_0036",
+  "diagnosis_type": "ACCESS_FAILURE",
+  "status": "completed",
+  "judge_run_id": "bank2_from_v1_new_train_judge",
+  "diagnosis_run_id": "bank2_from_v1_new_diag",
+  "source_runtime_run": "bank2_v1new_train_seq_conv-44",
+  "conversation_id": "conv-44",
+  "qa_id": "conv-44_qa_0036",
+  "snapshot_commit_id": 28,
+  "question": "What are some foods that Audrey likes eating?",
+  "reference_answer": "chicken pot pie, chicken roast, blueberry muffins, sushi",
+  "problem_found": true,
+  "reason": "The current memory versions that directly support the reference claims are: mem_conv-44_0048_v1 (chicken pot pie), mem_conv-44_0050_v1 (chicken roast), and mem_conv-44_0135_v1 (sushi). No current memory version mentions blueberry muffins, so no supporting ID is assigned for that claim.",
+  "confidence": 0.9,
+  "review_required": false,
+  "skill_trace": {
+    "trace_id": "skilltrace_access_bank2_v1new_train_seq_conv-44_conv-44_conv-44_qa_0036",
+    "side": "access",
+    "bank_version": "bank1",
+    "query": "What are some foods that Audrey likes eating?",
+    "top_k": 2,
+    "disclose_k": 5,
+    "min_score": 0.2,
+    "scored_fields": [
+      "name",
+      "description"
+    ],
+    "scoring_weights": {
+      "semantic": 0.7,
+      "bm25": 0.3
+    },
+    "retrieval_method": "bank1_hybrid_router",
+    "candidate_k": 10,
+    "reranker": "bank1_applicability_router",
+    "reranker_error": "",
+    "selected": [
+      {
+        "skill_id": "sk_access_preference_retrieval_subjective",
+        "version_id": "sk_access_preference_retrieval_subjective_v1",
+        "rank": 1,
+        "score": 0.38536590337753296,
+        "semantic_score": 0.12195128202438354,
+        "lexical_score": 1.0,
+        "name": "Retrieve Preference Memories for Subjective Questions",
+        "description": "Use when a question asks what a person misses, likes, loves, values, or wants and initial hybrid results only restate behavior.",
+        "content": [
+          "Run at least one structured memory search filtered to memory_kind=preference for that person, in addition to the hybrid search.",
+          "If initial results contain only indirect event/state restatements, issue another search with the person's name and terms like 'misses', 'loves', 'finds soothing', 'prefers', using a higher top_k and inspecting the newest version of each returned memory ID.",
+          "Prefer the content of the newest enriched version of a relevant memory over older versions or indirect paraphrases; answer only from visible evidence."
+        ],
+        "selected": true,
+        "rerank_rank": 1,
+        "rerank_reason": "The question asks about Audrey's likes, which is a subjective preference. The skill specifically addresses retrieving preference memories for such questions and includes procedures to handle indirect results by searching for explicit preference statements."
+      },
+      {
+        "skill_id": "sk_access_preference_evidence",
+        "version_id": "sk_access_preference_evidence_v1",
+        "rank": 2,
+        "score": 0.37930965423583984,
+        "semantic_score": 0.23066025972366333,
+        "lexical_score": 0.7261582612991333,
+        "name": "Require Explicit Preference Evidence and Multi-Query Retrieval",
+        "description": "Use when a question asks for a list of things a person likes/enjoys and the first search yields few or generic results.",
+        "content": [
+          "Do not rely on a single incidental event or plan; search for explicit preference statements using terms like 'favorite', 'loves', 'enjoys', 'prefers' combined with category words.",
+          "If the first retrieval returns off-topic or only weakly related memories, run follow-up searches for each plausible subcategory, and filter by memory_kind 'preference' when available, until you find multiple explicit mentions or exhaust distinct formulations.",
+          "Cite only memories that state or clearly imply the person likes the item; an event alone is insufficient evidence of a general preference unless corroborated.",
+          "For favorite/preference questions, also run an additional search over event memories using positive-evaluation terms (e.g., 'found delicious', 'loved', 'enjoyed') together with the item or category, and treat such events as supporting evidence."
+        ],
+        "selected": true,
+        "rerank_rank": 2,
+        "rerank_reason": "The question seeks a list of foods Audrey likes, which requires explicit preference evidence. This skill is designed for such scenarios, focusing on finding multiple explicit mentions or supporting evidence through additional searches."
+      }
+    ],
+    "nearby_not_selected": [
+      {
+        "skill_id": "sk_access_category_instance_search",
+        "version_id": "sk_access_category_instance_search_v1",
+        "rank": 3,
+        "score": 0.35318315029144287,
+        "semantic_score": 0.16992299258708954,
+        "lexical_score": 0.7807902097702026,
+        "name": "Category-Instance Search Diversification",
+        "description": "Use when a question asks to enumerate instances of a category (activities, hobbies, interests, foods) and initial retrieval yields no clear instance.",
+        "content": [
+          "When a question asks to enumerate instances of a category (activities, hobbies, interests, foods, etc.), derive candidate instance terms from the question, from any retrieved memories, and from common subcategories; run separate searches for each candidate term combined with the subject.",
+          "If a search for category instances returns only peripherally related memories (e.g., a company, a place) and no concrete instance, reformulate the query with synonyms and specific examples of the category before concluding; do not rerun the same query with only depth or top_k changed."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_non_primary_goals",
+        "version_id": "sk_access_non_primary_goals_v1",
+        "rank": 4,
+        "score": 0.3447408378124237,
+        "semantic_score": 0.14544475078582764,
+        "lexical_score": 0.8097650408744812,
+        "name": "Non-primary goal search across memory kinds",
+        "description": "When a question asks about a person's goals, plans, or aspirations that are distinct from their primary skill/domain, include preference, event, and plan memory kinds and search concrete non-primary activity terms before answering.",
+        "content": [
+          "When answering questions about a person's goals, aspirations, career plans, or intentions (especially goals distinct from their primary skill), do not restrict retrieval to only 'profile' and 'state' memory kinds. Include 'preference', 'event', and 'plan' kinds, because goals and off-the-field ambitions are commonly stored there.",
+          "When the question contrasts goals with the person's main domain, search with concrete terms for that person's non-primary activities (e.g., endorsements, charity, brand, business, community) in addition to negated goal phrases, and inspect memories that mention these activities even if initial scores are low."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_instance_list",
+        "version_id": "sk_access_instance_list_v1",
+        "rank": 5,
+        "score": 0.3327292799949646,
+        "semantic_score": 0.19188256561756134,
+        "lexical_score": 0.6613715887069702,
+        "name": "Instance-list retrieval for category questions",
+        "description": "Use when a question asks for specific examples/instances of a category (games, movies, books, foods, hobbies) for a subject, and the first generic search returns only broad statements without named items.",
+        "content": [
+          "If a question asks for a list of specific items of a category (e.g., games, movies, books, hobbies) associated with a subject, and an initial generic-category search returns only broad descriptions without naming any items, do not end the search yet.",
+          "Run additional targeted searches combining the subject's name with category-related activity terms (e.g., 'plays', 'watched', 'recommends', 'enjoys', 'won'), and also search for the category itself in conjunction with related contexts (e.g., 'tournament', 'recommendation'). Inspect event, achievement, and preference memories because they often contain the specific named items.",
+          "Only produce 'No information available' after multiple varied searches fail to surface any specific named instances."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_current_activity_kinds",
+        "version_id": "sk_access_current_activity_kinds_v1",
+        "rank": 6,
+        "score": 0.311245858669281,
+        "semantic_score": 0.16155056655406952,
+        "lexical_score": 0.6605347990989685,
+        "name": "Include event memories for current-activity queries",
+        "description": "When a query asks what someone is currently reading, doing, working on, or otherwise engaged in, do not restrict memory_kinds to 'state'; search both 'state' and 'event' memories because ongoing activities are often stored as events.",
+        "content": [
+          "If a question asks about a person's current activity (e.g., currently reading, working on, building, studying), set memory_kinds to include both 'state' and 'event', or omit the memory_kinds filter, since ongoing activities are typically stored as event memories.",
+          "If a search restricted to 'state' returns no supporting evidence for an activity question, retry with broader memory_kinds before answering 'no information available'."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_besides_questions",
+        "version_id": "sk_access_besides_questions_v1",
+        "rank": 7,
+        "score": 0.2931409776210785,
+        "semantic_score": 0.17586372792720795,
+        "lexical_score": 0.5667878985404968,
+        "name": "ComplementQueryForBesidesQuestions",
+        "description": "When the user asks for activities, hobbies, or interests besides/apart from an explicitly named topic, use structured and expanded searches that do not let that topic dominate.",
+        "content": [
+          "When the question asks for activities, hobbies, or interests 'besides', 'apart from', or 'other than' an explicitly named topic (e.g., yoga), do not build the main query around that topic, or results will be dominated by memories about it.",
+          "Construct the query around the general category (e.g., 'activities', 'hobbies', 'interests', 'pursuits') while omitting the excluded topic, and include concrete alternative terms from the person's known context.",
+          "Use structured search with relevant predicates (e.g., predicate='activity') to retrieve diverse activity memories, and increase top_k or issue multiple searches with varied expansions so less central activities are not crowded out.",
+          "After retrieval, discard memories whose content is primarily about the excluded topic, check whether the retrieved set covers distinct concrete activities, and if not, search again with additional expansions."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      }
+    ]
+  },
+  "repair_package": {
+    "question": "What are some foods that Audrey likes eating?",
+    "reference_answer": "chicken pot pie, chicken roast, blueberry muffins, sushi",
+    "missing_useful_current_memories": [
+      {
+        "version_id": "mem_conv-44_0050_v1",
+        "memory_id": "mem_conv-44_0050",
+        "version_no": 1,
+        "content": "Audrey has offered to share the recipe for Chicken Pot Pie and Roasted Chicken with Andrew, describing them as comfort meals with Mediterranean flavors and healthy ingredients.",
+        "memory_kind": "event",
+        "subject": "Audrey",
+        "predicate": "activity",
+        "object_text": "sharing recipes",
+        "world_start": "2023-07-03",
+        "world_end": null,
+        "update_type": "add"
+      },
+      {
+        "version_id": "mem_conv-44_0135_v1",
+        "memory_id": "mem_conv-44_0135",
+        "version_no": 1,
+        "content": "Audrey loves sushi and recommends starting with California or salmon rolls. She suggests mixing with different sauces for better taste and encourages Andrew to try various types.",
+        "memory_kind": "event",
+        "subject": "Audrey",
+        "predicate": "activity",
+        "object_text": "sushi dining",
+        "world_start": "2023-10-24",
+        "world_end": null,
+        "update_type": "add"
+      }
+    ],
+    "retrieved_current_version_ids": [
+      "mem_conv-44_0004_v1",
+      "mem_conv-44_0005_v2",
+      "mem_conv-44_0014_v3",
+      "mem_conv-44_0028_v1",
+      "mem_conv-44_0035_v2",
+      "mem_conv-44_0048_v1",
+      "mem_conv-44_0049_v1",
+      "mem_conv-44_0065_v1"
+    ],
+    "search_steps": [
+      {
+        "action_id": "access_bank2_v1new_train_seq_conv-44_conv-44_conv-44_qa_0036_a000",
+        "step_index": 0,
+        "action_type": "search_memory",
+        "request": {
+          "action": "search_memory",
+          "arguments": {
+            "strategy": "hybrid",
+            "query": "foods that Audrey likes eating",
+            "query_expansions": [
+              "foods Audrey enjoys",
+              "Audrey's favorite foods",
+              "what Audrey prefers to eat"
+            ],
+            "keywords": [
+              "Audrey",
+              "food",
+              "like",
+              "prefer"
+            ],
+            "depth": "standard",
+            "memory_kinds": [
+              "preference"
+            ],
+            "top_k": 8
+          },
+          "reason": "To find explicit preference statements about foods that Audrey likes eating."
+        },
+        "returned_memories": [
+          {
+            "version_id": "mem_conv-44_0048_v1",
+            "memory_id": "mem_conv-44_0048",
+            "content": "Audrey's favorite recipe is Chicken Pot Pie, which she describes as cozy and delicious, especially on cold days, and it is based on her family's recipe that reminds her of her grandma's kitchen.",
+            "memory_kind": "preference",
+            "subject": "Audrey",
+            "world_start": "2023-07-03",
+            "world_end": null,
+            "score": 0.0164,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-44_0035_v2",
+            "memory_id": "mem_conv-44_0035",
+            "content": "Audrey finds nature peaceful and inspiring, describing it as her happy place and something that brings her joy and peace. She finds gardening relaxing and enjoyable, as it brings her peace and allows her to see her plants grow. She also enjoys the interaction with her dogs in the garden.",
+            "memory_kind": "preference",
+            "subject": "Audrey",
+            "world_start": "2023-06-13",
+            "world_end": null,
+            "score": 0.0156,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-44_0049_v1",
+            "memory_id": "mem_conv-44_0049",
+            "content": "Audrey's go-to ingredient in the kitchen is garlic, which she loves for its smell and taste.",
+            "memory_kind": "preference",
+            "subject": "Audrey",
+            "world_start": "2023-07-03",
+            "world_end": null,
+            "score": 0.0155,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-44_0014_v3",
+            "memory_id": "mem_conv-44_0014",
+            "content": "Andrew finds nature to be deeply soothing and feels a strong connection to it, often expressing that he thrives in natural settings like hiking. Andrew enjoys nature and finds it refreshing, stating that it helps him reset his mind and gain a different outlook. He expressed a desire to get a dog but mentioned it is tough to find a place and the right dog.",
+            "memory_kind": "preference",
+            "subject": "Andrew",
+            "world_start": "2023-07-08",
+            "world_end": null,
+            "score": 0.0155,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-44_0005_v2",
+            "memory_id": "mem_conv-44_0005",
+            "content": "Audrey enjoys hiking with her dogs and plans to try the Fox Hollow trail based on Andrew's suggestion. Audrey finds nature refreshing and believes it helps her appreciate beauty and provides a refuge from city life.",
+            "memory_kind": "preference",
+            "subject": "Audrey",
+            "world_start": "2023-03-27",
+            "world_end": null,
+            "score": 0.0155,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-44_0065_v1",
+            "memory_id": "mem_conv-44_0065",
+            "content": "Audrey values the unconditional love and companionship of pets, considering them as important as her 'fur babies.'",
+            "memory_kind": "preference",
+            "subject": "Audrey",
+            "world_start": "2023-07-27",
+            "world_end": null,
+            "score": 0.0154,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-44_0028_v1",
+            "memory_id": "mem_conv-44_0028",
+            "content": "Audrey prefers positive reinforcement training methods for her pets and believes punishment is not an appropriate way to train them.",
+            "memory_kind": "preference",
+            "subject": "Audrey",
+            "world_start": "2023-05-11",
+            "world_end": null,
+            "score": 0.0154,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-44_0004_v1",
+            "memory_id": "mem_conv-44_0004",
+            "content": "Andrew finds eagles particularly mesmerizing due to their strength and grace.",
+            "memory_kind": "preference",
+            "subject": "Andrew",
+            "world_start": "2023-03-27",
+            "world_end": null,
+            "score": 0.0059,
+            "paths": [
+              "semantic"
+            ]
+          }
+        ],
+        "returned_version_ids": [
+          "mem_conv-44_0048_v1",
+          "mem_conv-44_0035_v2",
+          "mem_conv-44_0049_v1",
+          "mem_conv-44_0014_v3",
+          "mem_conv-44_0005_v2",
+          "mem_conv-44_0065_v1",
+          "mem_conv-44_0028_v1",
+          "mem_conv-44_0004_v1"
+        ]
+      },
+      {
+        "action_id": "access_bank2_v1new_train_seq_conv-44_conv-44_conv-44_qa_0036_a001",
+        "step_index": 1,
+        "action_type": "answer",
+        "request": {
+          "action": "answer",
+          "arguments": {
+            "answer": "Chicken Pot Pie, garlic, hiking with her dogs, nature, and pets.",
+            "evidence_version_ids": [
+              "mem_conv-44_0048_v1",
+              "mem_conv-44_0049_v1",
+              "mem_conv-44_0005_v2",
+              "mem_conv-44_0065_v1"
+            ],
+            "confidence": 0.95
+          },
+          "reason": "The evidence shows Audrey's preference for Chicken Pot Pie, garlic, hiking with her dogs, nature, and pets."
+        },
+        "returned_memories": [],
+        "returned_version_ids": []
+      }
+    ],
+    "reason": "The current memory versions that directly support the reference claims are: mem_conv-44_0048_v1 (chicken pot pie), mem_conv-44_0050_v1 (chicken roast), and mem_conv-44_0135_v1 (sushi). No current memory version mentions blueberry muffins, so no supporting ID is assigned for that claim.",
+    "skill_trace": {
+      "trace_id": "skilltrace_access_bank2_v1new_train_seq_conv-44_conv-44_conv-44_qa_0036",
+      "side": "access",
+      "bank_version": "bank1",
+      "query": "What are some foods that Audrey likes eating?",
+      "top_k": 2,
+      "disclose_k": 5,
+      "min_score": 0.2,
+      "scored_fields": [
+        "name",
+        "description"
+      ],
+      "scoring_weights": {
+        "semantic": 0.7,
+        "bm25": 0.3
+      },
+      "retrieval_method": "bank1_hybrid_router",
+      "candidate_k": 10,
+      "reranker": "bank1_applicability_router",
+      "reranker_error": "",
+      "selected": [
+        {
+          "skill_id": "sk_access_preference_retrieval_subjective",
+          "version_id": "sk_access_preference_retrieval_subjective_v1",
+          "rank": 1,
+          "score": 0.38536590337753296,
+          "semantic_score": 0.12195128202438354,
+          "lexical_score": 1.0,
+          "name": "Retrieve Preference Memories for Subjective Questions",
+          "description": "Use when a question asks what a person misses, likes, loves, values, or wants and initial hybrid results only restate behavior.",
+          "content": [
+            "Run at least one structured memory search filtered to memory_kind=preference for that person, in addition to the hybrid search.",
+            "If initial results contain only indirect event/state restatements, issue another search with the person's name and terms like 'misses', 'loves', 'finds soothing', 'prefers', using a higher top_k and inspecting the newest version of each returned memory ID.",
+            "Prefer the content of the newest enriched version of a relevant memory over older versions or indirect paraphrases; answer only from visible evidence."
+          ],
+          "selected": true,
+          "rerank_rank": 1,
+          "rerank_reason": "The question asks about Audrey's likes, which is a subjective preference. The skill specifically addresses retrieving preference memories for such questions and includes procedures to handle indirect results by searching for explicit preference statements."
+        },
+        {
+          "skill_id": "sk_access_preference_evidence",
+          "version_id": "sk_access_preference_evidence_v1",
+          "rank": 2,
+          "score": 0.37930965423583984,
+          "semantic_score": 0.23066025972366333,
+          "lexical_score": 0.7261582612991333,
+          "name": "Require Explicit Preference Evidence and Multi-Query Retrieval",
+          "description": "Use when a question asks for a list of things a person likes/enjoys and the first search yields few or generic results.",
+          "content": [
+            "Do not rely on a single incidental event or plan; search for explicit preference statements using terms like 'favorite', 'loves', 'enjoys', 'prefers' combined with category words.",
+            "If the first retrieval returns off-topic or only weakly related memories, run follow-up searches for each plausible subcategory, and filter by memory_kind 'preference' when available, until you find multiple explicit mentions or exhaust distinct formulations.",
+            "Cite only memories that state or clearly imply the person likes the item; an event alone is insufficient evidence of a general preference unless corroborated.",
+            "For favorite/preference questions, also run an additional search over event memories using positive-evaluation terms (e.g., 'found delicious', 'loved', 'enjoyed') together with the item or category, and treat such events as supporting evidence."
+          ],
+          "selected": true,
+          "rerank_rank": 2,
+          "rerank_reason": "The question seeks a list of foods Audrey likes, which requires explicit preference evidence. This skill is designed for such scenarios, focusing on finding multiple explicit mentions or supporting evidence through additional searches."
+        }
+      ],
+      "nearby_not_selected": [
+        {
+          "skill_id": "sk_access_category_instance_search",
+          "version_id": "sk_access_category_instance_search_v1",
+          "rank": 3,
+          "score": 0.35318315029144287,
+          "semantic_score": 0.16992299258708954,
+          "lexical_score": 0.7807902097702026,
+          "name": "Category-Instance Search Diversification",
+          "description": "Use when a question asks to enumerate instances of a category (activities, hobbies, interests, foods) and initial retrieval yields no clear instance.",
+          "content": [
+            "When a question asks to enumerate instances of a category (activities, hobbies, interests, foods, etc.), derive candidate instance terms from the question, from any retrieved memories, and from common subcategories; run separate searches for each candidate term combined with the subject.",
+            "If a search for category instances returns only peripherally related memories (e.g., a company, a place) and no concrete instance, reformulate the query with synonyms and specific examples of the category before concluding; do not rerun the same query with only depth or top_k changed."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_non_primary_goals",
+          "version_id": "sk_access_non_primary_goals_v1",
+          "rank": 4,
+          "score": 0.3447408378124237,
+          "semantic_score": 0.14544475078582764,
+          "lexical_score": 0.8097650408744812,
+          "name": "Non-primary goal search across memory kinds",
+          "description": "When a question asks about a person's goals, plans, or aspirations that are distinct from their primary skill/domain, include preference, event, and plan memory kinds and search concrete non-primary activity terms before answering.",
+          "content": [
+            "When answering questions about a person's goals, aspirations, career plans, or intentions (especially goals distinct from their primary skill), do not restrict retrieval to only 'profile' and 'state' memory kinds. Include 'preference', 'event', and 'plan' kinds, because goals and off-the-field ambitions are commonly stored there.",
+            "When the question contrasts goals with the person's main domain, search with concrete terms for that person's non-primary activities (e.g., endorsements, charity, brand, business, community) in addition to negated goal phrases, and inspect memories that mention these activities even if initial scores are low."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_instance_list",
+          "version_id": "sk_access_instance_list_v1",
+          "rank": 5,
+          "score": 0.3327292799949646,
+          "semantic_score": 0.19188256561756134,
+          "lexical_score": 0.6613715887069702,
+          "name": "Instance-list retrieval for category questions",
+          "description": "Use when a question asks for specific examples/instances of a category (games, movies, books, foods, hobbies) for a subject, and the first generic search returns only broad statements without named items.",
+          "content": [
+            "If a question asks for a list of specific items of a category (e.g., games, movies, books, hobbies) associated with a subject, and an initial generic-category search returns only broad descriptions without naming any items, do not end the search yet.",
+            "Run additional targeted searches combining the subject's name with category-related activity terms (e.g., 'plays', 'watched', 'recommends', 'enjoys', 'won'), and also search for the category itself in conjunction with related contexts (e.g., 'tournament', 'recommendation'). Inspect event, achievement, and preference memories because they often contain the specific named items.",
+            "Only produce 'No information available' after multiple varied searches fail to surface any specific named instances."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_current_activity_kinds",
+          "version_id": "sk_access_current_activity_kinds_v1",
+          "rank": 6,
+          "score": 0.311245858669281,
+          "semantic_score": 0.16155056655406952,
+          "lexical_score": 0.6605347990989685,
+          "name": "Include event memories for current-activity queries",
+          "description": "When a query asks what someone is currently reading, doing, working on, or otherwise engaged in, do not restrict memory_kinds to 'state'; search both 'state' and 'event' memories because ongoing activities are often stored as events.",
+          "content": [
+            "If a question asks about a person's current activity (e.g., currently reading, working on, building, studying), set memory_kinds to include both 'state' and 'event', or omit the memory_kinds filter, since ongoing activities are typically stored as event memories.",
+            "If a search restricted to 'state' returns no supporting evidence for an activity question, retry with broader memory_kinds before answering 'no information available'."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_besides_questions",
+          "version_id": "sk_access_besides_questions_v1",
+          "rank": 7,
+          "score": 0.2931409776210785,
+          "semantic_score": 0.17586372792720795,
+          "lexical_score": 0.5667878985404968,
+          "name": "ComplementQueryForBesidesQuestions",
+          "description": "When the user asks for activities, hobbies, or interests besides/apart from an explicitly named topic, use structured and expanded searches that do not let that topic dominate.",
+          "content": [
+            "When the question asks for activities, hobbies, or interests 'besides', 'apart from', or 'other than' an explicitly named topic (e.g., yoga), do not build the main query around that topic, or results will be dominated by memories about it.",
+            "Construct the query around the general category (e.g., 'activities', 'hobbies', 'interests', 'pursuits') while omitting the excluded topic, and include concrete alternative terms from the person's known context.",
+            "Use structured search with relevant predicates (e.g., predicate='activity') to retrieve diverse activity memories, and increase top_k or issue multiple searches with varied expansions so less central activities are not crowded out.",
+            "After retrieval, discard memories whose content is primarily about the excluded topic, check whether the retrieved set covers distinct concrete activities, and if not, search again with additional expansions."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        }
+      ]
+    }
+  },
+  "access_run_id": "access_bank2_v1new_train_seq_conv-44_conv-44_conv-44_qa_0036",
+  "claims": [
+    {
+      "claim": "Audrey likes eating chicken pot pie.",
+      "supporting_version_ids": [
+        "mem_conv-44_0048_v1"
+      ],
+      "coverage": null
+    },
+    {
+      "claim": "Audrey likes eating chicken roast.",
+      "supporting_version_ids": [
+        "mem_conv-44_0050_v1"
+      ],
+      "coverage": null
+    },
+    {
+      "claim": "Audrey likes eating blueberry muffins.",
+      "supporting_version_ids": [],
+      "coverage": null
+    },
+    {
+      "claim": "Audrey likes eating sushi.",
+      "supporting_version_ids": [
+        "mem_conv-44_0135_v1"
+      ],
+      "coverage": null
+    }
+  ],
+  "current_related_memories": [
+    {
+      "version_id": "mem_conv-44_0013_v2",
+      "memory_id": "mem_conv-44_0013",
+      "version_no": 2,
+      "content": "Andrew took a break from work on August 18, 2023, and visited a new cafe, describing it as a nice change of scenery. He and his girlfriend tried a new cafe in the city last weekend, enjoying pastries like croissants, muffins, and tarts. Andrew shared photos of the pastries and expressed excitement about a planned pastry party with Audrey and her dogs.",
+      "memory_kind": "event",
+      "subject": "Andrew",
+      "predicate": "activity",
+      "object_text": "taking a break from work",
+      "world_start": "2023-04-16",
+      "world_end": null,
+      "update_type": "enrichment"
+    },
+    {
+      "version_id": "mem_conv-44_0016_v1",
+      "memory_id": "mem_conv-44_0016",
+      "version_no": 1,
+      "content": "Audrey plans to host a pastry party with Andrew and his girlfriend, along with her dogs. The event is intended to bring together their groups and enjoy treats, with Audrey's dogs expected to attend.",
+      "memory_kind": "event",
+      "subject": "Audrey",
+      "predicate": "planning",
+      "object_text": "pastry party",
+      "world_start": "2023-04-16",
+      "world_end": null,
+      "update_type": "add"
+    },
+    {
+      "version_id": "mem_conv-44_0048_v1",
+      "memory_id": "mem_conv-44_0048",
+      "version_no": 1,
+      "content": "Audrey's favorite recipe is Chicken Pot Pie, which she describes as cozy and delicious, especially on cold days, and it is based on her family's recipe that reminds her of her grandma's kitchen.",
+      "memory_kind": "preference",
+      "subject": "Audrey",
+      "predicate": "food",
+      "object_text": "Chicken Pot Pie",
+      "world_start": "2023-07-03",
+      "world_end": null,
+      "update_type": "add"
+    },
+    {
+      "version_id": "mem_conv-44_0050_v1",
+      "memory_id": "mem_conv-44_0050",
+      "version_no": 1,
+      "content": "Audrey has offered to share the recipe for Chicken Pot Pie and Roasted Chicken with Andrew, describing them as comfort meals with Mediterranean flavors and healthy ingredients.",
+      "memory_kind": "event",
+      "subject": "Audrey",
+      "predicate": "activity",
+      "object_text": "sharing recipes",
+      "world_start": "2023-07-03",
+      "world_end": null,
+      "update_type": "add"
+    },
+    {
+      "version_id": "mem_conv-44_0135_v1",
+      "memory_id": "mem_conv-44_0135",
+      "version_no": 1,
+      "content": "Audrey loves sushi and recommends starting with California or salmon rolls. She suggests mixing with different sauces for better taste and encourages Andrew to try various types.",
+      "memory_kind": "event",
+      "subject": "Audrey",
+      "predicate": "activity",
+      "object_text": "sushi dining",
+      "world_start": "2023-10-24",
+      "world_end": null,
+      "update_type": "add"
+    }
+  ],
+  "useful_current_version_ids": [
+    "mem_conv-44_0048_v1",
+    "mem_conv-44_0050_v1",
+    "mem_conv-44_0135_v1"
+  ],
+  "retrieved_current_version_ids": [
+    "mem_conv-44_0004_v1",
+    "mem_conv-44_0005_v2",
+    "mem_conv-44_0014_v3",
+    "mem_conv-44_0028_v1",
+    "mem_conv-44_0035_v2",
+    "mem_conv-44_0048_v1",
+    "mem_conv-44_0049_v1",
+    "mem_conv-44_0065_v1"
+  ],
+  "missing_useful_current_version_ids": [
+    "mem_conv-44_0050_v1",
+    "mem_conv-44_0135_v1"
+  ],
+  "search_steps": [
+    {
+      "action_id": "access_bank2_v1new_train_seq_conv-44_conv-44_conv-44_qa_0036_a000",
+      "step_index": 0,
+      "action_type": "search_memory",
+      "request": {
+        "action": "search_memory",
+        "arguments": {
+          "strategy": "hybrid",
+          "query": "foods that Audrey likes eating",
+          "query_expansions": [
+            "foods Audrey enjoys",
+            "Audrey's favorite foods",
+            "what Audrey prefers to eat"
+          ],
+          "keywords": [
+            "Audrey",
+            "food",
+            "like",
+            "prefer"
+          ],
+          "depth": "standard",
+          "memory_kinds": [
+            "preference"
+          ],
+          "top_k": 8
+        },
+        "reason": "To find explicit preference statements about foods that Audrey likes eating."
+      },
+      "returned_memories": [
+        {
+          "version_id": "mem_conv-44_0048_v1",
+          "memory_id": "mem_conv-44_0048",
+          "content": "Audrey's favorite recipe is Chicken Pot Pie, which she describes as cozy and delicious, especially on cold days, and it is based on her family's recipe that reminds her of her grandma's kitchen.",
+          "memory_kind": "preference",
+          "subject": "Audrey",
+          "world_start": "2023-07-03",
+          "world_end": null,
+          "score": 0.0164,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-44_0035_v2",
+          "memory_id": "mem_conv-44_0035",
+          "content": "Audrey finds nature peaceful and inspiring, describing it as her happy place and something that brings her joy and peace. She finds gardening relaxing and enjoyable, as it brings her peace and allows her to see her plants grow. She also enjoys the interaction with her dogs in the garden.",
+          "memory_kind": "preference",
+          "subject": "Audrey",
+          "world_start": "2023-06-13",
+          "world_end": null,
+          "score": 0.0156,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-44_0049_v1",
+          "memory_id": "mem_conv-44_0049",
+          "content": "Audrey's go-to ingredient in the kitchen is garlic, which she loves for its smell and taste.",
+          "memory_kind": "preference",
+          "subject": "Audrey",
+          "world_start": "2023-07-03",
+          "world_end": null,
+          "score": 0.0155,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-44_0014_v3",
+          "memory_id": "mem_conv-44_0014",
+          "content": "Andrew finds nature to be deeply soothing and feels a strong connection to it, often expressing that he thrives in natural settings like hiking. Andrew enjoys nature and finds it refreshing, stating that it helps him reset his mind and gain a different outlook. He expressed a desire to get a dog but mentioned it is tough to find a place and the right dog.",
+          "memory_kind": "preference",
+          "subject": "Andrew",
+          "world_start": "2023-07-08",
+          "world_end": null,
+          "score": 0.0155,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-44_0005_v2",
+          "memory_id": "mem_conv-44_0005",
+          "content": "Audrey enjoys hiking with her dogs and plans to try the Fox Hollow trail based on Andrew's suggestion. Audrey finds nature refreshing and believes it helps her appreciate beauty and provides a refuge from city life.",
+          "memory_kind": "preference",
+          "subject": "Audrey",
+          "world_start": "2023-03-27",
+          "world_end": null,
+          "score": 0.0155,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-44_0065_v1",
+          "memory_id": "mem_conv-44_0065",
+          "content": "Audrey values the unconditional love and companionship of pets, considering them as important as her 'fur babies.'",
+          "memory_kind": "preference",
+          "subject": "Audrey",
+          "world_start": "2023-07-27",
+          "world_end": null,
+          "score": 0.0154,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-44_0028_v1",
+          "memory_id": "mem_conv-44_0028",
+          "content": "Audrey prefers positive reinforcement training methods for her pets and believes punishment is not an appropriate way to train them.",
+          "memory_kind": "preference",
+          "subject": "Audrey",
+          "world_start": "2023-05-11",
+          "world_end": null,
+          "score": 0.0154,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-44_0004_v1",
+          "memory_id": "mem_conv-44_0004",
+          "content": "Andrew finds eagles particularly mesmerizing due to their strength and grace.",
+          "memory_kind": "preference",
+          "subject": "Andrew",
+          "world_start": "2023-03-27",
+          "world_end": null,
+          "score": 0.0059,
+          "paths": [
+            "semantic"
+          ]
+        }
+      ],
+      "returned_version_ids": [
+        "mem_conv-44_0048_v1",
+        "mem_conv-44_0035_v2",
+        "mem_conv-44_0049_v1",
+        "mem_conv-44_0014_v3",
+        "mem_conv-44_0005_v2",
+        "mem_conv-44_0065_v1",
+        "mem_conv-44_0028_v1",
+        "mem_conv-44_0004_v1"
+      ]
+    },
+    {
+      "action_id": "access_bank2_v1new_train_seq_conv-44_conv-44_conv-44_qa_0036_a001",
+      "step_index": 1,
+      "action_type": "answer",
+      "request": {
+        "action": "answer",
+        "arguments": {
+          "answer": "Chicken Pot Pie, garlic, hiking with her dogs, nature, and pets.",
+          "evidence_version_ids": [
+            "mem_conv-44_0048_v1",
+            "mem_conv-44_0049_v1",
+            "mem_conv-44_0005_v2",
+            "mem_conv-44_0065_v1"
+          ],
+          "confidence": 0.95
+        },
+        "reason": "The evidence shows Audrey's preference for Chicken Pot Pie, garlic, hiking with her dogs, nature, and pets."
+      },
+      "returned_memories": [],
+      "returned_version_ids": []
+    }
+  ]
+}

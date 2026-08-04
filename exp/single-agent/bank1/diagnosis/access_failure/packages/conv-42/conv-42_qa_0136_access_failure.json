@@ -1,0 +1,1355 @@
+{
+  "schema_version": "access_diagnosis_v3",
+  "diagnosis_id": "access_conv-42_conv-42_qa_0136",
+  "diagnosis_type": "ACCESS_FAILURE",
+  "status": "completed",
+  "judge_run_id": "judge",
+  "diagnosis_run_id": "bank1_train_flash",
+  "source_runtime_run": "conv-42",
+  "conversation_id": "conv-42",
+  "qa_id": "conv-42_qa_0136",
+  "snapshot_commit_id": 29,
+  "question": "How many video game tournaments has Nate won by July 10, 2022?",
+  "reference_answer": "Four",
+  "problem_found": true,
+  "reason": "The current memory version mem_conv-42_0001_v4 explicitly states that Nate won his fourth video game tournament on July 8, 2022, which is before the target date of July 10, 2022. This directly supports the reference answer of four tournaments. Other memories in the search chain do not provide the total count or the specific fourth win.",
+  "confidence": 1.0,
+  "review_required": false,
+  "skill_trace": {
+    "trace_id": "skilltrace_access_conv-42_conv-42_conv-42_qa_0136",
+    "side": "access",
+    "bank_version": "bank1",
+    "query": "How many video game tournaments has Nate won by July 10, 2022?",
+    "top_k": 2,
+    "disclose_k": 5,
+    "min_score": 0.2,
+    "scored_fields": [
+      "name",
+      "description"
+    ],
+    "scoring_weights": {
+      "semantic": 0.7,
+      "bm25": 0.3
+    },
+    "retrieval_method": "bank1_hybrid_router",
+    "candidate_k": 10,
+    "reranker": "bank1_applicability_router",
+    "reranker_error": "",
+    "selected": [
+      {
+        "skill_id": "sk_access_count_entity_instances_acquisition",
+        "version_id": "sk_access_count_entity_instances_acquisition_v1",
+        "rank": 1,
+        "score": 0.37504348158836365,
+        "semantic_score": 0.10720497369766235,
+        "lexical_score": 1.0,
+        "name": "Count Entity Instances by Acquisition Events",
+        "description": "Use when a question asks how many of a category an entity has or owns as of a target date and no direct summary count is found.",
+        "content": [
+          "When asked for a count of items an entity has as of a target date, search for individual membership-changing events (adoption, purchase, acquisition, birth, receipt, loss, sale) using structured queries with the entity and memory_kinds=['event'], plus keywords like 'adopted', 'bought', 'got', 'welcomed', 'acquired', 'sold', or 'gave away'.",
+          "Enumerate distinct instances whose event world_start is on or before the target date and whose world_end, if any, is after the target date; count those instances.",
+          "Do not count plans, considerations, or intentions to acquire as current possessions. If a retrieved memory mentions a plan or a named companion, inspect related memories to verify whether the acquisition already occurred before answering.",
+          "Stop after retrieving all candidate instances or after one additional targeted search that returns no new acquisition events; avoid exhaustive expansion."
+        ],
+        "selected": true,
+        "rerank_rank": 1,
+        "rerank_reason": "The question asks for the count of video game tournaments Nate has won by a specific date, which aligns with the skill's purpose of counting entity instances based on acquisition events."
+      }
+    ],
+    "nearby_not_selected": [
+      {
+        "skill_id": "sk_access_duration_questions",
+        "version_id": "sk_access_duration_questions_v1",
+        "rank": 2,
+        "score": 0.23355233669281006,
+        "semantic_score": 0.0881597101688385,
+        "lexical_score": 0.5728017687797546,
+        "name": "Duration questions search profile and state memories",
+        "description": "When a question asks how long a person has had, owned, or possessed something (e.g., 'how long has X had Y?'), search profile and state memories as well as event memories.",
+        "content": [
+          "When a question asks how long a subject has had, owned, or possessed an item (e.g., 'how long has Nate had his turtles?'), interpret it as asking for a duration, not a specific acquisition date.",
+          "Do not restrict the search to event memories for such duration/tenure questions; include profile and state memory kinds because ownership duration is commonly stored as a profile or state fact.",
+          "If a profile or state memory directly states the duration, stop searching and answer with that duration; do not substitute a recent event date."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_ordinal_event_chronology",
+        "version_id": "sk_access_ordinal_event_chronology_v1",
+        "rank": 3,
+        "score": 0.2184431254863739,
+        "semantic_score": 0.312061607837677,
+        "lexical_score": 0.0,
+        "name": "Ordinal Event Chronology",
+        "description": "Use when a question asks about an ordinal occurrence of a recurring event (e.g., first, second, third win/tourney).",
+        "content": [
+          "When a question references an ordinal occurrence of an event, do not build the search query around that ordinal. Search broadly for the subject's events of that type using synonyms and structured filters on subject and event kind.",
+          "Retrieve enough event memories to order them chronologically by world_start. Resolve relative time phrases using each memory's own world_start date.",
+          "Determine the requested ordinal by sorting the retrieved events by date and counting. Do not assume a memory labeled with a different ordinal answers a lower ordinal unless it is the only candidate.",
+          "Stop after collecting at least the requested ordinal and one earlier event to confirm ordering; do not expand exhaustively."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_post_event_activity",
+        "version_id": "sk_access_post_event_activity_v1",
+        "rank": 4,
+        "score": 0.15375879406929016,
+        "semantic_score": 0.14130637049674988,
+        "lexical_score": 0.18281443417072296,
+        "name": "Temporal filter for post-event activity queries",
+        "description": "When a question asks how someone spends time after a major life event, first find the event date and run searches limited to memories at or after that date, including planned future activities.",
+        "content": [
+          "If the question references a life event (wedding, marriage, graduation, move, new job) and a later period (after, since, post-), locate that event's date from memory before answering.",
+          "Run hybrid/structured searches for the person's activities with a time filter: world_start on or after the event date; include planned future events and activity/event memory kinds.",
+          "If top results are dated before the event or do not fit the post-event window, add event-specific keywords (e.g., honeymoon, celebration) and re-search; do not answer from pre-event memories.",
+          "Stop once a coherent set of post-event activities covering the question's claims is retrieved; do not keep expanding after that."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_include_plan_memories_future_events",
+        "version_id": "sk_access_include_plan_memories_future_events_v1",
+        "rank": 5,
+        "score": 0.10756658762693405,
+        "semantic_score": 0.15366655588150024,
+        "lexical_score": 0.0,
+        "name": "Include Plan Memories for Future-Event Queries",
+        "description": "Use when a query asks about a scheduled or future event such as attending, going, upcoming, plans, or next.",
+        "content": [
+          "When a query asks about a future or scheduled event, include the 'plan' memory kind in memory_kinds together with 'event'; do not restrict to 'event' only.",
+          "If the first search returns no usable evidence, run at least one broader retry: expand memory_kinds to include plan/state, relax time_mode, and vary keywords before concluding no information.",
+          "When searching for relative time phrases, use time_mode to resolve them against the current session timestamp, and prefer a plan memory that directly answers the timing."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_exhaustive_event_count_retrieval",
+        "version_id": "sk_access_exhaustive_event_count_retrieval_v1",
+        "rank": 6,
+        "score": 0.1044793352484703,
+        "semantic_score": 0.14925619959831238,
+        "lexical_score": 0.0,
+        "name": "Exhaustive Event Count Retrieval",
+        "description": "Use when a question asks for a count or number of times an event occurred for a subject.",
+        "content": [
+          "Before answering a numeric count question about events, search for all event memories of the subject using multiple phrasings and synonyms of the event type.",
+          "Do not stop after one top-k search; if the retrieved set contains any event of the same kind, run additional searches until no new distinct event memories are returned, then count the distinct event occurrences.",
+          "Include event, achievement, and experience memories that describe actual participation; do not count unrelated profile content."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      }
+    ]
+  },
+  "repair_package": {
+    "question": "How many video game tournaments has Nate won by July 10, 2022?",
+    "reference_answer": "Four",
+    "missing_useful_current_memories": [
+      {
+        "version_id": "mem_conv-42_0001_v4",
+        "memory_id": "mem_conv-42_0001",
+        "version_no": 4,
+        "content": "Nate won his fourth video game tournament on Friday, July 8, 2022, showcasing his skills and making money through his passion. This achievement highlights his dedication and growth in the competitive gaming scene. Nate has saved some of his tournament winnings but does not have specific plans for the money, as he is content with his current financial state.",
+        "memory_kind": "event",
+        "subject": "Nate",
+        "predicate": "achievement",
+        "object_text": "video game tournament win",
+        "world_start": "2022-10-05",
+        "world_end": null,
+        "update_type": "enrichment"
+      }
+    ],
+    "retrieved_current_version_ids": [
+      "mem_conv-42_0008_v1",
+      "mem_conv-42_0011_v1",
+      "mem_conv-42_0014_v1",
+      "mem_conv-42_0022_v1",
+      "mem_conv-42_0028_v1",
+      "mem_conv-42_0049_v1",
+      "mem_conv-42_0051_v1",
+      "mem_conv-42_0072_v1",
+      "mem_conv-42_0073_v1",
+      "mem_conv-42_0085_v1"
+    ],
+    "search_steps": [
+      {
+        "action_id": "access_conv-42_conv-42_conv-42_qa_0136_a000",
+        "step_index": 0,
+        "action_type": "search_memory",
+        "request": {
+          "action": "search_memory",
+          "arguments": {
+            "strategy": "hybrid",
+            "query": "how many video game tournaments has Nate won",
+            "query_expansions": [
+              "video game tournament wins by Nate",
+              "tournaments won by Nate in 2022",
+              "Nate's video game tournament victories"
+            ],
+            "keywords": [
+              "Nate",
+              "video game tournament",
+              "won"
+            ],
+            "depth": "standard",
+            "memory_kinds": [
+              "event"
+            ],
+            "time_mode": "point",
+            "target_time": "2022-07-10"
+          },
+          "reason": "to find the number of video game tournaments Nate has won by July 10, 2022"
+        },
+        "returned_memories": [
+          {
+            "version_id": "mem_conv-42_0028_v1",
+            "memory_id": "mem_conv-42_0028",
+            "content": "Nate was participating in a video game tournament on March 24, 2022, describing it as intense and full of adrenaline.",
+            "memory_kind": "event",
+            "subject": "Nate",
+            "world_start": "2022-03-24",
+            "world_end": null,
+            "score": 0.0191,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0049_v1",
+            "memory_id": "mem_conv-42_0049",
+            "content": "Nate won his second tournament last week while playing Street Fighter, which he plays frequently with his friends.",
+            "memory_kind": "event",
+            "subject": "Nate",
+            "world_start": "2022-04-25T00:00:00Z",
+            "world_end": null,
+            "score": 0.0188,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0011_v1",
+            "memory_id": "mem_conv-42_0011",
+            "content": "Nate started hanging out with people outside of his circle at the tournament. He tends to stick around the more chill people there.",
+            "memory_kind": "event",
+            "subject": "Nate",
+            "world_start": "2022-01-23",
+            "world_end": null,
+            "score": 0.0168,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0073_v1",
+            "memory_id": "mem_conv-42_0073",
+            "content": "Nate offered to help some tournament attendees improve their gaming skills by sharing tips, showing his willingness to support others.",
+            "memory_kind": "event",
+            "subject": "Nate",
+            "world_start": "2022-06-03",
+            "world_end": null,
+            "score": 0.0166,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0051_v1",
+            "memory_id": "mem_conv-42_0051",
+            "content": "Nate has been focusing on gaming, practicing a lot and winning tournaments, primarily playing CS:GO and occasionally Street Fighter with friends.",
+            "memory_kind": "event",
+            "subject": "Nate",
+            "world_start": "2022-05-02T11:54:00Z",
+            "world_end": null,
+            "score": 0.0164,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0072_v1",
+            "memory_id": "mem_conv-42_0072",
+            "content": "Nate is organizing a gaming party two weekends later, planning to invite tournament friends and old teammates, and is getting custom controller decorations for the event.",
+            "memory_kind": "event",
+            "subject": "Nate",
+            "world_start": "2022-06-03",
+            "world_end": null,
+            "score": 0.0164,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0085_v1",
+            "memory_id": "mem_conv-42_0085",
+            "content": "Nate hosted a gaming party on June 24, 2022, which was a great success, and they played Chess afterward for fun.",
+            "memory_kind": "event",
+            "subject": "Nate",
+            "world_start": "2022-06-24",
+            "world_end": null,
+            "score": 0.0151,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0008_v1",
+            "memory_id": "mem_conv-42_0008",
+            "content": "Nate owns two turtles that he has had for 3 years. The turtles bring him joy and help him manage stress. They have big personalities despite being small.",
+            "memory_kind": "event",
+            "subject": "Nate",
+            "world_start": "2022-01-23",
+            "world_end": null,
+            "score": 0.0146,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          }
+        ],
+        "returned_version_ids": [
+          "mem_conv-42_0028_v1",
+          "mem_conv-42_0049_v1",
+          "mem_conv-42_0011_v1",
+          "mem_conv-42_0073_v1",
+          "mem_conv-42_0051_v1",
+          "mem_conv-42_0072_v1",
+          "mem_conv-42_0085_v1",
+          "mem_conv-42_0008_v1"
+        ]
+      },
+      {
+        "action_id": "access_conv-42_conv-42_conv-42_qa_0136_a001",
+        "step_index": 1,
+        "action_type": "search_memory",
+        "request": {
+          "action": "search_memory",
+          "arguments": {
+            "strategy": "structured",
+            "query": "video game tournament wins by Nate",
+            "keywords": [
+              "Nate",
+              "video game tournament",
+              "won"
+            ],
+            "depth": "deep",
+            "memory_kinds": [
+              "event"
+            ],
+            "time_mode": "point",
+            "target_time": "2022-07-10"
+          },
+          "reason": "to find the number of video game tournaments Nate has won by July 10, 2022 using structured queries"
+        },
+        "returned_memories": [
+          {
+            "version_id": "mem_conv-42_0028_v1",
+            "memory_id": "mem_conv-42_0028",
+            "content": "Nate was participating in a video game tournament on March 24, 2022, describing it as intense and full of adrenaline.",
+            "memory_kind": "event",
+            "subject": "Nate",
+            "world_start": "2022-03-24",
+            "world_end": null,
+            "score": 1.8857,
+            "paths": [
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0049_v1",
+            "memory_id": "mem_conv-42_0049",
+            "content": "Nate won his second tournament last week while playing Street Fighter, which he plays frequently with his friends.",
+            "memory_kind": "event",
+            "subject": "Nate",
+            "world_start": "2022-04-25T00:00:00Z",
+            "world_end": null,
+            "score": 1.7143,
+            "paths": [
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0073_v1",
+            "memory_id": "mem_conv-42_0073",
+            "content": "Nate offered to help some tournament attendees improve their gaming skills by sharing tips, showing his willingness to support others.",
+            "memory_kind": "event",
+            "subject": "Nate",
+            "world_start": "2022-06-03",
+            "world_end": null,
+            "score": 1.7143,
+            "paths": [
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0011_v1",
+            "memory_id": "mem_conv-42_0011",
+            "content": "Nate started hanging out with people outside of his circle at the tournament. He tends to stick around the more chill people there.",
+            "memory_kind": "event",
+            "subject": "Nate",
+            "world_start": "2022-01-23",
+            "world_end": null,
+            "score": 1.5429,
+            "paths": [
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0022_v1",
+            "memory_id": "mem_conv-42_0022",
+            "content": "Nate takes care of his turtles by maintaining a clean environment, proper feeding, and ensuring they receive adequate light.",
+            "memory_kind": "event",
+            "subject": "Nate",
+            "world_start": "2022-03-18",
+            "world_end": null,
+            "score": 1.5429,
+            "paths": [
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0072_v1",
+            "memory_id": "mem_conv-42_0072",
+            "content": "Nate is organizing a gaming party two weekends later, planning to invite tournament friends and old teammates, and is getting custom controller decorations for the event.",
+            "memory_kind": "event",
+            "subject": "Nate",
+            "world_start": "2022-06-03",
+            "world_end": null,
+            "score": 1.5429,
+            "paths": [
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0008_v1",
+            "memory_id": "mem_conv-42_0008",
+            "content": "Nate owns two turtles that he has had for 3 years. The turtles bring him joy and help him manage stress. They have big personalities despite being small.",
+            "memory_kind": "event",
+            "subject": "Nate",
+            "world_start": "2022-01-23",
+            "world_end": null,
+            "score": 1.3714,
+            "paths": [
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0014_v1",
+            "memory_id": "mem_conv-42_0014",
+            "content": "Nate made coconut milk ice cream and found it to be rich and creamy, expressing pride in his creation and planning to experiment with different flavors and toppings.",
+            "memory_kind": "event",
+            "subject": "Nate",
+            "world_start": "2022-02-07",
+            "world_end": null,
+            "score": 1.3714,
+            "paths": [
+              "structured"
+            ]
+          }
+        ],
+        "returned_version_ids": [
+          "mem_conv-42_0028_v1",
+          "mem_conv-42_0049_v1",
+          "mem_conv-42_0073_v1",
+          "mem_conv-42_0011_v1",
+          "mem_conv-42_0022_v1",
+          "mem_conv-42_0072_v1",
+          "mem_conv-42_0008_v1",
+          "mem_conv-42_0014_v1"
+        ]
+      },
+      {
+        "action_id": "access_conv-42_conv-42_conv-42_qa_0136_a002",
+        "step_index": 2,
+        "action_type": "inspect_memory",
+        "request": {
+          "action": "inspect_memory",
+          "arguments": {
+            "memory_id": "mem_conv-42_0049",
+            "include_versions": true,
+            "include_sources": true
+          },
+          "reason": "to verify the details of Nate's tournament win mentioned in the memory"
+        },
+        "returned_memories": [
+          {
+            "version_id": "mem_conv-42_0049_v1",
+            "version_no": 1,
+            "content": "Nate won his second tournament last week while playing Street Fighter, which he plays frequently with his friends.",
+            "world_start": "2022-04-25T00:00:00Z",
+            "world_end": null
+          }
+        ],
+        "returned_version_ids": [
+          "mem_conv-42_0049_v1"
+        ]
+      },
+      {
+        "action_id": "access_conv-42_conv-42_conv-42_qa_0136_a003",
+        "step_index": 3,
+        "action_type": "search_memory",
+        "request": {
+          "action": "search_memory",
+          "arguments": {
+            "strategy": "structured",
+            "query": "video game tournament wins by Nate",
+            "keywords": [
+              "Nate",
+              "video game tournament",
+              "won"
+            ],
+            "depth": "deep",
+            "memory_kinds": [
+              "event"
+            ],
+            "time_mode": "point",
+            "target_time": "2022-07-10"
+          },
+          "reason": "to find the number of video game tournaments Nate has won by July 10, 2022 using structured queries"
+        },
+        "returned_memories": [
+          {
+            "version_id": "mem_conv-42_0028_v1",
+            "memory_id": "mem_conv-42_0028",
+            "content": "Nate was participating in a video game tournament on March 24, 2022, describing it as intense and full of adrenaline.",
+            "memory_kind": "event",
+            "subject": "Nate",
+            "world_start": "2022-03-24",
+            "world_end": null,
+            "score": 1.8857,
+            "paths": [
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0049_v1",
+            "memory_id": "mem_conv-42_0049",
+            "content": "Nate won his second tournament last week while playing Street Fighter, which he plays frequently with his friends.",
+            "memory_kind": "event",
+            "subject": "Nate",
+            "world_start": "2022-04-25T00:00:00Z",
+            "world_end": null,
+            "score": 1.7143,
+            "paths": [
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0073_v1",
+            "memory_id": "mem_conv-42_0073",
+            "content": "Nate offered to help some tournament attendees improve their gaming skills by sharing tips, showing his willingness to support others.",
+            "memory_kind": "event",
+            "subject": "Nate",
+            "world_start": "2022-06-03",
+            "world_end": null,
+            "score": 1.7143,
+            "paths": [
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0011_v1",
+            "memory_id": "mem_conv-42_0011",
+            "content": "Nate started hanging out with people outside of his circle at the tournament. He tends to stick around the more chill people there.",
+            "memory_kind": "event",
+            "subject": "Nate",
+            "world_start": "2022-01-23",
+            "world_end": null,
+            "score": 1.5429,
+            "paths": [
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0022_v1",
+            "memory_id": "mem_conv-42_0022",
+            "content": "Nate takes care of his turtles by maintaining a clean environment, proper feeding, and ensuring they receive adequate light.",
+            "memory_kind": "event",
+            "subject": "Nate",
+            "world_start": "2022-03-18",
+            "world_end": null,
+            "score": 1.5429,
+            "paths": [
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0072_v1",
+            "memory_id": "mem_conv-42_0072",
+            "content": "Nate is organizing a gaming party two weekends later, planning to invite tournament friends and old teammates, and is getting custom controller decorations for the event.",
+            "memory_kind": "event",
+            "subject": "Nate",
+            "world_start": "2022-06-03",
+            "world_end": null,
+            "score": 1.5429,
+            "paths": [
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0008_v1",
+            "memory_id": "mem_conv-42_0008",
+            "content": "Nate owns two turtles that he has had for 3 years. The turtles bring him joy and help him manage stress. They have big personalities despite being small.",
+            "memory_kind": "event",
+            "subject": "Nate",
+            "world_start": "2022-01-23",
+            "world_end": null,
+            "score": 1.3714,
+            "paths": [
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0014_v1",
+            "memory_id": "mem_conv-42_0014",
+            "content": "Nate made coconut milk ice cream and found it to be rich and creamy, expressing pride in his creation and planning to experiment with different flavors and toppings.",
+            "memory_kind": "event",
+            "subject": "Nate",
+            "world_start": "2022-02-07",
+            "world_end": null,
+            "score": 1.3714,
+            "paths": [
+              "structured"
+            ]
+          }
+        ],
+        "returned_version_ids": [
+          "mem_conv-42_0028_v1",
+          "mem_conv-42_0049_v1",
+          "mem_conv-42_0073_v1",
+          "mem_conv-42_0011_v1",
+          "mem_conv-42_0022_v1",
+          "mem_conv-42_0072_v1",
+          "mem_conv-42_0008_v1",
+          "mem_conv-42_0014_v1"
+        ]
+      },
+      {
+        "action_id": "access_conv-42_conv-42_conv-42_qa_0136_a004",
+        "step_index": 4,
+        "action_type": "answer",
+        "request": {
+          "action": "answer",
+          "arguments": {
+            "answer": "2",
+            "evidence_version_ids": [
+              "mem_conv-42_0049_v1"
+            ],
+            "confidence": 0.95
+          },
+          "reason": "Nate won his second tournament by July 10, 2022, as indicated by the memory with version ID mem_conv-42_0049_v1."
+        },
+        "returned_memories": [],
+        "returned_version_ids": []
+      }
+    ],
+    "reason": "The current memory version mem_conv-42_0001_v4 explicitly states that Nate won his fourth video game tournament on July 8, 2022, which is before the target date of July 10, 2022. This directly supports the reference answer of four tournaments. Other memories in the search chain do not provide the total count or the specific fourth win.",
+    "skill_trace": {
+      "trace_id": "skilltrace_access_conv-42_conv-42_conv-42_qa_0136",
+      "side": "access",
+      "bank_version": "bank1",
+      "query": "How many video game tournaments has Nate won by July 10, 2022?",
+      "top_k": 2,
+      "disclose_k": 5,
+      "min_score": 0.2,
+      "scored_fields": [
+        "name",
+        "description"
+      ],
+      "scoring_weights": {
+        "semantic": 0.7,
+        "bm25": 0.3
+      },
+      "retrieval_method": "bank1_hybrid_router",
+      "candidate_k": 10,
+      "reranker": "bank1_applicability_router",
+      "reranker_error": "",
+      "selected": [
+        {
+          "skill_id": "sk_access_count_entity_instances_acquisition",
+          "version_id": "sk_access_count_entity_instances_acquisition_v1",
+          "rank": 1,
+          "score": 0.37504348158836365,
+          "semantic_score": 0.10720497369766235,
+          "lexical_score": 1.0,
+          "name": "Count Entity Instances by Acquisition Events",
+          "description": "Use when a question asks how many of a category an entity has or owns as of a target date and no direct summary count is found.",
+          "content": [
+            "When asked for a count of items an entity has as of a target date, search for individual membership-changing events (adoption, purchase, acquisition, birth, receipt, loss, sale) using structured queries with the entity and memory_kinds=['event'], plus keywords like 'adopted', 'bought', 'got', 'welcomed', 'acquired', 'sold', or 'gave away'.",
+            "Enumerate distinct instances whose event world_start is on or before the target date and whose world_end, if any, is after the target date; count those instances.",
+            "Do not count plans, considerations, or intentions to acquire as current possessions. If a retrieved memory mentions a plan or a named companion, inspect related memories to verify whether the acquisition already occurred before answering.",
+            "Stop after retrieving all candidate instances or after one additional targeted search that returns no new acquisition events; avoid exhaustive expansion."
+          ],
+          "selected": true,
+          "rerank_rank": 1,
+          "rerank_reason": "The question asks for the count of video game tournaments Nate has won by a specific date, which aligns with the skill's purpose of counting entity instances based on acquisition events."
+        }
+      ],
+      "nearby_not_selected": [
+        {
+          "skill_id": "sk_access_duration_questions",
+          "version_id": "sk_access_duration_questions_v1",
+          "rank": 2,
+          "score": 0.23355233669281006,
+          "semantic_score": 0.0881597101688385,
+          "lexical_score": 0.5728017687797546,
+          "name": "Duration questions search profile and state memories",
+          "description": "When a question asks how long a person has had, owned, or possessed something (e.g., 'how long has X had Y?'), search profile and state memories as well as event memories.",
+          "content": [
+            "When a question asks how long a subject has had, owned, or possessed an item (e.g., 'how long has Nate had his turtles?'), interpret it as asking for a duration, not a specific acquisition date.",
+            "Do not restrict the search to event memories for such duration/tenure questions; include profile and state memory kinds because ownership duration is commonly stored as a profile or state fact.",
+            "If a profile or state memory directly states the duration, stop searching and answer with that duration; do not substitute a recent event date."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_ordinal_event_chronology",
+          "version_id": "sk_access_ordinal_event_chronology_v1",
+          "rank": 3,
+          "score": 0.2184431254863739,
+          "semantic_score": 0.312061607837677,
+          "lexical_score": 0.0,
+          "name": "Ordinal Event Chronology",
+          "description": "Use when a question asks about an ordinal occurrence of a recurring event (e.g., first, second, third win/tourney).",
+          "content": [
+            "When a question references an ordinal occurrence of an event, do not build the search query around that ordinal. Search broadly for the subject's events of that type using synonyms and structured filters on subject and event kind.",
+            "Retrieve enough event memories to order them chronologically by world_start. Resolve relative time phrases using each memory's own world_start date.",
+            "Determine the requested ordinal by sorting the retrieved events by date and counting. Do not assume a memory labeled with a different ordinal answers a lower ordinal unless it is the only candidate.",
+            "Stop after collecting at least the requested ordinal and one earlier event to confirm ordering; do not expand exhaustively."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_post_event_activity",
+          "version_id": "sk_access_post_event_activity_v1",
+          "rank": 4,
+          "score": 0.15375879406929016,
+          "semantic_score": 0.14130637049674988,
+          "lexical_score": 0.18281443417072296,
+          "name": "Temporal filter for post-event activity queries",
+          "description": "When a question asks how someone spends time after a major life event, first find the event date and run searches limited to memories at or after that date, including planned future activities.",
+          "content": [
+            "If the question references a life event (wedding, marriage, graduation, move, new job) and a later period (after, since, post-), locate that event's date from memory before answering.",
+            "Run hybrid/structured searches for the person's activities with a time filter: world_start on or after the event date; include planned future events and activity/event memory kinds.",
+            "If top results are dated before the event or do not fit the post-event window, add event-specific keywords (e.g., honeymoon, celebration) and re-search; do not answer from pre-event memories.",
+            "Stop once a coherent set of post-event activities covering the question's claims is retrieved; do not keep expanding after that."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_include_plan_memories_future_events",
+          "version_id": "sk_access_include_plan_memories_future_events_v1",
+          "rank": 5,
+          "score": 0.10756658762693405,
+          "semantic_score": 0.15366655588150024,
+          "lexical_score": 0.0,
+          "name": "Include Plan Memories for Future-Event Queries",
+          "description": "Use when a query asks about a scheduled or future event such as attending, going, upcoming, plans, or next.",
+          "content": [
+            "When a query asks about a future or scheduled event, include the 'plan' memory kind in memory_kinds together with 'event'; do not restrict to 'event' only.",
+            "If the first search returns no usable evidence, run at least one broader retry: expand memory_kinds to include plan/state, relax time_mode, and vary keywords before concluding no information.",
+            "When searching for relative time phrases, use time_mode to resolve them against the current session timestamp, and prefer a plan memory that directly answers the timing."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_exhaustive_event_count_retrieval",
+          "version_id": "sk_access_exhaustive_event_count_retrieval_v1",
+          "rank": 6,
+          "score": 0.1044793352484703,
+          "semantic_score": 0.14925619959831238,
+          "lexical_score": 0.0,
+          "name": "Exhaustive Event Count Retrieval",
+          "description": "Use when a question asks for a count or number of times an event occurred for a subject.",
+          "content": [
+            "Before answering a numeric count question about events, search for all event memories of the subject using multiple phrasings and synonyms of the event type.",
+            "Do not stop after one top-k search; if the retrieved set contains any event of the same kind, run additional searches until no new distinct event memories are returned, then count the distinct event occurrences.",
+            "Include event, achievement, and experience memories that describe actual participation; do not count unrelated profile content."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        }
+      ]
+    }
+  },
+  "access_run_id": "access_conv-42_conv-42_conv-42_qa_0136",
+  "claims": [
+    {
+      "claim": "Nate won four video game tournaments by July 10, 2022.",
+      "supporting_version_ids": [
+        "mem_conv-42_0001_v4"
+      ],
+      "coverage": null
+    }
+  ],
+  "current_related_memories": [
+    {
+      "version_id": "mem_conv-42_0001_v4",
+      "memory_id": "mem_conv-42_0001",
+      "version_no": 4,
+      "content": "Nate won his fourth video game tournament on Friday, July 8, 2022, showcasing his skills and making money through his passion. This achievement highlights his dedication and growth in the competitive gaming scene. Nate has saved some of his tournament winnings but does not have specific plans for the money, as he is content with his current financial state.",
+      "memory_kind": "event",
+      "subject": "Nate",
+      "predicate": "achievement",
+      "object_text": "video game tournament win",
+      "world_start": "2022-10-05",
+      "world_end": null,
+      "update_type": "enrichment"
+    }
+  ],
+  "useful_current_version_ids": [
+    "mem_conv-42_0001_v4"
+  ],
+  "retrieved_current_version_ids": [
+    "mem_conv-42_0008_v1",
+    "mem_conv-42_0011_v1",
+    "mem_conv-42_0014_v1",
+    "mem_conv-42_0022_v1",
+    "mem_conv-42_0028_v1",
+    "mem_conv-42_0049_v1",
+    "mem_conv-42_0051_v1",
+    "mem_conv-42_0072_v1",
+    "mem_conv-42_0073_v1",
+    "mem_conv-42_0085_v1"
+  ],
+  "missing_useful_current_version_ids": [
+    "mem_conv-42_0001_v4"
+  ],
+  "search_steps": [
+    {
+      "action_id": "access_conv-42_conv-42_conv-42_qa_0136_a000",
+      "step_index": 0,
+      "action_type": "search_memory",
+      "request": {
+        "action": "search_memory",
+        "arguments": {
+          "strategy": "hybrid",
+          "query": "how many video game tournaments has Nate won",
+          "query_expansions": [
+            "video game tournament wins by Nate",
+            "tournaments won by Nate in 2022",
+            "Nate's video game tournament victories"
+          ],
+          "keywords": [
+            "Nate",
+            "video game tournament",
+            "won"
+          ],
+          "depth": "standard",
+          "memory_kinds": [
+            "event"
+          ],
+          "time_mode": "point",
+          "target_time": "2022-07-10"
+        },
+        "reason": "to find the number of video game tournaments Nate has won by July 10, 2022"
+      },
+      "returned_memories": [
+        {
+          "version_id": "mem_conv-42_0028_v1",
+          "memory_id": "mem_conv-42_0028",
+          "content": "Nate was participating in a video game tournament on March 24, 2022, describing it as intense and full of adrenaline.",
+          "memory_kind": "event",
+          "subject": "Nate",
+          "world_start": "2022-03-24",
+          "world_end": null,
+          "score": 0.0191,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0049_v1",
+          "memory_id": "mem_conv-42_0049",
+          "content": "Nate won his second tournament last week while playing Street Fighter, which he plays frequently with his friends.",
+          "memory_kind": "event",
+          "subject": "Nate",
+          "world_start": "2022-04-25T00:00:00Z",
+          "world_end": null,
+          "score": 0.0188,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0011_v1",
+          "memory_id": "mem_conv-42_0011",
+          "content": "Nate started hanging out with people outside of his circle at the tournament. He tends to stick around the more chill people there.",
+          "memory_kind": "event",
+          "subject": "Nate",
+          "world_start": "2022-01-23",
+          "world_end": null,
+          "score": 0.0168,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0073_v1",
+          "memory_id": "mem_conv-42_0073",
+          "content": "Nate offered to help some tournament attendees improve their gaming skills by sharing tips, showing his willingness to support others.",
+          "memory_kind": "event",
+          "subject": "Nate",
+          "world_start": "2022-06-03",
+          "world_end": null,
+          "score": 0.0166,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0051_v1",
+          "memory_id": "mem_conv-42_0051",
+          "content": "Nate has been focusing on gaming, practicing a lot and winning tournaments, primarily playing CS:GO and occasionally Street Fighter with friends.",
+          "memory_kind": "event",
+          "subject": "Nate",
+          "world_start": "2022-05-02T11:54:00Z",
+          "world_end": null,
+          "score": 0.0164,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0072_v1",
+          "memory_id": "mem_conv-42_0072",
+          "content": "Nate is organizing a gaming party two weekends later, planning to invite tournament friends and old teammates, and is getting custom controller decorations for the event.",
+          "memory_kind": "event",
+          "subject": "Nate",
+          "world_start": "2022-06-03",
+          "world_end": null,
+          "score": 0.0164,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0085_v1",
+          "memory_id": "mem_conv-42_0085",
+          "content": "Nate hosted a gaming party on June 24, 2022, which was a great success, and they played Chess afterward for fun.",
+          "memory_kind": "event",
+          "subject": "Nate",
+          "world_start": "2022-06-24",
+          "world_end": null,
+          "score": 0.0151,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0008_v1",
+          "memory_id": "mem_conv-42_0008",
+          "content": "Nate owns two turtles that he has had for 3 years. The turtles bring him joy and help him manage stress. They have big personalities despite being small.",
+          "memory_kind": "event",
+          "subject": "Nate",
+          "world_start": "2022-01-23",
+          "world_end": null,
+          "score": 0.0146,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        }
+      ],
+      "returned_version_ids": [
+        "mem_conv-42_0028_v1",
+        "mem_conv-42_0049_v1",
+        "mem_conv-42_0011_v1",
+        "mem_conv-42_0073_v1",
+        "mem_conv-42_0051_v1",
+        "mem_conv-42_0072_v1",
+        "mem_conv-42_0085_v1",
+        "mem_conv-42_0008_v1"
+      ]
+    },
+    {
+      "action_id": "access_conv-42_conv-42_conv-42_qa_0136_a001",
+      "step_index": 1,
+      "action_type": "search_memory",
+      "request": {
+        "action": "search_memory",
+        "arguments": {
+          "strategy": "structured",
+          "query": "video game tournament wins by Nate",
+          "keywords": [
+            "Nate",
+            "video game tournament",
+            "won"
+          ],
+          "depth": "deep",
+          "memory_kinds": [
+            "event"
+          ],
+          "time_mode": "point",
+          "target_time": "2022-07-10"
+        },
+        "reason": "to find the number of video game tournaments Nate has won by July 10, 2022 using structured queries"
+      },
+      "returned_memories": [
+        {
+          "version_id": "mem_conv-42_0028_v1",
+          "memory_id": "mem_conv-42_0028",
+          "content": "Nate was participating in a video game tournament on March 24, 2022, describing it as intense and full of adrenaline.",
+          "memory_kind": "event",
+          "subject": "Nate",
+          "world_start": "2022-03-24",
+          "world_end": null,
+          "score": 1.8857,
+          "paths": [
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0049_v1",
+          "memory_id": "mem_conv-42_0049",
+          "content": "Nate won his second tournament last week while playing Street Fighter, which he plays frequently with his friends.",
+          "memory_kind": "event",
+          "subject": "Nate",
+          "world_start": "2022-04-25T00:00:00Z",
+          "world_end": null,
+          "score": 1.7143,
+          "paths": [
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0073_v1",
+          "memory_id": "mem_conv-42_0073",
+          "content": "Nate offered to help some tournament attendees improve their gaming skills by sharing tips, showing his willingness to support others.",
+          "memory_kind": "event",
+          "subject": "Nate",
+          "world_start": "2022-06-03",
+          "world_end": null,
+          "score": 1.7143,
+          "paths": [
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0011_v1",
+          "memory_id": "mem_conv-42_0011",
+          "content": "Nate started hanging out with people outside of his circle at the tournament. He tends to stick around the more chill people there.",
+          "memory_kind": "event",
+          "subject": "Nate",
+          "world_start": "2022-01-23",
+          "world_end": null,
+          "score": 1.5429,
+          "paths": [
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0022_v1",
+          "memory_id": "mem_conv-42_0022",
+          "content": "Nate takes care of his turtles by maintaining a clean environment, proper feeding, and ensuring they receive adequate light.",
+          "memory_kind": "event",
+          "subject": "Nate",
+          "world_start": "2022-03-18",
+          "world_end": null,
+          "score": 1.5429,
+          "paths": [
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0072_v1",
+          "memory_id": "mem_conv-42_0072",
+          "content": "Nate is organizing a gaming party two weekends later, planning to invite tournament friends and old teammates, and is getting custom controller decorations for the event.",
+          "memory_kind": "event",
+          "subject": "Nate",
+          "world_start": "2022-06-03",
+          "world_end": null,
+          "score": 1.5429,
+          "paths": [
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0008_v1",
+          "memory_id": "mem_conv-42_0008",
+          "content": "Nate owns two turtles that he has had for 3 years. The turtles bring him joy and help him manage stress. They have big personalities despite being small.",
+          "memory_kind": "event",
+          "subject": "Nate",
+          "world_start": "2022-01-23",
+          "world_end": null,
+          "score": 1.3714,
+          "paths": [
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0014_v1",
+          "memory_id": "mem_conv-42_0014",
+          "content": "Nate made coconut milk ice cream and found it to be rich and creamy, expressing pride in his creation and planning to experiment with different flavors and toppings.",
+          "memory_kind": "event",
+          "subject": "Nate",
+          "world_start": "2022-02-07",
+          "world_end": null,
+          "score": 1.3714,
+          "paths": [
+            "structured"
+          ]
+        }
+      ],
+      "returned_version_ids": [
+        "mem_conv-42_0028_v1",
+        "mem_conv-42_0049_v1",
+        "mem_conv-42_0073_v1",
+        "mem_conv-42_0011_v1",
+        "mem_conv-42_0022_v1",
+        "mem_conv-42_0072_v1",
+        "mem_conv-42_0008_v1",
+        "mem_conv-42_0014_v1"
+      ]
+    },
+    {
+      "action_id": "access_conv-42_conv-42_conv-42_qa_0136_a002",
+      "step_index": 2,
+      "action_type": "inspect_memory",
+      "request": {
+        "action": "inspect_memory",
+        "arguments": {
+          "memory_id": "mem_conv-42_0049",
+          "include_versions": true,
+          "include_sources": true
+        },
+        "reason": "to verify the details of Nate's tournament win mentioned in the memory"
+      },
+      "returned_memories": [
+        {
+          "version_id": "mem_conv-42_0049_v1",
+          "version_no": 1,
+          "content": "Nate won his second tournament last week while playing Street Fighter, which he plays frequently with his friends.",
+          "world_start": "2022-04-25T00:00:00Z",
+          "world_end": null
+        }
+      ],
+      "returned_version_ids": [
+        "mem_conv-42_0049_v1"
+      ]
+    },
+    {
+      "action_id": "access_conv-42_conv-42_conv-42_qa_0136_a003",
+      "step_index": 3,
+      "action_type": "search_memory",
+      "request": {
+        "action": "search_memory",
+        "arguments": {
+          "strategy": "structured",
+          "query": "video game tournament wins by Nate",
+          "keywords": [
+            "Nate",
+            "video game tournament",
+            "won"
+          ],
+          "depth": "deep",
+          "memory_kinds": [
+            "event"
+          ],
+          "time_mode": "point",
+          "target_time": "2022-07-10"
+        },
+        "reason": "to find the number of video game tournaments Nate has won by July 10, 2022 using structured queries"
+      },
+      "returned_memories": [
+        {
+          "version_id": "mem_conv-42_0028_v1",
+          "memory_id": "mem_conv-42_0028",
+          "content": "Nate was participating in a video game tournament on March 24, 2022, describing it as intense and full of adrenaline.",
+          "memory_kind": "event",
+          "subject": "Nate",
+          "world_start": "2022-03-24",
+          "world_end": null,
+          "score": 1.8857,
+          "paths": [
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0049_v1",
+          "memory_id": "mem_conv-42_0049",
+          "content": "Nate won his second tournament last week while playing Street Fighter, which he plays frequently with his friends.",
+          "memory_kind": "event",
+          "subject": "Nate",
+          "world_start": "2022-04-25T00:00:00Z",
+          "world_end": null,
+          "score": 1.7143,
+          "paths": [
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0073_v1",
+          "memory_id": "mem_conv-42_0073",
+          "content": "Nate offered to help some tournament attendees improve their gaming skills by sharing tips, showing his willingness to support others.",
+          "memory_kind": "event",
+          "subject": "Nate",
+          "world_start": "2022-06-03",
+          "world_end": null,
+          "score": 1.7143,
+          "paths": [
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0011_v1",
+          "memory_id": "mem_conv-42_0011",
+          "content": "Nate started hanging out with people outside of his circle at the tournament. He tends to stick around the more chill people there.",
+          "memory_kind": "event",
+          "subject": "Nate",
+          "world_start": "2022-01-23",
+          "world_end": null,
+          "score": 1.5429,
+          "paths": [
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0022_v1",
+          "memory_id": "mem_conv-42_0022",
+          "content": "Nate takes care of his turtles by maintaining a clean environment, proper feeding, and ensuring they receive adequate light.",
+          "memory_kind": "event",
+          "subject": "Nate",
+          "world_start": "2022-03-18",
+          "world_end": null,
+          "score": 1.5429,
+          "paths": [
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0072_v1",
+          "memory_id": "mem_conv-42_0072",
+          "content": "Nate is organizing a gaming party two weekends later, planning to invite tournament friends and old teammates, and is getting custom controller decorations for the event.",
+          "memory_kind": "event",
+          "subject": "Nate",
+          "world_start": "2022-06-03",
+          "world_end": null,
+          "score": 1.5429,
+          "paths": [
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0008_v1",
+          "memory_id": "mem_conv-42_0008",
+          "content": "Nate owns two turtles that he has had for 3 years. The turtles bring him joy and help him manage stress. They have big personalities despite being small.",
+          "memory_kind": "event",
+          "subject": "Nate",
+          "world_start": "2022-01-23",
+          "world_end": null,
+          "score": 1.3714,
+          "paths": [
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0014_v1",
+          "memory_id": "mem_conv-42_0014",
+          "content": "Nate made coconut milk ice cream and found it to be rich and creamy, expressing pride in his creation and planning to experiment with different flavors and toppings.",
+          "memory_kind": "event",
+          "subject": "Nate",
+          "world_start": "2022-02-07",
+          "world_end": null,
+          "score": 1.3714,
+          "paths": [
+            "structured"
+          ]
+        }
+      ],
+      "returned_version_ids": [
+        "mem_conv-42_0028_v1",
+        "mem_conv-42_0049_v1",
+        "mem_conv-42_0073_v1",
+        "mem_conv-42_0011_v1",
+        "mem_conv-42_0022_v1",
+        "mem_conv-42_0072_v1",
+        "mem_conv-42_0008_v1",
+        "mem_conv-42_0014_v1"
+      ]
+    },
+    {
+      "action_id": "access_conv-42_conv-42_conv-42_qa_0136_a004",
+      "step_index": 4,
+      "action_type": "answer",
+      "request": {
+        "action": "answer",
+        "arguments": {
+          "answer": "2",
+          "evidence_version_ids": [
+            "mem_conv-42_0049_v1"
+          ],
+          "confidence": 0.95
+        },
+        "reason": "Nate won his second tournament by July 10, 2022, as indicated by the memory with version ID mem_conv-42_0049_v1."
+      },
+      "returned_memories": [],
+      "returned_version_ids": []
+    }
+  ]
+}

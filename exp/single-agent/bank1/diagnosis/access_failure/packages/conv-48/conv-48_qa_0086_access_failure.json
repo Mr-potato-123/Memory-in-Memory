@@ -1,0 +1,748 @@
+{
+  "schema_version": "access_diagnosis_v3",
+  "diagnosis_id": "access_conv-48_conv-48_qa_0086",
+  "diagnosis_type": "ACCESS_FAILURE",
+  "status": "completed",
+  "judge_run_id": "judge",
+  "diagnosis_run_id": "bank1_train_flash",
+  "source_runtime_run": "conv-48",
+  "conversation_id": "conv-48",
+  "qa_id": "conv-48_qa_0086",
+  "snapshot_commit_id": 30,
+  "question": "What gifts has Deborah received?",
+  "reference_answer": "an appreciate letter from her community, a flower bouqet from her friend, a motivational quote from a friend",
+  "problem_found": true,
+  "reason": "The current memory snapshot contains a version that explicitly mentions the bouquet (mem_conv-48_0020_v1) and a version that mentions the quote (mem_conv-48_0139_v1). No current version mentions an appreciation letter from the community.",
+  "confidence": 0.9,
+  "review_required": false,
+  "skill_trace": {
+    "trace_id": "skilltrace_access_conv-48_conv-48_conv-48_qa_0086",
+    "side": "access",
+    "bank_version": "bank1",
+    "query": "What gifts has Deborah received?",
+    "top_k": 2,
+    "disclose_k": 5,
+    "min_score": 0.2,
+    "scored_fields": [
+      "name",
+      "description"
+    ],
+    "scoring_weights": {
+      "semantic": 0.7,
+      "bm25": 0.3
+    },
+    "retrieval_method": "bank1_hybrid_router",
+    "candidate_k": 10,
+    "reranker": "bank1_applicability_router",
+    "reranker_error": "",
+    "selected": [
+      {
+        "skill_id": "sk_access_advice_synonyms",
+        "version_id": "sk_access_advice_synonyms_v1",
+        "rank": 1,
+        "score": 0.3420941233634949,
+        "semantic_score": 0.060134440660476685,
+        "lexical_score": 1.0,
+        "name": "Search for Advice and Recommendations Using Synonyms and Influence Cues",
+        "description": "When a question asks what recommendations, advice, or suggestions one person received from another, expand retrieval with synonyms and advice-influence cues.",
+        "content": [
+          "When searching for recommendations or advice received by person A from person B, include keyword and semantic expansions: recommend, recommended, advice, suggest, suggested, suggestion, tip, pointer, inspired by, based on advice.",
+          "If initial results mostly contain A's support for B rather than B's advice to A, also search for A's plans or intentions that may reflect B's advice, using phrases like 'A plans to' or 'A intends to' in combination with B's name.",
+          "Treat memories where A's plan or action is described as based on B's advice or inspired by B's setup as evidence of a recommendation, even without the word 'recommend'."
+        ],
+        "selected": true,
+        "rerank_rank": 1,
+        "rerank_reason": "The question asks about gifts received, which can be interpreted as recommendations or advice received. The skill is specifically designed to search for such information using synonyms and influence cues."
+      }
+    ],
+    "nearby_not_selected": [
+      {
+        "skill_id": "sk_access_duration_questions",
+        "version_id": "sk_access_duration_questions_v1",
+        "rank": 2,
+        "score": 0.31233370304107666,
+        "semantic_score": 0.10939384996891022,
+        "lexical_score": 0.785860002040863,
+        "name": "Duration questions search profile and state memories",
+        "description": "When a question asks how long a person has had, owned, or possessed something (e.g., 'how long has X had Y?'), search profile and state memories as well as event memories.",
+        "content": [
+          "When a question asks how long a subject has had, owned, or possessed an item (e.g., 'how long has Nate had his turtles?'), interpret it as asking for a duration, not a specific acquisition date.",
+          "Do not restrict the search to event memories for such duration/tenure questions; include profile and state memory kinds because ownership duration is commonly stored as a profile or state fact.",
+          "If a profile or state memory directly states the duration, stop searching and answer with that duration; do not substitute a recent event date."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_multi_kind_item_lists",
+        "version_id": "sk_access_multi_kind_item_lists_v1",
+        "rank": 3,
+        "score": 0.25109896063804626,
+        "semantic_score": 0.11744076013565063,
+        "lexical_score": 0.5629680752754211,
+        "name": "Search All Memory Kinds for Item Lists",
+        "description": "When a question asks for a list of items a person has read, watched, listened to, or used, use this to ensure retrieval covers preference and event memories.",
+        "content": [
+          "Before answering a list-type question about items a person has read, watched, listened to, or used, run at least one search without restricting memory_kind to a single kind; include both 'event' and 'preference' (and 'state' when relevant).",
+          "Preference memories often store the concrete named items (titles, names) and enriched versions may add more; inspect any returned preference memories for named items even when event memories give only vague descriptions.",
+          "Stop after the unrestricted search has surfaced the relevant preferences and events; do not add exhaustive extra searches unless evidence is still insufficient."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_count_entity_instances_acquisition",
+        "version_id": "sk_access_count_entity_instances_acquisition_v1",
+        "rank": 4,
+        "score": 0.22365571558475494,
+        "semantic_score": 0.07142473012208939,
+        "lexical_score": 0.5788612961769104,
+        "name": "Count Entity Instances by Acquisition Events",
+        "description": "Use when a question asks how many of a category an entity has or owns as of a target date and no direct summary count is found.",
+        "content": [
+          "When asked for a count of items an entity has as of a target date, search for individual membership-changing events (adoption, purchase, acquisition, birth, receipt, loss, sale) using structured queries with the entity and memory_kinds=['event'], plus keywords like 'adopted', 'bought', 'got', 'welcomed', 'acquired', 'sold', or 'gave away'.",
+          "Enumerate distinct instances whose event world_start is on or before the target date and whose world_end, if any, is after the target date; count those instances.",
+          "Do not count plans, considerations, or intentions to acquire as current possessions. If a retrieved memory mentions a plan or a named companion, inspect related memories to verify whether the acquisition already occurred before answering.",
+          "Stop after retrieving all candidate instances or after one additional targeted search that returns no new acquisition events; avoid exhaustive expansion."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_coping_mechanism_retrieval",
+        "version_id": "sk_access_coping_mechanism_retrieval_v1",
+        "rank": 5,
+        "score": 0.18674683570861816,
+        "semantic_score": 0.14229442179203033,
+        "lexical_score": 0.29046913981437683,
+        "name": "Coping Mechanism Retrieval",
+        "description": "Use when a question asks what helped someone cope with grief, loss, or find peace.",
+        "content": [
+          "If the question enumerates or implies multiple coping mechanisms, first check whether your retrieved evidence supports each distinct item; if an item lacks a supporting memory, do not include it in the answer.",
+          "After the initial semantic search, if any likely coping activity is still unsupported, run additional targeted searches using keywords and synonyms for that activity and for comfort/coping, and also search for event memories with timestamps near the relevant loss event, because state memories may describe the activity without linking it to the grief.",
+          "Stop once each distinct activity is either supported by a retrieved memory or has been searched for without success; do not perform further exploratory searches beyond that."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_recipient_plan_search",
+        "version_id": "sk_access_recipient_plan_search_v1",
+        "rank": 6,
+        "score": 0.18308034539222717,
+        "semantic_score": 0.1661088764667511,
+        "lexical_score": 0.22268043458461761,
+        "name": "Search Recipient-Side Plans for Suggestions",
+        "description": "When a question asks what suggestions, advice, or recommendations one person gave another, also search for plan/preference memories describing the recipient's agreement to try or change something.",
+        "content": [
+          "When asked about suggestions, advice, or recommendations someone gave another person, do not rely only on event memories explicitly mentioning the giver's advice. The advice may be stored in a plan or preference memory describing the recipient's agreement to try something new or replace an old habit (e.g., 'agreed to try X instead of Y', 'decided to switch from A to B').",
+          "Run additional hybrid or structured searches using recipient-commitment phrasing such as 'agreed to try', 'decided to change', 'instead of', 'plan to eat', and filter by memory kinds plan and preference if supported.",
+          "Stop searching once the retrieved memories cover all specific items the question asks about, or after two to three distinct query formulations."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      }
+    ]
+  },
+  "repair_package": {
+    "question": "What gifts has Deborah received?",
+    "reference_answer": "an appreciate letter from her community, a flower bouqet from her friend, a motivational quote from a friend",
+    "missing_useful_current_memories": [
+      {
+        "version_id": "mem_conv-48_0139_v1",
+        "memory_id": "mem_conv-48_0139",
+        "version_no": 1,
+        "content": "Deborah received a quote from a friend that reads 'Let go of what no longer serves you,' which she keeps as a reminder to let go of negative things and focus on growth.",
+        "memory_kind": "event",
+        "subject": "Deborah",
+        "predicate": "quote",
+        "object_text": "Let go of what no longer serves you",
+        "world_start": "2023-08-29",
+        "world_end": null,
+        "update_type": "add"
+      }
+    ],
+    "retrieved_current_version_ids": [
+      "mem_conv-48_0020_v1",
+      "mem_conv-48_0034_v1",
+      "mem_conv-48_0047_v1",
+      "mem_conv-48_0068_v1",
+      "mem_conv-48_0069_v1",
+      "mem_conv-48_0070_v1",
+      "mem_conv-48_0071_v1",
+      "mem_conv-48_0114_v1"
+    ],
+    "search_steps": [
+      {
+        "action_id": "access_conv-48_conv-48_conv-48_qa_0086_a000",
+        "step_index": 0,
+        "action_type": "search_memory",
+        "request": {
+          "action": "search_memory",
+          "arguments": {
+            "strategy": "hybrid",
+            "query": "gifts received by Deborah",
+            "query_expansions": [
+              "what items did Deborah get as presents",
+              "which gifts were given to Deborah"
+            ],
+            "keywords": [
+              "Deborah",
+              "gift",
+              "present"
+            ],
+            "depth": "standard",
+            "top_k": 8
+          },
+          "reason": "To find the list of gifts received by Deborah"
+        },
+        "returned_memories": [
+          {
+            "version_id": "mem_conv-48_0020_v1",
+            "memory_id": "mem_conv-48_0020",
+            "content": "Deborah received a bouquet from a friend during a difficult time, which gives her hope, courage, warmth, and appreciation.",
+            "memory_kind": "event",
+            "subject": "Deborah",
+            "world_start": "2023-02-04",
+            "world_end": null,
+            "score": 0.0163,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-48_0069_v1",
+            "memory_id": "mem_conv-48_0069",
+            "content": "Deborah purchased a candle to enhance the atmosphere and improve her yoga practice.",
+            "memory_kind": "event",
+            "subject": "Deborah",
+            "world_start": "2023-03-24",
+            "world_end": null,
+            "score": 0.0133,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-48_0068_v1",
+            "memory_id": "mem_conv-48_0068",
+            "content": "Deborah bought new props for her yoga class and shared an image of them in action.",
+            "memory_kind": "event",
+            "subject": "Deborah",
+            "world_start": "2023-03-24",
+            "world_end": null,
+            "score": 0.013,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-48_0070_v1",
+            "memory_id": "mem_conv-48_0070",
+            "content": "Deborah biked with her neighbor last week, describing the experience as freeing and beautiful.",
+            "memory_kind": "event",
+            "subject": "Deborah",
+            "world_start": "2023-04-08",
+            "world_end": null,
+            "score": 0.0128,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-48_0034_v1",
+            "memory_id": "mem_conv-48_0034",
+            "content": "Deborah finds comfort in memories of her friend Karlie and in the garden, where she reflects on their time together.",
+            "memory_kind": "state",
+            "subject": "Deborah",
+            "world_start": "2023-02-18",
+            "world_end": null,
+            "score": 0.0125,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-48_0047_v1",
+            "memory_id": "mem_conv-48_0047",
+            "content": "Deborah finds comfort in being outdoors, appreciating the sounds of birds and the gentle breeze.",
+            "memory_kind": "preference",
+            "subject": "Deborah",
+            "world_start": "2023-03-02",
+            "world_end": null,
+            "score": 0.012,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-48_0071_v1",
+            "memory_id": "mem_conv-48_0071",
+            "content": "Deborah attended an art show with a friend today, finding it cool and inspiring, and it reminded her of her mother.",
+            "memory_kind": "event",
+            "subject": "Deborah",
+            "world_start": "2023-04-09",
+            "world_end": null,
+            "score": 0.0119,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-48_0114_v1",
+            "memory_id": "mem_conv-48_0114",
+            "content": "Deborah enjoys spending time outdoors with her husband, exploring nature and finding peace in natural settings.",
+            "memory_kind": "event",
+            "subject": "Deborah",
+            "world_start": "2023-08-19",
+            "world_end": null,
+            "score": 0.0118,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          }
+        ],
+        "returned_version_ids": [
+          "mem_conv-48_0020_v1",
+          "mem_conv-48_0069_v1",
+          "mem_conv-48_0068_v1",
+          "mem_conv-48_0070_v1",
+          "mem_conv-48_0034_v1",
+          "mem_conv-48_0047_v1",
+          "mem_conv-48_0071_v1",
+          "mem_conv-48_0114_v1"
+        ]
+      },
+      {
+        "action_id": "access_conv-48_conv-48_conv-48_qa_0086_a001",
+        "step_index": 1,
+        "action_type": "answer",
+        "request": {
+          "action": "answer",
+          "arguments": {
+            "answer": "bouquet",
+            "evidence_version_ids": [
+              "mem_conv-48_0020_v1"
+            ],
+            "confidence": 0.95
+          },
+          "reason": "Deborah received a bouquet from a friend, which is explicitly mentioned as a gift."
+        },
+        "returned_memories": [],
+        "returned_version_ids": []
+      }
+    ],
+    "reason": "The current memory snapshot contains a version that explicitly mentions the bouquet (mem_conv-48_0020_v1) and a version that mentions the quote (mem_conv-48_0139_v1). No current version mentions an appreciation letter from the community.",
+    "skill_trace": {
+      "trace_id": "skilltrace_access_conv-48_conv-48_conv-48_qa_0086",
+      "side": "access",
+      "bank_version": "bank1",
+      "query": "What gifts has Deborah received?",
+      "top_k": 2,
+      "disclose_k": 5,
+      "min_score": 0.2,
+      "scored_fields": [
+        "name",
+        "description"
+      ],
+      "scoring_weights": {
+        "semantic": 0.7,
+        "bm25": 0.3
+      },
+      "retrieval_method": "bank1_hybrid_router",
+      "candidate_k": 10,
+      "reranker": "bank1_applicability_router",
+      "reranker_error": "",
+      "selected": [
+        {
+          "skill_id": "sk_access_advice_synonyms",
+          "version_id": "sk_access_advice_synonyms_v1",
+          "rank": 1,
+          "score": 0.3420941233634949,
+          "semantic_score": 0.060134440660476685,
+          "lexical_score": 1.0,
+          "name": "Search for Advice and Recommendations Using Synonyms and Influence Cues",
+          "description": "When a question asks what recommendations, advice, or suggestions one person received from another, expand retrieval with synonyms and advice-influence cues.",
+          "content": [
+            "When searching for recommendations or advice received by person A from person B, include keyword and semantic expansions: recommend, recommended, advice, suggest, suggested, suggestion, tip, pointer, inspired by, based on advice.",
+            "If initial results mostly contain A's support for B rather than B's advice to A, also search for A's plans or intentions that may reflect B's advice, using phrases like 'A plans to' or 'A intends to' in combination with B's name.",
+            "Treat memories where A's plan or action is described as based on B's advice or inspired by B's setup as evidence of a recommendation, even without the word 'recommend'."
+          ],
+          "selected": true,
+          "rerank_rank": 1,
+          "rerank_reason": "The question asks about gifts received, which can be interpreted as recommendations or advice received. The skill is specifically designed to search for such information using synonyms and influence cues."
+        }
+      ],
+      "nearby_not_selected": [
+        {
+          "skill_id": "sk_access_duration_questions",
+          "version_id": "sk_access_duration_questions_v1",
+          "rank": 2,
+          "score": 0.31233370304107666,
+          "semantic_score": 0.10939384996891022,
+          "lexical_score": 0.785860002040863,
+          "name": "Duration questions search profile and state memories",
+          "description": "When a question asks how long a person has had, owned, or possessed something (e.g., 'how long has X had Y?'), search profile and state memories as well as event memories.",
+          "content": [
+            "When a question asks how long a subject has had, owned, or possessed an item (e.g., 'how long has Nate had his turtles?'), interpret it as asking for a duration, not a specific acquisition date.",
+            "Do not restrict the search to event memories for such duration/tenure questions; include profile and state memory kinds because ownership duration is commonly stored as a profile or state fact.",
+            "If a profile or state memory directly states the duration, stop searching and answer with that duration; do not substitute a recent event date."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_multi_kind_item_lists",
+          "version_id": "sk_access_multi_kind_item_lists_v1",
+          "rank": 3,
+          "score": 0.25109896063804626,
+          "semantic_score": 0.11744076013565063,
+          "lexical_score": 0.5629680752754211,
+          "name": "Search All Memory Kinds for Item Lists",
+          "description": "When a question asks for a list of items a person has read, watched, listened to, or used, use this to ensure retrieval covers preference and event memories.",
+          "content": [
+            "Before answering a list-type question about items a person has read, watched, listened to, or used, run at least one search without restricting memory_kind to a single kind; include both 'event' and 'preference' (and 'state' when relevant).",
+            "Preference memories often store the concrete named items (titles, names) and enriched versions may add more; inspect any returned preference memories for named items even when event memories give only vague descriptions.",
+            "Stop after the unrestricted search has surfaced the relevant preferences and events; do not add exhaustive extra searches unless evidence is still insufficient."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_count_entity_instances_acquisition",
+          "version_id": "sk_access_count_entity_instances_acquisition_v1",
+          "rank": 4,
+          "score": 0.22365571558475494,
+          "semantic_score": 0.07142473012208939,
+          "lexical_score": 0.5788612961769104,
+          "name": "Count Entity Instances by Acquisition Events",
+          "description": "Use when a question asks how many of a category an entity has or owns as of a target date and no direct summary count is found.",
+          "content": [
+            "When asked for a count of items an entity has as of a target date, search for individual membership-changing events (adoption, purchase, acquisition, birth, receipt, loss, sale) using structured queries with the entity and memory_kinds=['event'], plus keywords like 'adopted', 'bought', 'got', 'welcomed', 'acquired', 'sold', or 'gave away'.",
+            "Enumerate distinct instances whose event world_start is on or before the target date and whose world_end, if any, is after the target date; count those instances.",
+            "Do not count plans, considerations, or intentions to acquire as current possessions. If a retrieved memory mentions a plan or a named companion, inspect related memories to verify whether the acquisition already occurred before answering.",
+            "Stop after retrieving all candidate instances or after one additional targeted search that returns no new acquisition events; avoid exhaustive expansion."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_coping_mechanism_retrieval",
+          "version_id": "sk_access_coping_mechanism_retrieval_v1",
+          "rank": 5,
+          "score": 0.18674683570861816,
+          "semantic_score": 0.14229442179203033,
+          "lexical_score": 0.29046913981437683,
+          "name": "Coping Mechanism Retrieval",
+          "description": "Use when a question asks what helped someone cope with grief, loss, or find peace.",
+          "content": [
+            "If the question enumerates or implies multiple coping mechanisms, first check whether your retrieved evidence supports each distinct item; if an item lacks a supporting memory, do not include it in the answer.",
+            "After the initial semantic search, if any likely coping activity is still unsupported, run additional targeted searches using keywords and synonyms for that activity and for comfort/coping, and also search for event memories with timestamps near the relevant loss event, because state memories may describe the activity without linking it to the grief.",
+            "Stop once each distinct activity is either supported by a retrieved memory or has been searched for without success; do not perform further exploratory searches beyond that."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_recipient_plan_search",
+          "version_id": "sk_access_recipient_plan_search_v1",
+          "rank": 6,
+          "score": 0.18308034539222717,
+          "semantic_score": 0.1661088764667511,
+          "lexical_score": 0.22268043458461761,
+          "name": "Search Recipient-Side Plans for Suggestions",
+          "description": "When a question asks what suggestions, advice, or recommendations one person gave another, also search for plan/preference memories describing the recipient's agreement to try or change something.",
+          "content": [
+            "When asked about suggestions, advice, or recommendations someone gave another person, do not rely only on event memories explicitly mentioning the giver's advice. The advice may be stored in a plan or preference memory describing the recipient's agreement to try something new or replace an old habit (e.g., 'agreed to try X instead of Y', 'decided to switch from A to B').",
+            "Run additional hybrid or structured searches using recipient-commitment phrasing such as 'agreed to try', 'decided to change', 'instead of', 'plan to eat', and filter by memory kinds plan and preference if supported.",
+            "Stop searching once the retrieved memories cover all specific items the question asks about, or after two to three distinct query formulations."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        }
+      ]
+    }
+  },
+  "access_run_id": "access_conv-48_conv-48_conv-48_qa_0086",
+  "claims": [
+    {
+      "claim": "Deborah received an appreciation letter from her community.",
+      "supporting_version_ids": [],
+      "coverage": null
+    },
+    {
+      "claim": "Deborah received a flower bouquet from her friend.",
+      "supporting_version_ids": [],
+      "coverage": null
+    },
+    {
+      "claim": "Deborah received a motivational quote from a friend.",
+      "supporting_version_ids": [
+        "mem_conv-48_0139_v1"
+      ],
+      "coverage": null
+    }
+  ],
+  "current_related_memories": [
+    {
+      "version_id": "mem_conv-48_0008_v1",
+      "memory_id": "mem_conv-48_0008",
+      "version_no": 1,
+      "content": "Deborah practices yoga, which she values as a source of comfort and passion, especially after receiving positive feedback from group members.",
+      "memory_kind": "preference",
+      "subject": "Deborah",
+      "predicate": "comfort",
+      "object_text": "yoga",
+      "world_start": "2023-01-27",
+      "world_end": null,
+      "update_type": "add"
+    },
+    {
+      "version_id": "mem_conv-48_0139_v1",
+      "memory_id": "mem_conv-48_0139",
+      "version_no": 1,
+      "content": "Deborah received a quote from a friend that reads 'Let go of what no longer serves you,' which she keeps as a reminder to let go of negative things and focus on growth.",
+      "memory_kind": "event",
+      "subject": "Deborah",
+      "predicate": "quote",
+      "object_text": "Let go of what no longer serves you",
+      "world_start": "2023-08-29",
+      "world_end": null,
+      "update_type": "add"
+    }
+  ],
+  "useful_current_version_ids": [
+    "mem_conv-48_0139_v1"
+  ],
+  "retrieved_current_version_ids": [
+    "mem_conv-48_0020_v1",
+    "mem_conv-48_0034_v1",
+    "mem_conv-48_0047_v1",
+    "mem_conv-48_0068_v1",
+    "mem_conv-48_0069_v1",
+    "mem_conv-48_0070_v1",
+    "mem_conv-48_0071_v1",
+    "mem_conv-48_0114_v1"
+  ],
+  "missing_useful_current_version_ids": [
+    "mem_conv-48_0139_v1"
+  ],
+  "search_steps": [
+    {
+      "action_id": "access_conv-48_conv-48_conv-48_qa_0086_a000",
+      "step_index": 0,
+      "action_type": "search_memory",
+      "request": {
+        "action": "search_memory",
+        "arguments": {
+          "strategy": "hybrid",
+          "query": "gifts received by Deborah",
+          "query_expansions": [
+            "what items did Deborah get as presents",
+            "which gifts were given to Deborah"
+          ],
+          "keywords": [
+            "Deborah",
+            "gift",
+            "present"
+          ],
+          "depth": "standard",
+          "top_k": 8
+        },
+        "reason": "To find the list of gifts received by Deborah"
+      },
+      "returned_memories": [
+        {
+          "version_id": "mem_conv-48_0020_v1",
+          "memory_id": "mem_conv-48_0020",
+          "content": "Deborah received a bouquet from a friend during a difficult time, which gives her hope, courage, warmth, and appreciation.",
+          "memory_kind": "event",
+          "subject": "Deborah",
+          "world_start": "2023-02-04",
+          "world_end": null,
+          "score": 0.0163,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-48_0069_v1",
+          "memory_id": "mem_conv-48_0069",
+          "content": "Deborah purchased a candle to enhance the atmosphere and improve her yoga practice.",
+          "memory_kind": "event",
+          "subject": "Deborah",
+          "world_start": "2023-03-24",
+          "world_end": null,
+          "score": 0.0133,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-48_0068_v1",
+          "memory_id": "mem_conv-48_0068",
+          "content": "Deborah bought new props for her yoga class and shared an image of them in action.",
+          "memory_kind": "event",
+          "subject": "Deborah",
+          "world_start": "2023-03-24",
+          "world_end": null,
+          "score": 0.013,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-48_0070_v1",
+          "memory_id": "mem_conv-48_0070",
+          "content": "Deborah biked with her neighbor last week, describing the experience as freeing and beautiful.",
+          "memory_kind": "event",
+          "subject": "Deborah",
+          "world_start": "2023-04-08",
+          "world_end": null,
+          "score": 0.0128,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-48_0034_v1",
+          "memory_id": "mem_conv-48_0034",
+          "content": "Deborah finds comfort in memories of her friend Karlie and in the garden, where she reflects on their time together.",
+          "memory_kind": "state",
+          "subject": "Deborah",
+          "world_start": "2023-02-18",
+          "world_end": null,
+          "score": 0.0125,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-48_0047_v1",
+          "memory_id": "mem_conv-48_0047",
+          "content": "Deborah finds comfort in being outdoors, appreciating the sounds of birds and the gentle breeze.",
+          "memory_kind": "preference",
+          "subject": "Deborah",
+          "world_start": "2023-03-02",
+          "world_end": null,
+          "score": 0.012,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-48_0071_v1",
+          "memory_id": "mem_conv-48_0071",
+          "content": "Deborah attended an art show with a friend today, finding it cool and inspiring, and it reminded her of her mother.",
+          "memory_kind": "event",
+          "subject": "Deborah",
+          "world_start": "2023-04-09",
+          "world_end": null,
+          "score": 0.0119,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-48_0114_v1",
+          "memory_id": "mem_conv-48_0114",
+          "content": "Deborah enjoys spending time outdoors with her husband, exploring nature and finding peace in natural settings.",
+          "memory_kind": "event",
+          "subject": "Deborah",
+          "world_start": "2023-08-19",
+          "world_end": null,
+          "score": 0.0118,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        }
+      ],
+      "returned_version_ids": [
+        "mem_conv-48_0020_v1",
+        "mem_conv-48_0069_v1",
+        "mem_conv-48_0068_v1",
+        "mem_conv-48_0070_v1",
+        "mem_conv-48_0034_v1",
+        "mem_conv-48_0047_v1",
+        "mem_conv-48_0071_v1",
+        "mem_conv-48_0114_v1"
+      ]
+    },
+    {
+      "action_id": "access_conv-48_conv-48_conv-48_qa_0086_a001",
+      "step_index": 1,
+      "action_type": "answer",
+      "request": {
+        "action": "answer",
+        "arguments": {
+          "answer": "bouquet",
+          "evidence_version_ids": [
+            "mem_conv-48_0020_v1"
+          ],
+          "confidence": 0.95
+        },
+        "reason": "Deborah received a bouquet from a friend, which is explicitly mentioned as a gift."
+      },
+      "returned_memories": [],
+      "returned_version_ids": []
+    }
+  ]
+}

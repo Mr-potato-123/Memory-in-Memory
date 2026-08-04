@@ -1,0 +1,384 @@
+"""Candidate/official isolation and batch Skill maintenance tests."""
+
+from __future__ import annotations
+
+import sqlite3
+import sys
+from pathlib import Path
+from types import SimpleNamespace
+
+import numpy as np
+import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+
+from mim.diagnosis.evidence import DiagnosisEvidenceRepository
+from mim.retrieval.embedder import Embedder
+from mim.schemas import Side
+from mim.skill_maker.batch import BatchSkillRetriever, SkillCrudExecutor
+from mim.skill_maker.cluster_v2 import cluster_v2
+from mim.skill_maker.models import (
+    CandidateResolution,
+    SkillBatchPlan,
+    SkillCandidate,
+    SkillOperation,
+    SkillPayload,
+)
+from mim.skill_maker.success_examples import SuccessfulSkillExampleIndex
+from mim.skill_maker.repository import SkillRepository
+from mim.skills import SkillBank
+from mim.storage.sqlite_store import SQLiteMemoryStore
+
+
+def _candidate(index: int, side: str = "access") -> SkillCandidate:
+    return SkillCandidate(
+        candidate_id=f"cand_{side}_{index}",
+        skill_id=f"sk_{side}_{index}",
+        side=side,
+        payload=SkillPayload(
+            name=f"Skill {index}",
+            description=(
+                "Use when the retrieval query needs a related expression."
+            ),
+            content=[f"Expand the query using related expression {index}."],
+        ),
+        solves="Prevents a relevant item from being missed by retrieval.",
+        source_diagnosis_id=f"diag_{index}",
+    )
+
+
+def test_runtime_trace_discloses_nearby_official_skills(tmp_path: Path):
+    repository = SkillRepository(tmp_path / "skills")
+    for index in range(3):
+        candidate = _candidate(index)
+        repository.publish(repository.stage_create(candidate))
+
+    bank = SkillBank.from_repository(repository)
+    selected, trace = bank.retrieve_with_trace(
+        "related retrieval expression",
+        Side.ACCESS,
+        Embedder("deterministic-hash"),
+        top_k=1,
+        disclose_k=2,
+        trace_id="trace_test",
+    )
+
+    assert len(selected) == 1
+    assert len(trace.selected) == 1
+    assert len(trace.nearby_not_selected) == 2
+    assert trace.bank_version == "v003"
+    assert trace.selected[0].content
+
+
+def test_empty_official_bank_keeps_candidates_physically_separate(
+    tmp_path: Path,
+):
+    repository = SkillRepository(tmp_path / "skills")
+    candidates = [_candidate(1), _candidate(2)]
+    for candidate in candidates:
+        repository.save_candidate(candidate)
+
+    batch = BatchSkillRetriever(
+        Embedder("deterministic-hash")
+    ).retrieve(
+        batch_id="batch_empty",
+        candidates=candidates,
+        repository=repository,
+    )
+
+    assert batch.retrieved_skill_ids == []
+    assert repository.list_active("access") == []
+    assert len(repository.list_candidates("access")) == 2
+    assert not list(
+        (tmp_path / "skills" / "official" / "banks").glob(
+            "bank_v001.json"
+        )
+    )
+
+
+def test_one_crud_transaction_can_create_multiple_official_skills(
+    tmp_path: Path,
+):
+    repository = SkillRepository(tmp_path / "skills")
+    candidates = [_candidate(1), _candidate(2)]
+    for candidate in candidates:
+        repository.save_candidate(candidate)
+    batch = BatchSkillRetriever(
+        Embedder("deterministic-hash")
+    ).retrieve(
+        batch_id="batch_create",
+        candidates=candidates,
+        repository=repository,
+    )
+    plan = SkillBatchPlan(
+        transaction_id="tx_multi_create",
+        side="access",
+        base_bank_version="v000",
+        candidate_resolutions=[
+            CandidateResolution(
+                candidate_id=candidate.candidate_id,
+                resolution="CREATED",
+                target_skill_ids=[candidate.skill_id],
+            )
+            for candidate in candidates
+        ],
+        operations=[
+            SkillOperation(
+                operation="add_skill",
+                skill_id=candidate.skill_id,
+                side="access",
+                name=candidate.payload.name,
+                description=candidate.payload.description,
+                content=candidate.payload.content,
+                source_candidate_ids=[candidate.candidate_id],
+            )
+            for candidate in candidates
+        ],
+    )
+
+    version = SkillCrudExecutor(repository).apply(batch, plan)
+
+    assert version == "v001"
+    assert len(repository.list_active("access")) == 2
+    assert (
+        tmp_path
+        / "skills"
+        / "transactions"
+        / "tx_multi_create.json"
+    ).exists()
+
+
+class _TopicEmbedder:
+    def encode(self, texts: list[str]) -> np.ndarray:
+        rows = []
+        for text in texts:
+            lowered = text.lower()
+            rows.append([1.0, 0.0] if "alpha" in lowered else [0.0, 1.0])
+        return np.asarray(rows, dtype=np.float32)
+
+
+def test_v2_clustering_is_semantic_before_size_bounding():
+    candidates = []
+    for index in range(12):
+        topic = "alpha" if index % 2 == 0 else "beta"
+        candidates.append(
+            SkillCandidate(
+                candidate_id=f"cand_access_{index:02d}",
+                side="access",
+                payload=SkillPayload(
+                    name=topic,
+                    description=f"{topic} retrieval failure",
+                    content=[f"repair {topic}"],
+                ),
+                solves=f"solve {topic}",
+            )
+        )
+
+    groups = cluster_v2(
+        candidates,
+        _TopicEmbedder(),
+        target_cluster_size=3,
+        max_cluster_size=4,
+    )
+
+    assert max(map(len, groups)) <= 4
+    assert all(
+        len({candidate.payload.name for candidate in group}) == 1
+        for group in groups
+    )
+
+
+def test_crud_relation_ids_are_all_llm_visible(tmp_path: Path):
+    repository = SkillRepository(tmp_path / "skills")
+    for index in range(5):
+        candidate = _candidate(index)
+        repository.publish(repository.stage_create(candidate))
+    draft = _candidate(99)
+
+    batch = BatchSkillRetriever(
+        Embedder("deterministic-hash"),
+        per_candidate_k=3,
+        guaranteed_per_candidate=2,
+        max_bank_context=3,
+    ).retrieve(
+        batch_id="visible_relations",
+        candidates=[draft],
+        repository=repository,
+    )
+
+    assert {relation.skill_id for relation in batch.relations} <= set(
+        batch.retrieved_skill_ids
+    )
+
+
+def test_crud_cannot_mutate_unseen_official_skill(tmp_path: Path):
+    repository = SkillRepository(tmp_path / "skills")
+    for index in range(2):
+        candidate = _candidate(index)
+        repository.publish(repository.stage_create(candidate))
+    draft = _candidate(99)
+    batch = BatchSkillRetriever(
+        Embedder("deterministic-hash"),
+        per_candidate_k=1,
+        guaranteed_per_candidate=1,
+        max_bank_context=1,
+    ).retrieve(
+        batch_id="unseen_target",
+        candidates=[draft],
+        repository=repository,
+    )
+    unseen = next(
+        record.skill_id
+        for record in repository.list_active("access")
+        if record.skill_id not in batch.retrieved_skill_ids
+    )
+    plan = SkillBatchPlan(
+        transaction_id="tx_unseen",
+        side="access",
+        base_bank_version=repository.current_version,
+        candidate_resolutions=[
+            CandidateResolution(
+                candidate_id=draft.candidate_id,
+                resolution="MERGED_INTO_EXISTING",
+                target_skill_ids=[unseen],
+            )
+        ],
+        operations=[
+            SkillOperation(
+                operation="update_description",
+                skill_id=unseen,
+                side="access",
+                description="Use when this unseen Skill should be changed.",
+                source_candidate_ids=[draft.candidate_id],
+            )
+        ],
+    )
+
+    with pytest.raises(ValueError, match="not supplied"):
+        SkillCrudExecutor(repository).apply(batch, plan)
+
+
+def test_skill_operation_normalizes_model_array_for_new_content():
+    operation = SkillOperation(
+        operation="update_content",
+        skill_id="sk_access_1",
+        side="access",
+        content="one appended rule",
+        new_content=["first replacement", "second replacement"],
+    )
+
+    assert operation.content == ["one appended rule"]
+    assert operation.new_content == "first replacement\nsecond replacement"
+
+
+def test_crud_content_reference_survives_earlier_index_shift():
+    record = SimpleNamespace(
+        skill_id="sk_access_1",
+        payload=SimpleNamespace(content=["first", "target", "last"]),
+    )
+    operation = SkillOperation(
+        operation="update_content",
+        skill_id="sk_access_1",
+        side="access",
+        content_index=2,  # Index from the pre-mutation planning snapshot.
+        expected_content="target",
+        new_content="replacement",
+    )
+
+    # A previous operation removed an item before ``target``.
+    record.payload.content.pop(0)
+
+    assert SkillCrudExecutor._content_index(record, operation) == 0
+
+
+def test_diagnosis_reads_persisted_access_skill_trace(tmp_path: Path):
+    store = SQLiteMemoryStore(
+        tmp_path / "memory.sqlite3",
+        embedding_dim=8,
+        embedding_model="test",
+    )
+    trace = {
+        "trace_id": "trace_access",
+        "side": "access",
+        "selected": [{"skill_id": "sk_1", "score": 0.9}],
+        "nearby_not_selected": [{"skill_id": "sk_2", "score": 0.8}],
+    }
+    with store._conn() as connection:
+        store.record_access_run(
+            connection,
+            access_run_id="access_1",
+            run_id="run",
+            conversation_id="conv",
+            qa_id="qa",
+            snapshot_commit_id=0,
+            question="question",
+            skill_trace=trace,
+        )
+
+    connection = sqlite3.connect(store.database_path)
+    connection.row_factory = sqlite3.Row
+    try:
+        loaded = DiagnosisEvidenceRepository(
+            connection
+        ).access_skill_trace("access_1")
+    finally:
+        connection.close()
+
+    assert loaded == trace
+
+
+def test_success_example_prefers_same_selected_skill():
+    index = SuccessfulSkillExampleIndex([
+        {
+            "side": "access",
+            "judge_label": "C",
+            "qa_id": "qa_fallback",
+            "skill_ids": ["sk_other"],
+        },
+        {
+            "side": "access",
+            "judge_label": "C",
+            "qa_id": "qa_exact",
+            "skill_ids": ["sk_target"],
+        },
+        {
+            "side": "access",
+            "judge_label": "I",
+            "qa_id": "qa_wrong",
+            "skill_ids": ["sk_target"],
+        },
+    ])
+
+    selected = index.select(
+        side="access",
+        official_skill_trace={
+            "selected": [{"skill_id": "sk_target"}],
+            "nearby_not_selected": [],
+        },
+    )
+
+    assert selected is not None
+    assert selected["qa_id"] == "qa_exact"
+    assert selected["relationship_to_diagnosis"] == "same_selected_skill"
+
+
+def test_success_example_uses_labelled_same_side_fallback():
+    index = SuccessfulSkillExampleIndex([
+        {
+            "side": "construction",
+            "judge_label": "C",
+            "qa_id": "qa_calibration",
+            "skill_ids": ["sk_cons"],
+        }
+    ])
+
+    selected = index.select(
+        side="construction",
+        official_skill_trace={"selected": [{"skill_id": "sk_missing"}]},
+    )
+
+    assert selected is not None
+    assert selected["qa_id"] == "qa_calibration"
+    assert selected["relationship_to_diagnosis"] == (
+        "same_side_calibration_only"
+    )

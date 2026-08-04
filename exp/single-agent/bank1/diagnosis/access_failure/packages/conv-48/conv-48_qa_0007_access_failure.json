@@ -1,0 +1,802 @@
+{
+  "schema_version": "access_diagnosis_v3",
+  "diagnosis_id": "access_conv-48_conv-48_qa_0007",
+  "diagnosis_type": "ACCESS_FAILURE",
+  "status": "completed",
+  "judge_run_id": "judge",
+  "diagnosis_run_id": "bank1_train_flash",
+  "source_runtime_run": "conv-48",
+  "conversation_id": "conv-48",
+  "qa_id": "conv-48_qa_0007",
+  "snapshot_commit_id": 30,
+  "question": "Which country were Jolene and her mother visiting in 2010?",
+  "reference_answer": "France",
+  "problem_found": true,
+  "reason": "The current memory versions mem_conv-48_0002_v1 and mem_conv-48_0004_v1 both state that Jolene's pendant was given to her in Paris in 2010, which implies they were in France at that time. These entries directly support the claim that the country visited was France.",
+  "confidence": 0.95,
+  "review_required": false,
+  "skill_trace": {
+    "trace_id": "skilltrace_access_conv-48_conv-48_conv-48_qa_0007",
+    "side": "access",
+    "bank_version": "bank1",
+    "query": "Which country were Jolene and her mother visiting in 2010?",
+    "top_k": 2,
+    "disclose_k": 5,
+    "min_score": 0.2,
+    "scored_fields": [
+      "name",
+      "description"
+    ],
+    "scoring_weights": {
+      "semantic": 0.7,
+      "bm25": 0.3
+    },
+    "retrieval_method": "bank1_hybrid_router",
+    "candidate_k": 10,
+    "reranker": "bank1_applicability_router",
+    "reranker_error": "",
+    "selected": [
+      {
+        "skill_id": "sk_access_geo_location_retrieval",
+        "version_id": "sk_access_geo_location_retrieval_v1",
+        "rank": 1,
+        "score": 0.41548293828964233,
+        "semantic_score": 0.1649756133556366,
+        "lexical_score": 1.0,
+        "name": "Geographic Location Retrieval",
+        "description": "Use when a question asks for a location (state, city, country) a person visited or where an event occurred, and initial retrieval lacks explicit location evidence.",
+        "content": [
+          "When a question asks for a location a person visited or where an event occurred, expand retrieval with location-oriented terms: city names, landmarks, geographic features (mountain, river, park, lake), and travel verbs (visited, went to, trip to, traveled to).",
+          "Search across memory kinds (event, plan, state) and do not restrict to travel-themed memories; a valid location can appear incidentally in other memories.",
+          "Treat a place as visited only when the memory explicitly states the person was there (visited, went to, took a photo there, met someone there); do not infer from plans, recommendations, or reading material.",
+          "If a memory names a city or landmark, use general geographical knowledge to infer the containing state or country and cite that memory as evidence.",
+          "For time-period location questions, search over the full date range and require the event's start or end to fall within the window.",
+          "For multi-entity overlap questions, run per-entity searches with synonyms if the combined search is insufficient.",
+          "Stop after sufficient evidence is found or after at most two additional searches to avoid over-searching."
+        ],
+        "selected": true,
+        "rerank_rank": 1,
+        "rerank_reason": "The question asks for a country visited by Jolene and her mother in 2010, which requires retrieving geographic location information. The skill is specifically designed for such queries, focusing on identifying locations where events occurred or were visited."
+      }
+    ],
+    "nearby_not_selected": [
+      {
+        "skill_id": "sk_access_retry_event_queries_synonyms_time",
+        "version_id": "sk_access_retry_event_queries_synonyms_time_v1",
+        "rank": 2,
+        "score": 0.3690568506717682,
+        "semantic_score": 0.14289839565753937,
+        "lexical_score": 0.8967598676681519,
+        "name": "Retry Event Queries with Synonyms and Time Filters",
+        "description": "Use when a question asks which holiday season or calendar period coincides with a person's event and the first search is inconclusive.",
+        "content": [
+          "If the first memory search returns no clear match, retry with synonyms and related forms (e.g., wedding → married, marriage, got married; trip → vacation, travel).",
+          "If the question or any retrieved memory mentions relative time, run a structured search filtering world_start to the corresponding recent window.",
+          "After finding an event memory, determine its world_start and identify which major holiday season contains that date.",
+          "Stop after at most two retry attempts without a match; do not keep expanding indefinitely."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_date_consistent_evidence",
+        "version_id": "sk_access_date_consistent_evidence_v1",
+        "rank": 3,
+        "score": 0.3557932376861572,
+        "semantic_score": 0.12033098936080933,
+        "lexical_score": 0.9052051305770874,
+        "name": "Date-consistent evidence selection",
+        "description": "When a question specifies a particular date, use only memories that were valid at that date, discard later memories, and re-search without a time filter if the initial search is inconclusive.",
+        "content": [
+          "When the user question contains a specific date, treat it as a hard temporal constraint: consider only memories with world_start <= date and (world_end is null or world_end >= date).",
+          "If the initial date-constrained search does not yield sufficient evidence, run one additional hybrid search with time_mode='none' to surface all candidate memories, then filter the results to the target date before judging sufficiency.",
+          "When multiple candidate facts could answer the question, prefer the memory whose world_start is closest to and not after the question date; discard memories from after that date even if they are more semantically similar."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_family_multi_entity",
+        "version_id": "sk_access_family_multi_entity_v1",
+        "rank": 4,
+        "score": 0.2909882664680481,
+        "semantic_score": 0.19038125872612,
+        "lexical_score": 0.5257379412651062,
+        "name": "Family Multi-Entity Search",
+        "description": "When a question asks who or what in a named person's family or group experienced a state or event, such as an injury, illness, or activity, and the answer may involve multiple family members.",
+        "content": [
+          "When a question asks who in a named person's family or group experienced an event/state, treat it as a multi-entity query: run additional targeted searches for each family member relation that appears in the session or retrieved memories combined with the property term, and for the named person themselves.",
+          "Before answering, confirm you have searched for all family members referenced in the session; if only one entity was found, do not finalize a single-entity answer until you have checked other known relations. Stop once all known relations have been searched or a matching memory has been found for each."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_benefit_questions",
+        "version_id": "sk_access_benefit_questions_v1",
+        "rank": 5,
+        "score": 0.2653561532497406,
+        "semantic_score": 0.02712574414908886,
+        "lexical_score": 0.8212270736694336,
+        "name": "Search Interest Profile for Benefit Questions",
+        "description": "Use when a question asks which of a person's activities provides a benefit (escape, imagination, relaxation, creativity).",
+        "content": [
+          "When a question asks which activity gives a person a described benefit, search for the person's profile/hobbies/interests using their name plus terms like 'enjoys', 'hobby', 'interest', 'favorite' in addition to the benefit keywords.",
+          "Before finalizing an answer, if retrieved evidence points to one activity, check whether any interest profile memory lists another activity for the person; if it does, treat that explicit interest as a candidate and compare it with the current evidence.",
+          "Stop after the person's known interests are retrieved and the best-supported candidate is identified; do not exhaustively expand searches."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_commonality_life_events",
+        "version_id": "sk_access_commonality_life_events_v1",
+        "rank": 6,
+        "score": 0.26449060440063477,
+        "semantic_score": 0.14955663681030273,
+        "lexical_score": 0.5326697826385498,
+        "name": "Per-Subject Life-Event Search for Commonality Questions",
+        "description": "When a question asks what two named people have in common and the initial search returns mostly relationship or interaction memories, retrieve each person's individual life events for comparison.",
+        "content": [
+          "When a question asks what two named people have in common, if the first combined search returns mostly relationship or interaction memories, run separate searches for each person using life-event terms (lost job, started business, career change, achievement) and also try a structured search on event predicates such as employment_status, career_transition, and achievement.",
+          "Compare the returned individual events to find matching predicates or facts across the two people; prefer that evidence for the commonality over relationship-only memories.",
+          "Stop once an overlapping event directly answers the question, or after two targeted per-person searches per subject yield no new relevant events."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      }
+    ]
+  },
+  "repair_package": {
+    "question": "Which country were Jolene and her mother visiting in 2010?",
+    "reference_answer": "France",
+    "missing_useful_current_memories": [
+      {
+        "version_id": "mem_conv-48_0004_v1",
+        "memory_id": "mem_conv-48_0004",
+        "version_no": 1,
+        "content": "Jolene's pendant represents freedom and serves as a reminder to pursue her goals and not be held back. It was given to her by her mother in Paris in 2010.",
+        "memory_kind": "preference",
+        "subject": "Jolene",
+        "predicate": "symbol",
+        "object_text": "pendant",
+        "world_start": "2022-01-01",
+        "world_end": null,
+        "update_type": "add"
+      }
+    ],
+    "retrieved_current_version_ids": [
+      "mem_conv-48_0002_v1",
+      "mem_conv-48_0006_v1",
+      "mem_conv-48_0012_v1",
+      "mem_conv-48_0013_v1",
+      "mem_conv-48_0027_v1",
+      "mem_conv-48_0125_v1",
+      "mem_conv-48_0126_v1",
+      "mem_conv-48_0144_v1"
+    ],
+    "search_steps": [
+      {
+        "action_id": "access_conv-48_conv-48_conv-48_qa_0007_a000",
+        "step_index": 0,
+        "action_type": "search_memory",
+        "request": {
+          "action": "search_memory",
+          "arguments": {
+            "strategy": "hybrid",
+            "query": "Jolene and her mother's visit in 2010",
+            "query_expansions": [
+              "Jolene and her mother's trip in 2010",
+              "where Jolene and her mother were visiting in 2010"
+            ],
+            "keywords": [
+              "Jolene",
+              "mother",
+              "2010"
+            ],
+            "depth": "standard",
+            "memory_kinds": [
+              "event"
+            ],
+            "time_mode": "point",
+            "target_time": "2010-01-01"
+          },
+          "reason": "To find the country Jolene and her mother were visiting in 2010."
+        },
+        "returned_memories": [
+          {
+            "version_id": "mem_conv-48_0013_v1",
+            "memory_id": "mem_conv-48_0013",
+            "content": "Deborah's mother had a great passion for travel, which was one of her interests.",
+            "memory_kind": "event",
+            "subject": "Deborah's mother",
+            "world_start": null,
+            "world_end": null,
+            "score": 0.0149,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-48_0006_v1",
+            "memory_id": "mem_conv-48_0006",
+            "content": "Deborah's mother is likely deceased, as Deborah mentions visiting her old home and feeling her presence there, indicating a lasting connection and absence.",
+            "memory_kind": "event",
+            "subject": "Deborah's mother",
+            "world_start": null,
+            "world_end": null,
+            "score": 0.0136,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-48_0012_v1",
+            "memory_id": "mem_conv-48_0012",
+            "content": "Deborah's mother enjoyed reading, often sitting by the window with a book and a smile, making it one of her favorite places in the house.",
+            "memory_kind": "event",
+            "subject": "Deborah's mother",
+            "world_start": null,
+            "world_end": null,
+            "score": 0.0113,
+            "paths": [
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-48_0144_v1",
+            "memory_id": "mem_conv-48_0144",
+            "content": "Jolene developed a passion for video games at age 10 when her parents gifted her a game, which marked the beginning of her interest.",
+            "memory_kind": "event",
+            "subject": "Jolene",
+            "world_start": "2003-10-01",
+            "world_end": null,
+            "score": 0.0104,
+            "paths": [
+              "semantic",
+              "bm25",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-48_0002_v1",
+            "memory_id": "mem_conv-48_0002",
+            "content": "Jolene's mother passed away last year. She has many memories in her room in her mother's house and owns a pendant that was given to her in Paris in 2010, which represents freedom and reminds her to pursue her goals.",
+            "memory_kind": "event",
+            "subject": "Jolene",
+            "world_start": "2022-01-01",
+            "world_end": null,
+            "score": 0.0081,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-48_0027_v1",
+            "memory_id": "mem_conv-48_0027",
+            "content": "Jolene participated in a mini retreat on Wednesday, February 8, 2023, which provided her with a new outlook and boosted her confidence.",
+            "memory_kind": "event",
+            "subject": "Jolene",
+            "world_start": "2023-02-08",
+            "world_end": null,
+            "score": 0.0065,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-48_0126_v1",
+            "memory_id": "mem_conv-48_0126",
+            "content": "Jolene aims to be successful in her field and make a positive impact, achieving this through study, workshops, networking, and gaining experience.",
+            "memory_kind": "event",
+            "subject": "Jolene",
+            "world_start": "2023-08-24",
+            "world_end": null,
+            "score": 0.0065,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-48_0125_v1",
+            "memory_id": "mem_conv-48_0125",
+            "content": "Jolene is focusing on studying, gaining experience, and considering more internships to enhance her skills.",
+            "memory_kind": "event",
+            "subject": "Jolene",
+            "world_start": "2023-08-24",
+            "world_end": null,
+            "score": 0.0063,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          }
+        ],
+        "returned_version_ids": [
+          "mem_conv-48_0013_v1",
+          "mem_conv-48_0006_v1",
+          "mem_conv-48_0012_v1",
+          "mem_conv-48_0144_v1",
+          "mem_conv-48_0002_v1",
+          "mem_conv-48_0027_v1",
+          "mem_conv-48_0126_v1",
+          "mem_conv-48_0125_v1"
+        ]
+      },
+      {
+        "action_id": "access_conv-48_conv-48_conv-48_qa_0007_a001",
+        "step_index": 1,
+        "action_type": "inspect_memory",
+        "request": {
+          "action": "inspect_memory",
+          "arguments": {
+            "memory_id": "mem_conv-48_0002",
+            "include_versions": true,
+            "include_sources": true
+          },
+          "reason": "To verify the country Jolene and her mother were visiting in 2010."
+        },
+        "returned_memories": [
+          {
+            "version_id": "mem_conv-48_0002_v1",
+            "version_no": 1,
+            "content": "Jolene's mother passed away last year. She has many memories in her room in her mother's house and owns a pendant that was given to her in Paris in 2010, which represents freedom and reminds her to pursue her goals.",
+            "world_start": "2022-01-01",
+            "world_end": null
+          }
+        ],
+        "returned_version_ids": [
+          "mem_conv-48_0002_v1"
+        ]
+      },
+      {
+        "action_id": "access_conv-48_conv-48_conv-48_qa_0007_a002",
+        "step_index": 2,
+        "action_type": "answer",
+        "request": {
+          "action": "answer",
+          "arguments": {
+            "answer": "Paris",
+            "evidence_version_ids": [
+              "mem_conv-48_0002_v1"
+            ],
+            "confidence": 0.95
+          },
+          "reason": "The evidence indicates that Jolene's mother gave her a pendant in Paris in 2010, which directly answers the question about the country they were visiting."
+        },
+        "returned_memories": [],
+        "returned_version_ids": []
+      }
+    ],
+    "reason": "The current memory versions mem_conv-48_0002_v1 and mem_conv-48_0004_v1 both state that Jolene's pendant was given to her in Paris in 2010, which implies they were in France at that time. These entries directly support the claim that the country visited was France.",
+    "skill_trace": {
+      "trace_id": "skilltrace_access_conv-48_conv-48_conv-48_qa_0007",
+      "side": "access",
+      "bank_version": "bank1",
+      "query": "Which country were Jolene and her mother visiting in 2010?",
+      "top_k": 2,
+      "disclose_k": 5,
+      "min_score": 0.2,
+      "scored_fields": [
+        "name",
+        "description"
+      ],
+      "scoring_weights": {
+        "semantic": 0.7,
+        "bm25": 0.3
+      },
+      "retrieval_method": "bank1_hybrid_router",
+      "candidate_k": 10,
+      "reranker": "bank1_applicability_router",
+      "reranker_error": "",
+      "selected": [
+        {
+          "skill_id": "sk_access_geo_location_retrieval",
+          "version_id": "sk_access_geo_location_retrieval_v1",
+          "rank": 1,
+          "score": 0.41548293828964233,
+          "semantic_score": 0.1649756133556366,
+          "lexical_score": 1.0,
+          "name": "Geographic Location Retrieval",
+          "description": "Use when a question asks for a location (state, city, country) a person visited or where an event occurred, and initial retrieval lacks explicit location evidence.",
+          "content": [
+            "When a question asks for a location a person visited or where an event occurred, expand retrieval with location-oriented terms: city names, landmarks, geographic features (mountain, river, park, lake), and travel verbs (visited, went to, trip to, traveled to).",
+            "Search across memory kinds (event, plan, state) and do not restrict to travel-themed memories; a valid location can appear incidentally in other memories.",
+            "Treat a place as visited only when the memory explicitly states the person was there (visited, went to, took a photo there, met someone there); do not infer from plans, recommendations, or reading material.",
+            "If a memory names a city or landmark, use general geographical knowledge to infer the containing state or country and cite that memory as evidence.",
+            "For time-period location questions, search over the full date range and require the event's start or end to fall within the window.",
+            "For multi-entity overlap questions, run per-entity searches with synonyms if the combined search is insufficient.",
+            "Stop after sufficient evidence is found or after at most two additional searches to avoid over-searching."
+          ],
+          "selected": true,
+          "rerank_rank": 1,
+          "rerank_reason": "The question asks for a country visited by Jolene and her mother in 2010, which requires retrieving geographic location information. The skill is specifically designed for such queries, focusing on identifying locations where events occurred or were visited."
+        }
+      ],
+      "nearby_not_selected": [
+        {
+          "skill_id": "sk_access_retry_event_queries_synonyms_time",
+          "version_id": "sk_access_retry_event_queries_synonyms_time_v1",
+          "rank": 2,
+          "score": 0.3690568506717682,
+          "semantic_score": 0.14289839565753937,
+          "lexical_score": 0.8967598676681519,
+          "name": "Retry Event Queries with Synonyms and Time Filters",
+          "description": "Use when a question asks which holiday season or calendar period coincides with a person's event and the first search is inconclusive.",
+          "content": [
+            "If the first memory search returns no clear match, retry with synonyms and related forms (e.g., wedding → married, marriage, got married; trip → vacation, travel).",
+            "If the question or any retrieved memory mentions relative time, run a structured search filtering world_start to the corresponding recent window.",
+            "After finding an event memory, determine its world_start and identify which major holiday season contains that date.",
+            "Stop after at most two retry attempts without a match; do not keep expanding indefinitely."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_date_consistent_evidence",
+          "version_id": "sk_access_date_consistent_evidence_v1",
+          "rank": 3,
+          "score": 0.3557932376861572,
+          "semantic_score": 0.12033098936080933,
+          "lexical_score": 0.9052051305770874,
+          "name": "Date-consistent evidence selection",
+          "description": "When a question specifies a particular date, use only memories that were valid at that date, discard later memories, and re-search without a time filter if the initial search is inconclusive.",
+          "content": [
+            "When the user question contains a specific date, treat it as a hard temporal constraint: consider only memories with world_start <= date and (world_end is null or world_end >= date).",
+            "If the initial date-constrained search does not yield sufficient evidence, run one additional hybrid search with time_mode='none' to surface all candidate memories, then filter the results to the target date before judging sufficiency.",
+            "When multiple candidate facts could answer the question, prefer the memory whose world_start is closest to and not after the question date; discard memories from after that date even if they are more semantically similar."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_family_multi_entity",
+          "version_id": "sk_access_family_multi_entity_v1",
+          "rank": 4,
+          "score": 0.2909882664680481,
+          "semantic_score": 0.19038125872612,
+          "lexical_score": 0.5257379412651062,
+          "name": "Family Multi-Entity Search",
+          "description": "When a question asks who or what in a named person's family or group experienced a state or event, such as an injury, illness, or activity, and the answer may involve multiple family members.",
+          "content": [
+            "When a question asks who in a named person's family or group experienced an event/state, treat it as a multi-entity query: run additional targeted searches for each family member relation that appears in the session or retrieved memories combined with the property term, and for the named person themselves.",
+            "Before answering, confirm you have searched for all family members referenced in the session; if only one entity was found, do not finalize a single-entity answer until you have checked other known relations. Stop once all known relations have been searched or a matching memory has been found for each."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_benefit_questions",
+          "version_id": "sk_access_benefit_questions_v1",
+          "rank": 5,
+          "score": 0.2653561532497406,
+          "semantic_score": 0.02712574414908886,
+          "lexical_score": 0.8212270736694336,
+          "name": "Search Interest Profile for Benefit Questions",
+          "description": "Use when a question asks which of a person's activities provides a benefit (escape, imagination, relaxation, creativity).",
+          "content": [
+            "When a question asks which activity gives a person a described benefit, search for the person's profile/hobbies/interests using their name plus terms like 'enjoys', 'hobby', 'interest', 'favorite' in addition to the benefit keywords.",
+            "Before finalizing an answer, if retrieved evidence points to one activity, check whether any interest profile memory lists another activity for the person; if it does, treat that explicit interest as a candidate and compare it with the current evidence.",
+            "Stop after the person's known interests are retrieved and the best-supported candidate is identified; do not exhaustively expand searches."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_commonality_life_events",
+          "version_id": "sk_access_commonality_life_events_v1",
+          "rank": 6,
+          "score": 0.26449060440063477,
+          "semantic_score": 0.14955663681030273,
+          "lexical_score": 0.5326697826385498,
+          "name": "Per-Subject Life-Event Search for Commonality Questions",
+          "description": "When a question asks what two named people have in common and the initial search returns mostly relationship or interaction memories, retrieve each person's individual life events for comparison.",
+          "content": [
+            "When a question asks what two named people have in common, if the first combined search returns mostly relationship or interaction memories, run separate searches for each person using life-event terms (lost job, started business, career change, achievement) and also try a structured search on event predicates such as employment_status, career_transition, and achievement.",
+            "Compare the returned individual events to find matching predicates or facts across the two people; prefer that evidence for the commonality over relationship-only memories.",
+            "Stop once an overlapping event directly answers the question, or after two targeted per-person searches per subject yield no new relevant events."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        }
+      ]
+    }
+  },
+  "access_run_id": "access_conv-48_conv-48_conv-48_qa_0007",
+  "claims": [
+    {
+      "claim": "Jolene and her mother were visiting France in 2010.",
+      "supporting_version_ids": [
+        "mem_conv-48_0002_v1",
+        "mem_conv-48_0004_v1"
+      ],
+      "coverage": null
+    }
+  ],
+  "current_related_memories": [
+    {
+      "version_id": "mem_conv-48_0002_v1",
+      "memory_id": "mem_conv-48_0002",
+      "version_no": 1,
+      "content": "Jolene's mother passed away last year. She has many memories in her room in her mother's house and owns a pendant that was given to her in Paris in 2010, which represents freedom and reminds her to pursue her goals.",
+      "memory_kind": "event",
+      "subject": "Jolene",
+      "predicate": "loss",
+      "object_text": "mother",
+      "world_start": "2022-01-01",
+      "world_end": null,
+      "update_type": "add"
+    },
+    {
+      "version_id": "mem_conv-48_0004_v1",
+      "memory_id": "mem_conv-48_0004",
+      "version_no": 1,
+      "content": "Jolene's pendant represents freedom and serves as a reminder to pursue her goals and not be held back. It was given to her by her mother in Paris in 2010.",
+      "memory_kind": "preference",
+      "subject": "Jolene",
+      "predicate": "symbol",
+      "object_text": "pendant",
+      "world_start": "2022-01-01",
+      "world_end": null,
+      "update_type": "add"
+    }
+  ],
+  "useful_current_version_ids": [
+    "mem_conv-48_0002_v1",
+    "mem_conv-48_0004_v1"
+  ],
+  "retrieved_current_version_ids": [
+    "mem_conv-48_0002_v1",
+    "mem_conv-48_0006_v1",
+    "mem_conv-48_0012_v1",
+    "mem_conv-48_0013_v1",
+    "mem_conv-48_0027_v1",
+    "mem_conv-48_0125_v1",
+    "mem_conv-48_0126_v1",
+    "mem_conv-48_0144_v1"
+  ],
+  "missing_useful_current_version_ids": [
+    "mem_conv-48_0004_v1"
+  ],
+  "search_steps": [
+    {
+      "action_id": "access_conv-48_conv-48_conv-48_qa_0007_a000",
+      "step_index": 0,
+      "action_type": "search_memory",
+      "request": {
+        "action": "search_memory",
+        "arguments": {
+          "strategy": "hybrid",
+          "query": "Jolene and her mother's visit in 2010",
+          "query_expansions": [
+            "Jolene and her mother's trip in 2010",
+            "where Jolene and her mother were visiting in 2010"
+          ],
+          "keywords": [
+            "Jolene",
+            "mother",
+            "2010"
+          ],
+          "depth": "standard",
+          "memory_kinds": [
+            "event"
+          ],
+          "time_mode": "point",
+          "target_time": "2010-01-01"
+        },
+        "reason": "To find the country Jolene and her mother were visiting in 2010."
+      },
+      "returned_memories": [
+        {
+          "version_id": "mem_conv-48_0013_v1",
+          "memory_id": "mem_conv-48_0013",
+          "content": "Deborah's mother had a great passion for travel, which was one of her interests.",
+          "memory_kind": "event",
+          "subject": "Deborah's mother",
+          "world_start": null,
+          "world_end": null,
+          "score": 0.0149,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-48_0006_v1",
+          "memory_id": "mem_conv-48_0006",
+          "content": "Deborah's mother is likely deceased, as Deborah mentions visiting her old home and feeling her presence there, indicating a lasting connection and absence.",
+          "memory_kind": "event",
+          "subject": "Deborah's mother",
+          "world_start": null,
+          "world_end": null,
+          "score": 0.0136,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-48_0012_v1",
+          "memory_id": "mem_conv-48_0012",
+          "content": "Deborah's mother enjoyed reading, often sitting by the window with a book and a smile, making it one of her favorite places in the house.",
+          "memory_kind": "event",
+          "subject": "Deborah's mother",
+          "world_start": null,
+          "world_end": null,
+          "score": 0.0113,
+          "paths": [
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-48_0144_v1",
+          "memory_id": "mem_conv-48_0144",
+          "content": "Jolene developed a passion for video games at age 10 when her parents gifted her a game, which marked the beginning of her interest.",
+          "memory_kind": "event",
+          "subject": "Jolene",
+          "world_start": "2003-10-01",
+          "world_end": null,
+          "score": 0.0104,
+          "paths": [
+            "semantic",
+            "bm25",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-48_0002_v1",
+          "memory_id": "mem_conv-48_0002",
+          "content": "Jolene's mother passed away last year. She has many memories in her room in her mother's house and owns a pendant that was given to her in Paris in 2010, which represents freedom and reminds her to pursue her goals.",
+          "memory_kind": "event",
+          "subject": "Jolene",
+          "world_start": "2022-01-01",
+          "world_end": null,
+          "score": 0.0081,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-48_0027_v1",
+          "memory_id": "mem_conv-48_0027",
+          "content": "Jolene participated in a mini retreat on Wednesday, February 8, 2023, which provided her with a new outlook and boosted her confidence.",
+          "memory_kind": "event",
+          "subject": "Jolene",
+          "world_start": "2023-02-08",
+          "world_end": null,
+          "score": 0.0065,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-48_0126_v1",
+          "memory_id": "mem_conv-48_0126",
+          "content": "Jolene aims to be successful in her field and make a positive impact, achieving this through study, workshops, networking, and gaining experience.",
+          "memory_kind": "event",
+          "subject": "Jolene",
+          "world_start": "2023-08-24",
+          "world_end": null,
+          "score": 0.0065,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-48_0125_v1",
+          "memory_id": "mem_conv-48_0125",
+          "content": "Jolene is focusing on studying, gaining experience, and considering more internships to enhance her skills.",
+          "memory_kind": "event",
+          "subject": "Jolene",
+          "world_start": "2023-08-24",
+          "world_end": null,
+          "score": 0.0063,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        }
+      ],
+      "returned_version_ids": [
+        "mem_conv-48_0013_v1",
+        "mem_conv-48_0006_v1",
+        "mem_conv-48_0012_v1",
+        "mem_conv-48_0144_v1",
+        "mem_conv-48_0002_v1",
+        "mem_conv-48_0027_v1",
+        "mem_conv-48_0126_v1",
+        "mem_conv-48_0125_v1"
+      ]
+    },
+    {
+      "action_id": "access_conv-48_conv-48_conv-48_qa_0007_a001",
+      "step_index": 1,
+      "action_type": "inspect_memory",
+      "request": {
+        "action": "inspect_memory",
+        "arguments": {
+          "memory_id": "mem_conv-48_0002",
+          "include_versions": true,
+          "include_sources": true
+        },
+        "reason": "To verify the country Jolene and her mother were visiting in 2010."
+      },
+      "returned_memories": [
+        {
+          "version_id": "mem_conv-48_0002_v1",
+          "version_no": 1,
+          "content": "Jolene's mother passed away last year. She has many memories in her room in her mother's house and owns a pendant that was given to her in Paris in 2010, which represents freedom and reminds her to pursue her goals.",
+          "world_start": "2022-01-01",
+          "world_end": null
+        }
+      ],
+      "returned_version_ids": [
+        "mem_conv-48_0002_v1"
+      ]
+    },
+    {
+      "action_id": "access_conv-48_conv-48_conv-48_qa_0007_a002",
+      "step_index": 2,
+      "action_type": "answer",
+      "request": {
+        "action": "answer",
+        "arguments": {
+          "answer": "Paris",
+          "evidence_version_ids": [
+            "mem_conv-48_0002_v1"
+          ],
+          "confidence": 0.95
+        },
+        "reason": "The evidence indicates that Jolene's mother gave her a pendant in Paris in 2010, which directly answers the question about the country they were visiting."
+      },
+      "returned_memories": [],
+      "returned_version_ids": []
+    }
+  ]
+}

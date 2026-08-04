@@ -1,0 +1,818 @@
+Process the LongMemEval-derived JSON dataset using the following directories.
+
+Source directory containing the immutable original data:
+
+D:\Documents\Project\Memory_in_Memory\longmemeval\data\qa_20_backup
+
+Output directory:
+
+D:\Documents\Project\Memory_in_Memory\longmemeval\data\qa_20
+
+## Primary objective
+
+Read all 20 source files:
+
+* `qa_00.json`
+* `qa_01.json`
+* ...
+* `qa_19.json`
+
+Generate exactly 100 new pseudo-QA pairs across the 20 output files.
+
+The final condition must be:
+
+sum(len(file["qas"]) for all 20 output files) == 100
+
+The old top-level QA in each source file must not appear in the corresponding output file.
+
+Do not modify any file inside `qa_20_backup`.
+
+Create `qa_20` if it does not exist.
+
+If an output file already exists, replace it only after the newly generated file passes all validation.
+
+## Processing strategy
+
+Process one source file at a time.
+
+For each source file:
+
+1. Read the complete JSON file.
+2. Use the complete `sessions` field as the generation context.
+3. Generate a set of genuinely broad multi-session pseudo-QAs.
+4. Validate the generated QAs.
+5. Construct the output object.
+6. Write it atomically to the corresponding filename in `qa_20`.
+7. Re-open and validate the written file.
+8. Continue to the next source file.
+
+Do not combine multiple source files into a single model context.
+
+Do not generate QAs from truncated session content.
+
+Use the full context of the current source file.
+
+## Total QA allocation
+
+The required global output is exactly 100 QAs.
+
+Use the following allocation strategy:
+
+1. Initially target 5 QAs per file.
+
+2. Before final generation, inspect all 20 files and estimate how much high-quality multi-session evidence each file contains.
+
+3. If every file supports 5 strong QAs, generate exactly 5 QAs per file.
+
+4. If a file cannot support 5 strong QAs without weakening the multi-session requirements:
+
+   * generate between 3 and 4 valid QAs for that file;
+   * transfer the missing quota to richer files.
+
+5. A richer file may contain between 6 and 10 QAs.
+
+6. Every file must contain at least 3 QAs and at most 10 QAs.
+
+7. The per-file counts may vary, but the final count across all files must be exactly 100.
+
+8. Do not create weak, redundant, unsupported, or artificially multi-session questions merely to satisfy the quota.
+
+9. If the preliminary quota allocation does not sum to 100, adjust the quotas before generating the final outputs.
+
+Maintain an internal quota plan such as:
+
+{
+"qa_00.json": 5,
+"qa_01.json": 4,
+"qa_02.json": 6
+}
+
+The values across all 20 files must sum to exactly 100.
+
+Do not place this quota plan inside the generated dataset files.
+
+## Input structure
+
+A source file generally has this structure:
+
+{
+"id": 9,
+"question": "The original question",
+"answer": "The original answer",
+"question_type": "temporal-reasoning",
+"source": [
+[12, 0],
+[24, 0]
+],
+"sessions": [
+[
+{
+"role": "user",
+"content": "Message content",
+"time": "2023/11/29 (Wed) 08:18"
+},
+{
+"role": "assistant",
+"content": "Message content",
+"time": "2023/11/29 (Wed) 08:18"
+}
+]
+]
+}
+
+The exact message schema may vary.
+
+Some messages may contain:
+
+"has_answer": true
+
+or:
+
+"has_answer": false
+
+Some messages may not contain a `has_answer` field.
+
+All three cases are valid.
+
+## Treatment of `has_answer`
+
+`has_answer` is irrelevant to the new QA generation.
+
+Follow these rules:
+
+1. Never assume that a message contains `has_answer`.
+
+2. Missing `has_answer` is valid and must not cause an error.
+
+3. Do not use existing `has_answer` values to determine the sources of new QAs.
+
+4. An existing `has_answer` value only relates to the deleted original QA.
+
+5. Do not add `has_answer` to messages where it is absent.
+
+6. Do not delete `has_answer` from messages where it exists.
+
+7. Do not change an existing `has_answer` value.
+
+8. Preserve every message object exactly, including whether `has_answer` exists.
+
+9. The only evidence annotation for a new QA is the QA's own `source` field.
+
+## Source coordinate system
+
+The `sessions` field is a two-dimensional array.
+
+A coordinate:
+
+[session_id, message_id]
+
+means:
+
+sessions[session_id][message_id]
+
+Both indices are zero-based integer array offsets.
+
+For example:
+
+[7, 3]
+
+means the fourth message in the eighth session.
+
+Do not use string session IDs as source coordinates.
+
+## Output structure
+
+For each source file, write a corresponding output file with this structure:
+
+{
+"id": 9,
+"qas": [
+{
+"qa_id": 0,
+"question": "A generated question",
+"answer": "A concise answer",
+"question_type": "multi-session",
+"source": [
+[1, 2],
+[7, 0],
+[13, 4],
+[21, 1]
+]
+}
+],
+"sessions": [
+...
+]
+}
+
+Remove these old top-level fields:
+
+* `question`
+* `answer`
+* `question_type`
+* `source`
+
+Preserve:
+
+* the original top-level `id`;
+* the complete original `sessions`;
+* any additional metadata fields not belonging specifically to the old QA.
+
+Add:
+
+* `qas`
+
+The old QA must not be copied into `qas`.
+
+The generated questions must not paraphrase or reproduce the old question.
+
+## Definition of genuine multi-session QA
+
+Every generated QA must genuinely require information from multiple sessions.
+
+Citing several sessions is not sufficient by itself.
+
+### Hard minimum
+
+Every generated QA must require at least three distinct sessions.
+
+Its `source` must therefore contain at least three distinct `session_id` values.
+
+### Preferred range
+
+The preferred number of distinct source sessions for one QA is 4 to 6.
+
+Use only 3 sessions when adding a fourth session would be artificial or unnecessary.
+
+Use more than 6 sessions when the question naturally requires broad aggregation, counting, ordering, comparison, or summarization.
+
+### Necessity test
+
+For every QA:
+
+1. No single cited session may independently provide the complete answer.
+
+2. No pair of cited sessions may independently provide the complete answer.
+
+3. Each cited session must contribute a distinct answer component or a necessary reasoning step.
+
+4. Removing any cited session must make the answer incomplete, incorrect, or impossible to derive.
+
+5. Repeated copies of the same fact do not count as distinct multi-session evidence.
+
+6. A topically related but unnecessary session must not be included.
+
+7. Do not add irrelevant sources merely to reach the minimum source-session count.
+
+An answer that can be completely derived from one or two sessions is invalid, even when its `source` field lists three or more sessions.
+
+## Broad coverage requirement
+
+The generated QAs in each file must collectively cover a broad portion of that file.
+
+Do not repeatedly generate all QAs from the same small session cluster.
+
+For each output file:
+
+1. Inspect all sessions before selecting the final QAs.
+
+2. Use evidence from different regions of the session array.
+
+3. Use early, middle, and late sessions when they contain usable evidence.
+
+4. Prefer different source-session combinations for different QAs.
+
+5. Do not give two QAs identical sets of source session IDs unless there is an exceptional and justified reason.
+
+6. Cover different facts, topics, events, activities, plans, purchases, preferences, and time periods.
+
+7. Maximize the number of distinct sessions represented in the union of all QA sources.
+
+Determine:
+
+usable_session_count =
+the number of sessions containing at least one usable fact or event
+
+Use the following collective coverage target:
+
+coverage_target =
+min(
+usable_session_count,
+max(10, ceil(usable_session_count * 0.25))
+)
+
+The union of all source session IDs in one output file should contain at least `coverage_target` distinct sessions whenever valid evidence permits.
+
+This is a coverage target, not permission to include irrelevant sources.
+
+Source necessity and correctness take priority over numerical coverage.
+
+## Dataset-level source breadth targets
+
+Across all 100 generated QAs:
+
+1. Every QA must use at least 3 distinct sessions.
+
+2. The average number of distinct source sessions per QA should preferably be at least 4.
+
+3. Most QAs should use between 4 and 6 distinct sessions.
+
+4. Avoid producing 100 QAs that all use exactly 3 sessions.
+
+5. Use broader questions with 5 or more sessions when the evidence naturally supports them.
+
+Do not satisfy these targets by inserting redundant sources.
+
+## Preferred QA patterns
+
+Prioritize QAs based on meaningful cross-session reasoning.
+
+### Aggregation
+
+Combine several independently stated facts from different sessions.
+
+Examples:
+
+* Which devices did I mention purchasing, and when did I purchase each one?
+* What activities did I say I had participated in?
+* Which titles did I explicitly decide to add to my list?
+
+Every requested item must have direct source evidence.
+
+### Chronological ordering
+
+Order three or more events from distinct sessions using their timestamps.
+
+Examples:
+
+* In what order did I make these purchases?
+* Which activities happened first, second, and third?
+* How did my plan develop over time?
+
+Do not assume the session array itself is chronological.
+
+Use the message `time` fields.
+
+### Counting across sessions
+
+Count qualifying events, decisions, purchases, activities, or items mentioned in different sessions.
+
+Every counted item must be backed by a cited source message.
+
+Do not cite only a message containing a final total when the intended reasoning is to derive the total from separate events.
+
+### Multi-stage update
+
+Trace a fact or state across at least three checkpoints.
+
+Examples:
+
+* How did the size of a list change across several conversations?
+* How did a plan progress from the initial idea to the final decision?
+* What were the successive changes to a schedule or preference?
+
+A simple old-value/new-value pair is not sufficiently broad unless a third meaningful checkpoint is required.
+
+### Comparison
+
+Compare three or more experiences, plans, choices, purchases, recommendations, or preferences from different sessions.
+
+Each compared element must be directly grounded.
+
+### Intention-to-action chain
+
+Connect:
+
+1. an initial interest, need, or plan;
+2. an intermediate discussion or recommendation;
+3. a later decision, purchase, action, or result.
+
+All stages must appear in different sessions and be required by the question.
+
+## Question quality requirements
+
+Every generated question must:
+
+1. Be answerable only from the provided sessions.
+
+2. Resemble a natural LongMemEval-style memory question.
+
+3. Be specific and independently evaluable.
+
+4. Test conversational memory rather than general knowledge.
+
+5. Require genuine cross-session synthesis.
+
+6. Have one clear interpretation.
+
+7. Ask for explicitly stated or deterministically derived information.
+
+8. Avoid unsupported psychological, causal, or preference inferences.
+
+9. Avoid vague wording such as:
+
+   * "What did I talk about?"
+   * "What topics did we discuss?"
+   * "What happened in the conversations?"
+   * "What recommendations did you give me?"
+
+10. Prefer personally relevant information:
+
+    * experiences;
+    * plans;
+    * decisions;
+    * purchases;
+    * possessions;
+    * activities;
+    * preferences;
+    * progress;
+    * people;
+    * places;
+    * dates;
+    * quantities;
+    * changes;
+    * accepted or rejected recommendations;
+    * actions taken after previous discussions.
+
+11. Avoid arbitrary trivia from long generic assistant answers.
+
+12. Use assistant-provided details only when the question explicitly concerns what the assistant recommended, explained, designed, calculated, or produced.
+
+13. Do not treat an assistant-generated detail as a confirmed user fact unless the user later confirms, adopts, or acts on it.
+
+14. Be different in substance from the old QA.
+
+15. Be different in substance from every other generated QA in the same file.
+
+16. Use the same language as the original question.
+
+## Answer requirements
+
+Every answer must:
+
+1. Be completely supported by the listed sources.
+
+2. Include every requested answer component.
+
+3. Be concise and directly evaluable.
+
+4. Preserve important names, titles, quantities, dates, and units.
+
+5. Avoid irrelevant explanation.
+
+6. Contain no external knowledge.
+
+7. Distinguish user facts from assistant recommendations when relevant.
+
+8. Use chronological order when requested.
+
+9. Provide the derived total when requested.
+
+10. Clearly state all relevant stages when asked about updates or progression.
+
+## Source requirements
+
+Each QA must use this format:
+
+"source": [
+[session_id, message_id],
+[session_id, message_id],
+[session_id, message_id]
+]
+
+Rules:
+
+1. Every coordinate must contain exactly two integers.
+
+2. Every coordinate must exist in the current source file.
+
+3. Every QA must cite at least three distinct session IDs.
+
+4. Prefer four to six distinct sessions.
+
+5. Every cited message must materially contribute to the answer.
+
+6. Use the smallest sufficient source set for the complete broad answer.
+
+7. Include every source needed for every answer component.
+
+8. Exclude merely related messages.
+
+9. Do not cite assistant repetition when the direct user statement is sufficient.
+
+10. Do not cite duplicate statements merely to increase the number of sessions.
+
+11. Use actual message timestamps when temporal order matters.
+
+12. When counting, cite evidence for every counted item.
+
+13. When aggregating, cite evidence for every listed item.
+
+14. When comparing, cite evidence for every compared entity.
+
+15. When tracing an update, cite every required checkpoint.
+
+16. Do not duplicate coordinates inside one QA.
+
+## Allowed question types
+
+Use exactly one of:
+
+* `multi-session`
+* `knowledge-update`
+* `temporal-reasoning`
+
+Use `multi-session` for broad aggregation, connection, or comparison.
+
+Use `knowledge-update` when at least three meaningful states or checkpoints are required.
+
+Use `temporal-reasoning` when answering requires ordering, counting, or comparing at least three temporally distinct events or stages.
+
+Do not generate:
+
+* `single-session-user`
+* `single-session-assistant`
+* `single-session-preference`
+* abstention questions
+
+Do not force a particular distribution of question types when the evidence does not support it.
+
+## QA ID rules
+
+Within each output file:
+
+* use `qa_id`;
+* start from 0;
+* use consecutive integers;
+* use exactly `0, 1, ..., K-1`.
+
+The QA IDs restart from 0 in every file.
+
+Do not use the top-level sample `id` as a QA ID.
+
+## Internal generation process
+
+For each file, use the following internal process.
+
+### Stage 1: full inspection
+
+Inspect every session in the file.
+
+Build an internal inventory of:
+
+* user facts;
+* events;
+* dates;
+* quantities;
+* purchases;
+* plans;
+* decisions;
+* activities;
+* preferences;
+* recurring entities;
+* changes;
+* outcomes;
+* assistant recommendations later discussed or adopted.
+
+Do not stop after finding enough material near the beginning.
+
+### Stage 2: candidate evidence groups
+
+Find groups of at least three sessions that support meaningful:
+
+* aggregation;
+* comparison;
+* temporal sequence;
+* counting;
+* multi-stage updates;
+* intention-to-action chains.
+
+### Stage 3: candidate generation
+
+Generate more candidate QAs than the assigned quota.
+
+For every candidate, internally record:
+
+* complete answer;
+* required messages;
+* distinct required sessions;
+* contribution of every cited session;
+* proposed question type.
+
+### Stage 4: strict rejection
+
+Reject a candidate when:
+
+* fewer than three sessions are actually necessary;
+* one or two sessions fully answer it;
+* any cited session is redundant;
+* the question duplicates the old QA;
+* it duplicates another candidate;
+* it depends on general knowledge;
+* it uses arbitrary assistant-list trivia;
+* it requires unsupported inference;
+* its answer is ambiguous;
+* its temporal order is unclear;
+* its broad coverage is artificial.
+
+### Stage 5: final selection
+
+Select exactly the number assigned to the current file by the quota plan.
+
+Optimize for:
+
+* correctness;
+* source necessity;
+* number of genuinely required sessions;
+* topic diversity;
+* reasoning diversity;
+* temporal diversity;
+* broad file coverage;
+* low overlap between source-session combinations.
+
+### Stage 6: validation
+
+Validate every selected QA before writing it.
+
+## Programmatic validation
+
+Before writing an output file, validate all of the following:
+
+1. The source root is a JSON object.
+
+2. `sessions` is a list.
+
+3. Every session is a list.
+
+4. Every message may contain or omit `has_answer`.
+
+5. Missing `has_answer` is valid.
+
+6. No message field has been added, removed, or changed.
+
+7. Every source coordinate contains exactly two integers.
+
+8. Every `session_id` satisfies:
+
+0 <= session_id < len(sessions)
+
+9. Every `message_id` satisfies:
+
+0 <= message_id < len(sessions[session_id])
+
+10. Every QA contains exactly:
+
+    * `qa_id`
+    * `question`
+    * `answer`
+    * `question_type`
+    * `source`
+
+11. Every `qa_id` is an integer.
+
+12. QA IDs equal:
+
+list(range(len(qas)))
+
+13. Every question and answer is a non-empty string.
+
+14. Every question type is one of:
+
+    * `multi-session`
+    * `knowledge-update`
+    * `temporal-reasoning`
+
+15. Every QA has at least three distinct source session IDs.
+
+16. No QA has duplicate source coordinates.
+
+17. The number of QAs equals the quota assigned to the file.
+
+18. The number of QAs is between 3 and 10.
+
+19. The output root does not contain the old top-level:
+
+    * `question`
+    * `answer`
+    * `question_type`
+    * `source`
+
+20. The output root contains:
+
+    * `qas`
+    * `sessions`
+
+21. The parsed output `sessions` value is exactly equal to the parsed source `sessions` value.
+
+22. The output is valid UTF-8 JSON.
+
+## Global validation
+
+After generating all 20 output files, perform a complete final validation pass.
+
+Verify:
+
+1. All expected output files exist.
+
+2. All output files parse successfully.
+
+3. Exactly 20 output files were generated.
+
+4. The total number of generated QAs is exactly 100.
+
+5. Every QA has at least three distinct source sessions.
+
+6. The average number of distinct source sessions per QA is reported.
+
+7. No source coordinate is invalid.
+
+8. No original top-level QA remains in any output file.
+
+9. No source `sessions` data was changed.
+
+10. Existing `has_answer` fields were preserved exactly.
+
+11. Missing `has_answer` fields were not added.
+
+If the total is not exactly 100:
+
+1. do not declare the task complete;
+2. identify files with additional high-quality evidence;
+3. generate or remove QAs as necessary;
+4. revalidate the affected files;
+5. repeat until the total is exactly 100.
+
+Do not reduce evidence quality or multi-session requirements to reach 100.
+
+## Atomic output writing
+
+For each target file:
+
+1. write the new object to a temporary file in `qa_20`;
+2. parse and validate the temporary file;
+3. atomically replace the target output file;
+4. remove the temporary file.
+
+Use UTF-8 encoding.
+
+Use JSON indentation of 2.
+
+Use `ensure_ascii=False` or the equivalent so non-ASCII characters are not unnecessarily escaped.
+
+Never write temporary or generated data into `qa_20_backup`.
+
+## Failure and retry handling
+
+If generation or validation fails for a file:
+
+1. keep the source file unchanged;
+2. do not write an invalid output;
+3. revise the generated QAs;
+4. retry up to two times.
+
+Do not weaken:
+
+* the three-session hard minimum;
+* source necessity;
+* source-coordinate validity;
+* answer correctness;
+* the exact global count of 100.
+
+If a file remains unsuitable for its initial quota, reduce its quota to at least 3 and transfer the deficit to richer files.
+
+Continue until either:
+
+* all validations pass and exactly 100 QAs exist; or
+* a concrete dataset limitation makes exactly 100 valid QAs impossible.
+
+Only report impossibility after checking all 20 files for quota redistribution opportunities.
+
+## Final report
+
+After completion, print a concise report with:
+
+* source directory;
+* output directory;
+* source files found;
+* output files written;
+* QA count for each file;
+* total generated QA count;
+* minimum QA count per file;
+* maximum QA count per file;
+* minimum distinct source sessions in any QA;
+* average distinct source sessions per QA;
+* maximum distinct source sessions in any QA;
+* number of distinct sessions covered in each file;
+* whether existing `has_answer` fields were preserved;
+* whether missing `has_answer` fields remained absent;
+* validation failures and retries;
+* final confirmation that the global QA count is exactly 100.
+
+The task is complete only when:
+
+* all 20 output files are valid;
+* their sessions are unchanged;
+* all generated QAs satisfy the multi-session constraints;
+* and the global QA count is exactly 100.
+
+Begin execution now. Do not ask for confirmation.

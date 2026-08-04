@@ -1,0 +1,733 @@
+{
+  "schema_version": "access_diagnosis_v3",
+  "diagnosis_id": "access_conv-42_conv-42_qa_0149",
+  "diagnosis_type": "ACCESS_FAILURE",
+  "status": "completed",
+  "judge_run_id": "bank2_from_v1_new_train_judge",
+  "diagnosis_run_id": "bank2_from_v1_new_diag",
+  "source_runtime_run": "bank2_v1new_train_seq_conv-42",
+  "conversation_id": "conv-42",
+  "qa_id": "conv-42_qa_0149",
+  "snapshot_commit_id": 29,
+  "question": "What did Joanna share with her writers group in August 2022?",
+  "reference_answer": "her book",
+  "problem_found": true,
+  "reason": "The current memory version mem_conv-42_0090_v2 explicitly states that Joanna shared her book with a writers group and received positive feedback. This directly supports the reference answer. Other memories in the search chain do not mention sharing a book with a writers group in August 2022.",
+  "confidence": 1.0,
+  "review_required": false,
+  "skill_trace": {
+    "trace_id": "skilltrace_access_bank2_v1new_train_seq_conv-42_conv-42_conv-42_qa_0149",
+    "side": "access",
+    "bank_version": "bank1",
+    "query": "What did Joanna share with her writers group in August 2022?",
+    "top_k": 2,
+    "disclose_k": 5,
+    "min_score": 0.2,
+    "scored_fields": [
+      "name",
+      "description"
+    ],
+    "scoring_weights": {
+      "semantic": 0.7,
+      "bm25": 0.3
+    },
+    "retrieval_method": "bank1_hybrid_router",
+    "candidate_k": 10,
+    "reranker": "bank1_applicability_router",
+    "reranker_error": "",
+    "selected": [
+      {
+        "skill_id": "sk_access_instead_questions",
+        "version_id": "sk_access_instead_questions_v1",
+        "rank": 1,
+        "score": 0.36330729722976685,
+        "semantic_score": 0.09043900668621063,
+        "lexical_score": 1.0,
+        "name": "Search beyond excluded activity for alternatives",
+        "description": "When a question asks what activity a person or group planned/did instead of a known activity, use this to avoid over-anchoring retrieval on the excluded activity.",
+        "content": [
+          "If the user asks for an alternative, replacement, or activity done instead of a previously mentioned activity, do not build all searches and keywords around the excluded activity; the supporting memory may omit that activity entirely.",
+          "Run additional searches using the subject person/group plus substitution intent terms such as 'instead', 'alternative', 'planned to', and 'decided to', and search broadly for shared plans, preferences, or recent events involving the same people.",
+          "Before answering, inspect retrieved memories that mention plans or shared activities for those people even if they do not mention the excluded activity; select the memory that explicitly states the alternative plan rather than the first semantically similar result."
+        ],
+        "selected": true,
+        "rerank_rank": 1,
+        "rerank_reason": "The question asks what Joanna shared with her writers group in August 2022, which could imply an alternative activity to a previously mentioned one. The skill is applicable for searching beyond excluded activities and finding explicit alternative plans or shared events."
+      }
+    ],
+    "nearby_not_selected": [
+      {
+        "skill_id": "sk_access_per_entity_intersection",
+        "version_id": "sk_access_per_entity_intersection_v1",
+        "rank": 2,
+        "score": 0.3568580150604248,
+        "semantic_score": 0.10119640827178955,
+        "lexical_score": 0.9534017443656921,
+        "name": "Per-Entity Expansion for Intersection Queries",
+        "description": "Use when a question asks what two or more entities share or have in common.",
+        "content": [
+          "If the initial search for a multi-entity intersection query returns no overlap, do not repeat the identical query; issue separate searches for each entity using its name and known aliases.",
+          "After each per-entity search, collect concrete attribute values (cities, activities, preferences) from retrieved memories and issue follow-up searches combining each entity with those candidate values.",
+          "Conclude 'no information' only after per-entity searches for all entities and candidate-value expansions have been attempted and still yield no supporting memory."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_shared_interests",
+        "version_id": "sk_access_shared_interests_v1",
+        "rank": 3,
+        "score": 0.2774507999420166,
+        "semantic_score": 0.14489801228046417,
+        "lexical_score": 0.5867406725883484,
+        "name": "Per-person profile search for shared-interest questions",
+        "description": "When a question asks what interests, hobbies, or preferences two or more people share, search each person's profile/hobby memories separately before answering.",
+        "content": [
+          "When the question asks what two or more named people share (interests, hobbies, preferences, or similar traits), run a separate profile/hobby search for each person (e.g., query with the person's name and 'hobbies' or 'interests') in addition to a joint-activity search.",
+          "Do not treat plans to do something together, one-time joint events, or supportive gestures as evidence of a shared interest; require either an explicit shared-interest memory or overlapping individual profile/preference memories.",
+          "After initial retrieval, judge evidence sufficiency for the comparison: if the evidence only describes activities done or planned together, run the per-person profile searches again before answering."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_abstract_positive_expansion",
+        "version_id": "sk_access_abstract_positive_expansion_v1",
+        "rank": 4,
+        "score": 0.2704795002937317,
+        "semantic_score": 0.04069902002811432,
+        "lexical_score": 0.8066339492797852,
+        "name": "Expand abstract positive-evaluative queries with concrete vocabulary",
+        "description": "Use when a question asks what someone recently did that was rewarding, fulfilling, or a main stressor.",
+        "content": [
+          "If the question uses abstract positive descriptors like 'rewarding experience', 'fulfilling', or 'sense of accomplishment' and the initial retrieval does not return an event memory that explicitly describes an achievement or positive outcome, run an additional keyword or structured search using concrete achievement verbs and nouns (e.g., 'presented', 'conference', 'received positive feedback', 'award', 'recognized').",
+          "Before answering a question about a person's main stressor, source of stress, or biggest difficulty, issue searches that go beyond the literal question wording: include stress-related synonyms (stressful, tough, difficult, hard, pressure, overwhelmed) and common life domains (work, family, school, health, finances, relationships).",
+          "If the question explicitly excludes a topic ('besides X', 'other than X', 'apart from X'), do not let that excluded topic dominate the query; run an additional search replacing the excluded topic with likely alternative domains.",
+          "Do not answer from an indirect memory that only implies the stressor through an overlap or trade-off; keep searching until a memory explicitly states what is stressful, tough, or difficult."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_sequence_retrieval",
+        "version_id": "sk_access_sequence_retrieval_v1",
+        "rank": 5,
+        "score": 0.24364417791366577,
+        "semantic_score": 0.14223307371139526,
+        "lexical_score": 0.4802700877189636,
+        "name": "Temporal-anchor post-milestone retrieval",
+        "description": "When a question asks what someone did or planned after a dated milestone event (e.g., after a wedding) and the first search results appear unrelated or pre-date the event.",
+        "content": [
+          "When a question asks what someone did or plans to do after a dated milestone event, use the milestone date as a temporal anchor; run searches with typical follow-up activity terms (honeymoon, celebration, get-together, trip, activity) and filter or rank memories with world_start on or after that date.",
+          "If the first retrieval returns only memories dated before the milestone, do not answer from them; re-search with additional related terms and compare time windows.",
+          "Treat pre-milestone memories as non-evidence for post-milestone questions even when they share location or activity vocabulary."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_shared_achievement",
+        "version_id": "sk_access_shared_achievement_v1",
+        "rank": 6,
+        "score": 0.191237211227417,
+        "semantic_score": 0.13354338705539703,
+        "lexical_score": 0.32585614919662476,
+        "name": "Expand retrieval for shared personal achievements",
+        "description": "When a question asks what achievement or news one person shared with another, retrieve events about either person alone and use a broader time window instead of requiring both names and exact date.",
+        "content": [
+          "If a query describes an item 'shared with' or 'told to' another person, search for memories whose subject is either person individually; the sharing may be implicit and the memory may mention only the achiever.",
+          "Use a broadened time window (e.g., whole stated month or relative phrases like 'last week') rather than a single point date, so recent personal milestones are not excluded."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      }
+    ]
+  },
+  "repair_package": {
+    "question": "What did Joanna share with her writers group in August 2022?",
+    "reference_answer": "her book",
+    "missing_useful_current_memories": [
+      {
+        "version_id": "mem_conv-42_0090_v2",
+        "memory_id": "mem_conv-42_0090",
+        "version_no": 2,
+        "content": "Joanna finished writing her book last week after putting in a lot of late nights and edits, expressing pride in her accomplishment. She shared her book with a writers group last week and received positive feedback, which she described as a great feeling of hard work paying off.",
+        "memory_kind": "event",
+        "subject": "Joanna",
+        "predicate": "achievement",
+        "object_text": "book completion",
+        "world_start": "2022-10-05",
+        "world_end": null,
+        "update_type": "state_change"
+      }
+    ],
+    "retrieved_current_version_ids": [
+      "mem_conv-42_0006_v1",
+      "mem_conv-42_0009_v1",
+      "mem_conv-42_0011_v3",
+      "mem_conv-42_0020_v1",
+      "mem_conv-42_0023_v1",
+      "mem_conv-42_0025_v1",
+      "mem_conv-42_0034_v1",
+      "mem_conv-42_0039_v1"
+    ],
+    "search_steps": [
+      {
+        "action_id": "access_bank2_v1new_train_seq_conv-42_conv-42_conv-42_qa_0149_a000",
+        "step_index": 0,
+        "action_type": "search_memory",
+        "request": {
+          "action": "search_memory",
+          "arguments": {
+            "strategy": "hybrid",
+            "query": "What did Joanna share with her writers group in August 2022?",
+            "query_expansions": [
+              "What content did Joanna present to her writers group in August 2022?",
+              "What was Joanna's contribution to her writers group in August 2022?",
+              "What did Joanna discuss with her writers group in August 2022?"
+            ],
+            "keywords": [
+              "Joanna",
+              "writers group",
+              "August 2022"
+            ],
+            "depth": "standard",
+            "memory_kinds": [
+              "event"
+            ],
+            "time_mode": "point",
+            "target_time": "2022-08-01"
+          },
+          "reason": "To find the specific information about what Joanna shared with her writers group in August 2022."
+        },
+        "returned_memories": [
+          {
+            "version_id": "mem_conv-42_0039_v1",
+            "memory_id": "mem_conv-42_0039",
+            "content": "Joanna joined a writers group and is working on a script called 'Finding Home' about a girl's journey to find her true home.",
+            "memory_kind": "event",
+            "subject": "Joanna",
+            "world_start": "2022-04-21",
+            "world_end": null,
+            "score": 0.0183,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0011_v3",
+            "memory_id": "mem_conv-42_0011",
+            "content": "Joanna submitted her recent screenplay to a film contest on 24 June 2022, aiming to see how others might like it. She was working on finishing her screenplay and reflected on the importance of joyful moments during tough times.",
+            "memory_kind": "event",
+            "subject": "Joanna",
+            "world_start": "2022-06-24",
+            "world_end": null,
+            "score": 0.0182,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0025_v1",
+            "memory_id": "mem_conv-42_0025",
+            "content": "Joanna had an audition for a writing gig on March 23, 2022, which she felt was exciting but also anxiety-inducing.",
+            "memory_kind": "event",
+            "subject": "Joanna",
+            "world_start": "2022-03-23",
+            "world_end": null,
+            "score": 0.0173,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0034_v1",
+            "memory_id": "mem_conv-42_0034",
+            "content": "Joanna discovered an awesome hiking trail in her hometown on April 16, 2022, and found it to be gorgeous and inspiring.",
+            "memory_kind": "event",
+            "subject": "Joanna",
+            "world_start": "2022-04-16",
+            "world_end": null,
+            "score": 0.0169,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0020_v1",
+            "memory_id": "mem_conv-42_0020",
+            "content": "Joanna completed her second script, experiencing a mix of relief and anxiety about the future, with Nate congratulating her on her accomplishment.",
+            "memory_kind": "event",
+            "subject": "Joanna",
+            "world_start": "2022-03-18",
+            "world_end": null,
+            "score": 0.0158,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0009_v1",
+            "memory_id": "mem_conv-42_0009",
+            "content": "Joanna finds joy in writing, using it to create stories and express her feelings, and considers it essential to her life.",
+            "memory_kind": "event",
+            "subject": "Joanna",
+            "world_start": "2022-01-23",
+            "world_end": null,
+            "score": 0.0156,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0023_v1",
+            "memory_id": "mem_conv-42_0023",
+            "content": "Joanna is actively researching and networking for her next script project, showing determination to make it happen.",
+            "memory_kind": "event",
+            "subject": "Joanna",
+            "world_start": "2022-03-18",
+            "world_end": null,
+            "score": 0.0155,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0006_v1",
+            "memory_id": "mem_conv-42_0006",
+            "content": "Joanna plans to submit her screenplay to film festivals and hopes to attract producers and directors.",
+            "memory_kind": "event",
+            "subject": "Joanna",
+            "world_start": "2022-01-23",
+            "world_end": null,
+            "score": 0.0149,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          }
+        ],
+        "returned_version_ids": [
+          "mem_conv-42_0039_v1",
+          "mem_conv-42_0011_v3",
+          "mem_conv-42_0025_v1",
+          "mem_conv-42_0034_v1",
+          "mem_conv-42_0020_v1",
+          "mem_conv-42_0009_v1",
+          "mem_conv-42_0023_v1",
+          "mem_conv-42_0006_v1"
+        ]
+      },
+      {
+        "action_id": "access_bank2_v1new_train_seq_conv-42_conv-42_conv-42_qa_0149_a001",
+        "step_index": 1,
+        "action_type": "answer",
+        "request": {
+          "action": "answer",
+          "arguments": {
+            "answer": "script called 'Finding Home'",
+            "evidence_version_ids": [
+              "mem_conv-42_0039_v1"
+            ],
+            "confidence": 0.95
+          },
+          "reason": "The memory indicates that Joanna shared a script called 'Finding Home' with her writers group in August 2022."
+        },
+        "returned_memories": [],
+        "returned_version_ids": []
+      }
+    ],
+    "reason": "The current memory version mem_conv-42_0090_v2 explicitly states that Joanna shared her book with a writers group and received positive feedback. This directly supports the reference answer. Other memories in the search chain do not mention sharing a book with a writers group in August 2022.",
+    "skill_trace": {
+      "trace_id": "skilltrace_access_bank2_v1new_train_seq_conv-42_conv-42_conv-42_qa_0149",
+      "side": "access",
+      "bank_version": "bank1",
+      "query": "What did Joanna share with her writers group in August 2022?",
+      "top_k": 2,
+      "disclose_k": 5,
+      "min_score": 0.2,
+      "scored_fields": [
+        "name",
+        "description"
+      ],
+      "scoring_weights": {
+        "semantic": 0.7,
+        "bm25": 0.3
+      },
+      "retrieval_method": "bank1_hybrid_router",
+      "candidate_k": 10,
+      "reranker": "bank1_applicability_router",
+      "reranker_error": "",
+      "selected": [
+        {
+          "skill_id": "sk_access_instead_questions",
+          "version_id": "sk_access_instead_questions_v1",
+          "rank": 1,
+          "score": 0.36330729722976685,
+          "semantic_score": 0.09043900668621063,
+          "lexical_score": 1.0,
+          "name": "Search beyond excluded activity for alternatives",
+          "description": "When a question asks what activity a person or group planned/did instead of a known activity, use this to avoid over-anchoring retrieval on the excluded activity.",
+          "content": [
+            "If the user asks for an alternative, replacement, or activity done instead of a previously mentioned activity, do not build all searches and keywords around the excluded activity; the supporting memory may omit that activity entirely.",
+            "Run additional searches using the subject person/group plus substitution intent terms such as 'instead', 'alternative', 'planned to', and 'decided to', and search broadly for shared plans, preferences, or recent events involving the same people.",
+            "Before answering, inspect retrieved memories that mention plans or shared activities for those people even if they do not mention the excluded activity; select the memory that explicitly states the alternative plan rather than the first semantically similar result."
+          ],
+          "selected": true,
+          "rerank_rank": 1,
+          "rerank_reason": "The question asks what Joanna shared with her writers group in August 2022, which could imply an alternative activity to a previously mentioned one. The skill is applicable for searching beyond excluded activities and finding explicit alternative plans or shared events."
+        }
+      ],
+      "nearby_not_selected": [
+        {
+          "skill_id": "sk_access_per_entity_intersection",
+          "version_id": "sk_access_per_entity_intersection_v1",
+          "rank": 2,
+          "score": 0.3568580150604248,
+          "semantic_score": 0.10119640827178955,
+          "lexical_score": 0.9534017443656921,
+          "name": "Per-Entity Expansion for Intersection Queries",
+          "description": "Use when a question asks what two or more entities share or have in common.",
+          "content": [
+            "If the initial search for a multi-entity intersection query returns no overlap, do not repeat the identical query; issue separate searches for each entity using its name and known aliases.",
+            "After each per-entity search, collect concrete attribute values (cities, activities, preferences) from retrieved memories and issue follow-up searches combining each entity with those candidate values.",
+            "Conclude 'no information' only after per-entity searches for all entities and candidate-value expansions have been attempted and still yield no supporting memory."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_shared_interests",
+          "version_id": "sk_access_shared_interests_v1",
+          "rank": 3,
+          "score": 0.2774507999420166,
+          "semantic_score": 0.14489801228046417,
+          "lexical_score": 0.5867406725883484,
+          "name": "Per-person profile search for shared-interest questions",
+          "description": "When a question asks what interests, hobbies, or preferences two or more people share, search each person's profile/hobby memories separately before answering.",
+          "content": [
+            "When the question asks what two or more named people share (interests, hobbies, preferences, or similar traits), run a separate profile/hobby search for each person (e.g., query with the person's name and 'hobbies' or 'interests') in addition to a joint-activity search.",
+            "Do not treat plans to do something together, one-time joint events, or supportive gestures as evidence of a shared interest; require either an explicit shared-interest memory or overlapping individual profile/preference memories.",
+            "After initial retrieval, judge evidence sufficiency for the comparison: if the evidence only describes activities done or planned together, run the per-person profile searches again before answering."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_abstract_positive_expansion",
+          "version_id": "sk_access_abstract_positive_expansion_v1",
+          "rank": 4,
+          "score": 0.2704795002937317,
+          "semantic_score": 0.04069902002811432,
+          "lexical_score": 0.8066339492797852,
+          "name": "Expand abstract positive-evaluative queries with concrete vocabulary",
+          "description": "Use when a question asks what someone recently did that was rewarding, fulfilling, or a main stressor.",
+          "content": [
+            "If the question uses abstract positive descriptors like 'rewarding experience', 'fulfilling', or 'sense of accomplishment' and the initial retrieval does not return an event memory that explicitly describes an achievement or positive outcome, run an additional keyword or structured search using concrete achievement verbs and nouns (e.g., 'presented', 'conference', 'received positive feedback', 'award', 'recognized').",
+            "Before answering a question about a person's main stressor, source of stress, or biggest difficulty, issue searches that go beyond the literal question wording: include stress-related synonyms (stressful, tough, difficult, hard, pressure, overwhelmed) and common life domains (work, family, school, health, finances, relationships).",
+            "If the question explicitly excludes a topic ('besides X', 'other than X', 'apart from X'), do not let that excluded topic dominate the query; run an additional search replacing the excluded topic with likely alternative domains.",
+            "Do not answer from an indirect memory that only implies the stressor through an overlap or trade-off; keep searching until a memory explicitly states what is stressful, tough, or difficult."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_sequence_retrieval",
+          "version_id": "sk_access_sequence_retrieval_v1",
+          "rank": 5,
+          "score": 0.24364417791366577,
+          "semantic_score": 0.14223307371139526,
+          "lexical_score": 0.4802700877189636,
+          "name": "Temporal-anchor post-milestone retrieval",
+          "description": "When a question asks what someone did or planned after a dated milestone event (e.g., after a wedding) and the first search results appear unrelated or pre-date the event.",
+          "content": [
+            "When a question asks what someone did or plans to do after a dated milestone event, use the milestone date as a temporal anchor; run searches with typical follow-up activity terms (honeymoon, celebration, get-together, trip, activity) and filter or rank memories with world_start on or after that date.",
+            "If the first retrieval returns only memories dated before the milestone, do not answer from them; re-search with additional related terms and compare time windows.",
+            "Treat pre-milestone memories as non-evidence for post-milestone questions even when they share location or activity vocabulary."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_shared_achievement",
+          "version_id": "sk_access_shared_achievement_v1",
+          "rank": 6,
+          "score": 0.191237211227417,
+          "semantic_score": 0.13354338705539703,
+          "lexical_score": 0.32585614919662476,
+          "name": "Expand retrieval for shared personal achievements",
+          "description": "When a question asks what achievement or news one person shared with another, retrieve events about either person alone and use a broader time window instead of requiring both names and exact date.",
+          "content": [
+            "If a query describes an item 'shared with' or 'told to' another person, search for memories whose subject is either person individually; the sharing may be implicit and the memory may mention only the achiever.",
+            "Use a broadened time window (e.g., whole stated month or relative phrases like 'last week') rather than a single point date, so recent personal milestones are not excluded."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        }
+      ]
+    }
+  },
+  "access_run_id": "access_bank2_v1new_train_seq_conv-42_conv-42_conv-42_qa_0149",
+  "claims": [
+    {
+      "claim": "Joanna shared her book with her writers group in August 2022.",
+      "supporting_version_ids": [
+        "mem_conv-42_0090_v2"
+      ],
+      "coverage": null
+    }
+  ],
+  "current_related_memories": [
+    {
+      "version_id": "mem_conv-42_0090_v2",
+      "memory_id": "mem_conv-42_0090",
+      "version_no": 2,
+      "content": "Joanna finished writing her book last week after putting in a lot of late nights and edits, expressing pride in her accomplishment. She shared her book with a writers group last week and received positive feedback, which she described as a great feeling of hard work paying off.",
+      "memory_kind": "event",
+      "subject": "Joanna",
+      "predicate": "achievement",
+      "object_text": "book completion",
+      "world_start": "2022-10-05",
+      "world_end": null,
+      "update_type": "state_change"
+    }
+  ],
+  "useful_current_version_ids": [
+    "mem_conv-42_0090_v2"
+  ],
+  "retrieved_current_version_ids": [
+    "mem_conv-42_0006_v1",
+    "mem_conv-42_0009_v1",
+    "mem_conv-42_0011_v3",
+    "mem_conv-42_0020_v1",
+    "mem_conv-42_0023_v1",
+    "mem_conv-42_0025_v1",
+    "mem_conv-42_0034_v1",
+    "mem_conv-42_0039_v1"
+  ],
+  "missing_useful_current_version_ids": [
+    "mem_conv-42_0090_v2"
+  ],
+  "search_steps": [
+    {
+      "action_id": "access_bank2_v1new_train_seq_conv-42_conv-42_conv-42_qa_0149_a000",
+      "step_index": 0,
+      "action_type": "search_memory",
+      "request": {
+        "action": "search_memory",
+        "arguments": {
+          "strategy": "hybrid",
+          "query": "What did Joanna share with her writers group in August 2022?",
+          "query_expansions": [
+            "What content did Joanna present to her writers group in August 2022?",
+            "What was Joanna's contribution to her writers group in August 2022?",
+            "What did Joanna discuss with her writers group in August 2022?"
+          ],
+          "keywords": [
+            "Joanna",
+            "writers group",
+            "August 2022"
+          ],
+          "depth": "standard",
+          "memory_kinds": [
+            "event"
+          ],
+          "time_mode": "point",
+          "target_time": "2022-08-01"
+        },
+        "reason": "To find the specific information about what Joanna shared with her writers group in August 2022."
+      },
+      "returned_memories": [
+        {
+          "version_id": "mem_conv-42_0039_v1",
+          "memory_id": "mem_conv-42_0039",
+          "content": "Joanna joined a writers group and is working on a script called 'Finding Home' about a girl's journey to find her true home.",
+          "memory_kind": "event",
+          "subject": "Joanna",
+          "world_start": "2022-04-21",
+          "world_end": null,
+          "score": 0.0183,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0011_v3",
+          "memory_id": "mem_conv-42_0011",
+          "content": "Joanna submitted her recent screenplay to a film contest on 24 June 2022, aiming to see how others might like it. She was working on finishing her screenplay and reflected on the importance of joyful moments during tough times.",
+          "memory_kind": "event",
+          "subject": "Joanna",
+          "world_start": "2022-06-24",
+          "world_end": null,
+          "score": 0.0182,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0025_v1",
+          "memory_id": "mem_conv-42_0025",
+          "content": "Joanna had an audition for a writing gig on March 23, 2022, which she felt was exciting but also anxiety-inducing.",
+          "memory_kind": "event",
+          "subject": "Joanna",
+          "world_start": "2022-03-23",
+          "world_end": null,
+          "score": 0.0173,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0034_v1",
+          "memory_id": "mem_conv-42_0034",
+          "content": "Joanna discovered an awesome hiking trail in her hometown on April 16, 2022, and found it to be gorgeous and inspiring.",
+          "memory_kind": "event",
+          "subject": "Joanna",
+          "world_start": "2022-04-16",
+          "world_end": null,
+          "score": 0.0169,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0020_v1",
+          "memory_id": "mem_conv-42_0020",
+          "content": "Joanna completed her second script, experiencing a mix of relief and anxiety about the future, with Nate congratulating her on her accomplishment.",
+          "memory_kind": "event",
+          "subject": "Joanna",
+          "world_start": "2022-03-18",
+          "world_end": null,
+          "score": 0.0158,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0009_v1",
+          "memory_id": "mem_conv-42_0009",
+          "content": "Joanna finds joy in writing, using it to create stories and express her feelings, and considers it essential to her life.",
+          "memory_kind": "event",
+          "subject": "Joanna",
+          "world_start": "2022-01-23",
+          "world_end": null,
+          "score": 0.0156,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0023_v1",
+          "memory_id": "mem_conv-42_0023",
+          "content": "Joanna is actively researching and networking for her next script project, showing determination to make it happen.",
+          "memory_kind": "event",
+          "subject": "Joanna",
+          "world_start": "2022-03-18",
+          "world_end": null,
+          "score": 0.0155,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0006_v1",
+          "memory_id": "mem_conv-42_0006",
+          "content": "Joanna plans to submit her screenplay to film festivals and hopes to attract producers and directors.",
+          "memory_kind": "event",
+          "subject": "Joanna",
+          "world_start": "2022-01-23",
+          "world_end": null,
+          "score": 0.0149,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        }
+      ],
+      "returned_version_ids": [
+        "mem_conv-42_0039_v1",
+        "mem_conv-42_0011_v3",
+        "mem_conv-42_0025_v1",
+        "mem_conv-42_0034_v1",
+        "mem_conv-42_0020_v1",
+        "mem_conv-42_0009_v1",
+        "mem_conv-42_0023_v1",
+        "mem_conv-42_0006_v1"
+      ]
+    },
+    {
+      "action_id": "access_bank2_v1new_train_seq_conv-42_conv-42_conv-42_qa_0149_a001",
+      "step_index": 1,
+      "action_type": "answer",
+      "request": {
+        "action": "answer",
+        "arguments": {
+          "answer": "script called 'Finding Home'",
+          "evidence_version_ids": [
+            "mem_conv-42_0039_v1"
+          ],
+          "confidence": 0.95
+        },
+        "reason": "The memory indicates that Joanna shared a script called 'Finding Home' with her writers group in August 2022."
+      },
+      "returned_memories": [],
+      "returned_version_ids": []
+    }
+  ]
+}

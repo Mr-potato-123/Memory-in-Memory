@@ -1,0 +1,225 @@
+{
+  "batch": {
+    "batch_id": "access_bank1_new_build_0004",
+    "side": "access",
+    "base_bank_version": "v000",
+    "candidates": [
+      {
+        "candidate_id": "cand_access_0cba9691f7c9",
+        "skill_id": "sk_access_2e66ae10a7",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Breakage-synonym retrieval before no-info answer",
+          "description": "When a question asks what things someone had broken or damaged, before concluding no information, expand search with synonymous phrasings like 'broke down', 'accident', 'damaged', 'malfunctioned'.",
+          "content": [
+            "When a user asks what items someone had broken or damaged, run additional searches using damage-related phrasings before concluding no information: 'broke down', 'accident', 'damaged', 'malfunctioned', 'needed repairs', 'issue with [object]'.",
+            "If the first retrieval returns no memory mentioning breakage, damage, accident, breakdown, or repair, do not answer 'No information available' yet; perform at least one additional search with those paraphrase terms targeting the person's possessions/events.",
+            "Treat memories describing accidents, breakdowns, malfunctions, or repairs as evidence that an item was broken, even if the word 'broken' does not appear; stop once the second extended search also yields no such evidence."
+          ]
+        },
+        "solves": "The failure occurs when a question about broken/damaged items is searched only with the literal word 'broken' and the agent answers 'No information available' after one unrelated result. This applies to future questions asking about damaged belongings (e.g., vehicles, devices) where memories may describe breakage as accidents, breakdowns, or repairs. It should not apply when the question is about literal brokenness already covered by the first results, or when the user already names the specific item.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-49_conv-49_qa_0001",
+        "source_failure_id": "access_conv-49_conv-49_qa_0001",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:34:33Z"
+      },
+      {
+        "candidate_id": "cand_access_2877aa74a788",
+        "skill_id": "sk_access_a468c20342",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Named-Medical-Condition Search Before Generic Answer",
+          "description": "When a question asks for a specific named medical condition/ailment/diagnosis, search for concrete health_issue memories and condition-related terms before answering with a generic risk.",
+          "content": [
+            "When the question asks for a named ailment/condition/diagnosis (e.g., 'which ailment does X have'), run one targeted additional search: the subject's name plus generic condition terms ('diagnosed condition', 'specific ailment', 'medical diagnosis') and, if available, a structured search filtering predicate=health_issue.",
+            "If that targeted search returns a memory recording a specific named condition (event or state with predicate health_issue), cite that named condition as the answer; do not accept a generic 'health risk' or 'weight issue' summary when a named condition was requested.",
+            "Stop after one or two targeted named-condition searches if no named-condition memory appears; then answer from the strongest retrieved evidence."
+          ]
+        },
+        "solves": "Question asks for a specific named medical condition but retrieval anchored on cause keywords returns only generic health-risk memories, missing the named condition in a health_issue memory. Applies when the question explicitly requests an ailment/disease/diagnosis; add a targeted search for named-condition memories before answering. Does not apply to open-ended health questions where a broad answer is acceptable.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-49_conv-49_qa_0064",
+        "source_failure_id": "access_conv-49_conv-49_qa_0064",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:35:40Z"
+      },
+      {
+        "candidate_id": "cand_access_b9a67c6aece5",
+        "skill_id": "sk_access_d57b255c26",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Enumerate-Affected-Group-Members-Before-Answering",
+          "description": "When a question asks 'who' was injured or affected within a named person's family or group, expand retrieval to role-based and relationship queries and verify evidence for every enumerated person before answering.",
+          "content": [
+            "If the question asks 'who' was injured/affected in a named person's family or group, treat it as an enumeration question: search not only for the named person but also for each plausible family/group role (son, daughter, partner, etc.) using phrasing like '<named person>'s <role> injured'.",
+            "Before answering, check that every affected person you plan to name has direct evidence; a memory where the affected person is a relative and the named person is only the caretaker still counts as evidence for that relative.",
+            "Stop after the role-expanded searches return no new candidate or after you already have evidence identifying all affected individuals; do not exhaustively search every possible role when the current evidence is sufficient."
+          ]
+        },
+        "solves": "The failure mechanism is that for 'who' questions about a named person's family or group, retrieval anchors on the named person alone and misses memories where the affected person is a relative or group member, producing incomplete answers. This applies to future questions of the form 'Who was injured/affected in [person]'s family/group?' where multiple individuals may be mentioned in separate memories. It does not apply to single-subject questions such as 'Was [person] injured?' or when the first evidence already enumerates all affected individuals.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-49_conv-49_qa_0049",
+        "source_failure_id": "access_conv-49_conv-49_qa_0049",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:34:58Z"
+      },
+      {
+        "candidate_id": "cand_access_e91cad61af4f",
+        "skill_id": "sk_access_51f75ff5de",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Per-entity retrieval for multi-subject questions",
+          "description": "Use before answering when a question asks what two or more named individuals experienced, encountered, or went through; run a targeted search per named individual and include event/incident-specific query variants.",
+          "content": [
+            "When a question names multiple individuals and asks what each experienced or what incidents/events each had, run at least one targeted memory search per named individual, combining each individual's name with the event category from the question.",
+            "Add query expansions and keywords using discrete-event vocabulary (e.g., incident, episode, scare, emergency, wake-up call, hospitalization) alongside the question's wording, because specific events are often stored with different phrasing than the question.",
+            "Before answering, verify each named individual is supported by at least one retrieved memory; if any named individual has no supporting memory after the combined searches, run one additional targeted search for that individual. Stop once every named individual has a supporting memory or a targeted per-individual search with varied phrasings returns no new relevant results."
+          ]
+        },
+        "solves": "Multi-entity questions can be answered after a joint search retrieves memories for only some named people, missing events stored with different vocabulary (e.g., 'incident', 'wake-up call'). Applies when a question names ≥2 individuals and asks what each experienced; run one targeted search per named individual with incident-specific variants and verify each is covered before answering. Does not apply to single-subject questions or when the initial search already supports every named individual.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-49_conv-49_qa_0062",
+        "source_failure_id": "access_conv-49_conv-49_qa_0062",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:35:28Z"
+      }
+    ],
+    "retrieved_skill_ids": [],
+    "relations": []
+  },
+  "plan": {
+    "transaction_id": "tx_access_bank1_new_build_0004",
+    "side": "access",
+    "base_bank_version": "v000",
+    "candidate_resolutions": [
+      {
+        "candidate_id": "cand_access_0cba9691f7c9",
+        "resolution": "CREATED",
+        "target_skill_ids": [],
+        "reason": "No existing Skill covers breakage-synonym retrieval before concluding no information."
+      },
+      {
+        "candidate_id": "cand_access_2877aa74a788",
+        "resolution": "CREATED",
+        "target_skill_ids": [],
+        "reason": "No existing Skill covers targeted search for named medical conditions before generic answers."
+      },
+      {
+        "candidate_id": "cand_access_b9a67c6aece5",
+        "resolution": "CREATED",
+        "target_skill_ids": [],
+        "reason": "No existing Skill covers enumerating affected group members via role-based retrieval."
+      },
+      {
+        "candidate_id": "cand_access_e91cad61af4f",
+        "resolution": "CREATED",
+        "target_skill_ids": [],
+        "reason": "No existing Skill covers per-entity retrieval for multi-subject questions."
+      }
+    ],
+    "operations": [
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_breakage_syn",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Breakage-synonym retrieval before no-info answer",
+        "description": "When a question asks what things someone had broken or damaged, before concluding no information, expand search with synonymous phrasings like 'broke down', 'accident', 'damaged', 'malfunctioned'.",
+        "content": [
+          "When a user asks what items someone had broken or damaged, run additional searches using damage-related phrasings before concluding no information: 'broke down', 'accident', 'damaged', 'malfunctioned', 'needed repairs', 'issue with [object]'.",
+          "If the first retrieval returns no memory mentioning breakage, damage, accident, breakdown, or repair, do not answer 'No information available' yet; perform at least one additional search with those paraphrase terms targeting the person's possessions/events.",
+          "Treat memories describing accidents, breakdowns, malfunctions, or repairs as evidence that an item was broken, even if the word 'broken' does not appear; stop once the second extended search also yields no such evidence."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_0cba9691f7c9"
+        ],
+        "reason": "Creating new retrieval strategy Skill for breakage-synonym expansion.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_named_condition",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Named-Medical-Condition Search Before Generic Answer",
+        "description": "When a question asks for a specific named medical condition/ailment/diagnosis, search for concrete health_issue memories and condition-related terms before answering with a generic risk.",
+        "content": [
+          "When the question asks for a named ailment/condition/diagnosis (e.g., 'which ailment does X have'), run one targeted additional search: the subject's name plus generic condition terms ('diagnosed condition', 'specific ailment', 'medical diagnosis') and, if available, a structured search filtering predicate=health_issue.",
+          "If that targeted search returns a memory recording a specific named condition (event or state with predicate health_issue), cite that named condition as the answer; do not accept a generic 'health risk' or 'weight issue' summary when a named condition was requested.",
+          "Stop after one or two targeted named-condition searches if no named-condition memory appears; then answer from the strongest retrieved evidence."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_2877aa74a788"
+        ],
+        "reason": "Creating new retrieval strategy Skill for named medical conditions.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_enumerate_group",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Enumerate-Affected-Group-Members-Before-Answering",
+        "description": "When a question asks 'who' was injured or affected within a named person's family or group, expand retrieval to role-based and relationship queries and verify evidence for every enumerated person before answering.",
+        "content": [
+          "If the question asks 'who' was injured/affected in a named person's family or group, treat it as an enumeration question: search not only for the named person but also for each plausible family/group role (son, daughter, partner, etc.) using phrasing like '<named person>'s <role> injured'.",
+          "Before answering, check that every affected person you plan to name has direct evidence; a memory where the affected person is a relative and the named person is only the caretaker still counts as evidence for that relative.",
+          "Stop after the role-expanded searches return no new candidate or after you already have evidence identifying all affected individuals; do not exhaustively search every possible role when the current evidence is sufficient."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_b9a67c6aece5"
+        ],
+        "reason": "Creating new retrieval strategy Skill for enumerating affected group members.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_per_entity",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Per-entity retrieval for multi-subject questions",
+        "description": "Use before answering when a question asks what two or more named individuals experienced, encountered, or went through; run a targeted search per named individual and include event/incident-specific query variants.",
+        "content": [
+          "When a question names multiple individuals and asks what each experienced or what incidents/events each had, run at least one targeted memory search per named individual, combining each individual's name with the event category from the question.",
+          "Add query expansions and keywords using discrete-event vocabulary (e.g., incident, episode, scare, emergency, wake-up call, hospitalization) alongside the question's wording, because specific events are often stored with different phrasing than the question.",
+          "Before answering, verify each named individual is supported by at least one retrieved memory; if any named individual has no supporting memory after the combined searches, run one additional targeted search for that individual. Stop once every named individual has a supporting memory or a targeted per-individual search with varied phrasings returns no new relevant results."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_e91cad61af4f"
+        ],
+        "reason": "Creating new retrieval strategy Skill for multi-subject questions.",
+        "hard_delete": false
+      }
+    ]
+  },
+  "status": "planned"
+}

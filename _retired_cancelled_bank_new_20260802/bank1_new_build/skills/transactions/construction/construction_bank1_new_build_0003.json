@@ -1,0 +1,494 @@
+{
+  "batch": {
+    "batch_id": "construction_bank1_new_build_0003",
+    "side": "construction",
+    "base_bank_version": "v001",
+    "candidates": [
+      {
+        "candidate_id": "cand_construction_1d2f3a4077e5",
+        "skill_id": "sk_construction_97066e2393",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "ExtractExplicitPreferenceStatements",
+          "description": "During construction extraction, when a speaker explicitly states their own preference or favorite (e.g., 'my favorite', 'I love', 'I like'), extract a durable memory for that preference, even if the statement is brief or embedded in a reply.",
+          "content": [
+            "During extraction, when a speaker explicitly states their own preference for a specific entity using phrases like 'my favorite', 'I love', 'I like', 'I prefer', create a separate durable memory capturing that preference.",
+            "Use memory kind 'preference' (or 'state' if preference is unavailable), set subject to the speaker, content to the preference relation, and world_start from the message timestamp.",
+            "Capture such statements even when they are brief, appear as answers to questions, or are embedded in a longer narrative about something else.",
+            "Do not apply this to hypothetical, third-party, or negated statements."
+          ]
+        },
+        "solves": "An explicitly stated first-person preference in a short or embedded reply was not extracted, so no durable memory was created. The missing rule: capture direct preference statements as their own memory even when brief or embedded. This applies to any domain where a speaker favors an entity, but not to hypothetical, third-party, or negated statements.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-43_conv-43_qa_0065",
+        "source_failure_id": "cons_conv-43_conv-43_qa_0065",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:10:30Z"
+      },
+      {
+        "candidate_id": "cand_construction_3219bea44f93",
+        "skill_id": "sk_construction_3843b3c671",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Preserve explicit action predicates during memory enrichment",
+          "description": "When updating or merging an existing memory with new evidence that states an explicit action or relation (recommends, suggests, plans, promises, gives), preserve that predicate instead of rewriting it as a preference like 'enjoys' or 'likes'.",
+          "content": [
+            "During UPDATE or MERGE, if new evidence explicitly states an action or relation (e.g., recommends, suggests, plans, promises, gives) about entities already covered by the old memory, keep that predicate as a distinct clause. Do not collapse it into a different predicate (e.g., 'enjoys', 'likes', 'plays') merely because the same entities are involved.",
+            "Before enriching an existing memory, check whether the new statement's predicate matches the old memory's predicate. If they differ, either keep both predicates in the merged memory or write a separate memory for the new relation (e.g., a relationship memory 'X recommends Y to Z'). Never silently transform the new predicate to match the old one."
+          ]
+        },
+        "solves": "Diagnosed cause: an UPDATE merged explicit recommendation evidence into an older 'enjoys playing' memory, replacing 'recommends titles like' with 'particularly', so the recommendation act was lost. The abstract mechanism is predicate collapse during memory enrichment. This rule applies to any future enrichment or merge where new evidence states an explicit action or relationship (recommend, suggest, plan, promise) about items that already appear in an older memory with a different predicate.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-48_conv-48_qa_0058",
+        "source_failure_id": "cons_conv-48_conv-48_qa_0058",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:11:40Z"
+      },
+      {
+        "candidate_id": "cand_construction_3b4acb7a2d59",
+        "skill_id": "sk_construction_b63e538703",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Preserve stated purpose in preference extraction",
+          "description": "When a user states a preference, plan, or goal with an explicit reason or purpose, extract that purpose into the same memory instead of storing only the surface preference.",
+          "content": [
+            "During extraction, if the source message includes a preference, plan, or goal together with an explicit purpose (e.g., 'to', 'so that', 'because'), write one candidate that contains both the preference and its purpose.",
+            "When you later review existing memories for the same subject, if a memory records the preference but omits its purpose, issue an UPDATE to add the purpose rather than adding a duplicate memory."
+          ]
+        },
+        "solves": "Future questions asking where or why a user wants something require the purpose that was stated alongside the preference. Extraction that stores only the preference drops that purpose and makes the memory insufficient for motivation questions. This rule applies to any statement joining a preference, plan, or goal with an explicit reason; it is not intended for event descriptions that contain no stated purpose.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-44_conv-44_qa_0067",
+        "source_failure_id": "cons_conv-44_conv-44_qa_0067",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:11:05Z"
+      },
+      {
+        "candidate_id": "cand_construction_5477d13335dc",
+        "skill_id": "sk_construction_2314015ed1",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Extract Explicit Additive Preference Statements",
+          "description": "When a message contains a clear self-stated preference using affective language ('love', 'like', 'enjoy', 'favorite'), extract a preference memory even if it is phrased as an addition ('also', 'besides') or part of a longer reply.",
+          "content": [
+            "During extraction, treat explicit self-referential preference statements as candidates for a `preference` memory whenever the speaker uses affective verbs like 'love', 'like', 'enjoy', or nouns like 'favorite'.",
+            "Do not skip a preference candidate merely because it is introduced as secondary or additive (e.g., 'also love', 'besides X I like Y', 'one of my favorites').",
+            "Extract each distinct item named as liked/loved in the message, even if multiple preferences appear in one turn, and preserve the object of the preference verb."
+          ]
+        },
+        "solves": "Extraction skipped an explicit additive preference ('I also love X') because it was phrased as secondary to another item. This rule applies to any self-disclosed preference using affective language (love, like, enjoy, favorite), including 'also', 'besides', or 'one of my favorites', when the speaker is the source. It does not apply to others' preferences, hypotheticals, or retractions.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-42_conv-42_qa_0156",
+        "source_failure_id": "cons_conv-42_conv-42_qa_0156",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:09:55Z"
+      },
+      {
+        "candidate_id": "cand_construction_590f7d139148",
+        "skill_id": "sk_construction_d164d64d24",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Preserve recommendations when merging into preference memories",
+          "description": "When extraction or CRUD handles a candidate whose source message contains a recommendation or suggestion, keep the speech-act context distinct from mere personal preference and do not let an UPDATE/MERGE strip it.",
+          "content": [
+            "During extraction, if the source explicitly recommends or suggests an entity, keep the speech-act verb (e.g., 'recommends', 'suggested') in the candidate content; do not collapse it into a bare preference like 'enjoys X'.",
+            "During CRUD, before performing an UPDATE or MERGE into an existing memory, check whether the new evidence contains a recommendation distinct from an enjoyment/preference claim. If so, preserve the recommendation explicitly (e.g., 'recommends X as ...' or 'suggested X for ...') even when merging into a preference memory, and avoid rewording it into only an enjoyed-item list."
+          ]
+        },
+        "solves": "Construction often merges a new candidate containing an explicit recommendation or suggestion into an existing preference memory, converting 'recommends X as great' into 'enjoys X' and silently dropping the speech-act fact. This happens in any domain (games, books, movies, restaurants, products) whenever a source message endorses something. The rule preserves the recommendation as a distinct fact. It does not apply to pure preference statements without an explicit recommendation or suggestion.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-48_conv-48_qa_0150",
+        "source_failure_id": "cons_conv-48_conv-48_qa_0150",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:12:20Z"
+      },
+      {
+        "candidate_id": "cand_construction_5a4f8d08e6a7",
+        "skill_id": "sk_construction_aac87cd611",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Extract preferences from enthusiastic activity descriptions",
+          "description": "Use during extraction: when a person describes an activity they engaged in with positive affect (e.g., 'awesome', 'loved', 'enjoyed'), extract a preference memory for that activity even if no explicit 'I like X' is stated.",
+          "content": [
+            "During candidate extraction, treat first-person descriptions of activities performed with positive affect (e.g., 'awesome', 'loved', 'fun', 'enjoyed') as evidence of a durable preference, and create a `preference` candidate even when the message is a past-experience narrative rather than an explicit 'I like X' statement.",
+            "When a message contains multiple distinct activities, produce one candidate per activity; do not let a dominant topic (e.g., a recurring sport) suppress lesser-mentioned activities.",
+            "Do not require explicit preference wording; the enjoyment signal in the description is sufficient, provided the activity is performed by the person the memory is about."
+          ]
+        },
+        "solves": "Extraction missed a user's leisure activity because it was described as an enjoyable past experience, not as 'I like X'. The mechanism is demanding explicit preference wording and attending only to the dominant topic. Treating positively-described first-person activities as preference evidence, and extracting each distinct activity, generalizes to any sport/hobby/food/media; not for neutral or third-party mentions.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-43_conv-43_qa_0011",
+        "source_failure_id": "cons_conv-43_conv-43_qa_0011",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:10:05Z"
+      },
+      {
+        "candidate_id": "cand_construction_80b6f77da902",
+        "skill_id": "sk_construction_06bcec54d3",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Extract explicit favorite statements as preference memories",
+          "description": "When a message explicitly expresses a favorite or strong preference (e.g., 'favorite', 'really into', 'love') for an entity, extract a durable preference memory preserving that intensity instead of a neutral state.",
+          "content": [
+            "When a message explicitly expresses a strong preference or favorite using words like 'favorite', 'really into', 'love', or 'obsessed with' for a book, movie, show, activity, food, or other item, extract a durable 'preference' memory that names the item and preserves the positive intensity (e.g., 'X is their favorite', 'they are really into X').",
+            "Do not downgrade such a statement into a temporary state such as 'currently reading' or 'currently watching'; the preference is the durable fact. If other items are mentioned in the same message, keep the explicitly favored item in its own memory rather than merging it into a list that obscures the favorite."
+          ]
+        },
+        "solves": "During extraction, explicit strong-preference statements such as 'really into X' are often downgraded to neutral states like 'currently reading X', losing the favorite fact. The rule is to preserve such statements as durable preference memories and keep the favored item distinct from other mentioned items. Applies to any future message with explicit favorite or strong-positive phrases; neutral mentions without intensity are out of scope.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-48_conv-48_qa_0106",
+        "source_failure_id": "cons_conv-48_conv-48_qa_0106",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:12:22Z"
+      },
+      {
+        "candidate_id": "cand_construction_832b857cc369",
+        "skill_id": "sk_construction_b0c6ac821b",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Extract pet activity preferences from owner statements",
+          "description": "When a user describes what their pets like to do or play, extract a preference memory during construction even if the user does not say 'I like'.",
+          "content": [
+            "During candidate extraction, treat statements about a user's pets' favorite activities or games (e.g., 'they go crazy for', 'love to', 'enjoy') as preference evidence for the pet owner.",
+            "Create a preference memory linking the owner to the pet activity when the activity is recurring or habitual rather than a one-time event.",
+            "Apply this during extraction; do not wait for a later explicit preference statement."
+          ]
+        },
+        "solves": "Construction extraction failed to store a directly stated fact because the preference was expressed through the user's pets rather than as a first-person 'I like' statement. The reusable failure is overlooking preference signals when the grammatical subject is a pet. Future inputs where a user describes their pets' recurring games or activities should produce a preference memory at extraction time. This does not apply to one-time pet events or statements about other people's pets.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-44_conv-44_qa_0105",
+        "source_failure_id": "cons_conv-44_conv-44_qa_0105",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:11:08Z"
+      },
+      {
+        "candidate_id": "cand_construction_d52edd48a1fa",
+        "skill_id": "sk_construction_f017e3396a",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Preserve explicit recommendations vs preferences",
+          "description": "When a message contains an explicit recommendation, suggestion, or endorsement of named items, use this to preserve the recommendation relationship in memory instead of lowering it to enjoyment/preference.",
+          "content": [
+            "When extracting or updating memory, if the speaker explicitly recommends, suggests, or endorses specific items (e.g., 'I recommend X', 'you should try X', 'my top pick is X'), store the recommendation claim in memory (e.g., '<speaker> recommends X,Y,Z') and preserve it during UPDATE/MERGE.",
+            "Do not collapse a recommendation into mere enjoyment: 'enjoys X' does not imply 'recommends X'. When enriching an existing memory with newly named titles, keep both clauses (recommends and enjoys) if the evidence supports both."
+          ]
+        },
+        "solves": "Diagnosed cause: an enrichment UPDATE replaced a correctly extracted recommendation claim with an enjoyment-only phrasing, so later recall about recommendations failed. Abstract mechanism: explicit recommendation is a distinct memory-worthy predicate that must survive extraction and CRUD rewrites. Applies to any future session where a speaker recommends books, games, movies, music, restaurants, or other items, especially when updating an existing preference memory.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-48_conv-48_qa_0092",
+        "source_failure_id": "cons_conv-48_conv-48_qa_0092",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:11:57Z"
+      },
+      {
+        "candidate_id": "cand_construction_d642eae492c7",
+        "skill_id": "sk_construction_1ee1713722",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Extract explicit enjoyment as preference",
+          "description": "When a speaker uses first-person affective language like 'I love', 'I enjoy', or 'I like' about a topic or item, apply this rule.",
+          "content": [
+            "During extraction, if a speaker expresses personal enjoyment or liking of a topic or item ('I love...', 'I enjoy...', 'I like...'), create a preference memory for that speaker capturing the enjoyed object; do not replace it with only a recommendation or event memory.",
+            "During CRUD updates, when enriching or updating an existing memory about the same topic, preserve and include the explicit enjoyment/preference; do not let a later recommendation or activity description overwrite or dilute it."
+          ]
+        },
+        "solves": "When a speaker states personal enjoyment or liking of a topic or item using first-person affective language, the extraction stage may misclassify this as a recommendation event and lose the explicit preference. This rule requires preserving the enjoyment as a preference memory and prevents later CRUD enrichment from overwriting or diluting that preference. It applies to future sessions with similar enjoyment statements, not to third-party recommendations or actions without expressed liking.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-42_conv-42_qa_0114",
+        "source_failure_id": "cons_conv-42_conv-42_qa_0114",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:09:26Z"
+      },
+      {
+        "candidate_id": "cand_construction_e0f909db1f33",
+        "skill_id": "sk_construction_b94b49247d",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "ExtractExplicitFirstPersonPreferences",
+          "description": "When a user explicitly states that something is one of their favorites or a preferred item, extract it as a preference memory even if the statement is casual or followed by other topics.",
+          "content": [
+            "During extraction, treat explicit first-person statements like 'one of my favorite X is Y' or 'I love/prefer Y' as preference candidates regardless of surrounding small talk or emotional tone.",
+            "Record the stated item as a durable preference memory linked to the speaker; do not skip because the utterance also contains unrelated context.",
+            "Do not require corroborating evidence or repeated mentions when the speaker states their own preference directly."
+          ]
+        },
+        "solves": "This addresses extraction-stage omissions where explicitly stated first-person preferences are skipped because the utterance is casual, emotional, or surrounded by unrelated context. It applies whenever a speaker directly names a favorite dish, activity, or item with phrasing like 'one of my favorites' or 'I love/prefer', ensuring a single explicit statement creates a durable preference memory. It does not apply to preferences inferred from behavior, mentions of others' tastes, or speculative likes.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-48_conv-48_qa_0118",
+        "source_failure_id": "cons_conv-48_conv-48_qa_0118",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:12:02Z"
+      },
+      {
+        "candidate_id": "cand_construction_f9328ca3ff1d",
+        "skill_id": "sk_construction_0ef393bad1",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Extract desired attributes as separate preference memories",
+          "description": "When a user states characteristics of an ideal or planned place/object, extract each as its own preference memory, even if casual or embedded in other talk.",
+          "content": [
+            "During extraction, when the user describes attributes of an ideal, wanted, or planned place/object (e.g., 'ideal X by the water', 'place with natural light'), create a separate `preference` memory for each attribute, stated from the user's words.",
+            "Treat casual or exclamatory statements (e.g., 'Check my...', 'Oh, I found...') as containing extractable facts; do not skip them as mere remarks.",
+            "Do not fold explicit preferences into a broad `event` or `plan` memory; keep preferences distinct so later updates cannot overwrite them."
+          ]
+        },
+        "solves": "Construction agents sometimes ignore explicitly stated preferences about a user's ideal or planned place/object when the statement is casual (e.g., 'check my ideal X by the water'), and sometimes bury such preferences inside broader event/plan memories that later updates overwrite. Future inputs that describe any desired attribute of a goal object — location, lighting, materials, size — should yield a separate, durable preference memory per attribute. This does not apply to factual past events, to attributes the user rejects, or to preferences not tied to the user's own desire.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-30_conv-30_qa_0005",
+        "source_failure_id": "cons_conv-30_conv-30_qa_0005",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:09:02Z"
+      },
+      {
+        "candidate_id": "cand_construction_fe0072d95333",
+        "skill_id": "sk_construction_3b259a9cca",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Extract preferences from explicit evaluative statements",
+          "description": "When a message contains an explicit subjective appreciation or judgment (e.g., 'X is beautiful', 'I love Y'), create a preference candidate during extraction, even if the statement is embedded in a suggestion, question, or exclamation.",
+          "content": [
+            "During extraction, treat explicit evaluative language ('beautiful', 'love', 'enjoy', 'like', 'prefer', 'hate') as a preference signal and create a memory candidate for the judged object and polarity, even when it appears inside a suggestion, question, or exclamation.",
+            "Do not skip a preference just because the utterance's main purpose is another act (e.g., proposing a trip); the evaluative clause still states a durable preference."
+          ]
+        },
+        "solves": "When a preference is expressed inside a suggestion or exclamation, extraction may skip it as a non-factual utterance. This rule generalizes the recognition of explicit evaluative language ('beautiful', 'love', 'like', etc.) as a preference signal regardless of the surrounding speech act, across all topics. It does not apply to inferring preferences from actions alone or neutral descriptions.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-44_conv-44_qa_0116",
+        "source_failure_id": "cons_conv-44_conv-44_qa_0116",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:11:16Z"
+      }
+    ],
+    "retrieved_skill_ids": [],
+    "relations": []
+  },
+  "plan": {
+    "transaction_id": "construction_bank1_new_build_0003",
+    "side": "construction",
+    "base_bank_version": "v001",
+    "candidate_resolutions": [
+      {
+        "candidate_id": "cand_construction_1d2f3a4077e5",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_explicit_preference"
+        ],
+        "reason": "Merged with other explicit preference extraction candidates into one Skill."
+      },
+      {
+        "candidate_id": "cand_construction_3219bea44f93",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_preserve_recommendation"
+        ],
+        "reason": "Merged with other recommendation preservation candidates into one Skill."
+      },
+      {
+        "candidate_id": "cand_construction_3b4acb7a2d59",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_construction_preserve_purpose"
+        ],
+        "reason": "No existing Skill covers preserving stated purpose in preference extraction."
+      },
+      {
+        "candidate_id": "cand_construction_5477d13335dc",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_explicit_preference"
+        ],
+        "reason": "Merged with other explicit preference extraction candidates into one Skill."
+      },
+      {
+        "candidate_id": "cand_construction_590f7d139148",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_preserve_recommendation"
+        ],
+        "reason": "Merged with other recommendation preservation candidates into one Skill."
+      },
+      {
+        "candidate_id": "cand_construction_5a4f8d08e6a7",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_explicit_preference"
+        ],
+        "reason": "Merged with other explicit preference extraction candidates into one Skill."
+      },
+      {
+        "candidate_id": "cand_construction_80b6f77da902",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_explicit_preference"
+        ],
+        "reason": "Merged with other explicit preference extraction candidates into one Skill."
+      },
+      {
+        "candidate_id": "cand_construction_832b857cc369",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_explicit_preference"
+        ],
+        "reason": "Merged with other explicit preference extraction candidates into one Skill."
+      },
+      {
+        "candidate_id": "cand_construction_d52edd48a1fa",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_preserve_recommendation"
+        ],
+        "reason": "Merged with other recommendation preservation candidates into one Skill."
+      },
+      {
+        "candidate_id": "cand_construction_d642eae492c7",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_explicit_preference"
+        ],
+        "reason": "Merged with other explicit preference extraction candidates into one Skill."
+      },
+      {
+        "candidate_id": "cand_construction_e0f909db1f33",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_explicit_preference"
+        ],
+        "reason": "Merged with other explicit preference extraction candidates into one Skill."
+      },
+      {
+        "candidate_id": "cand_construction_f9328ca3ff1d",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_explicit_preference"
+        ],
+        "reason": "Merged with other explicit preference extraction candidates into one Skill."
+      },
+      {
+        "candidate_id": "cand_construction_fe0072d95333",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_explicit_preference"
+        ],
+        "reason": "Merged with other explicit preference extraction candidates into one Skill."
+      }
+    ],
+    "operations": [
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_explicit_preference",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Extract Explicit Preference Statements",
+        "description": "Use when a speaker explicitly states a preference, favorite, or enjoyment using affective language, even if brief, embedded, or phrased as additive.",
+        "content": [
+          "During extraction, treat explicit self-referential preference statements using affective language ('love', 'like', 'enjoy', 'favorite', 'prefer', 'really into') as preference memory candidates, even if brief, embedded in a longer reply, or phrased as additive ('also', 'besides', 'one of my favorites').",
+          "Extract each distinct item named as liked/loved, preserving the object and intensity; do not skip because the statement is casual, secondary, or surrounded by unrelated context.",
+          "Do not downgrade explicit preferences into neutral states or event/plan memories; keep them as durable preference memories linked to the speaker.",
+          "Do not apply to hypothetical, third-party, negated, or inferred preferences without explicit affective language."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_1d2f3a4077e5",
+          "cand_construction_5477d13335dc",
+          "cand_construction_5a4f8d08e6a7",
+          "cand_construction_80b6f77da902",
+          "cand_construction_832b857cc369",
+          "cand_construction_d642eae492c7",
+          "cand_construction_e0f909db1f33",
+          "cand_construction_f9328ca3ff1d",
+          "cand_construction_fe0072d95333"
+        ],
+        "reason": "Creating one Skill from multiple candidates that all address explicit preference extraction.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_preserve_recommendation",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Preserve Explicit Recommendations vs Preferences",
+        "description": "Use when a message contains an explicit recommendation, suggestion, or endorsement that must be preserved distinctly from mere preference during extraction or CRUD updates.",
+        "content": [
+          "During extraction, if the speaker explicitly recommends, suggests, or endorses specific items, store the recommendation claim (e.g., '<speaker> recommends X') and keep the speech-act verb; do not collapse it into a bare preference like 'enjoys X'.",
+          "During CRUD, before performing an UPDATE or MERGE into an existing memory, check whether the new evidence contains a recommendation distinct from an enjoyment/preference claim. If so, preserve the recommendation explicitly, even when merging into a preference memory, and avoid rewording it into only an enjoyed-item list.",
+          "Do not collapse a recommendation into mere enjoyment: 'enjoys X' does not imply 'recommends X'. Keep both clauses if evidence supports both."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_3219bea44f93",
+          "cand_construction_590f7d139148",
+          "cand_construction_d52edd48a1fa"
+        ],
+        "reason": "Creating one Skill from multiple candidates that all address preserving recommendations during memory enrichment.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_preserve_purpose",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Preserve Stated Purpose in Preference Extraction",
+        "description": "Use when a user states a preference, plan, or goal with an explicit reason or purpose that should be stored alongside the preference.",
+        "content": [
+          "During extraction, if the source message includes a preference, plan, or goal together with an explicit purpose (e.g., 'to', 'so that', 'because'), write one candidate that contains both the preference and its purpose.",
+          "When you later review existing memories for the same subject, if a memory records the preference but omits its purpose, issue an UPDATE to add the purpose rather than adding a duplicate memory."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_3b4acb7a2d59"
+        ],
+        "reason": "Creating a new Skill for preserving stated purpose in preference extraction.",
+        "hard_delete": false
+      }
+    ]
+  },
+  "status": "planned"
+}

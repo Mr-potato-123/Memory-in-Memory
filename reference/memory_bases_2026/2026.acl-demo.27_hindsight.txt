@@ -1,0 +1,729 @@
+       H INDSIGHT: Structured Agent Memory that Retains, Recalls, and Reflects
+                  Chris Latimer♣ , Nicoló Boschi♣ , Andrew Neeser♢ , Chris Bartholomew♣ ,
+                         Gaurav Srivastava♡ , Xuan Wang♡ , Naren Ramakrishnan♡
+                                                       ♣
+                                                         Vectorize.io, USA
+                                                 ♢
+                                                     The Washington Post, USA
+                                                       ♡
+                                                         Virginia Tech, USA
+                                      GitHub: https://github.com/vectorize-io/hindsight
+                                            Website: https://hindsight.vectorize.io/
+                                         PyPI: https://pypi.org/project/hindsight-all/
+
+
+                              Abstract                                work on generative agents showed that equipping
+                                                                      LLMs with persistent memory produces believable,
+            We demonstrate H INDSIGHT, a working mem-                 long-running character behavior (Park et al., 2023),
+            ory system for AI agents that organizes long-             and cognitive architecture research has since laid
+            term memory into four logical networks and
+                                                                      out principled designs for perception, memory, and
+            exposes three core operations. The world, ex-
+            perience, observation, and opinion networks               action modules in language agents (Sumers et al.,
+            separate objective facts from subjective beliefs,         2024). Recent surveys on LLM-based agent mem-
+            giving developers visibility into what an agent           ory identify three core challenges that remain open:
+            knows versus what it believes. The retain, re-            how to retain the right information from growing
+            call, and reflect operations handle ingestion,            interaction histories, how to recall it efficiently
+            retrieval, and reasoning respectively, with a par-        at query time, and how to reason over it coher-
+            allel pipeline that combines vector search, key-
+                                                                      ently (Zhang et al., 2025b; Wu et al., 2025; Zhang
+            word matching, graph traversal, and temporal
+            filtering, backed by PostgreSQL with pgvec-               et al., 2025a).
+            tor. Unlike existing systems such as MemGPT,                 Most agent memory systems today operate as
+            Zep, and Mem0, H INDSIGHT is the only one                 thin retrieval layers around stateless language mod-
+            that jointly provides fact-belief separation, tem-        els. They extract snippets from conversations, store
+            poral entity graphs, evolving opinions with con-          them in vector or graph-based stores, and retrieve
+            fidence scores, and configurable behavioral pro-
+                                                                      top-k items into the prompt when needed, fol-
+            files. On LongMemEval and LoCoMo, H IND -
+            SIGHT with a 20B open-source model reaches
+                                                                      lowing the retrieval-augmented generation (RAG)
+            83.6% and 83.2% accuracy, outperforming full-             paradigm (Lewis et al., 2020; Mialon et al., 2023).
+            context GPT-4o and all prior memory systems;              While this improves context carry-over, it strug-
+            with Gemini-3 Pro, LongMemEval accuracy                   gles with three problems: it cannot selectively ac-
+            reaches 91.4%. Our interactive demo lets users            cess information across many sessions (Tavakoli
+            build memory graphs through multi-session                 et al., 2025), it conflates what the agent observed
+            conversations, inspect how memories are clas-
+                                                                      with what it believes (Shan et al., 2025), and it
+            sified, and watch opinions form and change.
+            The system is open-source under the MIT
+                                                                      produces responses that are locally plausible but
+            license, available as a Python package (pip               globally inconsistent (Huang et al., 2025). Sys-
+            install hindsight-all) and Docker image,                  tems like MemGPT (Packer et al., 2023) introduce
+            with 13.3K GitHub stars and 763 forks to                  tiered memory management, Zep (Rasmussen et al.,
+            date, and in production use at Fortune 500 en-            2025) adds temporal knowledge graphs, and Mem-
+            terprises. Video demo: https://youtu.be/                  oryBank (Zhong et al., 2024) proposes forgetting
+            4M2wS-yEmVA.                                              mechanisms inspired by human cognition, but none
+                                                                      of them jointly address all three challenges.
+       1    Introduction
+                                                                         We present H INDSIGHT, a working memory sys-
+       Large language models have unlocked a new gen-                 tem that addresses these challenges through two
+       eration of AI agents that can plan, reason, and take           ideas. First, all agent memory is organized into four
+       actions in open-ended environments (Yao et al.,                logical networks that separate world facts, agent ex-
+       2023; Wei et al., 2022; Shinn et al., 2023). Early             periences, entity summaries, and evolving opinions.
+                                                                  275
+Proceedings of the 64th Annual Meeting of the Association for Computational Linguistics (Volume 3: System Demonstrations), pages 275–285
+                                     July 2-7, 2026 ©2026 Association for Computational Linguistics
+Second, three explicit operations, retain, recall, and   KARMA (Wang et al., 2025) applies long-and-
+reflect, govern how information enters the system,       short term memory to embodied agents, while
+how it is retrieved, and how the agent reasons.          MemVerse (Liu et al., 2025) extends memory to
+    H INDSIGHT is a compound AI system with two          multimodal lifelong learning settings. Memory-
+main components. T EMPR (Temporal Entity Mem-            R1 (Yan et al., 2025) uses reinforcement learning
+ory Priming Retrieval) builds a temporal, entity-        to train agents to manage their own memory op-
+aware memory graph and provides multi-strategy           erations. H INDSIGHT differs from all of these by
+retrieval with configurable token budgets. C ARA         jointly providing four-network epistemic separa-
+(Coherent Adaptive Reasoning Agents) produces            tion, temporal entity graphs, opinion evolution with
+preference-conditioned responses and maintains           confidence tracking, and configurable behavioral
+opinions that evolve as new evidence arrives. Both       profiles within a single system.
+components use configurable LLM backbones and
+are designed for production deployment, with drop-       Retrieval techniques. Our multi-strategy re-
+in wrappers for existing OpenAI and Anthropic            call pipeline combines HNSW-based vector
+clients (Appendix E).                                    search (Malkov and Yashunin, 2020), BM25 key-
+    On LongMemEval (Wu et al., 2024) and Lo-             word retrieval (Robertson and Zaragoza, 2009),
+CoMo (Maharana et al., 2024), H INDSIGHT                 graph traversal, and temporal filtering. Recipro-
+with an open-source 20B model achieves 83.6%             cal Rank Fusion (Cormack et al., 2009) merges
+and 83.2% overall accuracy, outperforming full-          these heterogeneous ranked lists, and a cross-
+context GPT-4o and prior memory systems such             encoder (Nogueira and Cho, 2019) provides final
+as Zep (Rasmussen et al., 2025), Mem0 (Chhikara          reranking. This hybrid approach draws on the
+et al., 2025), and A-Mem (Xu et al., 2025); scaling      broader RAG literature (Lewis et al., 2020; Mialon
+to Gemini-3 Pro pushes LongMemEval accuracy              et al., 2023) but extends it with graph and temporal
+to 91.4%. H INDSIGHT is designed for developers          channels specific to conversational memory.
+and researchers building AI agents that need per-
+sistent, structured memory across sessions, such as      Cognitive foundations. Our four-network design
+chatbots, personal assistants, and autonomous task       is inspired by cognitive science models of human
+agents. The system is released under the MIT li-         memory (Sumers et al., 2024; Shan et al., 2025).
+cense and can be installed via PyPI (pip install         Recent surveys (Zhang et al., 2025b; Wu et al.,
+hindsight-all) or Docker. The full architecture          2025; Zhang et al., 2025a) map these cognitive con-
+is in (Latimer et al., 2025); here we focus on system    structs to LLM agent architectures and identify the
+design and demonstration.                                separation of factual and belief-like memory as a
+                                                         key open problem, which H INDSIGHT addresses
+2   Related Work                                         directly. We next describe how H INDSIGHT’s ar-
+                                                         chitecture builds on these foundations.
+Three lines of work are most relevant to H IND -
+SIGHT : memory-augmented language agents, re-
+                                                         3     System Architecture
+trieval for conversational memory, and cognitive
+foundations for structuring agent knowledge.             H INDSIGHT organizes all agent memory into four
+                                                         networks and exposes three operations over them.
+Memory-augmented agents. MemGPT (Packer
+                                                         Figure 1 shows the end-to-end data flow.
+et al., 2023) pioneered tiered memory manage-
+ment for LLMs by treating the context window
+                                                         3.1    Four-Network Memory Organization
+as a virtual memory hierarchy. Zep (Rasmussen
+et al., 2025) builds temporal knowledge graphs           Each memory bank maintains four networks, each
+from conversations and supports time-aware re-           storing a different kind of information. This design
+trieval. Mem0 (Chhikara et al., 2025) focuses            is informed by research on cognitive memory in
+on production-ready scalable memory with graph-          LLMs (Shan et al., 2025) and surveys mapping hu-
+based storage. A-Mem (Xu et al., 2025) intro-            man memory structures to agent architectures (Wu
+duces an agentic approach where the LLM itself           et al., 2025):
+decides how to organize its memories. Memory-            • World network: objective facts about the exter-
+Bank (Zhong et al., 2024) incorporates an Ebbing-          nal environment (e.g., “Alice works at Google in
+haus forgetting curve to model memory decay.               Mountain View on the AI team”).
+                                                     276
+                                                                      and causal graph edges. The system extracts 2–
+
+
+
+
+                                                                T
+                                                            GH
+                              PT
+                                                                      5 coarse-grained narrative facts per conversation,
+
+
+
+
+                                             em
+
+
+
+
+                                                           DSI
+                                G
+
+
+
+
+                                                      0
+                                                                      where each fact covers an entire exchange rather
+
+
+
+
+                            Mem
+
+
+
+
+                                                  Mem
+                                          A-M
+
+
+
+
+                                                          HIN
+                                    Zep
+ Feature
+                                                                      than individual utterances. This makes downstream
+ Fact/opinion separation      ✗      ✗     ✗       ✗        ✓
+ Temporal reasoning           ✗      ✓     ✗       ✗        ✓         retrieval less sensitive to segmentation choices.
+ Entity-aware graph           ✗      ✓     ✓       ✓        ✓
+ Opinion evolution            ✗      ✗     ✗       ✗        ✓         Recall takes a query and a token budget and
+ Behavioral profiles          ✗      ✗     ✗       ✗        ✓         returns a ranked set of memories that fit within
+ Multi-strategy retrieval     ✗      ✗     ✗       P        ✓
+                                                                      the budget. It runs four retrieval channels in par-
+Table 1: Comparison of memory architectures. ✓ =                      allel: (1) vector similarity search using HNSW-
+present, ✗ = absent, P = partial.                                     indexed embeddings (Malkov and Yashunin, 2020),
+                                                                      (2) BM25 keyword matching using GIN-indexed
+                                                                      full-text search (Robertson and Zaragoza, 2009),
+• Experience network: first-person records of                         (3) graph-based spreading activation that traverses
+   the agent’s own actions (e.g., “I recommended                      entity, temporal, and causal links, and (4) tem-
+   Yosemite to Alice for hiking”).                                    poral filtering that matches occurrence intervals
+• Observation network: preference-neutral en-                         against query date ranges. Results are merged
+   tity summaries synthesized from underlying facts                   using Reciprocal Rank Fusion (RRF) (Cormack
+   (e.g., “Alice is a software engineer at Google spe-                et al., 2009) and refined with a cross-encoder
+   cializing in ML”).                                                 reranker (Nogueira and Cho, 2019). The token
+• Opinion network: subjective beliefs with confi-                     budget lets callers control how much context to
+   dence scores that evolve over time (e.g., “Python                  retrieve, keeping inference costs predictable regard-
+   is better for data science because of pandas”; con-                less of memory bank size.
+   fidence: 0.85).
+    This separation provides epistemic clarity: de-                   Reflect takes a query along with a behavioral
+velopers can inspect what the agent knows versus                      profile and generates a response conditioned on re-
+what it believes, and trace opinions back to the facts                trieved memories. The behavioral profile is defined
+that support them.                                                    by three disposition traits (skepticism, literalism,
+                                                                      empathy) on an integer scale of 1–5, which together
+    Table 1 compares H INDSIGHT with existing
+                                                                      control how strongly the bank’s accumulated be-
+memory systems across key architectural features.
+                                                                      liefs shape the response. During reflection, the
+Unlike MemGPT (Packer et al., 2023), which
+                                                                      system may form new opinions or update existing
+focuses on tiered context management, or A-
+                                                                      ones through a reinforcement mechanism: support-
+Mem (Xu et al., 2025), which builds agentic mem-
+                                                                      ing evidence increases confidence, contradicting
+ory without temporal reasoning, H INDSIGHT is
+                                                                      evidence decreases it. This is conceptually related
+the only system that combines all of these ca-
+                                                                      to verbal reinforcement in Reflexion (Shinn et al.,
+pabilities: separating facts from beliefs, support-
+                                                                      2023), but applied to persistent opinion state rather
+ing temporal reasoning and entity-aware graphs,
+                                                                      than episodic task feedback.
+maintaining evolving opinions with confidence
+scores, and offering configurable behavioral pro-                     3.3   Component Design
+files. KARMA (Wang et al., 2025) and Mem-
+                                                                      T EMPR implements retain and recall. During re-
+Verse (Liu et al., 2025) explore related ideas in
+                                                                      tain, an LLM extracts narrative facts from conversa-
+embodied and multimodal settings respectively, but
+                                                                      tional transcripts, performs entity recognition and
+neither provides the structured four-network sepa-
+                                                                      resolution using string similarity and co-occurrence
+ration with opinion evolution.
+                                                                      patterns, and constructs four types of graph links
+                                                                      (temporal, semantic, entity, causal). Entity links
+3.2 Three Core Operations
+                                                                      connect memories about the same person or thing
+Retain ingests input data (conversations, docu-                       across distant sessions, enabling multi-hop discov-
+ments) and converts them into structured narrative                    ery that pure vector search would miss (Johnson
+facts. Each fact is classified into one of the four                   et al., 2021). Each memory unit carries rich tem-
+networks, timestamped with occurrence intervals,                      poral metadata: an occurrence interval (τs , τe ) that
+linked to resolved entities, and connected to re-                     records when the event happened, and a mention
+lated memories through temporal, semantic, entity,                    timestamp τm that records when the agent learned
+                                                                    277
+Figure 1: H INDSIGHT architecture. Input flows through T EMPR’s retain pipeline (fact extraction, embedding,
+entity resolution, link construction) into a four-network bank. Given a query and token budget, T EMPR’s recall runs
+four-way retrieval (semantic, BM25, graph, temporal) with RRF fusion and reranking. C ARA’s reflect generates
+preference-conditioned responses and updates opinions.
+
+
+about it. This supports both point events and ex-           erates until it has enough evidence. Hierarchical
+tended periods, and enables recency-aware ranking.          retrieval queries mental models first, then observa-
+   C ARA implements reflect. Each memory bank               tions, then raw facts. Banks also support directives:
+has a configurable behavioral profile that modu-            prioritized hard rules injected into every response,
+lates response generation. Opinions carry con-              giving developers explicit control on top of the
+fidence scores in [0, 1] and are stored separately          disposition traits.
+from facts. When new facts arrive through retain,
+C ARA identifies related opinions using entity over-        4     Implementation
+lap and embedding similarity, assesses whether the          Having described the architecture, we now cover
+new evidence supports or contradicts each opinion,          the storage backend, retrieval pipeline, and deploy-
+and adjusts confidence scores accordingly. Recent           ment details that make H INDSIGHT practical for
+work on reinforcement-learned memory manage-                production use.
+ment (Yan et al., 2025) explores a complementary
+approach where the agent learns when to store and           4.1    Storage and Retrieval
+retrieve; H INDSIGHT instead uses explicit opera-          H INDSIGHT is deployed as a REST service backed
+tions with structured schemas to give developers           by PostgreSQL with the pgvector extension. Each
+full control. This produces agents whose beliefs           memory unit is stored as a database row contain-
+evolve with evidence rather than remaining fixed           ing the narrative text, embedding vector, temporal
+or getting overwritten.                                    metadata (occurrence interval and mention times-
+   A background consolidation engine refines ob-           tamp), fact type, confidence score (for opinions),
+servations from accumulated facts. Each obser-             and auxiliary fields including access counts and
+vation tracks a proof count, supporting quotes,            full-text search vectors. HNSW indexes (Malkov
+and a freshness trend (new, strengthening, sta-            and Yashunin, 2020) support sub-linear vector
+ble, weakening, stale) so developers can tell              search, while GIN indexes enable BM25 (Robert-
+whether a belief is still well supported. New              son and Zaragoza, 2009) full-text retrieval, both
+facts refine existing observations rather than over-       within a single database without requiring external
+writing them, keeping the evidence trail intact.           search infrastructure like Elasticsearch or dedicated
+Reflect runs as an agentic loop: the agent de-             vector stores such as FAISS (Johnson et al., 2021).
+cides which tools to call (search_observations,            This single-database design simplifies deployment
+search_mental_models, recall, expand) and it-              and avoids the consistency issues that arise when
+                                                        278
+memory state is split across multiple systems.          pooling with PgBouncer, and read-replica routing.
+   The four recall channels run in parallel. Vec-       An Oracle AI Database backend with full feature
+tor and BM25 search use PostgreSQL indexes di-          parity is also supported. Avoiding a separate vector
+rectly. Graph traversal performs bounded breadth-       store removes a class of consistency bugs and keeps
+first search (typically 2–3 hops) with activation       deployment to a single connection string, backup,
+decay and configurable link-type multipliers that       and monitoring target. Blob attachments can be
+upweight causal and entity edges over weaker se-        offloaded to S3, Azure, or GCS through pluggable
+mantic or long-range temporal edges. Temporal           adapters.
+retrieval uses a hybrid parser: a rule-based ana-
+lyzer handles common date expressions (e.g., “last      4.4   Multilingual Support
+week”, “in March”), with a lightweight T5 model         H INDSIGHT detects the input language at retain
+(flan-t5-small) as fallback for expressions the rules   time and preserves it through the pipeline. Facts
+cannot resolve. After RRF (Cormack et al., 2009)        are extracted in the original language, entities are
+merges the four ranked lists, a cross-encoder (ms-      stored in their native script, and reflect responses
+marco-MiniLM-L-6-v2) (Nogueira and Cho, 2019)           match the query language. No per-language config-
+reranks the top candidates for precision.               uration is needed.
+
+4.2 LLM Integration and Latency                         4.5   Scalability and API
+All LLM calls, including fact extraction, opinion       The token budget mechanism is the primary scala-
+formation, and answer generation, use a config-         bility control. Regardless of how large a memory
+urable backbone. Structured output is enforced          bank grows, recall returns a bounded amount of
+through Pydantic schemas that validate fact types,      context, preventing the downstream LLM’s win-
+temporal ranges, entity annotations, and causal rela-   dow from overflowing and keeping per-query cost
+tionships. This lets the system swap between open-      stable. Each memory bank is isolated with its
+source and commercial models without changing           own four-network structure and behavioral profile,
+the pipeline logic.                                     so the system serves multiple agents concurrently
+   Observation generation (entity summary up-           without cross-contamination.
+dates) runs asynchronously in the background, so           The system exposes a REST API with three
+retain latency is dominated by the fact extraction      endpoints corresponding to the core operations:
+LLM call rather than summary recomputation. This        retain for ingesting data, recall for retrieving
+keeps write-path latency low while gradually im-        memories given a query and token budget, and
+proving entity profiles as new facts arrive. Recall     reflect for generating preference-conditioned re-
+latency is bounded by the parallel retrieval chan-      sponses. Banks are created with a name, back-
+nels and reranker, both of which operate over in-       ground description, and the three disposition traits
+dexed data and a small candidate set (typically 20–     (skepticism, literalism, empathy), and can be re-
+50 candidates before reranking). Reflect adds one       configured at any time. Beyond the REST API,
+LLM generation call on top of recall, so end-to-end     H INDSIGHT ships an MCP (Model Context Pro-
+query latency is driven primarily by the backbone       tocol) server so that AI coding assistants and any
+model’s inference speed. For a bank with 10,000         MCP-compatible client can read and write mem-
+memory units, recall completes in under 200ms           ory directly. An extensions framework provides
+excluding the backbone LLM call, and the token          pluggable hooks for multi-tenant authentication
+budget mechanism ensures this remains stable as         (a Supabase JWT extension is bundled and gives
+the bank grows.                                         each user a separate PostgreSQL schema), custom
+                                                        HTTP endpoints, and per-operation validation for
+4.3 Production Scalability                              rate limiting and audit logging. Webhook subscrip-
+The single-database design is deliberate in a space     tions notify external systems when memories are re-
+where Elasticsearch and FAISS are common. Post-         tained or when observations change, which enables
+greSQL with HNSW (pgvector) and GIN indexes             event-driven downstream pipelines. Out-of-the-box
+scales well for production memory banks, and re-        integrations are provided for LangGraph, CrewAI,
+call stays bounded by the token budget rather than      AutoGen, Pydantic-AI, OpenAI Agents, LlamaIn-
+by corpus size. For larger workloads, H INDSIGHT        dex, Smolagents, Strands, AG2, AgentCore, n8n,
+supports schema-per-tenant isolation, connection        Dify, Pipecat, and the Vercel AI SDK, in addition
+                                                    279
+ System                     LongMemEval    LoCoMo         channels contributed to each result, along with RRF
+ Full-context (GPT-4o)         60.2           –           fusion scores and reranker outputs, making the
+ Full-context (OSS-20B)        39.0           –           multi-strategy recall pipeline transparent.
+ Zep (GPT-4o)                  71.2          75.1
+ Memobase                       –            75.8         Opinion evolution. Attendees observe how opin-
+ Supermemory (Gemini-3)        85.2           –
+ Backboard                      –            90.0         ions form and change as new evidence is retained.
+                                                          For example, after telling the agent “I tried React
+    H INDSIGHT (OSS-20B)       83.6          83.2
+    H INDSIGHT (OSS-120B)      89.0          85.7         for my project and it worked great,” the agent forms
+    H INDSIGHT (Gemini-3)      91.4          89.6         the opinion “React is a good framework choice”
+                                                          with moderate confidence. In a later session, if
+Table 2: Accuracy (%) on LongMemEval (S, 500 Qs)          the attendee says “Actually, the React project be-
+and LoCoMo. H INDSIGHT with a 20B open backbone
+                                                          came hard to maintain,” the opinion’s confidence
+beats full-context GPT-4o and prior systems. Best per
+column in bold.                                           drops. We show two agents with different behav-
+                                                          ioral profiles (e.g., high skepticism vs. high empa-
+                                                          thy) accessing the same facts but forming different
+to drop-in LLM-client wrappers for OpenAI, An-            opinions, illustrating how disposition parameters
+thropic, and 100+ providers through LiteLLM (Ap-          shape belief formation.
+pendix E). Appendix A covers installation options,
+                                                          Benchmark explorer. Attendees explore per-
+Appendix B provides code examples, Appendix C
+                                                          question results from LongMemEval (Wu et al.,
+lists structured output schemas, and Appendix D
+                                                          2024) and LoCoMo (Maharana et al., 2024)
+gives per-category benchmark breakdowns.
+                                                          through our interactive results viewer, drilling into
+5     Demonstration                                       retrieved memories and model configurations for
+                                                          each response. This component also supports Mem-
+H INDSIGHT is available as an installable package         oryBench (Ai et al., 2025) questions, providing ad-
+via pip install hindsight-all and as a Docker             ditional coverage of memory and continual learning
+image at https://github.com/vectorize-io/                 evaluation scenarios (Tavakoli et al., 2025).
+hindsight. A hosted cloud version is acces-
+sible at https://ui.hindsight.vectorize.io/               6     Evaluation
+signup, and full documentation is at https://             We summarize key results from the full evaluation
+hindsight.vectorize.io. Our demonstration                 in (Latimer et al., 2025). We test on two established
+walks attendees through the full lifecycle of H IND -     benchmarks for long-term conversational memory:
+SIGHT ’s memory system. The demo consists of              LongMemEval (Wu et al., 2024), which contains
+five parts.                                               500 questions across conversations spanning up
+                                                          to 1.5M tokens, and LoCoMo (Maharana et al.,
+Multi-session conversation. Attendees interact
+                                                          2024), which uses multi-session human conversa-
+with a H INDSIGHT-backed agent over several con-
+                                                          tions with up to 35 sessions each. Both benchmarks
+versation sessions, providing information about
+                                                          are widely used to evaluate memory-augmented
+people, events, and preferences. The system in-
+                                                          agents and conversational assistants (Zhang et al.,
+crementally builds a structured memory graph that
+                                                          2025a; Ai et al., 2025).
+attendees can watch grow in real time.
+                                                          6.1    Overall Results
+Memory inspection. Attendees browse the four
+memory networks to see how incoming conversa-             Table 2 reports overall accuracy across both bench-
+tions are decomposed into classified facts. They          marks. On LongMemEval, H INDSIGHT with an
+can inspect entity resolution results, graph link         open-source 20B backbone achieves 83.6%, a 44.6-
+types, and how opinions form with confidence              point gain over a full-context baseline with the
+scores. This shows the epistemic separation that          same model and 23 points above full-context GPT-
+the four-network design provides.                         4o. Scaling the backbone to 120B reaches 89.0%,
+                                                          and using Gemini-3 Pro for answer generation
+Retrieval walkthrough. Attendees issue queries,           pushes accuracy to 91.4%, the best result across all
+including temporal questions (“What did we dis-           systems including those backed by frontier models.
+cuss last month?”) and multi-hop questions that             On LoCoMo, H INDSIGHT consistently outper-
+span sessions. The interface shows which retrieval        forms prior open memory systems. With the 20B
+                                                        280
+backbone, overall accuracy is 83.2%, compared            rather than as the main source of accuracy. Pref-
+to 75.8% for Memobase and 75.1% for Zep (Ras-            erence questions, which depend on four-network
+mussen et al., 2025). With Gemini-3, H INDSIGHT          separation and observation-level consolidation, im-
+reaches 89.6%, competitive with Backboard’s re-          prove from 20.0% to 66.7% with the same back-
+ported 90.0%.                                            bone, the largest relative gain. The full breakdown
+                                                         is in (Latimer et al., 2025), and shows that the struc-
+6.2 Where the Architecture Helps Most                    tured memory design, not the reranker, accounts
+The largest gains on LongMemEval appear in ex-           for most of the lift.
+actly the categories that stress long-horizon mem-
+ory. Multi-session questions, which require con-         6.4    Qualitative Case Study
+necting information across different conversations,      Consider a three-session interaction. In session 1
+jump from 21.1% to 79.7% with the 20B backbone           the user says “I started learning Rust last March
+and reach 87.2% with Gemini-3. Temporal reason-          for my team’s payments rewrite”; in session 2 they
+ing questions improve from 31.6% to 79.7% (20B)          ask “what should I focus on next quarter?”; in ses-
+and 91.0% (Gemini-3), showing that T EMPR’s tem-         sion 3 they say “Rust has been frustrating, I miss
+poral filtering and time-aware graph retrieval di-       Go’s compile times.” Retain in session 1 creates
+rectly mitigate context dilution. Preference ques-       a world fact (team rewrite in Rust), an experience
+tions, which test whether the agent remembers user       fact (user began learning Rust), and updates the
+preferences stated in earlier sessions, improve from     observation for the user-entity. At session 2, recall
+20.0% to 66.7% (20B) and 80.0% (Gemini-3).               combines all four channels: the temporal channel
+   On LoCoMo, H INDSIGHT shows particularly              binds “last March” to the Rust fact, graph traversal
+strong open-domain performance: 91.0% with the           expands to the payments-service entity, and the ob-
+20B backbone and 95.1% with Gemini-3, the high-          servation supplies a consolidated profile. Reflect
+est score across all systems on this category. Multi-    grounds its recommendation in the user’s stated mo-
+hop questions, which require reasoning across mul-       tivation. After session 3, the consolidation engine
+tiple facts to produce an answer, reach 64.6% (20B)      refines the existing observation: the new evidence
+and 70.8% (Gemini-3). These results illustrate that      weakens the earlier belief and the freshness trend
+the memory architecture matters more than model          flips from stable to weakening, while the world fact
+size. H INDSIGHT with a 20B model outperforms            is unchanged. Both supporting and contradicting
+full-context GPT-4o and matches or exceeds sys-          evidence link to the same observation, so a later
+tems backed by frontier models, because the struc-       response can acknowledge the frustration without
+tured four-network organization and multi-strategy       losing context.
+retrieval prevent information from being lost as
+conversation history grows. This aligns with find-       7     Conclusion
+ings from recent benchmarking studies that show
+structured memory consistently outperforms brute-        We presented H INDSIGHT, a working memory sys-
+force long-context approaches when conversations         tem for AI agents that organizes memory into
+exceed tens of thousands of tokens (Tavakoli et al.,     four networks and exposes retain, recall, and
+2025; Ai et al., 2025).                                  reflect as explicit operations. The system sep-
+                                                         arates evidence from beliefs, supports tempo-
+6.3 Where Each Component Helps                           ral and entity-aware retrieval through a parallel
+The per-category breakdown in Table 4 isolates           pipeline, and maintains evolving opinions with con-
+the components targeted at long-horizon memory.          fidence tracking. On two standard benchmarks, the
+Temporal-reasoning and multi-session questions,          structured memory architecture lifts a 20B open-
+which depend on the temporal channel and entity-         source model above full-context GPT-4o, and with
+aware graph traversal, rise from 45.1% and 44.3%         Gemini-3 Pro reaches 91.4% on LongMemEval,
+(full-context GPT-4o) to 79.7% with the 20B back-        the highest reported accuracy across all systems.
+bone. Single-session categories, which a cross-          H INDSIGHT is open-source under the MIT li-
+encoder alone can address, are already strong in the     cense, with code, documentation, Python/Type-
+full-context baseline (81.4% and 94.6%) and gain         Script/Go/Rust SDKs, and an interactive bench-
+little. This is consistent with the cross-encoder act-   mark viewer available at https://github.com/
+ing as a precision step on top of structured retrieval   vectorize-io/hindsight.
+                                                     281
+Acknowledgements                                        no personal data was collected. The system is re-
+                                                        leased under the MIT license to support open re-
+We thank the Vectorize.io engineering team for          search and responsible development.
+their work on the open-source release, and the early
+adopters and contributors who have helped shape         Broader Impact Statement
+H INDSIGHT through GitHub issues, pull requests,
+                                                        H INDSIGHT provides long-term memory for AI
+and Slack discussions. We are grateful to research
+                                                        agents, enabling them to learn from past interac-
+collaborators at the Virginia Tech Sanghani Center
+                                                        tions and maintain consistent beliefs over time.
+for Artificial Intelligence and Data Analytics and
+                                                        This can improve user experience in applications
+at The Washington Post for independently repro-
+                                                        like personal assistants, customer support, and ed-
+ducing the benchmark results.
+                                                        ucational tools. However, persistent memory also
+Limitations                                             introduces risks: long-term storage of user inter-
+                                                        actions could enable surveillance-like behavior if
+1) H INDSIGHT relies on LLM calls for fact ex-          misused, and the ability to form and maintain opin-
+traction, entity resolution, and opinion formation.     ions could lead agents to develop fixed views that
+The quality of these steps depends on the back-         resist correction. We address some of these risks
+bone model, and extraction errors can propagate         through transparent memory organization: the four-
+through the memory graph. 2) All evaluation             network design makes all stored information in-
+was conducted on English-language benchmarks            spectable, and configurable behavioral profiles give
+(LongMemEval and LoCoMo). Performance on                developers control over how opinions form. The
+other languages has not been tested. 3) The opin-       open-source release allows the community to audit,
+ion evolution mechanism has not been validated          extend, and improve safety mechanisms.
+through formal user studies. While benchmark re-
+sults show strong retrieval accuracy, the subjective
+quality of opinion formation and confidence cali-       References
+bration would benefit from human evaluation. 4)         Qingyao Ai, Yichen Tang, Changyue Wang, Jianming
+The system requires PostgreSQL with pgvector,             Long, Weihang Su, and Yiqun Liu. 2025. Mem-
+                                                          oryBench: A benchmark for memory and con-
+which adds deployment complexity for teams that           tinual learning in LLM systems. arXiv preprint.
+do not already use PostgreSQL (though the embed-          ArXiv:2510.17281.
+ded Python package bundles its own PostgreSQL
+                                                        Prateek Chhikara, Dev Khant, Saket Aryan, Taranjeet
+instance to lower this barrier). 5) Temporal parsing
+                                                          Singh, and Deshraj Yadav. 2025. Mem0: Building
+uses a combination of rules and a lightweight T5          production-ready AI agents with scalable long-term
+model, which handles common date expressions              memory. arXiv preprint. ArXiv:2504.19413.
+well but may miss highly ambiguous or culturally
+                                                        Gordon V. Cormack, Charles L. A. Clarke, and Stefan
+specific temporal references.                             Buettcher. 2009. Reciprocal rank fusion outperforms
+                                                          condorcet and individual rank learning methods. In
+Ethics Statement                                          SIGIR, pages 758–759, New York, NY, USA. ACM.
+
+H INDSIGHT stores and organizes information from        Jen-tse Huang, Kaiser Sun, Wenxuan Wang, and Mark
+                                                           Dredze. 2025. LLMs do not have human-like work-
+user conversations in persistent memory banks.             ing memory. arXiv preprint. ArXiv:2505.10571.
+This raises privacy considerations, as the system
+retains personal details, preferences, and opinions     Jeff Johnson, Matthijs Douze, and Hervé Jégou. 2021.
+                                                           Billion-scale similarity search with GPUs. IEEE
+over time. Developers using H INDSIGHT should
+                                                           Transactions on Big Data, 7(3):535–547.
+implement appropriate access controls, data reten-
+tion policies, and user consent mechanisms. The         Chris Latimer, Nicoló Boschi, Andrew Neeser, Chris
+system does not currently include built-in PII detec-     Bartholomew, Gaurav Srivastava, Xuan Wang, and
+                                                          Naren Ramakrishnan. 2025. Hindsight is 20/20:
+tion or automatic redaction. The opinion formation        Building agent memory that retains, recalls, and re-
+mechanism reflects patterns in the data it processes      flects. arXiv preprint. ArXiv:2505.XXXXX.
+and may amplify biases present in the input. We
+                                                        Patrick Lewis, Ethan Perez, Aleksandra Piktus, Fabio
+encourage developers to monitor opinion networks          Petroni, Vladimir Karpukhin, Naman Goyal, Hein-
+for harmful or biased beliefs. All evaluation was         rich Küttler, Mike Lewis, Wen-tau Yih, Tim Rock-
+conducted on publicly available benchmarks, and           täschel, Sebastian Riedel, and Douwe Kiela. 2020.
+                                                    282
+  Retrieval-augmented generation for knowledge-           Mohammad Tavakoli, Alireza Salemi, Carrie Ye, Mo-
+  intensive NLP tasks. NeurIPS. ArXiv:2005.11401.          hamed Abdalla, Hamed Zamani, and J Ross Mitchell.
+                                                           2025. Beyond a million tokens: Benchmarking
+Junming Liu, Yifei Sun, Weihua Cheng, Haodong              and enhancing long-term memory in LLMs. arXiv
+  Lei, Yirong Chen, Licheng Wen, Xuemeng Yang,             preprint. ArXiv:2510.27246.
+  Daocheng Fu, Pinlong Cai, Nianchen Deng, and
+  1 others. 2025. MemVerse: Multimodal mem-               Zixuan Wang, Bo Yu, Junzhe Zhao, Wenhao Sun, Sai
+  ory for lifelong learning agents. arXiv preprint.         Hou, Shuai Liang, Xing Hu, Yinhe Han, and Yiming
+  ArXiv:2512.03627.                                         Gan. 2025. KARMA: Augmenting embodied AI
+                                                            agents with long-and-short term memory systems.
+Adyasha Maharana, Dong-Ho Lee, Sergey Tulyakov,             In IEEE International Conference on Robotics and
+  Mohit Bansal, Francesco Barbieri, and Yuwei               Automation (ICRA), pages 1–8, Piscataway, NJ, USA.
+  Fang. 2024. Evaluating very long-term conversa-           IEEE.
+  tional memory of LLM agents. arXiv preprint.
+  ArXiv:2402.17753.                                       Jason Wei, Xuezhi Wang, Dale Schuurmans, Maarten
+                                                             Bosma, Brian Ichter, Fei Xia, Ed Chi, Quoc Le, and
+Yury A. Malkov and Dmitry A. Yashunin. 2020. Effi-           Denny Zhou. 2022. Chain-of-thought prompting elic-
+  cient and robust approximate nearest neighbor search       its reasoning in large language models. NeurIPS.
+  using hierarchical navigable small world graphs.           ArXiv:2201.11903.
+  IEEE Transactions on Pattern Analysis and Machine
+  Intelligence, 42(4):824–836.                            Di Wu, Hongwei Wang, Wenhao Yu, Yuwei Zhang, Kai-
+                                                            Wei Chang, and Dong Yu. 2024. LongMemEval:
+Grégoire Mialon, Roberto Dessì, Maria Lomeli, Christo-      Benchmarking chat assistants on long-term interac-
+  foros Nalmpantis, Ram Pasunuru, Roberta Raileanu,         tive memory. arXiv preprint. ArXiv:2410.10813.
+  Baptiste Rozière, Timo Schick, Jane Dwivedi-Yu,
+  Asli Celikyilmaz, Edouard Grave, Yann LeCun, and        Yaxiong Wu, Sheng Liang, Chen Zhang, Yichao Wang,
+  Thomas Scialom. 2023. Augmented language mod-             Yongyue Zhang, Huifeng Guo, Ruiming Tang, and
+  els: a survey. Transactions on Machine Learning           Yong Liu. 2025. From human memory to AI memory:
+  Research. ArXiv:2302.07842.                               A survey on memory mechanisms in the era of LLMs.
+                                                            arXiv preprint. ArXiv:2504.15965.
+Rodrigo Nogueira and Kyunghyun Cho. 2019. Pas-
+  sage re-ranking with BERT.    arXiv preprint.           Wujiang Xu, Zujie Liang, Kai Mei, Hang Gao, Jun-
+  ArXiv:1901.04085.                                        tao Tan, and Yongfeng Zhang. 2025. A-Mem:
+Charles Packer, Vivian Fang, Shishir G. Patil, Kevin       Agentic memory for LLM agents. arXiv preprint.
+  Lin, Sarah Wooders, and Joseph E. Gonzalez. 2023.        ArXiv:2502.12110.
+  MemGPT: Towards LLMs as operating systems.              Sikuan Yan, Xiufeng Yang, Zuchao Huang, Ercong Nie,
+  arXiv preprint. ArXiv:2310.08560.                          Zifeng Ding, Zonggen Li, Xiaowen Ma, Kristian Ker-
+Joon Sung Park, Joseph C. O’Brien, Carrie J. Cai,            sting, Jeff Z Pan, Hinrich Schütze, and 1 others. 2025.
+  Meredith Ringel Morris, Percy Liang, and Michael S.        Memory-R1: Enhancing large language model agents
+  Bernstein. 2023. Generative agents: Interactive simu-      to manage and utilize memories via reinforcement
+  lacra of human behavior. UIST. ArXiv:2304.03442.           learning. arXiv preprint. ArXiv:2508.19828.
+
+Preston Rasmussen, Pavlo Paliychuk, Travis Beauvais,      Shunyu Yao, Jeffrey Zhao, Dian Yu, Nan Du, Izhak
+  Jack Ryan, and Daniel Chalef. 2025. Zep: A tempo-         Shafran, Karthik Narasimhan, and Yuan Cao. 2023.
+  ral knowledge graph architecture for agent memory.        ReAct: Synergizing reasoning and acting in language
+  arXiv preprint. ArXiv:2501.13956.                         models. ICLR. ArXiv:2210.03629.
+
+Stephen Robertson and Hugo Zaragoza. 2009. The            Dianxing Zhang, Wendong Li, Kani Song, Jiaye
+   probabilistic relevance framework: BM25 and be-          Lu, Gang Li, Liuchun Yang, and Sheng Li.
+  yond. Foundations and Trends in Information Re-           2025a. Memory in large language models: Mech-
+   trieval, 3(4):333–389.                                   anisms, evaluation and evolution. arXiv preprint.
+                                                            ArXiv:2509.18868.
+Lianlei Shan, Shixian Luo, Zezhou Zhu, Yu Yuan, and
+  Yong Wu. 2025. Cognitive memory in large language       Zeyu Zhang, Quanyu Dai, Xiaohe Bo, Chen Ma, Rui Li,
+  models. arXiv preprint. ArXiv:2504.02441.                 Xu Chen, Jieming Zhu, Zhenhua Dong, and Ji-Rong
+                                                            Wen. 2025b. A survey on the memory mechanism of
+Noah Shinn, Federico Cassano, Ashwin Gopinath,              large language model-based agents. ACM Transac-
+  Karthik Narasimhan, and Shunyu Yao. 2023. Re-             tions on Information Systems, 43(6):1–47.
+  flexion: Language agents with verbal reinforcement
+  learning. NeurIPS. ArXiv:2303.11366.                    Wanjun Zhong, Lianghong Guo, Qiqi Gao, He Ye, and
+                                                           Yanlin Wang. 2024. MemoryBank: Enhancing large
+Theodore R. Sumers, Shunyu Yao, Karthik Narasimhan,         language models with long-term memory. AAAI.
+  and Thomas L. Griffiths. 2024. Cognitive architec-       ArXiv:2305.10250.
+  tures for language agents. Transactions on Machine
+  Learning Research. ArXiv:2309.02427.
+                                                      283
+A   Installation and Setup                                     Provider    Example models
+                                                               OpenAI      GPT-4o, GPT-5-mini
+H INDSIGHT can be installed in two ways: as a                  Anthropic   Claude Sonnet, Claude Haiku
+Docker container (recommended for production)                  Google      Gemini 2.0 Flash, Gemini Pro
+or as a Python package (for development and ex-                Groq        Llama 3, Mixtral
+                                                               MiniMax     MiniMax-Text, abab series
+perimentation).                                                Ollama      Any local GGUF model
+                                                               LM Studio   Any local model
+Docker. The Docker image bundles the API                       LiteLLM     100+ providers via routing
+server, PostgreSQL with pgvector, and a web UI:
+export OPENAI_API_KEY = sk - xxx                        Table 3: Supported LLM providers. All providers use
+docker run -- rm - it -- pull always \                  the same pipeline; switching requires only changing an
+  -p 8888:8888 -p 9999:9999 \                           environment variable.
+  -e HINDSIGHT_API_LLM_API_KEY =
+      $OPENAI_API_KEY \
+  ghcr . io / vectorize - io / hindsight : latest
+                                                             content =" Alice works at Google as an
+                                                                  ML engineer ")
+  The API is available at localhost:8888
+and the UI at localhost:9999.            The            # Recall : retrieve relevant memories
+LLM provider can be configured via the                  results = client . recall (
+                                                            bank_id =" my - bank " ,
+HINDSIGHT_API_LLM_PROVIDER       environment                query =" What does Alice do ? ")
+variable, with support for OpenAI, Anthropic,
+Gemini, Groq, MiniMax, Ollama, LM Studio, and           # Reflect : generate a grounded response
+                                                        response = client . reflect (
+any LiteLLM-compatible endpoint.                            bank_id =" my - bank " ,
+                                                            query =" Tell me about Alice ")
+Python embedded. For development or note-
+book use, the hindsight-all package bundles               Banks are configured with disposition traits that
+an embedded PostgreSQL instance so no external          tune how opinionated or cautious the agent is:
+database is needed:                                     # Create a bank with a behavioral
+pip install hindsight - all                                 profile
+                                                        client . create_bank (
+                                                            bank_id =" analyst " ,
+Client SDKs. Client libraries are available for             background = "A data analyst assistant
+                                                                  ",
+Python (pip install hindsight-client),                      skepticism =4 , literalism =3 , empathy
+Node.js/TypeScript         (npm         install                   =2) # 1 -5
+@vectorize-io/hindsight-client),            Go,
+and Rust. A CLI tool (hindsight-cli) is also               The embedded Python mode requires no server
+provided. For local development, the embedded           setup:
+mode uses pg0, a single-binary PostgreSQL               import os
+distribution with pgvector pre-installed, so no         from hindsight import HindsightServer ,
+                                                            HindsightClient
+external database is required.
+                                                        with HindsightServer (
+Supported LLM providers. Table 3 lists the                  llm_provider =" openai " ,
+LLM backends that H INDSIGHT supports out                   llm_model =" gpt -4 o - mini " ,
+                                                            llm_api_key = os . environ [ "
+of the box. The provider is selected via the                    OPENAI_API_KEY "]
+HINDSIGHT_API_LLM_PROVIDER environment vari-            ) as server :
+able.                                                       client = HindsightClient ( base_url =
+                                                                server . url )
+                                                            client . retain ( bank_id = " demo " ,
+B   API Usage Examples                                          content = " Bob prefers hiking over
+                                                                       cycling " )
+The Python client exposes the three core operations         results = client . recall ( bank_id ="
+directly:                                                       demo " ,
+                                                                query =" What are Bob 's hobbies ?" )
+from hindsight_client import Hindsight
+client = Hindsight ( base_url = " http ://
+    localhost :8888 " )
+                                                        C    Structured Output Schemas
+# Retain : store a conversation
+client . retain (                                       H INDSIGHT enforces structured output from all
+    bank_id = " my - bank " ,                           LLM calls using Pydantic models, so parsing is
+                                                      284
+reliable regardless of the backbone model. The key             These schemas are validated at the LLM bound-
+schemas follow.                                              ary so downstream code always operates on typed
+                                                             data.
+Fact extraction. Each extracted fact carries five
+dimensions (what, when, where, who, why), a net-             D        Per-Category Benchmark Results
+work classification, temporal metadata, entity an-
+                                                             Table 4 breaks down LongMemEval accuracy by
+notations, and optional causal links:
+                                                             question category, complementing the per-category
+class ExtractedFact ( BaseModel ):                           numbers used in §6.3.
+    what : str        # Core fact - concise but
+          complete
+    when : str        # When it happened . 'N/ A ' if            Category               Full-ctx     Zep      Ours     Ours     Ours
+          unknown                                                                      (GPT-4o)    (GPT-4o)   (20B)   (120B)   (Gem3)
+    where : str       # Location if relevant . 'N/A ' if
+           none                                                  Single-sess. (user)     81.4        92.9     95.7    100.0     97.1
+                                                                 Single-sess. (asst)     94.6        80.4     94.6     98.2     96.4
+    who : str         # People involved . 'N/A ' if
+                                                                 Preference              20.0        56.7     66.7    86.7      80.0
+          general                                                Knowledge update        78.2        83.3     84.6    92.3      94.9
+    why : str         # Context / significance if                Temporal reasoning      45.1        62.4     79.7    85.7      91.0
+          important                                              Multi-session           44.3        57.9     79.7    81.2      87.2
+    fact_type : Literal [ " world " , " assistant "]
+    fact_kind : str = " conversation " # ' event ' or '          Overall                 60.2        71.2     83.6     89.0     91.4
+          conversation '
+    occurred_start : Optional [ str ] = None
+    occurred_end : Optional [ str ] = None                   Table 4: Per-category accuracy (%) on LongMemEval
+    entities : Optional [ List [ Entity ]] = None            (S setting). H INDSIGHT with a 20B open-source back-
+    causal_relations : Optional [ List [
+          FactCausalRelation ]] = None                       bone outperforms full-context GPT-4o on every cate-
+                                                             gory. Best result per row in bold.
+   The internal fact_type is world or assistant
+(first-person actions and experiences by the
+speaker). The public REST and MCP APIs ex-                   E        Framework Integration
+pose three external types, world, experience, and            H INDSIGHT provides drop-in wrappers for existing
+observation, where observation corresponds to                LLM clients, so developers can add memory to
+consolidated entity summaries described next.                an agent without changing their application code.
+                                                             The hindsight-litellm package wraps OpenAI,
+Observations and trends. Observations are
+                                                             Anthropic, and 100+ other providers via LiteLLM:
+evidence-grounded beliefs consolidated from mul-
+                                                             from openai import OpenAI
+tiple facts. Each observation carries a list of evi-         from hindsight_litellm import wrap_openai
+dence items with exact quotes, and a trend that is           # Wrap existing client -- memories are now automatic
+computed from evidence timestamps rather than                client = wrap_openai (
+                                                                 OpenAI () ,
+supplied by the LLM:                                             bank_id = "my - agent " ,
+                                                                 hindsight_api_url =" http :// localhost :8888 ")
+class ObservationEvidence ( BaseModel ):
+    memory_id : str                                          # Use exactly as before ; memory stored and recalled
+    quote : str        # Exact quote from the source         response = client . chat . completions . create (
+         memory                                                  model =" gpt -4 o - mini " ,
+    relevance : str = ""                                         messages =[{ " role ": " user " ,
+    timestamp : datetime                                                       " content ": " What did we discuss last
+                                                                                       week ?" }])
+class Observation ( BaseModel ):
+    title : str          # Short summary (5 -10 words )
+    content : str        # What we believe to be true           With this wrapper, conversations are automat-
+    evidence : List [ ObservationEvidence ] = []
+    created_at : datetime
+                                                             ically stored via retain after each response, and
+    # Computed : trend in { new , strengthening , stable     relevant memories are injected into the prompt
+         ,
+    #                        weakening , stale }             via recall before each LLM call. No changes
+    # Computed : evidence_span , evidence_count
+                                                             to the rest of the application are needed. H IND -
+                                                             SIGHT also exposes an MCP server (Model Con-
+Directives. Directives are user-defined hard rules           text Protocol), allowing AI coding assistants and
+that are injected into prompts at reflect time, with a       other MCP-compatible tools to access agent mem-
+priority order and an active flag:                           ory directly. Full integration documentation is at
+                                                             https://hindsight.vectorize.io.
+class Directive ( BaseModel ):
+    bank_id : str
+    content : str       # Rule injected into prompts
+    priority : int = 0 # Higher priority injected
+         first
+    is_active : bool = True
+
+
+
+                                                           285
+

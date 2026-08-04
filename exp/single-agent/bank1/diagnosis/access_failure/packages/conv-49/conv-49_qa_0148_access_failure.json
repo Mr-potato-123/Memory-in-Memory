@@ -1,0 +1,1147 @@
+{
+  "schema_version": "access_diagnosis_v3",
+  "diagnosis_id": "access_conv-49_conv-49_qa_0148",
+  "diagnosis_type": "ACCESS_FAILURE",
+  "status": "completed",
+  "judge_run_id": "judge",
+  "diagnosis_run_id": "bank1_train_flash",
+  "source_runtime_run": "conv-49",
+  "conversation_id": "conv-49",
+  "qa_id": "conv-49_qa_0148",
+  "snapshot_commit_id": 25,
+  "question": "What sports activity did Evan and his partner try in a recent weekend?",
+  "reference_answer": "Snowshoeing",
+  "problem_found": true,
+  "reason": "The current memory version mem_conv-49_0132_v1 directly states that Evan and his partner went snowshoeing this weekend, which matches the reference answer. Other memories in the search chain do not mention snowshoeing or the specific weekend activity.",
+  "confidence": 1.0,
+  "review_required": false,
+  "skill_trace": {
+    "trace_id": "skilltrace_access_conv-49_conv-49_conv-49_qa_0148",
+    "side": "access",
+    "bank_version": "bank1",
+    "query": "What sports activity did Evan and his partner try in a recent weekend?",
+    "top_k": 2,
+    "disclose_k": 5,
+    "min_score": 0.2,
+    "scored_fields": [
+      "name",
+      "description"
+    ],
+    "scoring_weights": {
+      "semantic": 0.7,
+      "bm25": 0.3
+    },
+    "retrieval_method": "bank1_hybrid_router",
+    "candidate_k": 10,
+    "reranker": "bank1_applicability_router",
+    "reranker_error": "",
+    "selected": [
+      {
+        "skill_id": "sk_access_alternative_activity_retrieval",
+        "version_id": "sk_access_alternative_activity_retrieval_v1",
+        "rank": 1,
+        "score": 0.47777920961380005,
+        "semantic_score": 0.25397026538848877,
+        "lexical_score": 1.0,
+        "name": "Alternative Activity Retrieval",
+        "description": "Use when a question asks what someone did or planned instead of, rather than, or as a supplement to a named activity.",
+        "content": [
+          "When a question asks for an activity done 'instead of', 'rather than', 'as an alternative to', or to 'supplement' a named activity, do not treat that named activity as the sole retrieval anchor.",
+          "After the first search, run at least one follow-up query that omits the superseded or primary activity and adds replacement-oriented terms such as 'alternative', 'plan', 'preference', 'together', 'play', 'instead', 'supplement', 'additional', 'strength', 'fit', or 'workout'.",
+          "In such follow-up searches, explicitly include memory kinds 'profile' and 'relationship', because the alternative may be recorded as a shared preference or interest rather than as an event.",
+          "If all top results still mention the superseded activity, treat that as evidence of over-anchoring and run another query targeting the replacement before answering."
+        ],
+        "selected": true,
+        "rerank_rank": 1,
+        "rerank_reason": "The question asks about a sports activity Evan and his partner tried recently, which may involve an alternative or shared activity. The skill is applicable for retrieving such information by focusing on replacement-oriented terms and shared interests."
+      }
+    ],
+    "nearby_not_selected": [
+      {
+        "skill_id": "sk_access_hobby_activity_retrieval",
+        "version_id": "sk_access_hobby_activity_retrieval_v1",
+        "rank": 2,
+        "score": 0.31500160694122314,
+        "semantic_score": 0.2553294599056244,
+        "lexical_score": 0.4542366564273834,
+        "name": "Hobby and Activity Retrieval",
+        "description": "Use when a question asks about hobbies, activities, or what someone does to keep busy, relax, or as a hobby, especially during recovery or when the memory uses indirect phrasing.",
+        "content": [
+          "When asked about hobbies or activities, run multiple searches using varied phrasings: 'hobby', 'interested in', 'enjoys', 'wants to try', 'started taking', 'attending class', 'recreation', 'activity', 'keep busy', 'pass the time'.",
+          "Include memory kinds preference, event, and plan; activities are often stored as enjoyed routines, planned sessions, or class attendance rather than as a hobby list.",
+          "If the question involves a recovery or illness period, run a separate hobby-focused search without requiring injury/treatment terms, and do not treat therapy or exercise as leisure unless explicitly asked.",
+          "Merge results across searches; stop once a clear leisure activity is found or no new distinct activities appear."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_temporal_sequence",
+        "version_id": "sk_access_temporal_sequence_v1",
+        "rank": 3,
+        "score": 0.30330681800842285,
+        "semantic_score": 0.09326818585395813,
+        "lexical_score": 0.7933968901634216,
+        "name": "Temporal-sequence retrieval after anchor events",
+        "description": "Use when a question asks what someone did after, before, or following a specific event (e.g., 'after reading X', 'then what did they do'), and the initial search finds a memory about that event. Apply before answering.",
+        "content": [
+          "After retrieving an anchor event memory for a 'what did X do after/before/around Y' question, run an additional search using that person/subject as the query with temporal terms ('afterwards', 'next', the anchor's date) and a modest top_k; do not simply reuse the event's keywords.",
+          "When you have a candidate answer memory, confirm its timestamp is consistent with the requested temporal relationship; if the memory is earlier/later than the anchor or lacks timing, continue searching rather than answering from unrelated memories.",
+          "Stop after two time-focused searches yield no same-subject memories near the anchor, or when you find a memory describing the subject's next action in sequence."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_entity_focused_recommendations",
+        "version_id": "sk_access_entity_focused_recommendations_v1",
+        "rank": 4,
+        "score": 0.29320916533470154,
+        "semantic_score": 0.07764136046171188,
+        "lexical_score": 0.7962006330490112,
+        "name": "Entity-Focused Retrieval for Recommendation Questions",
+        "description": "When a question asks for a gift, activity, book, or other recommendation for one or more named people, search for each person's hobbies, recent activities, and preferences before answering.",
+        "content": [
+          "For any recommendation question naming specific people, run additional searches per person for their hobbies, interests, recent activities, and expressed preferences (e.g., '<name> hobbies', '<name> recent activities', '<name> likes'), not just generic topic keywords. Stop after one or two such searches per person or once you find a clearly relevant interest/activity memory for each.",
+          "When multiple people are involved, search each person separately and only use evidence that is relevant to the shared request; do not assume a preference of one applies to all.",
+          "Ground the recommendation in the retrieved interest/activity evidence; if no such evidence is found, state that evidence is insufficient rather than answering from generic assumptions."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_family_multi_entity",
+        "version_id": "sk_access_family_multi_entity_v1",
+        "rank": 5,
+        "score": 0.2693417966365814,
+        "semantic_score": 0.08690288662910461,
+        "lexical_score": 0.6950325965881348,
+        "name": "Family Multi-Entity Search",
+        "description": "When a question asks who or what in a named person's family or group experienced a state or event, such as an injury, illness, or activity, and the answer may involve multiple family members.",
+        "content": [
+          "When a question asks who in a named person's family or group experienced an event/state, treat it as a multi-entity query: run additional targeted searches for each family member relation that appears in the session or retrieved memories combined with the property term, and for the named person themselves.",
+          "Before answering, confirm you have searched for all family members referenced in the session; if only one entity was found, do not finalize a single-entity answer until you have checked other known relations. Stop once all known relations have been searched or a matching memory has been found for each."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_shared_interests",
+        "version_id": "sk_access_shared_interests_v1",
+        "rank": 6,
+        "score": 0.26679667830467224,
+        "semantic_score": 0.15704895555973053,
+        "lexical_score": 0.522874653339386,
+        "name": "Search per Person for Shared-Interest Questions",
+        "description": "When a question asks what two named people share or have in common (interests, hobbies, preferences), search each person's profile separately and intersect before answering.",
+        "content": [
+          "When a question asks what two people share (common interests, hobbies, preferences), do not settle for one generic query. Run a targeted hybrid search for each person's profile (e.g., \"<name> hobbies\" and \"<name> interests\") and intersect the returned interests.",
+          "Before answering a shared-interest question, confirm that every claimed commonality is supported by evidence from both individuals (e.g., their profile memories). If the initial generic search returns only events or plans, search each person's profile separately before concluding."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      }
+    ]
+  },
+  "repair_package": {
+    "question": "What sports activity did Evan and his partner try in a recent weekend?",
+    "reference_answer": "Snowshoeing",
+    "missing_useful_current_memories": [
+      {
+        "version_id": "mem_conv-49_0132_v1",
+        "memory_id": "mem_conv-49_0132",
+        "version_no": 1,
+        "content": "Evan and his partner went snowshoeing this weekend as a new adventure, finding it surprisingly fun.",
+        "memory_kind": "event",
+        "subject": "Evan",
+        "predicate": "activity",
+        "object_text": "snowshoeing",
+        "world_start": "2024-01-06",
+        "world_end": "2024-01-07",
+        "update_type": "add"
+      }
+    ],
+    "retrieved_current_version_ids": [
+      "mem_conv-49_0006_v1",
+      "mem_conv-49_0030_v1",
+      "mem_conv-49_0047_v1",
+      "mem_conv-49_0058_v1",
+      "mem_conv-49_0059_v1",
+      "mem_conv-49_0073_v1",
+      "mem_conv-49_0081_v1",
+      "mem_conv-49_0118_v1"
+    ],
+    "search_steps": [
+      {
+        "action_id": "access_conv-49_conv-49_conv-49_qa_0148_a000",
+        "step_index": 0,
+        "action_type": "search_memory",
+        "request": {
+          "action": "search_memory",
+          "arguments": {
+            "strategy": "hybrid",
+            "query": "sports activity Evan and his partner tried recently",
+            "query_expansions": [
+              "alternative sports activity Evan and his partner tried recently",
+              "Evan's partner's recent sports activity",
+              "recent weekend sports activity involving Evan and his partner"
+            ],
+            "keywords": [
+              "Evan",
+              "partner",
+              "recent",
+              "weekend",
+              "sports activity"
+            ],
+            "depth": "standard",
+            "memory_kinds": [
+              "event",
+              "relationship"
+            ],
+            "time_mode": "range",
+            "target_time": "2023-01-01",
+            "target_time_end": "2023-12-31",
+            "include_history": false,
+            "top_k": 8
+          },
+          "reason": "To find the sports activity Evan and his partner tried in a recent weekend"
+        },
+        "returned_memories": [
+          {
+            "version_id": "mem_conv-49_0030_v1",
+            "memory_id": "mem_conv-49_0030",
+            "content": "Evan recently returned from a vacation in Canada with his new partner, engaging in outdoor activities like hiking and biking.",
+            "memory_kind": "event",
+            "subject": "Evan",
+            "world_start": "2023-08-13",
+            "world_end": null,
+            "score": 0.0193,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-49_0059_v1",
+            "memory_id": "mem_conv-49_0059",
+            "content": "Evan is undergoing physical therapy to recover from his knee injury and is doing light exercises to maintain strength.",
+            "memory_kind": "event",
+            "subject": "Evan",
+            "world_start": "2023-10-06",
+            "world_end": null,
+            "score": 0.0176,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-49_0081_v1",
+            "memory_id": "mem_conv-49_0081",
+            "content": "Evan visited the gym on October 16, 2023, and mentioned gaining strength, showing progress in his fitness journey.",
+            "memory_kind": "event",
+            "subject": "Evan",
+            "world_start": "2023-10-16",
+            "world_end": null,
+            "score": 0.0166,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-49_0118_v1",
+            "memory_id": "mem_conv-49_0118",
+            "content": "Evan and his friends took the Prius for a long drive to the mountains last weekend but got into a minor accident on the way back.",
+            "memory_kind": "event",
+            "subject": "Evan",
+            "world_start": "2023-12-27",
+            "world_end": null,
+            "score": 0.0164,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-49_0006_v1",
+            "memory_id": "mem_conv-49_0006",
+            "content": "Evan took his family on a road trip to Jasper last weekend, driving through the Icefields Parkway and visiting glaciers and lakes. He took a photo of a glacier.",
+            "memory_kind": "event",
+            "subject": "Evan",
+            "world_start": "2023-05-20",
+            "world_end": null,
+            "score": 0.0161,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-49_0058_v1",
+            "memory_id": "mem_conv-49_0058",
+            "content": "Evan injured his knee playing basketball with the kids last week and has been unable to stay active since.",
+            "memory_kind": "event",
+            "subject": "Evan",
+            "world_start": "2023-10-06",
+            "world_end": null,
+            "score": 0.0156,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-49_0047_v1",
+            "memory_id": "mem_conv-49_0047",
+            "content": "Evan twisted his knee last Friday and is experiencing pain, making it difficult to maintain his usual fitness routine.",
+            "memory_kind": "event",
+            "subject": "Evan",
+            "world_start": "2023-08-22",
+            "world_end": null,
+            "score": 0.0153,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-49_0073_v1",
+            "memory_id": "mem_conv-49_0073",
+            "content": "Evan recently finished painting a sunset, which he finds relaxing, and offered to help Sam with kayaking.",
+            "memory_kind": "event",
+            "subject": "Evan",
+            "world_start": "2023-10-14",
+            "world_end": null,
+            "score": 0.0153,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          }
+        ],
+        "returned_version_ids": [
+          "mem_conv-49_0030_v1",
+          "mem_conv-49_0059_v1",
+          "mem_conv-49_0081_v1",
+          "mem_conv-49_0118_v1",
+          "mem_conv-49_0006_v1",
+          "mem_conv-49_0058_v1",
+          "mem_conv-49_0047_v1",
+          "mem_conv-49_0073_v1"
+        ]
+      },
+      {
+        "action_id": "access_conv-49_conv-49_conv-49_qa_0148_a001",
+        "step_index": 1,
+        "action_type": "inspect_memory",
+        "request": {
+          "action": "inspect_memory",
+          "arguments": {
+            "memory_id": "mem_conv-49_0030",
+            "include_versions": true,
+            "include_sources": true
+          },
+          "reason": "To verify if Evan and his partner tried any sports activity recently"
+        },
+        "returned_memories": [
+          {
+            "version_id": "mem_conv-49_0030_v1",
+            "version_no": 1,
+            "content": "Evan recently returned from a vacation in Canada with his new partner, engaging in outdoor activities like hiking and biking.",
+            "world_start": "2023-08-13",
+            "world_end": null
+          }
+        ],
+        "returned_version_ids": [
+          "mem_conv-49_0030_v1"
+        ]
+      },
+      {
+        "action_id": "access_conv-49_conv-49_conv-49_qa_0148_a002",
+        "step_index": 2,
+        "action_type": "search_memory",
+        "request": {
+          "action": "search_memory",
+          "arguments": {
+            "strategy": "hybrid",
+            "query": "sports activity Evan and his partner tried recently",
+            "query_expansions": [
+              "alternative sports activity Evan and his partner tried recently",
+              "Evan's partner's recent sports activity",
+              "recent weekend sports activity involving Evan and his partner"
+            ],
+            "keywords": [
+              "Evan",
+              "partner",
+              "recent",
+              "weekend",
+              "sports activity"
+            ],
+            "depth": "standard",
+            "memory_kinds": [
+              "event",
+              "relationship"
+            ],
+            "time_mode": "range",
+            "target_time": "2023-01-01",
+            "target_time_end": "2023-12-31",
+            "include_history": false,
+            "top_k": 8
+          },
+          "reason": "To find the sports activity Evan and his partner tried in a recent weekend"
+        },
+        "returned_memories": [
+          {
+            "version_id": "mem_conv-49_0030_v1",
+            "memory_id": "mem_conv-49_0030",
+            "content": "Evan recently returned from a vacation in Canada with his new partner, engaging in outdoor activities like hiking and biking.",
+            "memory_kind": "event",
+            "subject": "Evan",
+            "world_start": "2023-08-13",
+            "world_end": null,
+            "score": 0.0193,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-49_0059_v1",
+            "memory_id": "mem_conv-49_0059",
+            "content": "Evan is undergoing physical therapy to recover from his knee injury and is doing light exercises to maintain strength.",
+            "memory_kind": "event",
+            "subject": "Evan",
+            "world_start": "2023-10-06",
+            "world_end": null,
+            "score": 0.0176,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-49_0081_v1",
+            "memory_id": "mem_conv-49_0081",
+            "content": "Evan visited the gym on October 16, 2023, and mentioned gaining strength, showing progress in his fitness journey.",
+            "memory_kind": "event",
+            "subject": "Evan",
+            "world_start": "2023-10-16",
+            "world_end": null,
+            "score": 0.0166,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-49_0118_v1",
+            "memory_id": "mem_conv-49_0118",
+            "content": "Evan and his friends took the Prius for a long drive to the mountains last weekend but got into a minor accident on the way back.",
+            "memory_kind": "event",
+            "subject": "Evan",
+            "world_start": "2023-12-27",
+            "world_end": null,
+            "score": 0.0164,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-49_0006_v1",
+            "memory_id": "mem_conv-49_0006",
+            "content": "Evan took his family on a road trip to Jasper last weekend, driving through the Icefields Parkway and visiting glaciers and lakes. He took a photo of a glacier.",
+            "memory_kind": "event",
+            "subject": "Evan",
+            "world_start": "2023-05-20",
+            "world_end": null,
+            "score": 0.0161,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-49_0058_v1",
+            "memory_id": "mem_conv-49_0058",
+            "content": "Evan injured his knee playing basketball with the kids last week and has been unable to stay active since.",
+            "memory_kind": "event",
+            "subject": "Evan",
+            "world_start": "2023-10-06",
+            "world_end": null,
+            "score": 0.0156,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-49_0047_v1",
+            "memory_id": "mem_conv-49_0047",
+            "content": "Evan twisted his knee last Friday and is experiencing pain, making it difficult to maintain his usual fitness routine.",
+            "memory_kind": "event",
+            "subject": "Evan",
+            "world_start": "2023-08-22",
+            "world_end": null,
+            "score": 0.0153,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-49_0073_v1",
+            "memory_id": "mem_conv-49_0073",
+            "content": "Evan recently finished painting a sunset, which he finds relaxing, and offered to help Sam with kayaking.",
+            "memory_kind": "event",
+            "subject": "Evan",
+            "world_start": "2023-10-14",
+            "world_end": null,
+            "score": 0.0153,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          }
+        ],
+        "returned_version_ids": [
+          "mem_conv-49_0030_v1",
+          "mem_conv-49_0059_v1",
+          "mem_conv-49_0081_v1",
+          "mem_conv-49_0118_v1",
+          "mem_conv-49_0006_v1",
+          "mem_conv-49_0058_v1",
+          "mem_conv-49_0047_v1",
+          "mem_conv-49_0073_v1"
+        ]
+      },
+      {
+        "action_id": "access_conv-49_conv-49_conv-49_qa_0148_a003",
+        "step_index": 3,
+        "action_type": "answer",
+        "request": {
+          "action": "answer",
+          "arguments": {
+            "answer": "hiking, biking",
+            "evidence_version_ids": [
+              "mem_conv-49_0030_v1"
+            ],
+            "confidence": 0.95
+          },
+          "reason": "Evan and his partner engaged in hiking and biking during their recent vacation in Canada."
+        },
+        "returned_memories": [],
+        "returned_version_ids": []
+      }
+    ],
+    "reason": "The current memory version mem_conv-49_0132_v1 directly states that Evan and his partner went snowshoeing this weekend, which matches the reference answer. Other memories in the search chain do not mention snowshoeing or the specific weekend activity.",
+    "skill_trace": {
+      "trace_id": "skilltrace_access_conv-49_conv-49_conv-49_qa_0148",
+      "side": "access",
+      "bank_version": "bank1",
+      "query": "What sports activity did Evan and his partner try in a recent weekend?",
+      "top_k": 2,
+      "disclose_k": 5,
+      "min_score": 0.2,
+      "scored_fields": [
+        "name",
+        "description"
+      ],
+      "scoring_weights": {
+        "semantic": 0.7,
+        "bm25": 0.3
+      },
+      "retrieval_method": "bank1_hybrid_router",
+      "candidate_k": 10,
+      "reranker": "bank1_applicability_router",
+      "reranker_error": "",
+      "selected": [
+        {
+          "skill_id": "sk_access_alternative_activity_retrieval",
+          "version_id": "sk_access_alternative_activity_retrieval_v1",
+          "rank": 1,
+          "score": 0.47777920961380005,
+          "semantic_score": 0.25397026538848877,
+          "lexical_score": 1.0,
+          "name": "Alternative Activity Retrieval",
+          "description": "Use when a question asks what someone did or planned instead of, rather than, or as a supplement to a named activity.",
+          "content": [
+            "When a question asks for an activity done 'instead of', 'rather than', 'as an alternative to', or to 'supplement' a named activity, do not treat that named activity as the sole retrieval anchor.",
+            "After the first search, run at least one follow-up query that omits the superseded or primary activity and adds replacement-oriented terms such as 'alternative', 'plan', 'preference', 'together', 'play', 'instead', 'supplement', 'additional', 'strength', 'fit', or 'workout'.",
+            "In such follow-up searches, explicitly include memory kinds 'profile' and 'relationship', because the alternative may be recorded as a shared preference or interest rather than as an event.",
+            "If all top results still mention the superseded activity, treat that as evidence of over-anchoring and run another query targeting the replacement before answering."
+          ],
+          "selected": true,
+          "rerank_rank": 1,
+          "rerank_reason": "The question asks about a sports activity Evan and his partner tried recently, which may involve an alternative or shared activity. The skill is applicable for retrieving such information by focusing on replacement-oriented terms and shared interests."
+        }
+      ],
+      "nearby_not_selected": [
+        {
+          "skill_id": "sk_access_hobby_activity_retrieval",
+          "version_id": "sk_access_hobby_activity_retrieval_v1",
+          "rank": 2,
+          "score": 0.31500160694122314,
+          "semantic_score": 0.2553294599056244,
+          "lexical_score": 0.4542366564273834,
+          "name": "Hobby and Activity Retrieval",
+          "description": "Use when a question asks about hobbies, activities, or what someone does to keep busy, relax, or as a hobby, especially during recovery or when the memory uses indirect phrasing.",
+          "content": [
+            "When asked about hobbies or activities, run multiple searches using varied phrasings: 'hobby', 'interested in', 'enjoys', 'wants to try', 'started taking', 'attending class', 'recreation', 'activity', 'keep busy', 'pass the time'.",
+            "Include memory kinds preference, event, and plan; activities are often stored as enjoyed routines, planned sessions, or class attendance rather than as a hobby list.",
+            "If the question involves a recovery or illness period, run a separate hobby-focused search without requiring injury/treatment terms, and do not treat therapy or exercise as leisure unless explicitly asked.",
+            "Merge results across searches; stop once a clear leisure activity is found or no new distinct activities appear."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_temporal_sequence",
+          "version_id": "sk_access_temporal_sequence_v1",
+          "rank": 3,
+          "score": 0.30330681800842285,
+          "semantic_score": 0.09326818585395813,
+          "lexical_score": 0.7933968901634216,
+          "name": "Temporal-sequence retrieval after anchor events",
+          "description": "Use when a question asks what someone did after, before, or following a specific event (e.g., 'after reading X', 'then what did they do'), and the initial search finds a memory about that event. Apply before answering.",
+          "content": [
+            "After retrieving an anchor event memory for a 'what did X do after/before/around Y' question, run an additional search using that person/subject as the query with temporal terms ('afterwards', 'next', the anchor's date) and a modest top_k; do not simply reuse the event's keywords.",
+            "When you have a candidate answer memory, confirm its timestamp is consistent with the requested temporal relationship; if the memory is earlier/later than the anchor or lacks timing, continue searching rather than answering from unrelated memories.",
+            "Stop after two time-focused searches yield no same-subject memories near the anchor, or when you find a memory describing the subject's next action in sequence."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_entity_focused_recommendations",
+          "version_id": "sk_access_entity_focused_recommendations_v1",
+          "rank": 4,
+          "score": 0.29320916533470154,
+          "semantic_score": 0.07764136046171188,
+          "lexical_score": 0.7962006330490112,
+          "name": "Entity-Focused Retrieval for Recommendation Questions",
+          "description": "When a question asks for a gift, activity, book, or other recommendation for one or more named people, search for each person's hobbies, recent activities, and preferences before answering.",
+          "content": [
+            "For any recommendation question naming specific people, run additional searches per person for their hobbies, interests, recent activities, and expressed preferences (e.g., '<name> hobbies', '<name> recent activities', '<name> likes'), not just generic topic keywords. Stop after one or two such searches per person or once you find a clearly relevant interest/activity memory for each.",
+            "When multiple people are involved, search each person separately and only use evidence that is relevant to the shared request; do not assume a preference of one applies to all.",
+            "Ground the recommendation in the retrieved interest/activity evidence; if no such evidence is found, state that evidence is insufficient rather than answering from generic assumptions."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_family_multi_entity",
+          "version_id": "sk_access_family_multi_entity_v1",
+          "rank": 5,
+          "score": 0.2693417966365814,
+          "semantic_score": 0.08690288662910461,
+          "lexical_score": 0.6950325965881348,
+          "name": "Family Multi-Entity Search",
+          "description": "When a question asks who or what in a named person's family or group experienced a state or event, such as an injury, illness, or activity, and the answer may involve multiple family members.",
+          "content": [
+            "When a question asks who in a named person's family or group experienced an event/state, treat it as a multi-entity query: run additional targeted searches for each family member relation that appears in the session or retrieved memories combined with the property term, and for the named person themselves.",
+            "Before answering, confirm you have searched for all family members referenced in the session; if only one entity was found, do not finalize a single-entity answer until you have checked other known relations. Stop once all known relations have been searched or a matching memory has been found for each."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_shared_interests",
+          "version_id": "sk_access_shared_interests_v1",
+          "rank": 6,
+          "score": 0.26679667830467224,
+          "semantic_score": 0.15704895555973053,
+          "lexical_score": 0.522874653339386,
+          "name": "Search per Person for Shared-Interest Questions",
+          "description": "When a question asks what two named people share or have in common (interests, hobbies, preferences), search each person's profile separately and intersect before answering.",
+          "content": [
+            "When a question asks what two people share (common interests, hobbies, preferences), do not settle for one generic query. Run a targeted hybrid search for each person's profile (e.g., \"<name> hobbies\" and \"<name> interests\") and intersect the returned interests.",
+            "Before answering a shared-interest question, confirm that every claimed commonality is supported by evidence from both individuals (e.g., their profile memories). If the initial generic search returns only events or plans, search each person's profile separately before concluding."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        }
+      ]
+    }
+  },
+  "access_run_id": "access_conv-49_conv-49_conv-49_qa_0148",
+  "claims": [
+    {
+      "claim": "Evan and his partner went snowshoeing this weekend.",
+      "supporting_version_ids": [
+        "mem_conv-49_0132_v1"
+      ],
+      "coverage": null
+    }
+  ],
+  "current_related_memories": [
+    {
+      "version_id": "mem_conv-49_0132_v1",
+      "memory_id": "mem_conv-49_0132",
+      "version_no": 1,
+      "content": "Evan and his partner went snowshoeing this weekend as a new adventure, finding it surprisingly fun.",
+      "memory_kind": "event",
+      "subject": "Evan",
+      "predicate": "activity",
+      "object_text": "snowshoeing",
+      "world_start": "2024-01-06",
+      "world_end": "2024-01-07",
+      "update_type": "add"
+    }
+  ],
+  "useful_current_version_ids": [
+    "mem_conv-49_0132_v1"
+  ],
+  "retrieved_current_version_ids": [
+    "mem_conv-49_0006_v1",
+    "mem_conv-49_0030_v1",
+    "mem_conv-49_0047_v1",
+    "mem_conv-49_0058_v1",
+    "mem_conv-49_0059_v1",
+    "mem_conv-49_0073_v1",
+    "mem_conv-49_0081_v1",
+    "mem_conv-49_0118_v1"
+  ],
+  "missing_useful_current_version_ids": [
+    "mem_conv-49_0132_v1"
+  ],
+  "search_steps": [
+    {
+      "action_id": "access_conv-49_conv-49_conv-49_qa_0148_a000",
+      "step_index": 0,
+      "action_type": "search_memory",
+      "request": {
+        "action": "search_memory",
+        "arguments": {
+          "strategy": "hybrid",
+          "query": "sports activity Evan and his partner tried recently",
+          "query_expansions": [
+            "alternative sports activity Evan and his partner tried recently",
+            "Evan's partner's recent sports activity",
+            "recent weekend sports activity involving Evan and his partner"
+          ],
+          "keywords": [
+            "Evan",
+            "partner",
+            "recent",
+            "weekend",
+            "sports activity"
+          ],
+          "depth": "standard",
+          "memory_kinds": [
+            "event",
+            "relationship"
+          ],
+          "time_mode": "range",
+          "target_time": "2023-01-01",
+          "target_time_end": "2023-12-31",
+          "include_history": false,
+          "top_k": 8
+        },
+        "reason": "To find the sports activity Evan and his partner tried in a recent weekend"
+      },
+      "returned_memories": [
+        {
+          "version_id": "mem_conv-49_0030_v1",
+          "memory_id": "mem_conv-49_0030",
+          "content": "Evan recently returned from a vacation in Canada with his new partner, engaging in outdoor activities like hiking and biking.",
+          "memory_kind": "event",
+          "subject": "Evan",
+          "world_start": "2023-08-13",
+          "world_end": null,
+          "score": 0.0193,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-49_0059_v1",
+          "memory_id": "mem_conv-49_0059",
+          "content": "Evan is undergoing physical therapy to recover from his knee injury and is doing light exercises to maintain strength.",
+          "memory_kind": "event",
+          "subject": "Evan",
+          "world_start": "2023-10-06",
+          "world_end": null,
+          "score": 0.0176,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-49_0081_v1",
+          "memory_id": "mem_conv-49_0081",
+          "content": "Evan visited the gym on October 16, 2023, and mentioned gaining strength, showing progress in his fitness journey.",
+          "memory_kind": "event",
+          "subject": "Evan",
+          "world_start": "2023-10-16",
+          "world_end": null,
+          "score": 0.0166,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-49_0118_v1",
+          "memory_id": "mem_conv-49_0118",
+          "content": "Evan and his friends took the Prius for a long drive to the mountains last weekend but got into a minor accident on the way back.",
+          "memory_kind": "event",
+          "subject": "Evan",
+          "world_start": "2023-12-27",
+          "world_end": null,
+          "score": 0.0164,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-49_0006_v1",
+          "memory_id": "mem_conv-49_0006",
+          "content": "Evan took his family on a road trip to Jasper last weekend, driving through the Icefields Parkway and visiting glaciers and lakes. He took a photo of a glacier.",
+          "memory_kind": "event",
+          "subject": "Evan",
+          "world_start": "2023-05-20",
+          "world_end": null,
+          "score": 0.0161,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-49_0058_v1",
+          "memory_id": "mem_conv-49_0058",
+          "content": "Evan injured his knee playing basketball with the kids last week and has been unable to stay active since.",
+          "memory_kind": "event",
+          "subject": "Evan",
+          "world_start": "2023-10-06",
+          "world_end": null,
+          "score": 0.0156,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-49_0047_v1",
+          "memory_id": "mem_conv-49_0047",
+          "content": "Evan twisted his knee last Friday and is experiencing pain, making it difficult to maintain his usual fitness routine.",
+          "memory_kind": "event",
+          "subject": "Evan",
+          "world_start": "2023-08-22",
+          "world_end": null,
+          "score": 0.0153,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-49_0073_v1",
+          "memory_id": "mem_conv-49_0073",
+          "content": "Evan recently finished painting a sunset, which he finds relaxing, and offered to help Sam with kayaking.",
+          "memory_kind": "event",
+          "subject": "Evan",
+          "world_start": "2023-10-14",
+          "world_end": null,
+          "score": 0.0153,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        }
+      ],
+      "returned_version_ids": [
+        "mem_conv-49_0030_v1",
+        "mem_conv-49_0059_v1",
+        "mem_conv-49_0081_v1",
+        "mem_conv-49_0118_v1",
+        "mem_conv-49_0006_v1",
+        "mem_conv-49_0058_v1",
+        "mem_conv-49_0047_v1",
+        "mem_conv-49_0073_v1"
+      ]
+    },
+    {
+      "action_id": "access_conv-49_conv-49_conv-49_qa_0148_a001",
+      "step_index": 1,
+      "action_type": "inspect_memory",
+      "request": {
+        "action": "inspect_memory",
+        "arguments": {
+          "memory_id": "mem_conv-49_0030",
+          "include_versions": true,
+          "include_sources": true
+        },
+        "reason": "To verify if Evan and his partner tried any sports activity recently"
+      },
+      "returned_memories": [
+        {
+          "version_id": "mem_conv-49_0030_v1",
+          "version_no": 1,
+          "content": "Evan recently returned from a vacation in Canada with his new partner, engaging in outdoor activities like hiking and biking.",
+          "world_start": "2023-08-13",
+          "world_end": null
+        }
+      ],
+      "returned_version_ids": [
+        "mem_conv-49_0030_v1"
+      ]
+    },
+    {
+      "action_id": "access_conv-49_conv-49_conv-49_qa_0148_a002",
+      "step_index": 2,
+      "action_type": "search_memory",
+      "request": {
+        "action": "search_memory",
+        "arguments": {
+          "strategy": "hybrid",
+          "query": "sports activity Evan and his partner tried recently",
+          "query_expansions": [
+            "alternative sports activity Evan and his partner tried recently",
+            "Evan's partner's recent sports activity",
+            "recent weekend sports activity involving Evan and his partner"
+          ],
+          "keywords": [
+            "Evan",
+            "partner",
+            "recent",
+            "weekend",
+            "sports activity"
+          ],
+          "depth": "standard",
+          "memory_kinds": [
+            "event",
+            "relationship"
+          ],
+          "time_mode": "range",
+          "target_time": "2023-01-01",
+          "target_time_end": "2023-12-31",
+          "include_history": false,
+          "top_k": 8
+        },
+        "reason": "To find the sports activity Evan and his partner tried in a recent weekend"
+      },
+      "returned_memories": [
+        {
+          "version_id": "mem_conv-49_0030_v1",
+          "memory_id": "mem_conv-49_0030",
+          "content": "Evan recently returned from a vacation in Canada with his new partner, engaging in outdoor activities like hiking and biking.",
+          "memory_kind": "event",
+          "subject": "Evan",
+          "world_start": "2023-08-13",
+          "world_end": null,
+          "score": 0.0193,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-49_0059_v1",
+          "memory_id": "mem_conv-49_0059",
+          "content": "Evan is undergoing physical therapy to recover from his knee injury and is doing light exercises to maintain strength.",
+          "memory_kind": "event",
+          "subject": "Evan",
+          "world_start": "2023-10-06",
+          "world_end": null,
+          "score": 0.0176,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-49_0081_v1",
+          "memory_id": "mem_conv-49_0081",
+          "content": "Evan visited the gym on October 16, 2023, and mentioned gaining strength, showing progress in his fitness journey.",
+          "memory_kind": "event",
+          "subject": "Evan",
+          "world_start": "2023-10-16",
+          "world_end": null,
+          "score": 0.0166,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-49_0118_v1",
+          "memory_id": "mem_conv-49_0118",
+          "content": "Evan and his friends took the Prius for a long drive to the mountains last weekend but got into a minor accident on the way back.",
+          "memory_kind": "event",
+          "subject": "Evan",
+          "world_start": "2023-12-27",
+          "world_end": null,
+          "score": 0.0164,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-49_0006_v1",
+          "memory_id": "mem_conv-49_0006",
+          "content": "Evan took his family on a road trip to Jasper last weekend, driving through the Icefields Parkway and visiting glaciers and lakes. He took a photo of a glacier.",
+          "memory_kind": "event",
+          "subject": "Evan",
+          "world_start": "2023-05-20",
+          "world_end": null,
+          "score": 0.0161,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-49_0058_v1",
+          "memory_id": "mem_conv-49_0058",
+          "content": "Evan injured his knee playing basketball with the kids last week and has been unable to stay active since.",
+          "memory_kind": "event",
+          "subject": "Evan",
+          "world_start": "2023-10-06",
+          "world_end": null,
+          "score": 0.0156,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-49_0047_v1",
+          "memory_id": "mem_conv-49_0047",
+          "content": "Evan twisted his knee last Friday and is experiencing pain, making it difficult to maintain his usual fitness routine.",
+          "memory_kind": "event",
+          "subject": "Evan",
+          "world_start": "2023-08-22",
+          "world_end": null,
+          "score": 0.0153,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-49_0073_v1",
+          "memory_id": "mem_conv-49_0073",
+          "content": "Evan recently finished painting a sunset, which he finds relaxing, and offered to help Sam with kayaking.",
+          "memory_kind": "event",
+          "subject": "Evan",
+          "world_start": "2023-10-14",
+          "world_end": null,
+          "score": 0.0153,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        }
+      ],
+      "returned_version_ids": [
+        "mem_conv-49_0030_v1",
+        "mem_conv-49_0059_v1",
+        "mem_conv-49_0081_v1",
+        "mem_conv-49_0118_v1",
+        "mem_conv-49_0006_v1",
+        "mem_conv-49_0058_v1",
+        "mem_conv-49_0047_v1",
+        "mem_conv-49_0073_v1"
+      ]
+    },
+    {
+      "action_id": "access_conv-49_conv-49_conv-49_qa_0148_a003",
+      "step_index": 3,
+      "action_type": "answer",
+      "request": {
+        "action": "answer",
+        "arguments": {
+          "answer": "hiking, biking",
+          "evidence_version_ids": [
+            "mem_conv-49_0030_v1"
+          ],
+          "confidence": 0.95
+        },
+        "reason": "Evan and his partner engaged in hiking and biking during their recent vacation in Canada."
+      },
+      "returned_memories": [],
+      "returned_version_ids": []
+    }
+  ]
+}

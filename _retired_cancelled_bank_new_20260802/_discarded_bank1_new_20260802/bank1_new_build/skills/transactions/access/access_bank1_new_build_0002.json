@@ -1,0 +1,931 @@
+{
+  "batch": {
+    "batch_id": "access_bank1_new_build_0002",
+    "side": "access",
+    "base_bank_version": "v000",
+    "candidates": [
+      {
+        "candidate_id": "cand_access_06815b067b97",
+        "skill_id": "sk_access_06ee9de2d3",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "DateValidatedRecipientDrop",
+          "description": "When a question asks what person A recommended/suggested to person B with a specific date, and searches with both names fail or return only future-dated memories, apply: validate evidence date intervals and retry once without the recipient.",
+          "content": [
+            "If the question specifies a date and a candidate evidence memory's interval (world_start/world_end) does not contain that date, do not use it as evidence; mark it insufficient and continue searching.",
+            "If searches using both named participants (actor and recipient) return no plausible memory, run one additional hybrid search that omits the recipient and any date, using only the actor, the action verb (e.g., 'recommend', 'suggest'), and the topic; stop after this single relaxed search.",
+            "Do not drop the actor or broaden to unrelated topics; if the relaxed search yields a memory whose date interval contains the question date, prefer it over any future-dated memory."
+          ]
+        },
+        "solves": "This addresses failing to answer a dated question about a recommendation between two named people because the only useful memory records the actor's action without the recipient, or because the retrieved memory is dated after the question. It applies to future questions that specify a date and two participants; it must not be used when the normal first search already finds a memory containing both participants and a valid date, or when the question is not about a two-person recommendation.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-43_conv-43_qa_0150",
+        "source_failure_id": "access_conv-43_conv-43_qa_0150",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:33:39Z"
+      },
+      {
+        "candidate_id": "cand_access_1648fdaaad71",
+        "skill_id": "sk_access_9a19b9b7e8",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Drop recipient in relational memory searches",
+          "description": "When a question asks what one person recommended/suggested/gave to another and the first search returns no supporting memory, retry by dropping the recipient from the query and applying a time filter if a time period is specified.",
+          "content": [
+            "When a question asks what one person <verb> to another (e.g., recommended, suggested, gave) and the initial hybrid search returns no relevant memory, run one additional search using only the subject, verb, and object; omit the recipient from the query and keywords.",
+            "If the question includes a time period (e.g., January 2024), add a structured filter on world_start/world_end during that retry so the candidate memory is not outranked by unrelated events.",
+            "Use this retry only once to check whether the memory stores the event from the actor's perspective without the recipient; do not apply it when the recipient is essential for disambiguating among multiple candidate memories."
+          ]
+        },
+        "solves": "Retrieval misses when the query repeats every participant from the question, but the stored memory records an action only from the actor's perspective and omits the recipient, causing the relevant memory to rank too low. Applies to future questions like 'What city did X recommend to Y in <time>?' when the first search fails. Does not apply when the recipient is the distinguishing attribute and must appear in memory to choose the right answer.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-43_conv-43_qa_0177",
+        "source_failure_id": "access_conv-43_conv-43_qa_0177",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:33:18Z"
+      },
+      {
+        "candidate_id": "cand_access_23b6138edf20",
+        "skill_id": "sk_access_9fe603bdc2",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Ordinal-work-questions-match-by-order",
+          "description": "When a question asks about the nth work in a person's series (e.g., third screenplay, second album), retrieve all candidate works and identify the nth by explicit ordinal or by chronological order before answering.",
+          "content": [
+            "If the question uses an ordinal (first, second, third...) with a work category (screenplay, book, album, film), treat it as asking for the nth item in that person's chronological series of such works.",
+            "Do not answer from the first memory that mentions the category. Retrieve multiple candidate works (including completion/achievement events) and compare explicit ordinal labels or world_start dates to determine the true nth item.",
+            "If the candidate memories do not establish order, run an additional search for the person's completed works or a paraphrase of the work's theme before answering; never assume a title refers to the requested ordinal without evidence."
+          ]
+        },
+        "solves": "The failure mechanism is treating the first memory that mentions the requested work category as sufficient evidence for an ordinal question, without verifying which item in the series it is. This applies to future questions asking about the nth creative work of a person (e.g., third screenplay, second novel, first album) when multiple works of that type exist and the ordering is not explicitly stated in a single memory. It must not apply to questions that name a specific work directly (e.g., 'What is Finding Home about?') or when only one work of that type exists.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-42_conv-42_qa_0094",
+        "source_failure_id": "access_conv-42_conv-42_qa_0094",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:31:53Z"
+      },
+      {
+        "candidate_id": "cand_access_2c6fa0d8853b",
+        "skill_id": "sk_access_c6f009375c",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Include plan memories when answering about future plans",
+          "description": "When the user asks when or about a planned future event (e.g., planning, plans, going to, intends), include 'plan' memory kind in the search and resolve relative time phrases like 'next summer' from the memory or session timestamp.",
+          "content": [
+            "If the question asks about a future plan or intention (e.g., 'when is X planning...', 'plans for', 'going to'), include memory_kind 'plan' in the search instead of restricting to 'event'.",
+            "When a retrieved plan memory expresses relative time (e.g., 'next summer', 'this weekend'), resolve it to a concrete date using the memory's world_start or the session timestamp before answering."
+          ]
+        },
+        "solves": "Questions about planned future events are searched with only the 'event' memory kind, so 'plan' memories holding the intended date are missed and the agent answers from an unrelated nearby event. Apply when a user query uses planning language (e.g., 'planning', 'plans', 'when will') and asks for a date/schedule; include 'plan' memories and resolve relative time expressions from the memory's timestamp. Do not apply when the question concerns a past or purely factual event, where the default 'event' search suffices.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-49_conv-49_qa_0073",
+        "source_failure_id": "access_conv-49_conv-49_qa_0073",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:35:26Z"
+      },
+      {
+        "candidate_id": "cand_access_3ad02bac7baa",
+        "skill_id": "sk_access_024964d468",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Broaden plan-date searches across event kind",
+          "description": "When a question asks what someone planned/agreed to do on a specific date or relative date, include both 'plan' and 'event' memory kinds and avoid exact-time-only filters.",
+          "content": [
+            "If the question asks about a planned activity on a named or relative date, start with a hybrid search that includes memory kinds 'plan' and 'event', because rescheduled or updated plans are often stored as events.",
+            "Do not use time_mode point as the sole filter for relative dates like 'the Saturday after <date>'; allow keyword/content matches on nearby dates and event descriptions.",
+            "After retrieving, verify that the results actually involve the named people and the queried activity/date; if not, retry with broader kinds before answering."
+          ]
+        },
+        "solves": "The failure occurs when a question about a planned activity on a specific date is answered after restricting retrieval to a single memory kind or exact time, so a relevant rescheduled plan stored as an event is missed. This applies when users ask what people planned to do on a named or relative date, and should not apply to general queries where a broad first search already yields sufficient evidence.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-44_conv-44_qa_0115",
+        "source_failure_id": "access_conv-44_conv-44_qa_0115",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:33:51Z"
+      },
+      {
+        "candidate_id": "cand_access_3e0ddfda7951",
+        "skill_id": "sk_access_4f8e4cde96",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Retrieve event news by explicit date",
+          "description": "Apply when a question states an exact calendar date and asks what news, event, or information someone shared or received on that date. Use it to add a structured date-filtered search if the initial results contain no memory dated that day.",
+          "content": [
+            "When a question specifies an exact date and asks for news/event/information shared on that date, check whether any returned memory has a world_start matching that date.",
+            "If none does, run one structured search with a world_start filter equal to the question's date and a modest top_k (e.g., 5-10).",
+            "Stop after that structured search unless it returns a date-matching memory; do not search nearby dates or re-query with different wording."
+          ]
+        },
+        "solves": "Memory text often omits the date even though the event is dated in metadata, so hybrid searches miss exact-date queries; one structured search filtered by that date fixes it. Applies when a question asks what news/event/information was shared on a stated date and the first search returns nothing dated that day. Not for date-less questions, incidental dates, or when an initial result already has the right date.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-49_conv-49_qa_0133",
+        "source_failure_id": "access_conv-49_conv-49_qa_0133",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:36:00Z"
+      },
+      {
+        "candidate_id": "cand_access_3ebde5933dc2",
+        "skill_id": "sk_access_f254708ab6",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Date-Range Search for Temporal Queries",
+          "description": "When a question asks where someone was or what they did during a specific calendar period (week, month, date range) and initial hybrid/keyword searches return only interests or plans, run a structured search filtered to that period's date range before answering.",
+          "content": [
+            "When the question specifies a calendar period, issue one structured search over memories whose world_start (or event time) overlaps that period, using the period's concrete date range as the filter; do not rely only on keywords like the month name because memories may store relative time phrases such as 'last Friday'.",
+            "Do not treat memories expressing interest, desire, or future plans to visit a place as evidence that the person was there during the asked period; only an event memory whose timestamp falls within the period supports the answer.",
+            "After one structured date-range search, stop expanding; if no overlapping event memory is found, answer that the information is not available from memory."
+          ]
+        },
+        "solves": "When a question asks where someone was during a named calendar period, keyword search can miss memories that use relative time words like 'last Friday' instead of the month/week name, leading agents to infer the location from interest or plan memories. Apply when the question specifies a calendar period and initial searches return only preferences or plans; run a structured date-range search. Do not apply when no time-window is required, where ordinary search suffices.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-43_conv-43_qa_0045",
+        "source_failure_id": "access_conv-43_conv-43_qa_0045",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:32:50Z"
+      },
+      {
+        "candidate_id": "cand_access_3f8536cdaf73",
+        "skill_id": "sk_access_4b2d509513",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Structured time search for date-bounded questions",
+          "description": "When a question specifies a date or date range, run one structured search on memory world_start/world_end within that range before answering, because memories may state times relatively and text search can miss them; stop when that search adds no new relevant memories.",
+          "content": [
+            "For any question with an explicit date or date range, run a structured search filtering world_start/world_end to that window, in addition to text retrieval.",
+            "Use any newly retrieved memories to complete the answer; after this one structured search, do not keep issuing further time-window variants unless it surfaces a new line of evidence needing verification."
+          ]
+        },
+        "solves": "Questions that specify a date or date range can miss relevant memories because the memory text uses relative time ('last month') while the exact date lives in structured world_start/world_end. This Skill applies to such time-bounded questions, requiring one structured time-window search before the final answer to recover memories the text query overlooks. It does not apply to questions without a time constraint, or where the first text search already returns sufficient memories within the window.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-49_conv-49_qa_0045",
+        "source_failure_id": "access_conv-49_conv-49_qa_0045",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:45:56Z"
+      },
+      {
+        "candidate_id": "cand_access_4452365f8454",
+        "skill_id": "sk_access_258434427c",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Range search for period-based activity questions",
+          "description": "When a question asks which/what activities, classes, or events a subject joined, started, or did during a named date range (e.g., 'mid-August 2023'), use time_mode 'range' with query variants for beginning activities, and retry before concluding no information is available.",
+          "content": [
+            "When the question asks about activities that occurred or began during a named period (e.g., 'mid-August 2023', 'last week'), run at least one search with time_mode 'range' (or a widened time window) covering the entire period, not only a point-in-time search.",
+            "Include in that search query variants that express beginning an activity (e.g., 'started', 'joined', 'enrolled', 'began'), because memories may state the event relative to the session date (e.g., 'started taking classes a few days ago').",
+            "Stop once you have retrieved memories that cover the named period and the asked activity type; do not keep adding unrelated searches or memories after the question is answerable."
+          ]
+        },
+        "solves": "This solves the failure where a single point-in-time search misses memories whose events are described relative to the session timestamp (e.g., 'a few days ago') even though their inferred date falls in the named period, leading to a premature 'No information available'. It applies to future questions asking what/which activities, classes, or events a subject joined or began during a date range. It must not trigger for questions about a single anchored timestamp or when the first search already returns directly relevant evidence.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-49_conv-49_qa_0041",
+        "source_failure_id": "access_conv-49_conv-49_qa_0041",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:35:15Z"
+      },
+      {
+        "candidate_id": "cand_access_4a08c722362e",
+        "skill_id": "sk_access_0a9f84569b",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Ordinal event queries require full instance retrieval",
+          "description": "When a question asks for the Nth occurrence of a recurring event type (third, second, first, last time something happened), use before answering.",
+          "content": [
+            "If the question asks for an ordinal occurrence of a recurring event (e.g., third tourney win, second time someone did X), first run a broad hybrid search for the event type without the ordinal term (e.g., 'Nate won tournament'), retrieving enough results to cover all instances, then order the retrieved event memories by world_start and pick the requested occurrence.",
+            "When a retrieved memory states an event happened 'last week' or 'yesterday' relative to a world_start timestamp, resolve the actual event date from that timestamp (e.g., world_start 2022-06-03 with 'last week' means the event occurred the week before 2022-06-03) and use it as the answer evidence.",
+            "Stop as soon as you have all instances needed to determine the ordinal position; do not expand to unrelated event types or exhaustive generic searches."
+          ]
+        },
+        "solves": "Retrieval misses a relevant memory when a question asks for an ordinal occurrence of a recurring event because the search includes only the ordinal term. Such questions require first retrieving all instances of that event type without the ordinal, ordering by world_start, and picking the Nth; also resolve relative time ('last week') from the memory's world_start. Do not apply when the ordinal is already verbatim in a memory or the event has a specific known date.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-42_conv-42_qa_0026",
+        "source_failure_id": "access_conv-42_conv-42_qa_0026",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:31:00Z"
+      },
+      {
+        "candidate_id": "cand_access_54886e0a6c79",
+        "skill_id": "sk_access_17b36dbd84",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Holiday-season-event-time-search",
+          "description": "When a question asks which major holiday season coincides with a life event and the first search returns no direct evidence, use event synonyms and a time-aware retrieval before concluding no information.",
+          "content": [
+            "If the question asks which holiday season coincides with an event and the first retrieval shows no direct mention of that event, run one follow-up search combining event synonyms (e.g., wedding with married/marriage) and a time filter around the memory session date.",
+            "Resolve relative time phrases in candidate memories ('last week', 'recently') using each memory's world_start timestamp, then compare the resolved date to the major holiday season that overlaps it.",
+            "Stop after that one synonym+time-filtered follow-up; do not enumerate all holidays or expand the search further."
+          ]
+        },
+        "solves": "Events described with relative time (e.g., 'married last week') can be missed when a question asks which holiday season coincides with the event, because the first search uses only the literal wording and no date-aware retrieval. This skill applies to any event-holiday coincidence question where target memories use relative time and world_start timestamps; it does not apply when the holiday is already named in memory or the question gives an explicit date.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-49_conv-49_qa_0071",
+        "source_failure_id": "access_conv-49_conv-49_qa_0071",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:45:03Z"
+      },
+      {
+        "candidate_id": "cand_access_5aa033e467f9",
+        "skill_id": "sk_access_f500943e65",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Relax time filter for date-specific questions",
+          "description": "When a user question names a specific date/time period and the initial point-in-time memory search returns no supporting memory, use before answering that nothing was found.",
+          "content": [
+            "When a question includes a specific date or month and the first memory search with that date as a point time constraint returns no strong evidence, re-run the search with the time constraint relaxed (e.g., time_mode 'none' or a wide range around the asked date) before answering that no information exists.",
+            "Include relative-time query expansions such as 'last week', 'recently', or 'this month' in the relaxed re-run, because event memories commonly record relative time expressions that do not match the literal queried date.",
+            "Stop after one or two relaxed-time re-runs; do not exhaustively search all time ranges. If the relaxed search still yields no relevant memory, you may conclude the information is absent."
+          ]
+        },
+        "solves": "Time-specific questions can miss relevant event memories because the memory's recorded date uses relative time (e.g., 'last week') and differs from the asked month. This Skill applies when the first search constrained to the asked date returns no or weak evidence and the question needs an event/action answer. It must not apply when the initial search already returns a clear match or when strict temporal precision is required and memories from other periods must be excluded.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-42_conv-42_qa_0149",
+        "source_failure_id": "access_conv-42_conv-42_qa_0149",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:32:30Z"
+      },
+      {
+        "candidate_id": "cand_access_6b03c0685270",
+        "skill_id": "sk_access_fb05bb1138",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Verify inferred start dates for started-learning questions",
+          "description": "When a question asks what activity, hobby, or instrument someone started or learned in a time period, and the only evidence for a candidate's start date is inferred from a duration, search for alternative named or unnamed activities with explicit start dates before answering.",
+          "content": [
+            "When a retrieved memory matches the activity but its start date is only implied by a duration (e.g., 'for about four months'), do not treat that candidate as confirmed for the asked timeframe.",
+            "Before answering, run additional keyword searches combining the person's name with generic activity terms (e.g., 'learning instrument', 'new hobby') and with the concrete activity names already retrieved, to surface other candidates whose world_start is explicit and within the timeframe.",
+            "Compare the start evidence of all candidates and answer with the one most explicitly supported by the question's timeframe; stop after checking the generic term and the named activities from the retrieved set, without enumerating unrelated hobbies."
+          ]
+        },
+        "solves": "Fixes answering time-bounded 'what did X start/learn' questions from the first candidate whose start date is inferred from a duration, causing the agent to miss alternative memories with explicit start dates. Applies when retrieved memories contain duration-based or unnamed activity references (e.g., 'learning an instrument'). Does not apply when a memory gives an explicit, unique start date for the activity and no other candidates exist.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-43_conv-43_qa_0095",
+        "source_failure_id": "access_conv-43_conv-43_qa_0095",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:33:31Z"
+      },
+      {
+        "candidate_id": "cand_access_763ac95039d6",
+        "skill_id": "sk_access_228a338eb2",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Enumerate-all-events-before-count-answers",
+          "description": "When a question asks for a count or total number of distinct events, participations, wins, or similar items from memory.",
+          "content": [
+            "When the question asks for a count of distinct events, participations, wins, or similar, do not rely on a single top-k search result; run additional searches with varied phrasings and keywords until two consecutive searches return no new distinct relevant memories.",
+            "Inspect full memory content and version history for each relevant memory; an enriched memory can describe several distinct events, so count each distinct event once and avoid double-counting across versions.",
+            "For participation counts, include only memories explicitly stating the person took part (e.g., competed, won, played); exclude memories of only helping, attending, meeting others, or practicing."
+          ]
+        },
+        "solves": "Count questions answered from memory often fail because a single top-k search retrieves only a subset of the relevant event memories, and the agent answers before exhausting alternatives. This skill applies when a future question asks how many times or how many distinct events (tournaments, wins, participations) a person has done, and the events are stored across multiple memory entries. It does not apply to single-fact questions or when one memory already states the total explicitly.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-42_conv-42_qa_0078",
+        "source_failure_id": "access_conv-42_conv-42_qa_0078",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:31:53Z"
+      },
+      {
+        "candidate_id": "cand_access_7816f8f35966",
+        "skill_id": "sk_access_c113613259",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Date-Specific Event Retrieval",
+          "description": "When a question asks what a specific person made or did on an explicit calendar date, and the initial retrieval returns no memory with that exact date, perform a targeted structured search using the person and date as filters before answering 'No information available'.",
+          "content": [
+            "If the user question contains an explicit calendar date and asks about a specific person's action or creation on that date, and the initial hybrid/keyword search returned no memory whose world_start matches that date, run one additional structured search with subject = that person and world_start = that date (use a small date range if the exact day is uncertain).",
+            "Treat memories returned by this structured search as valid evidence even if they were absent from the earlier semantic ranking; exact-date events often score low on text similarity.",
+            "Stop after this extra structured search unless it returns nothing or is clearly insufficient; do not broaden the search to other dates or entities."
+          ]
+        },
+        "solves": "When a memory has structured fields (subject, world_start) but its free text does not match the query wording, hybrid retrieval can miss it, causing a false 'no information' answer for date-anchored questions. This Skill applies when a future question names one entity and one exact date, and the first pass yields no same-date event. It must not apply to relative-date questions ('last week', 'recently') or when the first retrieval already returns a same-date event, where the base policy already suffices.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-42_conv-42_qa_0186",
+        "source_failure_id": "access_conv-42_conv-42_qa_0186",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:32:00Z"
+      },
+      {
+        "candidate_id": "cand_access_83f66a506c05",
+        "skill_id": "sk_access_2913215095",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Multi-event date-range retrieval",
+          "description": "When a question asks for a specific number of distinct life events for a person within a date range, and the initial search may not surface all relevant memories due to vocabulary mismatch.",
+          "content": [
+            "When the question asks for a specific number of distinct events or milestones for a named person within a date range, and the first search does not retrieve enough distinct relevant memories, run at least one additional search using event-type synonyms (e.g., married, wedding, engaged, pregnant, birth, born, moved, graduated, promoted, died) combined with the person and time period.",
+            "Apply structured date-range filters and increase top_k to surface low-ranked relevant memories; do not rely solely on semantic similarity.",
+            "Before answering, verify that the retrieved evidence supports the requested count of distinct events; if not, continue with further synonym or related-memory searches, and stop once the count is satisfied or an additional search yields no new relevant event."
+          ]
+        },
+        "solves": "A single query often misses memories that use different event vocabulary (e.g., 'married' vs 'partner'), so count-based questions about events in a time window can yield incomplete answers. This Skill applies when future questions ask for multiple distinct events for a named person within a specified period and the first search returns fewer relevant memories than requested. It directs additional synonym and structured date-range searches, with a stopping rule. It does not apply to single-fact questions or when the first search already provides enough distinct evidence.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-49_conv-49_qa_0069",
+        "source_failure_id": "access_conv-49_conv-49_qa_0069",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:35:12Z"
+      },
+      {
+        "candidate_id": "cand_access_96a24064051a",
+        "skill_id": "sk_access_5d2f604382",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Temporal Consistency Check Before Answering",
+          "description": "When a question asks about a trip, event, or activity inside an explicit time period (month/year), use this before answering to check that candidate memory dates fall in that period and to re-search when the top match is temporally inconsistent.",
+          "content": [
+            "For questions with an explicit time period, before answering, check each candidate memory's date range (world_start/world_end) against that period; a memory whose dates do not overlap the asked period cannot support the answer.",
+            "If the top-ranked memory fails the temporal check, do not stop at one search—re-run retrieval with the time period plus activity/event words (retreat, trip, vacation, visit, move) instead of only the question's companion/travel wording, and rank candidates that fall inside the period higher.",
+            "Weigh temporal consistency above surface similarity: a memory dated inside the requested period that names an activity/destination is stronger evidence than a memory dated outside the period that merely mentions the companion or trip wording."
+          ]
+        },
+        "solves": "Access Agent answers travel/event questions from top-scored memories that match topically but fall outside the explicit time period, stopping before checking other candidates or re-searching. Applies when a future question names a concrete time window for a trip or event and top retrieved memories are dated outside it. Does not apply when the question has no temporal constraint or when retrieved dates already overlap the period.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-48_conv-48_qa_0175",
+        "source_failure_id": "access_conv-48_conv-48_qa_0175",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:45:27Z"
+      },
+      {
+        "candidate_id": "cand_access_9c0bcc38939e",
+        "skill_id": "sk_access_c782ef80f7",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Exact-Date Fallback Search for Missed Activity Memories",
+          "description": "Use when a question asks what someone played, watched, or did on an exact calendar date and the first searches return only thematically related memories without that date; before answering, run one structured search filtered by person and exact date.",
+          "content": [
+            "If the question includes an exact calendar date for a person's activity and the initial hybrid/keyword searches return only undated or topically related memories, run one additional search_memory that filters on the person's name and that exact date (world_start on that day), keeping the query text to just the person and the activity verb.",
+            "Inspect the returned memories whose world_start matches that date even when their wording differs from the question (e.g., uses media titles, 'immersive', or 'recommendations' instead of descriptors like 'futuristic setting' or 'gameplay').",
+            "Stop after this single date-scoped fallback: if it still yields no direct evidence, answer from the best available visible evidence or state insufficiency; do not enumerate all memories for the date or broaden into exhaustive searching."
+          ]
+        },
+        "solves": "Text-only retrieval misses a memory when a user asks about someone's activity on an exact calendar date and the supporting memory stores that date only in metadata while describing the item with different vocabulary than the question. This Skill applies to future person+exact-date+activity questions whose first searches return only undated or topically related memories; it must not apply to date-less preference questions or when direct date-matched evidence already appears.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-42_conv-42_qa_0164",
+        "source_failure_id": "access_conv-42_conv-42_qa_0164",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:32:30Z"
+      },
+      {
+        "candidate_id": "cand_access_9f2c96701060",
+        "skill_id": "sk_access_60d9304af4",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Broaden Time-Windowed Searches Past One-Sided Results",
+          "description": "When a question asks what a person shared/did in a specific month and initial retrieval is dominated by one recurring theme, run one time-filtered search for all events in that month before answering.",
+          "content": [
+            "If the question includes a specific month/time window for a person's activity or shared content, and the first search returns mostly memories about one recurring topic that does not answer the question, run one additional search with the person's name plus the time window only (e.g., 'Nate November 2022 events'), omitting the dominating topic keyword.",
+            "Review newly returned events from that window for the actual shared/done item; answer from visible evidence. Stop after this one time-windowed search if no additional candidate appears; do not iteratively expand queries."
+          ]
+        },
+        "solves": "The general failure is anchoring on a salient, recurring topic (e.g., turtles) when a question specifies a time window, causing unrelated same-period events (e.g., making colorful bowls of coconut milk ice cream) to be missed. Apply when a question asks what someone shared, made, posted, or did in a named month/time window and the first retrieval results are topically one-sided; run one additional time-windowed event search without the dominating theme's keywords. Do not apply when the question names a specific topic that already matches the initial results or when no time window is given.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-42_conv-42_qa_0198",
+        "source_failure_id": "access_conv-42_conv-42_qa_0198",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:32:06Z"
+      },
+      {
+        "candidate_id": "cand_access_a3b499f4fb40",
+        "skill_id": "sk_access_b9964d5976",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Completion-date search for artifact questions",
+          "description": "When a user asks when someone finished/created/completed an artifact and retrieval only shows related-event dates (exhibition, publication, release), search separately for the creation/completion memory before answering.",
+          "content": [
+            "When the question asks for a finish/creation/completion date of an artifact, and the current results only show related-event dates such as exhibition, publication, or release, perform an additional search using the subject plus creation/completion terms: 'created', 'completed', 'finished', 'made'.",
+            "If a retrieved memory states the artifact was completed with a relative time ('a few days ago', 'recently'), answer with that relative time resolved against that memory's world_start/session date, not the world_start date itself.",
+            "Stop after finding the memory that directly gives the artifact's creation/completion time; do not use a related-event date as a substitute."
+          ]
+        },
+        "solves": "When a question asks for the date a person finished/created/completed an artifact, retrieval may surface only related-event dates (e.g., exhibition, publication, release) and miss the creation/completion memory, causing the agent to answer with the wrong date. This Skill should trigger on such date-of-completion questions whenever the visible evidence contains only related-event dates or no direct completion time. It should not apply when the question is about the related event itself (e.g., when the exhibit or publication occurred) or when a memory explicitly states the completion date.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-49_conv-49_qa_0076",
+        "source_failure_id": "access_conv-49_conv-49_qa_0076",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:35:51Z"
+      }
+    ],
+    "retrieved_skill_ids": [],
+    "relations": []
+  },
+  "plan": {
+    "transaction_id": "tx_access_bank1_new_build_0002",
+    "side": "access",
+    "base_bank_version": "v000",
+    "candidate_resolutions": [
+      {
+        "candidate_id": "cand_access_06815b067b97",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_access_drop_recipient"
+        ],
+        "reason": "Merged with cand_access_1648fdaaad71 because both repair the same failure mechanism: dropping the recipient in relational memory searches."
+      },
+      {
+        "candidate_id": "cand_access_1648fdaaad71",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_drop_recipient"
+        ],
+        "reason": "Creates one merged Skill for dropping the recipient in relational memory searches."
+      },
+      {
+        "candidate_id": "cand_access_23b6138edf20",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_ordinal_work"
+        ],
+        "reason": "No existing Skill covers ordinal work questions."
+      },
+      {
+        "candidate_id": "cand_access_2c6fa0d8853b",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_access_plan_event_search"
+        ],
+        "reason": "Merged with cand_access_3ad02bac7baa because both repair the same failure mechanism: plan memories missed due to memory kind restriction."
+      },
+      {
+        "candidate_id": "cand_access_3ad02bac7baa",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_plan_event_search"
+        ],
+        "reason": "Creates one merged Skill for including plan and event memory kinds in plan-date searches."
+      },
+      {
+        "candidate_id": "cand_access_3e0ddfda7951",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_access_exact_date_search"
+        ],
+        "reason": "Merged with cand_access_7816f8f35966 and cand_access_9c0bcc38939e because all repair the same failure mechanism: exact-date events missed by text-only retrieval."
+      },
+      {
+        "candidate_id": "cand_access_3ebde5933dc2",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_access_date_range_search"
+        ],
+        "reason": "Merged with cand_access_3f8536cdaf73 and cand_access_4452365f8454 because all repair the same failure mechanism: date-range queries missing relative-time memories."
+      },
+      {
+        "candidate_id": "cand_access_3f8536cdaf73",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_access_date_range_search"
+        ],
+        "reason": "Merged with cand_access_3ebde5933dc2 and cand_access_4452365f8454 because all repair the same failure mechanism: date-range queries missing relative-time memories."
+      },
+      {
+        "candidate_id": "cand_access_4452365f8454",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_access_date_range_search"
+        ],
+        "reason": "Merged with cand_access_3ebde5933dc2 and cand_access_3f8536cdaf73 because all repair the same failure mechanism: date-range queries missing relative-time memories."
+      },
+      {
+        "candidate_id": "cand_access_4a08c722362e",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_ordinal_event"
+        ],
+        "reason": "No existing Skill covers ordinal occurrence retrieval."
+      },
+      {
+        "candidate_id": "cand_access_54886e0a6c79",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_holiday_event"
+        ],
+        "reason": "No existing Skill covers holiday-season event coincidence questions."
+      },
+      {
+        "candidate_id": "cand_access_5aa033e467f9",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_access_relax_time"
+        ],
+        "reason": "Merged with cand_access_9f2c96701060 because both repair the same failure mechanism: time-specific questions missing relative-time memories."
+      },
+      {
+        "candidate_id": "cand_access_6b03c0685270",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_verify_start_date"
+        ],
+        "reason": "No existing Skill covers verifying inferred start dates for started-learning questions."
+      },
+      {
+        "candidate_id": "cand_access_763ac95039d6",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_count_events"
+        ],
+        "reason": "No existing Skill covers count-based event questions."
+      },
+      {
+        "candidate_id": "cand_access_7816f8f35966",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_access_exact_date_search"
+        ],
+        "reason": "Merged with cand_access_3e0ddfda7951 and cand_access_9c0bcc38939e because all repair the same failure mechanism: exact-date events missed by text-only retrieval."
+      },
+      {
+        "candidate_id": "cand_access_83f66a506c05",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_multi_event_range"
+        ],
+        "reason": "No existing Skill covers multi-event date-range retrieval with synonyms."
+      },
+      {
+        "candidate_id": "cand_access_96a24064051a",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_temporal_consistency"
+        ],
+        "reason": "No existing Skill covers temporal consistency checking before answering."
+      },
+      {
+        "candidate_id": "cand_access_9c0bcc38939e",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_access_exact_date_search"
+        ],
+        "reason": "Merged with cand_access_3e0ddfda7951 and cand_access_7816f8f35966 because all repair the same failure mechanism: exact-date events missed by text-only retrieval."
+      },
+      {
+        "candidate_id": "cand_access_9f2c96701060",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_access_relax_time"
+        ],
+        "reason": "Merged with cand_access_5aa033e467f9 because both repair the same failure mechanism: time-specific questions missing relative-time memories."
+      },
+      {
+        "candidate_id": "cand_access_a3b499f4fb40",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_completion_date"
+        ],
+        "reason": "No existing Skill covers completion-date search for artifact questions."
+      }
+    ],
+    "operations": [
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_drop_recipient",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Drop Recipient in Relational Memory Searches",
+        "description": "When a question asks what one person recommended/suggested/gave to another and the first search returns no supporting memory, retry once by dropping the recipient and applying a time filter if a date is specified.",
+        "content": [
+          "When a question asks what one person <verb> to another (e.g., recommended, suggested, gave) and the initial hybrid search returns no relevant memory, run one additional search using only the subject, verb, and object; omit the recipient from the query and keywords.",
+          "If the question includes a time period (e.g., January 2024), add a structured filter on world_start/world_end during that retry so the candidate memory is not outranked by unrelated events.",
+          "Validate that any candidate memory's date interval contains the question date; if not, do not use it as evidence. Stop after this single relaxed search; do not drop the actor or broaden to unrelated topics."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_06815b067b97",
+          "cand_access_1648fdaaad71"
+        ],
+        "reason": "Creating merged Skill from two candidates sharing the same failure mechanism.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_ordinal_work",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Ordinal Work Questions Match by Order",
+        "description": "When a question asks about the nth work in a person's series (e.g., third screenplay, second album), retrieve all candidate works and identify the nth by explicit ordinal or chronological order before answering.",
+        "content": [
+          "If the question uses an ordinal (first, second, third...) with a work category (screenplay, book, album, film), treat it as asking for the nth item in that person's chronological series of such works.",
+          "Do not answer from the first memory that mentions the category. Retrieve multiple candidate works (including completion/achievement events) and compare explicit ordinal labels or world_start dates to determine the true nth item.",
+          "If the candidate memories do not establish order, run an additional search for the person's completed works or a paraphrase of the work's theme before answering; never assume a title refers to the requested ordinal without evidence."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_23b6138edf20"
+        ],
+        "reason": "Creating Skill for ordinal work questions.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_plan_event_search",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Include Plan and Event Memories in Plan-Date Searches",
+        "description": "When a question asks about a planned future event or what someone planned to do on a specific date, include both 'plan' and 'event' memory kinds and resolve relative time phrases from memory timestamps.",
+        "content": [
+          "If the question asks about a future plan or intention (e.g., 'when is X planning...', 'plans for', 'going to'), include memory_kind 'plan' in the search instead of restricting to 'event'.",
+          "When a retrieved plan memory expresses relative time (e.g., 'next summer', 'this weekend'), resolve it to a concrete date using the memory's world_start or the session timestamp before answering.",
+          "Do not use time_mode point as the sole filter for relative dates; allow keyword/content matches on nearby dates and event descriptions. After retrieving, verify that the results actually involve the named people and the queried activity/date."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_2c6fa0d8853b",
+          "cand_access_3ad02bac7baa"
+        ],
+        "reason": "Creating merged Skill from two candidates sharing the same failure mechanism.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_exact_date_search",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Exact-Date Structured Search Fallback",
+        "description": "When a question specifies an exact calendar date for a person's action or event and the initial retrieval returns no memory with that date, run one structured search filtered by person and exact date before answering.",
+        "content": [
+          "If the question contains an explicit calendar date and asks about a specific person's action, creation, or activity, and the initial hybrid/keyword search returned no memory whose world_start matches that date, run one additional structured search with subject = that person and world_start = that date (use a small date range if the exact day is uncertain).",
+          "Treat memories returned by this structured search as valid evidence even if they were absent from the earlier semantic ranking; exact-date events often score low on text similarity.",
+          "Stop after this extra structured search unless it returns nothing or is clearly insufficient; do not broaden the search to other dates or entities."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_3e0ddfda7951",
+          "cand_access_7816f8f35966",
+          "cand_access_9c0bcc38939e"
+        ],
+        "reason": "Creating merged Skill from three candidates sharing the same failure mechanism.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_date_range_search",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Date-Range Structured Search for Temporal Queries",
+        "description": "When a question asks where someone was or what they did during a specific calendar period, run one structured search filtered to that period's date range before answering.",
+        "content": [
+          "When the question specifies a calendar period, issue one structured search over memories whose world_start (or event time) overlaps that period, using the period's concrete date range as the filter; do not rely only on keywords like the month name because memories may store relative time phrases such as 'last Friday'.",
+          "Do not treat memories expressing interest, desire, or future plans to visit a place as evidence that the person was there during the asked period; only an event memory whose timestamp falls within the period supports the answer.",
+          "After one structured date-range search, stop expanding; if no overlapping event memory is found, answer that the information is not available from memory."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_3ebde5933dc2",
+          "cand_access_3f8536cdaf73",
+          "cand_access_4452365f8454"
+        ],
+        "reason": "Creating merged Skill from three candidates sharing the same failure mechanism.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_ordinal_event",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Ordinal Event Queries Require Full Instance Retrieval",
+        "description": "When a question asks for the Nth occurrence of a recurring event type, retrieve all instances without the ordinal term, order by world_start, and pick the requested occurrence.",
+        "content": [
+          "If the question asks for an ordinal occurrence of a recurring event (e.g., third tourney win, second time someone did X), first run a broad hybrid search for the event type without the ordinal term (e.g., 'Nate won tournament'), retrieving enough results to cover all instances, then order the retrieved event memories by world_start and pick the requested occurrence.",
+          "When a retrieved memory states an event happened 'last week' or 'yesterday' relative to a world_start timestamp, resolve the actual event date from that timestamp (e.g., world_start 2022-06-03 with 'last week' means the event occurred the week before 2022-06-03) and use it as the answer evidence.",
+          "Stop as soon as you have all instances needed to determine the ordinal position; do not expand to unrelated event types or exhaustive generic searches."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_4a08c722362e"
+        ],
+        "reason": "Creating Skill for ordinal event retrieval.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_holiday_event",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Holiday-Season Event Time Search",
+        "description": "When a question asks which major holiday season coincides with a life event and the first search returns no direct evidence, use event synonyms and a time-aware retrieval before concluding no information.",
+        "content": [
+          "If the question asks which holiday season coincides with an event and the first retrieval shows no direct mention of that event, run one follow-up search combining event synonyms (e.g., wedding with married/marriage) and a time filter around the memory session date.",
+          "Resolve relative time phrases in candidate memories ('last week', 'recently') using each memory's world_start timestamp, then compare the resolved date to the major holiday season that overlaps it.",
+          "Stop after that one synonym+time-filtered follow-up; do not enumerate all holidays or expand the search further."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_54886e0a6c79"
+        ],
+        "reason": "Creating Skill for holiday-season event questions.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_relax_time",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Relax Time Filter for Date-Specific Questions",
+        "description": "When a question names a specific date or month and the initial point-in-time search returns no supporting memory, re-run with the time constraint relaxed and relative-time expansions before answering that nothing was found.",
+        "content": [
+          "When a question includes a specific date or month and the first memory search with that date as a point time constraint returns no strong evidence, re-run the search with the time constraint relaxed (e.g., time_mode 'none' or a wide range around the asked date) before answering that no information exists.",
+          "Include relative-time query expansions such as 'last week', 'recently', or 'this month' in the relaxed re-run, because event memories commonly record relative time expressions that do not match the literal queried date.",
+          "Stop after one or two relaxed-time re-runs; do not exhaustively search all time ranges. If the relaxed search still yields no relevant memory, you may conclude the information is absent."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_5aa033e467f9",
+          "cand_access_9f2c96701060"
+        ],
+        "reason": "Creating merged Skill from two candidates sharing the same failure mechanism.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_verify_start_date",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Verify Inferred Start Dates for Started-Learning Questions",
+        "description": "When a question asks what activity, hobby, or instrument someone started or learned in a time period, and the only evidence for a candidate's start date is inferred from a duration, search for alternative candidates with explicit start dates before answering.",
+        "content": [
+          "When a retrieved memory matches the activity but its start date is only implied by a duration (e.g., 'for about four months'), do not treat that candidate as confirmed for the asked timeframe.",
+          "Before answering, run additional keyword searches combining the person's name with generic activity terms (e.g., 'learning instrument', 'new hobby') and with the concrete activity names already retrieved, to surface other candidates whose world_start is explicit and within the timeframe.",
+          "Compare the start evidence of all candidates and answer with the one most explicitly supported by the question's timeframe; stop after checking the generic term and the named activities from the retrieved set, without enumerating unrelated hobbies."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_6b03c0685270"
+        ],
+        "reason": "Creating Skill for verifying inferred start dates.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_count_events",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Enumerate All Events Before Count Answers",
+        "description": "When a question asks for a count or total number of distinct events, participations, wins, or similar items, run additional searches until no new distinct relevant memories appear.",
+        "content": [
+          "When the question asks for a count of distinct events, participations, wins, or similar, do not rely on a single top-k search result; run additional searches with varied phrasings and keywords until two consecutive searches return no new distinct relevant memories.",
+          "Inspect full memory content and version history for each relevant memory; an enriched memory can describe several distinct events, so count each distinct event once and avoid double-counting across versions.",
+          "For participation counts, include only memories explicitly stating the person took part (e.g., competed, won, played); exclude memories of only helping, attending, meeting others, or practicing."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_763ac95039d6"
+        ],
+        "reason": "Creating Skill for count-based event questions.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_multi_event_range",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Multi-Event Date-Range Retrieval",
+        "description": "When a question asks for a specific number of distinct life events for a person within a date range, run additional synonym and structured date-range searches until the count is satisfied.",
+        "content": [
+          "When the question asks for a specific number of distinct events or milestones for a named person within a date range, and the first search does not retrieve enough distinct relevant memories, run at least one additional search using event-type synonyms (e.g., married, wedding, engaged, pregnant, birth, born, moved, graduated, promoted, died) combined with the person and time period.",
+          "Apply structured date-range filters and increase top_k to surface low-ranked relevant memories; do not rely solely on semantic similarity.",
+          "Before answering, verify that the retrieved evidence supports the requested count of distinct events; if not, continue with further synonym or related-memory searches, and stop once the count is satisfied or an additional search yields no new relevant event."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_83f66a506c05"
+        ],
+        "reason": "Creating Skill for multi-event date-range retrieval.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_temporal_consistency",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Temporal Consistency Check Before Answering",
+        "description": "When a question asks about a trip, event, or activity inside an explicit time period, check candidate memory dates fall in that period and re-search when the top match is temporally inconsistent.",
+        "content": [
+          "For questions with an explicit time period, before answering, check each candidate memory's date range (world_start/world_end) against that period; a memory whose dates do not overlap the asked period cannot support the answer.",
+          "If the top-ranked memory fails the temporal check, do not stop at one search—re-run retrieval with the time period plus activity/event words (retreat, trip, vacation, visit, move) instead of only the question's companion/travel wording, and rank candidates that fall inside the period higher.",
+          "Weigh temporal consistency above surface similarity: a memory dated inside the requested period that names an activity/destination is stronger evidence than a memory dated outside the period that merely mentions the companion or trip wording."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_96a24064051a"
+        ],
+        "reason": "Creating Skill for temporal consistency checking.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_completion_date",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Completion-Date Search for Artifact Questions",
+        "description": "When a question asks when someone finished/created/completed an artifact and retrieval only shows related-event dates, search separately for the creation/completion memory before answering.",
+        "content": [
+          "When the question asks for a finish/creation/completion date of an artifact, and the current results only show related-event dates such as exhibition, publication, or release, perform an additional search using the subject plus creation/completion terms: 'created', 'completed', 'finished', 'made'.",
+          "If a retrieved memory states the artifact was completed with a relative time ('a few days ago', 'recently'), answer with that relative time resolved against that memory's world_start/session date, not the world_start date itself.",
+          "Stop after finding the memory that directly gives the artifact's creation/completion time; do not use a related-event date as a substitute."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_a3b499f4fb40"
+        ],
+        "reason": "Creating Skill for completion-date search.",
+        "hard_delete": false
+      }
+    ]
+  },
+  "status": "planned"
+}

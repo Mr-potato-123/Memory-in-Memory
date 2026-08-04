@@ -1,0 +1,783 @@
+                                                        Rethinking Memory as Continuously Evolving Connectivity
+
+                                                    Jizhan Fang1,2 , Buqiang Xu1 , Zhixian Wang1 , Haoliang Cao2 , Xinle Deng1 ,
+                                                     Baohua Dong2 , Hangcheng Zhu2 , Ruohui Huang2 , Gang Yu2 , Ying Wei1 ,
+                                                  Guozhou Zheng1 , Feiyu Xiong3 , Haofen Wang4 , Huajun Chen1 , Ningyu Zhang1 *
+                                                    1
+                                                      Zhejiang University 2 Alibaba Group 3 MemTensor 4 Tongji University
+
+
+
+                                                                    Abstract
+                                                 Existing memory-augmented LLM agents of-
+arXiv:2605.28773v1 [cs.CL] 27 May 2026
+
+
+
+
+                                                 ten treat memory as a static repository with
+                                                 pre-defined representations and fixed retrieval
+                                                 pipelines, which is brittle in dynamic agen-
+                                                 tic environments where feedback, task varia-
+                                                 tion, and heterogeneous signals continuously
+                                                 reshape what should be remembered and how
+                                                 it should be connected. To address this, we
+                                                 propose FluxMem, a connectivity-evolving
+                                                 memory framework that models memory as
+                                                 a heterogeneous graph and progressively re-
+                                                 fines its topology through three stages: ini-            Figure 1: The failures of static memory systems.
+                                                 tial connection formation, feedback-driven re-
+                                                 finement, and long-term consolidation. Dur-           agents, memory effectiveness ultimately depends
+                                                 ing execution, FluxMem repairs missing links,         on whether the most useful memories can be
+                                                 prunes interference, aligns abstraction granu-        accessed at each decision step, as sufficiently
+                                                 larity, and distills recurrent successful trajecto-
+                                                                                                       useful memory context substantially improves
+                                                 ries into reusable procedural circuits, guided
+                                                 by one metric for memory generalizability and         subtask success.
+                                                 evolutionary maturity. Across three fundamen-            We formalize such usefulness as a problem of
+                                                 tally distinct benchmarks including LoCoMo,           memory connectivity. Drawing from cognitive sci-
+                                                 Mind2Web, and GAIA, FluxMem achieves                  ence (Hebb, 2005; Frankland and Bontempi, 2005),
+                                                 consistent state-of-the-art performance, demon-
+                                                                                                       we define memory as the long-term sedimentation
+                                                 strating strong adaptation and generalization in
+                                                 complex agentic environments. The code will
+                                                                                                       of memory units and their connections, contin-
+                                                 be open-sourced in the near future1 .                 uously shaped through environmental interaction.
+                                                                                                       Mirroring human cognitive processes, this struc-
+                                         1       Introduction                                          tural evolution operates on two levels. At the unit
+                                                                                                       level, the brain generates new units for novel in-
+                                         For long-horizon agents, memory mecha-                        formation and continuously reshapes existing units
+                                         nism (Zhang et al., 2025c; Hu et al., 2026b) plays            by modifying their internal content. This ensures
+                                         a central role (Mei et al., 2025), by distilling              that each memory unit dynamically integrates new
+                                         useful factual information, reusable experiences              experiences and refines its semantic representation.
+                                         and skills from the agent’s past interaction                  At the connection level, operations are strictly task-
+                                         trajectories (Packer et al., 2024; Wei et al., 2025;          centric, the system establishes links between co-
+                                         Zhang et al., 2026a), storing them in diverse                 activated units to form functional associations, and
+                                         memory forms, and retrieving relevant memories                prunes links that prove irrelevant, maintaining an
+                                         when similar tasks arise to support downstream                efficient associative network. Through repeated
+                                         problem solving and agent evolving (Qi et al.,                task execution and environmental feedback, these
+                                         2026; ang Gao et al., 2026; Qiu et al., 2025; Wang            localized updates gradually consolidate into stable,
+                                         et al., 2026; Ye et al., 2026). For long-horizon              large-scale regions of interconnected nodes and
+                                             *    Corresponding author.                                edges. Rather than static storage, memory thus
+                                             1
+                                                 https://github.com/zjunlp/LightMem.                   emerges as a self-organizing structure that its mem-
+ory units and connections continuously adapt and        Connection Formation rapidly establishes tenta-
+evolve over time (Kelly and Garavan, 2005).             tive cross-layer associations for novel tasks. (2)
+                                                        Feedback-Driven Refinement employs a closed-
+Challenges. First, Failure of Adaptive Mem-
+                                                        loop mechanism to iteratively edit subgraph topol-
+ory Connectivity. Existing methods predominantly
+                                                        ogy, creating missing links, pruning interference,
+rely on static, hand-crafted pipelines (Yang et al.,
+                                                        or conditionally bypassing memory until execution
+2026; Chhikara et al., 2025; Fang et al., 2025b;
+                                                        succeeds. (3) Long-Term Consolidation clusters
+Suzgun et al., 2026). By hardcoding memory op-
+                                                        successful trajectories to induce stable procedu-
+erations, they assume rigid designs and fixed op-
+                                                        ral circuits, monitored by a convergence maturity
+erations generalize across tasks. However, such
+                                                        metric. As high-utility pathways crystallize, recur-
+static paradigms cannot establish optimal memory
+                                                        ring tasks bypass redundant retrieval and directly
+structures for diverse scenarios or dynamically re-
+                                                        activate mature subgraphs. This pipeline trans-
+fine them based on environmental feedback (Zhang
+                                                        forms static memory storage into a self-optimizing
+et al., 2025b; Chen et al., 2026b). This inflexi-
+                                                        connectivity substrate that continuously adapts to
+bility creates bottlenecks at both the connection
+                                                        evolving task demands.
+and unit levels: (1) Inaccurate Memory Connec-
+tions. This inaccuracy primarily manifests during       Results. We evaluate FluxMem on three bench-
+memory retrieval. It leads to two concrete failures:    marks covering distinct task scenarios to eval-
+under-connection, where critical links are missed       uate generalization: LoCoMo (Maharana et al.,
+due to retrieval imprecision, depriving the agent of    2024) (long-context reasoning), Mind2Web (Deng
+essential context, and over-connection, where ir-       et al., 2023) (real-world web navigation), and
+relevant associations are indiscriminately retrieved,   GAIA (Mialon et al., 2023) (general assistant
+introducing noise and hallucinations (Jiang et al.,     tasks). FluxMem achieves state-of-the-art perfor-
+2025; Chen et al., 2026a). Fundamentally, static        mance across all three benchmarks. On LoCoMo,
+pipelines lack the dynamic adaptability required        FluxMem reaches 95.06 average accuracy, above
+for precise connection formation and access. (2)        the Full Context baseline (81.23). On Mind2Web
+Inflexible Memory Unit Content. Existing systems        in the realistic setting (no manual element filtering),
+represent memory units at a single, predefined level    FluxMem improves Cross-Task success rate to 8.1,
+of abstraction. When unit content is misaligned,        more than AWM (Wang et al., 2024c) (3.6). On
+either excessively coarse, losing critical execution    GAIA, FluxMem increases the average success
+details, or overly fine, obscuring high-level struc-    rate from 52.12 to 64.85 on Kimi K2 (+12.73%
+tural patterns, the memory unit fails to adaptively     absolute) compared with the Flash-Searcher (Qin
+integrate new experiences.                              et al., 2025) baseline, and also surpasses the strong
+   Second, Failure of Memory Connection Con-            MemEvolve (Zhang et al., 2025b) baseline.
+solidation. While existing systems preserve task
+trajectories (Fang et al., 2026; Ouyang et al., 2025;   2     FluxMem Memory Architecture
+Tang et al., 2025a), they treat memories as iso-
+lated instances rather than progressively consoli-      2.1    Three-Layer Memory Graph
+dating them. True consolidation requires localized      We model FluxMem as a heterogeneous graph
+updates to coalesce through feedback into stable,       G = (V, E), where the node set V comprises three
+large-scale associative regions. Lacking this mech-     functional layers. ⃝ 1 Semantic Knowledge Vsem
+anism, agents repeatedly reconstruct similar associ-    stores static factual knowledge that provides evi-
+ations instead of internalizing enduring structural     dential support (e.g., knowledge documents or their
+patterns, preventing memory networks from self-         corresponding chunks). ⃝  2 Episodic Experiences
+organizing into optimal configurations.                 Vepi records concrete state-action trajectories (e.g.,
+Method. To address these challenges, we pro-            debugging logs or tool-use sequences). ⃝    3 Proce-
+
+pose FluxMem, a connectivity-evolving frame-            dural Skills Vproc encapsulates distilled reasoning
+work that models memory as a dynamically                templates (e.g., multi-step planning heuristics).
+editable heterogeneous graph across semantic,              Among the 3 layers, Vepi serves as the opera-
+episodic, and procedural layers. Context is for-        tional nexus that orchestrates the interplay between
+malized as an activated subgraph refined through        static knowledge and distilled skills. Each node
+                                                          (q)
+a three-stage evolutionary pipeline. (1) Initial        vepi ∈ Vepi represents a specific task q and records
+Figure 2: The FluxMem architecture. Stages I and II operate online at a step-wise granularity. Stage III is conducted
+offline, aiming for immediate performance optimization and long-term memory consolidation, respectively.
+
+
+its full step-by-step trajectory τq = {(ot , at )}Tt=1 .    In this formula, Obst describes the observations.
+The three layers are linked in a bottom-up order            Under this formulation, optimizing the working
+through two types of edges in E. First, during              context is equivalent to performing targeted topo-
+task execution, the agent retrieves relevant facts          logical edits on Gt (q), as the prompt content is
+from Vsem to explain its current observation and            strictly determined by the activated node set and
+decide the next step. This creates the edge set             edge connections. Consequently, the adaptation
+                                                      (q)
+Eground ⊆ Vsem × Vepi , where an edge (vsem , vepi )        pipeline systematically evolves Gt (q) from fragile
+simply indicates that a specific fact provides evi-         tentative links into robust, task-optimized circuits
+dential support for a step in task q. Second, after         through three sequential stages.
+completing one or more similar tasks, the agent
+identifies common patterns in these trajectories and        3     Three-Stage Memory Evolution
+summarizes them into reusable skills. This forms            FluxMem comprises three stages. Stages I and
+the edge set Edistill ⊆ Vepi × Vproc , where an edge        II operate online at a step-wise granularity during
+   (q)
+(vepi , vproc ) shows that a skill is distilled from past   task execution. At each time step t, Stage I is exe-
+experiences. Once created, vproc ∈ Vproc can be             cuted first to generate St (q), which is immediately
+used to guide the agent in future tasks.                    processed by Stage II to yield the refined context
+    In FluxMem, the semantic layer is sourced di-           St′ (q). Stage III is conducted offline.
+rectly from the environment, encompassing raw
+                                                            3.1    Stage I: Initial Connection Formation
+inputs such as dialogue histories and tool API doc-
+umentation. Episode nodes are instantiated individ-         Semantic Connection Retrieval. At time step t,
+ually for each task, while procedural skill nodes           given the current observation ot , the system estab-
+are subsequently induced in section 3.3.                    lishes initial associations between ot and support-
+                                                            ing factual knowledge by querying the semantic
+2.2   Context as Dynamically Induced                        layer Vsem . We compute a hybrid relevance score
+      Connectivity                                          for each candidate v ∈ Vsem by fusing dense em-
+At each step t of task q, FluxMem constructs the            bedding similarity, sparse lexical matching, and
+agent’s context St (q). The system dynamically              LLM-based verification:
+selects a task-specific subset of nodes to form a                                   v · ot
+                                                                 Score(v, ot ) =            + BM25(v, ot )
+local subgraph Gt (q) = (Vt , Et ) ⊂ G, where Vt =                                ∥v∥∥ot ∥
+          epi   proc
+Vtsem ∪ Vt ∪ Vt contains the activated memory
+                                                                               +LLMver (v, ot ).
+nodes from the three layers.
+                                                            The top-k nodes instantiate Vtsem , with directed
+                                     epi  proc
+  St (q) = Concat(q, Obst , Vtsem , Vt , Vt ),              edges Etsem = {(vt , v) | v ∈ Vtsem } established to
+link them to the current step anchor vt .                    Content Reshaping for Granularity Alignment.
+                                                             When retrieval is sufficient but the unit abstraction
+Episodic Connection Retrieval. To draw on ex-
+                                                             mismatches current demands (e.g., overly coarse
+perience from past similar tasks, we query the
+                                                             for precise execution or overly fine for high-level
+episodic layer Vepi for the k most relevant past
+                                                             planning), the system adaptively modifies the in-
+episodes using embedding similarity.
+                                                             ternal content of vold ∈ Vt . This involves either
+          epi              
+        Vt = TopKu∈Vepi cos(u, ot ) .                        expanding vold with finer-grained execution details
+                                                             or abstracting redundant components to elevate its
+Procedural Connection Inheritance. Based on                  semantic level, yielding a refined unit valign . The
+                            epi                              local subgraph is updated by replacing vold with
+the retrieved episodes Vt , we collect applicable
+skills by traversing existing distillation connections.      valign while preserving established connections.
+Specifically, we select all skill nodes vproc that are          After applying the targeted edits, the refined sub-
+linked to any retrieved episode via Edistill :               graph Gt′ = (Vt′ , Et′ ) is serialized into the updated
+                                                             context St′ for subsequent reasoning. The loop
+    proc
+              [ 
+  Vt =                vproc | (vepi , vproc ) ∈ Edistill .   terminates upon execution success or reaching a
+                  epi
+           vepi ∈Vt                                          predefined refinement rounds T .
+
+The retrieved facts, episodes, and skills together           3.3   Stage III: Long-Term Connection
+form the initial step-local subgraph Gt = (Vt , Et ),              Consolidation
+                        epi     proc
+where Vt = Vtsem ∪ Vt ∪ Vt . This subgraph is                Episodic Clustering and Skill Induction. Upon
+serialized into the initial step context St . Although       task completion, trajectories are committed as
+this provides a complete starting point for the cur-         episodic nodes vτ ∈ Vepi . During offline consolida-
+rent step’s reasoning, the selected connections are          tion, the system first partitions Vepi into M clusters
+preliminary and will be refined in Stage II.                 {Cm }M m=1 based on semantic trajectory similarity,
+                                                             computed via cosine distance between episode em-
+3.2   Stage II: Feedback-Driven Connectivity                 beddings uτ . For each cluster Cm , an LLM-based
+      Refinement                                             induction operator extracts the skills or reasoning
+Following the initial retrieval, the system addresses        pattern shared across episodes, abstracting them
+structural misalignments through a feedback-driven                                                 (m)
+                                                             into a new procedural skill node vproc ∈ Vproc .
+refinement loop. At step t, upon receiving execu-
+tion feedback ft (from environmental signals or              PEMS-Guided Iterative Consolidation. Since
+self-verification), the agent attributes reasoning fail-     previous initial skill induction is one-way and may
+ures to either connection-level or unit-level flaws          produce invalid skills, we verify and optimize them
+and applies targeted edits to Gt .                           through a closed-loop refinement process guided by
+                                                             iterative evolution. At each iteration k, the system
+Connection-Level Refinement. To resolve in-                  re-runs the source episodes Cm that generated each
+accurate memory connections, the system dynami-              skill vproc , using the current skill version as guid-
+cally adjusts the associative topology based on feed-        ance. We then compute the Procedure Evolution
+back attribution. (i) Link Expansion for Under-              Maturity Score (PEMS) for every skill:
+Connection. If ft indicates missing critical context,
+the system identifies semantically proximate but                                    (k) 
+                                                                    (k)        η Vproc      
+                                                                                                    (k)     (k−1) 
+                                                                                                                    
+unactivated nodes vnew ∈ V \ Vt and establishes              PEMS         =          (k) 
+                                                                                           ×  1−δ G     , G
+                                                                                                   cons cons          ,
+new task-centric edges via Et ← Et ∪ {(vt , vnew )}.                          log ℓ Vproc
+(ii) Link Pruning for Over-Connection. If ft re-
+                                                             where η (k) is the average success rate of the source
+veals context congestion or hallucinated guidance,
+                                                             episodes under the current skill, ℓ(k) is the token
+the system identifies distractor edges Enoise ⊂ Et
+                                                             length of the skill text, and δ (k) measures the em-
+and severs them via Et ← Et \ Enoise , isolating vt
+                                                             bedding difference between the current and previ-
+from irrelevant associations.
+                                                             ous skill versions. Based on the execution results,
+Unit-Level Refinement. To overcome inflexible                the LLM directly rewrites low-scoring skills to fix
+memory unit content, the system dynamically re-              logical errors or remove redundant content. This
+shapes internal representations when granularity             test-score-refine cycle repeats until the score im-
+misalignment impedes step-level reasoning. (iii)             provement ∆PEMS(k) falls below ϵ. At that point,
+    Method            Single   Multi   Temp    Open    AVG     2025), ⃝
+                                                                      7 Flash-Searcher (Qin et al., 2025), and ⃝
+                                                                                                               8
+                      Hop      Hop              Do-            MemEvolve (Zhang et al., 2025b).
+                                               main
+                           GPT-4.1-mini                        Metrics. For LoCoMo, we report the LLM-as-a-
+    Full Context      87.99    80.50   71.03   58.33   81.23   judge (LMJ) score. For Mind2Web, we evaluate
+    Zep               66.90    53.70   60.20   43.80   61.60   action-level accuracy with Element Accuracy (EA),
+    Mem0              71.40    68.20   56.90   47.90   66.30
+    A-Mem             77.41    61.35   71.03   50.00   71.43
+                                                               Action F1 (AF1), Step Success Rate (SSR), and
+    MemoryOS          78.95    66.67   55.45   60.42   70.65   report overall Success Rate (SR) for completing
+    Nemori            87.16    77.30   76.32   55.21   81.10   a full navigation task. For GAIA, we use Suc-
+    LightMem          87.87    76.95   80.37   57.29   82.40
+    MIRIX             85.11    83.70   88.39   65.62   85.38   cess Rate across Level 1–3 to measure end-to-end
+    EverMemOS         96.67    91.84   89.72   76.04   93.05   task completion under increasing difficulty. Further
+    FluxMem           95.95    93.26   95.64   90.62   95.06   statistics and experimental details about baselines
+                   Qwen3-30B-A3B-2507-Instruct
+                                                               are provided in Appendix A.1.
+    Full Context      87.40    69.86   51.71   57.29   74.87   4.2   Main Results
+    A-Mem             67.90    57.45   27.73   43.75   56.10
+    MemoryOS          79.51    63.12   32.09   48.96   59.81   Superiority in Long-Context Reasoning. As
+    LightMem          82.76    68.09   50.16   52.08   71.36
+                                                               shown in Table 1, FluxMem sets a new state-of-the-
+    FluxMem           96.19    91.49   89.72   87.50   93.44   art across all sub-categories on the LoCoMo bench-
+                                                               mark. With the GPT-4.1-mini backbone, FluxMem
+Table 1: Evaluation results on LoCoMo benchmark.
+                                                               achieves an outstanding average LMJ score of
+Bold and underlined entries indicate the best and
+second-best results within each group, respectively.           95.06, significantly surpassing Full Context (81.23)
+                                                               and the strongest specialized memory system Ev-
+                                                               erMemOS (93.05). This performance gap is even
+the skills are validated as both highly useful and             more pronounced when using Qwen3-30B-A3B-
+concise, and the offline consolidation ends.                   2507-Instruct backbone, where FluxMem main-
+                                                               tains a high average LMJ of 93.44, while the next
+4      Experiments                                             best baseline Full Context drops to 74.87.
+
+4.1     Experimental Setup                                     Robust Performance in Web Navigation. As
+                                                               shown in Table 2, the evaluation on Mind2Web
+Datasets & Baselines. We evaluate the pro-                     highlights the adaptability of FluxMem in noisy,
+posed framework across three challenging bench-                real-world web environments. In the realistic set-
+marks. LoCoMo (Maharana et al., 2024) pro-                     ting without manual element filtering ( ‡ ), our
+vides a comprehensive evaluation for long-context              framework demonstrates consistent improvements
+reasoning, we compare FluxMem against sev-                     across both backbone models. With GPT-4.1-mini,
+eral representative baselines of conversational                FluxMem achieves a Success Rate (SR) of 8.1
+memory modeling: ⃝     1 Zep (Rasmussen et al.,
+                                                               in Cross-Task scenarios, more than AWM base-
+2025), ⃝  2 Mem0 (Chhikara et al., 2025), ⃝    3 A-
+                                                               line (3.6). This trend is further reinforced with
+Mem (Xu et al., 2025), ⃝    4 MemoryOS (Kang
+                                                               Gemini-2.5-flash, where FluxMem reaches an even
+et al., 2025), ⃝5 Nemori (Nan et al., 2025), ⃝   6
+                                                               higher SR of 9.6 in Cross-Task evaluation, sub-
+LightMem (Fang et al., 2025b), ⃝  7 MIRIX (Wang
+                                                               stantially outperforming AWM (5.6). Across all
+and Chen, 2025), and ⃝   8 EverMemOS (Hu et al.,
+                                                               sub-categories and model backbones, FluxMem
+2026a). Mind2Web (Deng et al., 2023) serves as a               consistently yields highest SSR and AF1 scores.
+testbed for web navigation, we compare FluxMem
+against representative baselines: ⃝1 AWM (Wang                 State-of-the-Art on Generalist Assistant Tasks.
+et al., 2024c) and ⃝ 2 Reasoning Bank (Ouyang                  On GAIA benchmark, FluxMem demonstrates ex-
+et al., 2025). For general assistant tasks, we em-             ceptional gains over the high-performance Flash-
+ploy GAIA (Mialon et al., 2023) to benchmark                   Searcher baseline and the meta-evolutionary sys-
+against a wide array of frameworks: ⃝       1 Ope-             tem MemEvolve in Table 3. When utilizing Kimi
+nAI Deep Research (OpenAI, 2024), ⃝ Lang- 2                    K2, our framework boosts the average success rate
+fun (Peng, 2023), ⃝ 3 Magnetic-1 (Fourney et al.,              from 52.12 to 64.85, achieving a remarkable abso-
+2024), ⃝ 4 Agent KB (Tang et al., 2025b), ⃝  5 smo-            lute improvement of 12.73%. In high-complexity
+lagents (Roucher et al., 2025), ⃝
+                                6 Alita (Qiu et al.,           tasks (Level 3), FluxMem reaches a success rate
+                                  Cross-Task                Cross-Website                  Cross-Domain                      AVG
+        Method
+                         EA       AF1 SSR        SR    EA      AF1 SSR SR            EA     AF1 SSR SR              EA     AF1 SSR SR
+                                                               GPT-4.1-mini
+                  ‡
+      No Memory          34.5 64.7 28.0          2.8   33.0 60.4 24.6 1.1 30.1 55.9 24.6 0.7 31.3 58.1 25.2 1.1
+        AWM‡             37.4 71.4 31.6          3.6   34.5 62.8 26.1 1.1 30.3 56.9 24.9 1.0 32.2 60.4 26.3 1.5
+        AWM†             64.6 82.3 56.3          9.1   62.9 79.7 52.7 4.5 50.5 69.3 43.9 2.0 54.8 73.1 47.4 3.7
+      FluxMem‡           60.7 77.5 56.7 8.1 60.5 75.6 55.4 7.9 56.2 69.4 52.1 4.3 57.6 71.7 53.4 5.5
+      FluxMem†           70.4 84.2 60.1 13.5 70.2 82.1 58.7 9.2 65.2 75.3 55.3 7.2 66.8 77.9 56.6 8.6
+                                                              Gemini-2.5-flash
+                  ‡
+    No Memory            40.7     69.5    35.6   2.8   35.7    64.7   28.3   1.7    22.1    37.2   18.6     1.8     20.5   46.9   23.1      2.0
+       AWM‡              53.1     76.6    48.0   5.6   48.9    71.5   44.3   3.4    41.6    60.2   38.1     1.5     44.7   64.8   40.8      2.5
+       AWM†              67.3     82.2    60.9   8.7   63.0    77.0   55.3   4.5    52.0    67.0   47.9     3.4     56.3   71.2   51.3      4.5
+   ReasoningBank†        52.1     60.4    44.9   4.8   44.3    52.6   33.9   3.3    40.6    41.3   36.6     1.6     43.2   46.4   37.8      2.4
+      FluxMem‡           61.6 77.4 57.0 9.6 59.4 72.8 56.1 7.5 58.5 70.1 55.9 5.0 59.2 71.8 56.1 6.2
+      FluxMem†           71.3 83.0 61.3 11.1 65.9 77.0 59.7 8.5 64.8 70.3 54.6 7.0 66.2 73.6 56.5 5.9
+
+Table 2: Evaluation results on Mind2Web. † denotes the filtered setting with manual removal of non-golden HTML
+elements; ‡ denotes the realistic setting without any pre-filtering (see Appendix A.2 for details). Bold and underline
+denote the best and second-best results.
+ Framework                        Model                   Avg.                   Level 1                  Level 2                 Level 3
+ Closed-source Agent Frameworks
+ Langfun                    Claude 3.7 etc.               71.52                    83.02                  68.60                   57.69
+ OpenAI Deep Research      OpenAI o1, o3 etc.             67.36                    74.29                  69.06                   47.60
+ Open-Source Agent Frameworks
+ Magnetic-1                  OpenAI o1 etc.               46.06                    56.60                  46.51                   23.08
+ Agent KB                       GPT-4.1                   61.21                    79.25                  58.14                   34.62
+ Alita                  Claude-3.7-Sonnet,GPT-4o          72.73                    81.13                  75.58                   46.15
+ Smolagents                      GPT-4.1                  55.15                    67.92                  53.49                   34.62
+ Smolagents                     GPT-5-mini                55.75                    69.81                  54.65                   30.77
+ Flash-Searcher               GPT-5-mini                  69.09                    79.25                  69.77                   46.15
+ Flash-Searcher                Kimi K2                    52.12                    58.49                  52.33                   34.62
+ Flash-Searcher              DeepSeek V3.2                60.61                    79.25                  53.49                   46.15
+ MemEvolve                    GPT-5-mini           69.09 → 73.33 ↑4.24   79.25 → 83.02 ↑3.77 69.77 → 73.26 ↑3.49 46.15 → 53.85 ↑7.70
+ MemEvolve                     Kimi K2             52.12 → 61.21 ↑9.09   58.49 → 67.92 ↑9.43 52.33 → 63.95 ↑11.62 34.62 → 38.46 ↑3.84
+ MemEvolve                   DeepSeek V3.2         60.61 → 67.88 ↑7.27   79.25 → 83.02 ↑3.77 53.49 → 63.95 ↑10.46 46.15 → 50.00 ↑3.85
+ FluxMem                      GPT-5-mini            69.09 → 76.36 ↑7.27 79.25 → 88.68 ↑9.43 69.77 → 75.58 ↑5.81 46.15 → 53.85 ↑7.70
+ FluxMem                       Kimi K2             52.12 → 64.85 ↑12.73 58.49 → 77.36 ↑18.87 52.33 → 62.79 ↑10.46 34.62 → 46.15 ↑11.53
+ FluxMem                     DeepSeek V3.2         60.61 → 70.30 ↑9.69 79.25 → 81.13 ↑1.88 53.49 → 69.77 ↑16.28 46.15 → 50.00 ↑3.85
+
+
+Table 3: Evaluation results on GAIA benchmark. Color-coded arrows denote improvements relative to the Flash-
+Searcher baseline, with deeper green shades indicating larger score improvements. Bold and underline indicate the
+best and second-best final results across all methods, respectively.
+
+
+of 53.85 with GPT-5-mini, effectively matching or                        is observed with Qwen3-30B-A3B, where the aver-
+exceeding the capabilities of much larger closed-                        age score falls from 93.44% to 84.74% upon the ex-
+source agent frameworks.                                                 clusion of Stage II, while other two ablations show
+                                                                         relatively smaller impacts. In memory-centric sce-
+4.3    Ablation Study                                                    narios like LoCoMo, where all required evidence
+We conduct ablation studies on LoCoMo and                                can be directly retrieved or simply inferred from the
+Mind2Web to evaluate the contribution of three                           provided context, tasks rely more on accurate recall
+stages, as shown in Figure 3 (a),(b) and (c).                            than complex reasoning. Consequently, the Stage
+   On LoCoMo dataset, Stage II (Feedback-Driven                          II refinement mechanism, which expands retrieval
+Refinement) proves to be the most critical compo-                        or prunes irrelevant memory nodes, yields substan-
+nent. For GPT-4.1 mini, removing Stage II leads                          tial performance gains by helping the agent find the
+to a substantial decrease in the average LMJ score,                      correct facts. In such settings, refining the semantic
+dropping from 95.06% to 85.32%. A similar trend                          knowledge layer proves highly effective, while the
+Figure 3: Detailed analysis of FluxMem components and evolution dynamics: (a) Ablation study of different stages
+on LoCoMo using GPT-4.1-mini. (b) Ablation study of different stages on LoCoMo using Qwen3-30B-A3B-2507-
+Instrcut. (c) Ablation study of different stages on Mind2Web using GPT-4.1-mini. (d) Performance improvement
+across sub-tasks relative to the number of refinement rounds in Stage II. (e) Model accuracy trends and convergence
+of the Procedure Evolution Maturity Score (PEMS) across evolution rounds.
+
+
+procedural skill layer contributes relatively less.        4.5   Analysis of Memory Evolution and
+   In contrast, on the Mind2Web dataset, Stage III               Convergence
+(Long-Term Consolidation) emerges as the primary           At this point, the sensitivity threshold ϵ can be
+performance driver. For instance, removing Stage           utilized to terminate the evolution process.
+III for GPT-4.1-mini causes a drastic performance             As shown in Figure 3(e), on the LoCoMo dataset,
+drop (e.g., the success rate on the first sub-category     while Stage III provides a performance boost (from
+falls from 8.1% to 3.2%), while the impact of re-          91.16% at round 0 to 95.06% at round 5), the
+moving Stage II is relatively moderate. This dis-          gains are more moderate compared to Stage II. This
+parity suggests that for complex, multi-step web           aligns with our observation that for fact-oriented
+navigation tasks requiring strong reasoning, the ex-       tasks, the primary role of Stage III is to summa-
+traction of skills and evolution of skill nodes in         rize and stabilize background knowledge. More
+Stage III are more vital than short-term refinement.       importantly, we observe a clear convergence trend
+                                                           in the PEMS metric (scaled by a factor for visi-
+                                                           bility). The PEMS increases from 0.072 to 0.158
+4.4   Analysis of Iterative Refinement
+                                                           within the first four rounds and stabilizes at 0.159
+                                                           by round 5. This convergence indicates that the
+We analyze the impact of the number of refine-
+                                                           memory maturity mechanism effectively identifies
+ment iterations in Stage II on performance. The
+                                                           when the anchor nodes have reached a stable state
+number of refinement rounds (T ) in Stage II serves
+                                                           of knowledge representation. At this point, the sen-
+as a critical scaling factor. We evaluate this ef-
+                                                           sitivity threshold ϵ can be utilized to terminate the
+fect on the LoCoMo by varying T from 0 to 5, as
+                                                           evolution process, thereby preventing redundant
+shown in Figure 3(d). The results demonstrate a
+                                                           computations once the memory has captured the
+consistent and monotonic improvement across all
+                                                           essential task-related insights.
+sub-categories and the overall score. Without re-
+finement (T = 0), the agent achieves an average
+                                                           4.6   Case Study
+score of 85.32%. By T = 5, the average perfor-
+mance reaches 95.06%. This steady gain suggests            Figure 4 presents a GAIA tabular reasoning task,
+that the refinement mechanism allows the agent to          where the agent must identify the country with the
+refine connections and find more useful factual evi-       highest average medals per athlete from a CSV file.
+dences. The diminishing returns observed between           Following Stage I, FluxMem initializes the work-
+T = 4 and T = 5 (an improvement of only 0.54%)             ing context S0 (q) by activating a local subgraph
+indicate that the agent’s performance begins to sat-       containing semantic knowledge (e.g., CSV parsing
+urate as it approaches the optimal evidence path.          and spreadsheet APIs), a relevant episodic trajec-
+                      Figure 4: Case Study. The key points have been highlighted in red.
+
+
+tory for tabular ranking, and a coarse procedural        Self Evolving Agent Memory. Agent self-
+skill for generic table QA. The first execution step     evolution is typically driven by memory evolv-
+succeeds, correctly parsing the file schema from         ing (ang Gao et al., 2026; Fang et al., 2025a; Shinn
+environmental observation Obs1 .                         et al., 2023), which can be categorized into three
+   However, at the next step, the agent incorrectly      paradigms. (i) Works such as Expel (Zhao et al.,
+invokes a spreadsheet visualization API for ag-          2024), AWM (Wang et al., 2024c), and Reason-
+gregation, which triggers an environmental fail-         ingBank (Ouyang et al., 2025) maintain a con-
+ure due to rendering limitations. FluxMem at-            textual memory repository (Liu et al., 2025; Wei
+tributes this failure to a connectivity mismatch         et al., 2025; Cai et al., 2025), distilling experiences
+and performs targeted topological edits: it prunes       from historical trajectories to enhance agent ca-
+the ineffective semantic connection while expand-        pabilities (Qiu et al., 2025). These methods vary
+ing connectivity toward a more suitable Python           in the granularity of trajectory processing (Fang
+data-analysis API, yielding a refined context S1′ (q).   et al., 2026). In addition to successful experi-
+Subsequently, although aggregation succeeds, self-       ences, some approaches (Tang et al., 2025b; Cao
+verification reveals that the inherited procedural       et al., 2025) incorporate failure cases, while oth-
+skill is overly coarse-grained: it supports ranking      ers (Wu et al., 2025) introduce iterative evolution
+existing statistics but fails to compose the required    mechanisms. (ii) Other works focus on parametric
+metric (medals per athlete). This triggers Node          memory. SEAL (Zweiger et al., 2025) explores
+Reshape, replacing the skill with a finer-grained        the potential of agent self-training, while AgentE-
+statistical aggregation procedure.                       volver (Zhai et al., 2025) and Agent0 (Xia et al.,
+                                                         2025) concentrate on data acquisition and reward
+5   Related Work                                         design. The evolutionary mechanisms primarily
+Hierarchical Structured Memory Systems. Hi-              include SFT (Zhou et al., 2025), RL (Zhang et al.,
+erarchical memory systems organize memory units          2026b) and other paradigms such as early expe-
+through specific topologies. Tree-based memo-            rience (Shi et al., 2025). (iii) Some works mod-
+ries abstract data into hierarchical levels (A et al.,   ify model architectures to enable deeper memory-
+2024; Ye et al., 2025), while graph-based struc-         augmented evolving. This is achieved by either
+tures offer greater connectivity dynamics (Long          introducing additional parameters as external mem-
+et al., 2025). Pyramid mechanisms construct multi-       ory (Wang et al., 2024b,a) to manage information
+level abstractions to facilitate coarse-to-fine query-   acquisition and forgetting, or proposing novel archi-
+ing (Han et al., 2025; Rasmussen et al., 2025). Al-      tectures (Behrouz et al., 2024, 2025a,b) to enhance
+ternatively, heterogeneous multi-layer structures        the inherent memory capacity of base models.
+partition memory into distinct modules (Zhang
+                                                         6   Conclusion
+et al., 2025b; Xu et al., 2026) or levels specialized
+for specific information types or functions (Zhang       We introduced FluxMem, an evolutionary frame-
+et al., 2025a; Gutiérrez et al., 2025a,b).               work conceptualizing agent memory as dy-
+namic connectivity. By a three-phase evolution,          and integrity of the work.
+FluxMem enables autonomous memory adapta-
+tion. SOTA results across LoCoMo, Mind2Web
+and GAIA, provides a principled foundation for           References
+self-evolving agents in dynamic environments.            Aadharsh Aadhithya A, Sachin Kumar S, and Soman K.
+                                                           P. 2024. Enhancing long-term memory using hierar-
+Limitations                                                chical aggregate tree for retrieval augmented genera-
+                                                           tion. Preprint, arXiv:2406.06124.
+Despite the demonstrated effectiveness, several          Huan ang Gao, Jiayi Geng, Wenyue Hua, Mengkang Hu,
+limitations in our experimental design warrant             Xinzhe Juan, Hongzhang Liu, Shilong Liu, Jiahao
+acknowledgment: Computational Overhead of                  Qiu, Xuan Qi, Yiran Wu, Hongru Wang, Han Xiao,
+Closed-Loop Operations. Stages II and III rely on          Yuhang Zhou, Shaokun Zhang, Jiayi Zhang, Jinyu Xi-
+                                                           ang, Yixiong Fang, Qiwen Zhao, Dongrui Liu, and 8
+iterative LLM calls for context verification, topo-
+                                                           others. 2026. A survey of self-evolving agents: What,
+logical editing, and skill induction. Our current          when, how, and where to evolve on the path to artifi-
+evaluation prioritizes task success and convergence,       cial super intelligence. Preprint, arXiv:2507.21046.
+but does not systematically measure the associated
+                                                         Ali Behrouz, Meisam Razaviyayn, Peilin Zhong, and
+latency, API cost, or token consumption, which             Vahab Mirrokni. 2025a. It’s all connected: A
+are critical for real-time or resource-constrained         journey through test-time memorization, attentional
+deployments. Static Benchmark Protocols. Ex-               bias, retention, and online optimization. Preprint,
+periments are conducted on pre-collected, static           arXiv:2504.13173.
+datasets (LoCoMo, Mind2Web, GAIA). While di-             Ali Behrouz, Meisam Razaviyayn, Peilin Zhong, and
+verse, these benchmarks do not fully simulate con-         Vahab Mirrokni. 2025b. Nested learning: The il-
+tinuous, open-world distribution shifts or stream-         lusion of deep learning architectures. Preprint,
+ing environments where task boundaries blur and            arXiv:2512.24695.
+memory decay must be actively managed along-             Ali Behrouz, Peilin Zhong, and Vahab Mirrokni. 2024.
+side evolution. Hyperparameter Sensitivity. The            Titans: Learning to memorize at test time. Preprint,
+framework introduces several control thresholds            arXiv:2501.00663.
+(e.g., refinement rounds T , PEMS convergence            Zhicheng Cai, Xinyuan Guo, Yu Pei, Jiangtao Feng, Jin-
+threshold ϵ, retrieval top-k). Our ablations focus on      song Su, Jiangjie Chen, Ya-Qin Zhang, Wei-Ying Ma,
+component efficacy but lack a comprehensive sen-           Mingxuan Wang, and Hao Zhou. 2025. Flex: Con-
+                                                           tinuous agent evolution via forward learning from
+sitivity analysis across different model backbones
+                                                           experience. Preprint, arXiv:2511.06449.
+and highly heterogeneous domains. Future work
+should systematically evaluate the robustness of         Zouying Cao, Jiaji Deng, Li Yu, Weikang Zhou,
+these parameters under varying computational bud-          Zhaoyang Liu, Bolin Ding, and Hai Zhao. 2025. Re-
+                                                           member me, refine me: A dynamic procedural mem-
+gets. Offline Consolidation Scheduling. Stage              ory framework for experience-driven agent evolution.
+III is executed offline in periodic batches. The cur-      Preprint, arXiv:2512.10696.
+rent experimental setup does not evaluate dynamic
+                                                         Ding Chen, Simin Niu, Kehang Li, Peng Liu, Xiang-
+scheduling strategies or the trade-off between con-        ping Zheng, Bo Tang, Xinchi Li, Feiyu Xiong, and
+solidation frequency and online performance degra-         Zhiyu Li. 2026a. Halumem: Evaluating halluci-
+dation, which are essential for practical lifelong         nations in memory systems of agents. Preprint,
+agent deployment.                                          arXiv:2511.03506.
+                                                         Yining Chen, Jihao Zhao, Bo Tang, Haofen Wang, Yue
+Use of AI Assistants                                       Zhang, Fei Huang, Feiyu Xiong, and Zhiyu Li. 2026b.
+                                                           Memprivacy: Privacy-preserving personalized mem-
+During the preparation of this manuscript, AI lan-         ory management for edge-cloud agents. Preprint,
+guage models were utilized exclusively for linguis-        arXiv:2605.09530.
+tic refinement, grammar correction, and stylistic
+                                                         Prateek Chhikara, Dev Khant, Saket Aryan, Taranjeet
+polishing. The core research concepts, experimen-          Singh, and Deshraj Yadav. 2025. Mem0: Building
+tal design, methodological implementation, nar-            production-ready ai agents with scalable long-term
+rative structure, and all figures/illustrations were       memory. Preprint, arXiv:2504.19413.
+independently conceived, developed, and verified         Xiang Deng, Yu Gu, Boyuan Zheng, Shijie Chen, Sam
+by the human authors. The authors retain full re-          Stevens, Boshi Wang, Huan Sun, and Yu Su. 2023.
+sponsibility for the scientific accuracy, originality,     Mind2web: Towards a generalist agent for the web.
+  Advances in Neural Information Processing Systems,      Yuyang Hu, Shichun Liu, Yanwei Yue, Guibin Zhang,
+  36:28091–28114.                                           Boyang Liu, Fangyi Zhu, Jiahang Lin, Honglin Guo,
+                                                            Shihan Dou, Zhiheng Xi, Senjie Jin, Jiejun Tan, Yan-
+Jinyuan Fang, Yanwen Peng, Xi Zhang, Yingxu Wang,           bin Yin, Jiongnan Liu, Zeyu Zhang, Zhongxiang
+   Xinhao Yi, Guibin Zhang, Yi Xu, Bin Wu, Siwei Liu,       Sun, Yutao Zhu, Hao Sun, Boci Peng, and 28 others.
+   Zihao Li, Zhaochun Ren, Nikos Aletras, Xi Wang,          2026b. Memory in the age of ai agents. Preprint,
+   Han Zhou, and Zaiqiao Meng. 2025a. A compre-             arXiv:2512.13564.
+   hensive survey of self-evolving ai agents: A new
+   paradigm bridging foundation models and lifelong       Bowen Jiang, Yuan Yuan, Maohao Shen, Zhuoqun Hao,
+   agentic systems. Preprint, arXiv:2508.07407.             Zhangchen Xu, Zichen Chen, Ziyi Liu, Anvesh Rao
+                                                            Vijjini, Jiashu He, Hanchao Yu, Radha Poovendran,
+Jizhan Fang, Xinle Deng, Haoming Xu, Ziyan Jiang,           Gregory Wornell, Lyle Ungar, Dan Roth, Sihao Chen,
+   Yuqi Tang, Ziwen Xu, Shumin Deng, Yunzhi                 and Camillo Jose Taylor. 2025. Personamem-v2:
+   Yao, Mengru Wang, Shuofei Qiao, and 1 oth-               Towards personalized intelligence via learning im-
+   ers. 2025b. Lightmem: Lightweight and efficient          plicit user personas and agentic memory. Preprint,
+   memory-augmented generation. arXiv preprint              arXiv:2512.06688.
+   arXiv:2510.18866.
+                                                          Jiazheng Kang, Mingming Ji, Zhe Zhao, and Ting
+Runnan Fang, Yuan Liang, Xiaobin Wang, Jialong Wu,           Bai. 2025. Memory os of ai agent. arXiv preprint
+  Shuofei Qiao, Pengjun Xie, Fei Huang, Huajun Chen,         arXiv:2506.06326.
+  and Ningyu Zhang. 2026. Memp: Exploring agent           AM Clare Kelly and Hugh Garavan. 2005. Human
+  procedural memory. Preprint, arXiv:2508.06433.           functional neuroimaging of brain changes associated
+                                                           with practice. Cerebral cortex, 15(8):1089–1102.
+Adam Fourney, Gagan Bansal, Hussein Mozannar,
+  Cheng Tan, Eduardo Salinas, Erkang, Zhu, Friederike     Yitao Liu, Chenglei Si, Karthik Narasimhan, and
+  Niedtner, Grace Proebsting, Griffin Bassman, Jack         Shunyu Yao. 2025. Contextual experience replay
+  Gerrits, Jacob Alber, Peter Chang, Ricky Loynd,           for self-improvement of language agents. Preprint,
+  Robert West, Victor Dibia, Ahmed Awadallah, Ece           arXiv:2506.06698.
+  Kamar, Rafah Hosn, and Saleema Amershi. 2024.
+  Magentic-one: A generalist multi-agent system for       Lin Long, Yichen He, Wentao Ye, Yiyuan Pan, Yuan
+  solving complex tasks. Preprint, arXiv:2411.04468.        Lin, Hang Li, Junbo Zhao, and Wei Li. 2025. See-
+                                                            ing, listening, remembering, and reasoning: A mul-
+Paul W Frankland and Bruno Bontempi. 2005. The              timodal agent with long-term memory. Preprint,
+  organization of recent and remote memories. Nature        arXiv:2508.09736.
+  reviews neuroscience, 6(2):119–130.
+                                                          Adyasha Maharana, Dong-Ho Lee, Sergey Tulyakov,
+Bernal Jiménez Gutiérrez, Yiheng Shu, Yu Gu, Michi-         Mohit Bansal, Francesco Barbieri, and Yuwei
+  hiro Yasunaga, and Yu Su. 2025a. Hipporag: Neu-           Fang. 2024. Evaluating very long-term conver-
+  robiologically inspired long-term memory for large        sational memory of llm agents. arXiv preprint
+  language models. Preprint, arXiv:2405.14831.              arXiv:2402.17753.
+
+Bernal Jiménez Gutiérrez, Yiheng Shu, Weijian Qi,         Lingrui Mei, Jiayu Yao, Yuyao Ge, Yiwei Wang, Bao-
+  Sizhe Zhou, and Yu Su. 2025b. From rag to memory:         long Bi, Yujun Cai, Jiazhi Liu, Mingyu Li, Zhong-Zhi
+  Non-parametric continual learning for large language      Li, Duzhen Zhang, Chenlin Zhou, Jiayi Mao, Tianze
+  models. Preprint, arXiv:2502.14802.                       Xia, Jiafeng Guo, and Shenghua Liu. 2025. A sur-
+                                                            vey of context engineering for large language models.
+Haoyu Han, Yu Wang, Harry Shomer, Kai Guo, Ji-              Preprint, arXiv:2507.13334.
+  ayuan Ding, Yongjia Lei, Mahantesh Halappanavar,
+                                                          Grégoire Mialon, Clémentine Fourrier, Thomas Wolf,
+  Ryan A. Rossi, Subhabrata Mukherjee, Xianfeng
+                                                            Yann LeCun, and Thomas Scialom. 2023. Gaia: a
+  Tang, Qi He, Zhigang Hua, Bo Long, Tong Zhao,
+                                                            benchmark for general ai assistants. In The Twelfth
+  Neil Shah, Amin Javari, Yinglong Xia, and Jiliang
+                                                            International Conference on Learning Representa-
+  Tang. 2025. Retrieval-augmented generation with
+                                                            tions.
+  graphs (graphrag). Preprint, arXiv:2501.00309.
+                                                          Jiayan Nan, Wenquan Ma, Wenlong Wu, and Yize
+Donald Olding Hebb. 2005. The organization of be-            Chen. 2025. Nemori: Self-organizing agent mem-
+  havior: A neuropsychological theory. Psychology            ory inspired by cognitive science. arXiv preprint
+  press.                                                     arXiv:2508.03341.
+Chuanrui Hu, Xingze Gao, Zuyi Zhou, Dannong Xu,           OpenAI. 2024. deepresearch.
+  Yi Bai, Xintong Li, Hui Zhang, Tong Li, Chong
+  Zhang, Lidong Bing, and 1 others. 2026a. Ever-          Siru Ouyang, Jun Yan, I-Hung Hsu, Yanfei Chen,
+  memos: A self-organizing memory operating system           Ke Jiang, Zifeng Wang, Rujun Han, Long T. Le,
+  for structured long-horizon reasoning. arXiv preprint      Samira Daruki, Xiangru Tang, Vishy Tirumalashetty,
+  arXiv:2601.02163.                                          George Lee, Mahsan Rofouei, Hangfei Lin, Jiawei
+  Han, Chen-Yu Lee, and Tomas Pfister. 2025. Reason-          Chapter of the Association for Computational Lin-
+  ingbank: Scaling agent self-evolving with reasoning         guistics (Volume 1: Long Papers), pages 7080–7106,
+  memory. Preprint, arXiv:2509.25140.                         Rabat, Morocco. Association for Computational Lin-
+                                                              guistics.
+Charles Packer, Sarah Wooders, Kevin Lin, Vivian Fang,
+  Shishir G. Patil, Ion Stoica, and Joseph E. Gonzalez.     Xiangru Tang, Tianyu Hu, Muyang Ye, Yanjun Shao,
+  2024. Memgpt: Towards llms as operating systems.            Xunjian Yin, Siru Ouyang, Wangchunshu Zhou,
+  Preprint, arXiv:2310.08560.                                 Pan Lu, Zhuosheng Zhang, Yilun Zhao, Arman Co-
+                                                              han, and Mark Gerstein. 2025a. Chemagent: Self-
+Daiyi Peng. 2023. Langfun.                                    updating library in large language models improves
+                                                              chemical reasoning. Preprint, arXiv:2501.06590.
+Shihao Qi, Jie Ma, Rui Xing, Wei Guo, Xiao Huang,
+  Zhitao Gao, Jianhao Deng, Jun Liu, Lingling Zhang,        Xiangru Tang, Tianrui Qin, Tianhao Peng, Ziyang Zhou,
+  Bifan Wei, Boqian Yang, Pinghui Wang, Jianwen               Daniel Shao, Tingting Du, Xinming Wei, Peng Xia,
+  Sun, Jing Tao, Yaqiang Wu, Hui Liu, Yu Yao, and             Fang Wu, He Zhu, Ge Zhang, Jiaheng Liu, Xingyao
+  Tongliang Liu. 2026. Beyond individual intelligence:        Wang, Sirui Hong, Chenglin Wu, Hao Cheng, Chi
+  Surveying collaboration, failure attribution, and self-     Wang, and Wangchunshu Zhou. 2025b. Agent kb:
+  evolution in llm-based multi-agent systems. Preprint,       Leveraging cross-domain experience for agentic prob-
+  arXiv:2605.14892.                                           lem solving. Preprint, arXiv:2507.06229.
+
+Tianrui Qin, Qianben Chen, Sinuo Wang, He Xing, King        Chenxi Wang, Zhuoyun Yu, Xin Xie, Wuguannan Yao,
+   Zhu, He Zhu, Dingfeng Shi, Xinxin Liu, Ge Zhang,           Runnan Fang, Shuofei Qiao, Kexin Cao, Guozhou
+   Jiaheng Liu, Yuchen Eleanor Jiang, Xitong Gao, and         Zheng, Xiang Qi, Peng Zhang, and Shumin Deng.
+  Wangchunshu Zhou. 2025. Flash-searcher: Fast and            2026. Skillx: Automatically constructing skill knowl-
+   effective web agents via dag-based parallel execution.     edge bases for agents. Preprint, arXiv:2604.04804.
+   Preprint, arXiv:2509.25301.
+                                                            Peng Wang, Zexi Li, Ningyu Zhang, Ziwen Xu, Yunzhi
+Jiahao Qiu, Xuan Qi, Tongcheng Zhang, Xinzhe Juan,            Yao, Yong Jiang, Pengjun Xie, Fei Huang, and Hua-
+   Jiacheng Guo, Yifu Lu, Yimin Wang, Zixin Yao, Qi-          jun Chen. 2024a. Wise: Rethinking the knowledge
+   han Ren, Xun Jiang, Xing Zhou, Dongrui Liu, Ling           memory for lifelong model editing of large language
+   Yang, Yue Wu, Kaixuan Huang, Shilong Liu, Hongru           models. Advances in Neural Information Processing
+   Wang, and Mengdi Wang. 2025. Alita: General-               Systems, 37:53764–53797.
+   ist agent enabling scalable agentic reasoning with
+                                                            Yu Wang and Xi Chen. 2025. Mirix: Multi-agent mem-
+   minimal predefinition and maximal self-evolution.
+                                                              ory system for llm-based agents. arXiv preprint
+   Preprint, arXiv:2505.20286.
+                                                              arXiv:2507.07957.
+Preston Rasmussen, Pavlo Paliychuk, Travis Beauvais,        Yu Wang, Yifan Gao, Xiusi Chen, Haoming Jiang,
+  Jack Ryan, and Daniel Chalef. 2025. Zep: A tempo-           Shiyang Li, Jingfeng Yang, Qingyu Yin, Zheng
+  ral knowledge graph architecture for agent memory.          Li, Xian Li, Bing Yin, Jingbo Shang, and Ju-
+  Preprint, arXiv:2501.13956.                                 lian McAuley. 2024b.      Memoryllm: Towards
+                                                              self-updatable large language models. Preprint,
+Aymeric Roucher, Albert Villanova del Moral, Thomas
+                                                              arXiv:2402.04624.
+  Wolf, Leandro von Werra, and Erik Kaunismäki.
+  2025. ‘smolagents‘: a smol library to build               Zora Zhiruo Wang, Jiayuan Mao, Daniel Fried, and
+  great agentic systems.      https://github.com/             Graham Neubig. 2024c. Agent workflow memory.
+  huggingface/smolagents.                                     arXiv preprint arXiv:2409.07429.
+Yuchen Shi, Yuzheng Cai, Siqi Cai, Zihan Xu, Lichao         Tianxin Wei, Noveen Sachdeva, Benjamin Coleman,
+  Chen, Yulei Qin, Zhijian Zhou, Xiang Fei, Chaofan           Zhankui He, Yuanchen Bei, Xuying Ning, Mengting
+  Qiu, Xiaoyu Tan, Gang Li, Zongyi Li, Haojia Lin,            Ai, Yunzhe Li, Jingrui He, Ed H. Chi, Chi Wang,
+  Guocan Cai, Yong Mao, Yunsheng Wu, Ke Li, and               Shuo Chen, Fernando Pereira, Wang-Cheng Kang,
+  Xing Sun. 2025. Youtu-agent: Scaling agent produc-          and Derek Zhiyuan Cheng. 2025. Evo-memory:
+  tivity with automated generation and hybrid policy          Benchmarking llm agent test-time learning with self-
+  optimization. Preprint, arXiv:2512.24615.                   evolving memory. Preprint, arXiv:2511.20857.
+Noah Shinn, Federico Cassano, Ashwin Gopinath,              Rong Wu, Xiaoman Wang, Jianbiao Mei, Pinlong Cai,
+  Karthik Narasimhan, and Shunyu Yao. 2023. Re-               Daocheng Fu, Cheng Yang, Licheng Wen, Xue-
+  flexion: Language agents with verbal reinforcement          meng Yang, Yufan Shen, Yuxin Wang, and Bo-
+  learning. Advances in Neural Information Process-           tian Shi. 2025. Evolver: Self-evolving llm agents
+  ing Systems, 36:8634–8652.                                  through an experience-driven lifecycle. Preprint,
+                                                              arXiv:2510.16079.
+Mirac Suzgun, Mert Yuksekgonul, Federico Bianchi,
+  Dan Jurafsky, and James Zou. 2026. Dynamic cheat-         Peng Xia, Kaide Zeng, Jiaqi Liu, Can Qin, Fang Wu,
+  sheet: Test-time learning with adaptive memory. In          Yiyang Zhou, Caiming Xiong, and Huaxiu Yao.
+  Proceedings of the 19th Conference of the European          2025. Agent0: Unleashing self-evolving agents from
+  zero data via tool-integrated reasoning. Preprint,      Andrew Zhao, Daniel Huang, Quentin Xu, Matthieu
+  arXiv:2511.16043.                                         Lin, Yong-Jin Liu, and Gao Huang. 2024. Expel:
+                                                            Llm agents are experiential learners. In Proceedings
+Buqiang Xu, Yijun Chen, Jizhan Fang, Ruobin Zhong,          of the AAAI Conference on Artificial Intelligence,
+  Yunzhi Yao, Yuqi Zhu, Lun Du, and Shumin Deng.            volume 38, pages 19632–19642.
+  2026. Structmem: Structured memory for long-
+  horizon behavior in llms. CoRR, abs/2604.21748.         Huichi Zhou, Yihang Chen, Siyuan Guo, Xue Yan,
+                                                            Kin Hei Lee, Zihan Wang, Ka Yiu Lee, Guchun
+Wujiang Xu, Kai Mei, Hang Gao, Juntao Tan, Zu-              Zhang, Kun Shao, Linyi Yang, and Jun Wang. 2025.
+ jie Liang, and Yongfeng Zhang. 2025. A-mem:                Memento: Fine-tuning llm agents without fine-tuning
+ Agentic memory for llm agents. arXiv preprint              llms. Preprint, arXiv:2508.16153.
+ arXiv:2502.12110.
+                                                          Adam Zweiger, Jyothish Pari, Han Guo, Ekin Akyürek,
+Ke Yang, Zixi Chen, Xuan He, Jize Jiang, Michel Galley,     Yoon Kim, and Pulkit Agrawal. 2025. Self-adapting
+  Chenglong Wang, Jianfeng Gao, Jiawei Han, and             language models. Preprint, arXiv:2506.10943.
+  ChengXiang Zhai. 2026. Plugmem: A task-agnostic
+  plugin memory module for llm agents. Preprint,
+  arXiv:2603.03296.
+                                                          A     Experimental Details
+
+Chongrui Ye, Yuxiang Liu, Yu Wang, Haofei Yu, Yin-        A.1    Detailed Dataset Statistics
+  ing Zhao, Ge Liu, Julian McAuley, and Jiaxuan           LoCoMo. The LoCoMo benchmark provides a
+  You. 2026. Auto-dreamer: Learning offline mem-
+  ory consolidation for language agents. Preprint,
+                                                          specialized evaluation for long-context reasoning
+  arXiv:2605.20616.                                       through 10 extensive conversations, featuring an
+                                                          average of 588 turns and 16, 618 tokens per di-
+Shicheng Ye, Chao Yu, Kaiqiang Ke, Chengdong Xu,          alogue. Our evaluation utilizes a total of 1, 540
+  and Yinqi Wei. 2025. H2 r: Hierarchical hind-
+  sight reflection for multi-task llm agents. Preprint,   human-annotated questions, covering 841 single-
+  arXiv:2509.12810.                                       hop, 282 multi-hop, 321 temporal reasoning, and
+                                                          96 open-domain questions. This distribution en-
+Yunpeng Zhai, Shuchang Tao, Cheng Chen, Anni
+  Zou, Ziqian Chen, Qingxu Fu, Shinji Mai, Li Yu,
+                                                          sures a balanced assessment of both simple retrieval
+  Jiaji Deng, Zouying Cao, Zhaoyang Liu, Bolin            and complex logical synthesis.
+  Ding, and Jingren Zhou. 2025. Agentevolver: To-
+  wards efficient self-evolving agent system. Preprint,   Mind2Web. This dataset serves as a large-scale
+  arXiv:2511.10395.                                       testbed for generalist web agents, featuring 2, 350
+                                                          open-ended tasks harvested from 137 real-world
+Guibin Zhang, Muxin Fu, Guancheng Wan, Miao Yu,
+  Kun Wang, and Shuicheng Yan. 2025a. G-memory:           websites across 31 domains. The environmental
+  Tracing hierarchical memory for multi-agent systems.    complexity is significant, with an average page
+  Preprint, arXiv:2506.07398.                             size of 1, 135 DOM elements and tasks requir-
+                                                          ing an average of 7.3 discrete actions to complete.
+Guibin Zhang, Haotian Ren, Chong Zhan, Zhenhong
+  Zhou, Junhao Wang, He Zhu, Wangchunshu Zhou,            We specifically evaluate the model’s generalization
+  and Shuicheng Yan. 2025b. Memevolve: Meta-              across three dimensions: cross-task, cross-website,
+  evolution of agent memory systems. Preprint,            and cross-domain scenarios.
+  arXiv:2512.18746.
+                                                          GAIA. Evaluation on the GAIA benchmark is
+Haozhen Zhang, Quanyu Long, Jianzhu Bao, Tao
+  Feng, Weizhi Zhang, Haodong Yue, and Wenya              conducted across 165 curated tasks spanning three
+  Wang. 2026a. Memskill: Learning and evolving            levels of increasing operational difficulty. The set
+  memory skills for self-evolving agents. Preprint,       includes 53 Level-1 tasks focused on basic tool us-
+  arXiv:2602.02474.                                       age and retrieval, 86 Level-2 tasks requiring multi-
+Shengtao Zhang, Jiaqian Wang, Ruiwen Zhou, Junwei         step planning and intermediate reasoning, and 26
+  Liao, Yuchen Feng, Weinan Zhang, Ying Wen, Zhiyu        Level-3 tasks involving long-horizon execution and
+  Li, Feiyu Xiong, Yutao Qi, Bo Tang, and Muning          multi-modal integration.
+  Wen. 2026b. Memrl: Self-evolving agents via run-
+  time reinforcement learning on episodic memory.         A.2    Implementation Details
+  Preprint, arXiv:2601.03192.
+                                                          LoCoMo. For the LoCoMo benchmark,
+Zeyu Zhang, Quanyu Dai, Xiaohe Bo, Chen Ma, Rui Li,       all retrieval-based methods utilize the
+  Xu Chen, Jieming Zhu, Zhenhua Dong, and Ji-Rong
+  Wen. 2025c. A survey on the memory mechanism of
+                                                          text-embedding-3-small model for generating
+  large language model-based agents. ACM Transac-         embeddings. The specific retrieval configurations
+  tions on Information Systems, 43(6):1–47.               for each baseline are as follows: ⃝1 Zep and ⃝ 2
+Mem0 utilize their respective commercial APIs           ated models through Google’s functional program-
+to retrieve memory contexts, extracting the top-10      ming interface; ⃝2 OpenAI Deep Research lever-
+relevant memories for each speaker, which are then      ages o1/o3 series models with integrated chain-of-
+integrated for response generation. ⃝   3 A-MEM         thought and reinforcement learning optimization;
+performs a global search to retrieve the top-40         ⃝3 Magnetic-1 employs an o1-based open-source
+overall entries. ⃝
+                 4 MemoryOS is implemented as a         agentic infrastructure; ⃝4 Agent KB incorporates
+three-tier hierarchical system featuring exhaustive     an offline knowledge base pre-indexed with do-
+recall of all Short-Term Memory (STM) pages,            main expertise; ⃝5 Alita uses multi-model orches-
+a two-stage selection for Mid-Term Memory               tration (Claude 3.7 Sonnet + GPT-4o) with dy-
+(MTM) (comprising the top-5 segments and                namic model selection; ⃝ 6 Smolagents implements
+top-10 dialogue pages), and the extraction of the       a lightweight two-agent architecture (manager +
+top-10 relevant entries from Long-term Personal         tool agent). Our evaluations of ⃝7 Flash-Searcher
+Memory (LPM). ⃝     5 Nemori retrieves the top-10       (baseline), ⃝8 MemEvolve, and ⃝    9 FluxMem are
+episodic memories and top-20 semantic memories          conducted within the Flash-Searcher framework,
+(m = 2k). ⃝  6 LightMem extracts the top-40 total       configured with 40 maximum steps, 8-step plan-
+entries through its retrieval pipeline. ⃝7 MIRIX        ning intervals. Flash-Searcher operates without
+utilizes a multi-agent active retrieval mechanism,      memory augmentation (32,768 completion tokens
+generating automated topics to extract the top-10       per call). MemEvolve employs meta-evolved ar-
+entries from each of its six memory banks, totaling     chitectures through 3 iterations, 60 trajectories per
+up to 60 entries. ⃝      8 EverMemOS employs            round with 40 new + 20 reused tasks, (K=1) sur-
+a hierarchical architecture based on memory             vivor, (S=3) descendants.
+scenes (MemScene) and memory cells (MemCell),
+utilizing hybrid retrieval (Dense+BM25) combined
+with a reranking strategy to extract the top-10
+thematic scenes and top-10 narrative snippets.
+Mind2Web. For the Mind2Web benchmark, all
+baseline methods are evaluated under an offline
+protocol and follow their respective native evalua-
+tion pipelines,using GPT-4.1-mini and Gemini-2.5-
+flash as the base models.: ⃝  1 AWM is evaluated
+under two settings. In the original setting, we ap-
+ply top-k = 5 candidate filtering on the current
+page. However, due to the large number of page
+elements, restricting the current page to top-k can-
+didates discards substantial information and effec-
+tively reduces the action selection difficulty, which
+deviates from realistic web interaction. Therefore,
+in the realistic setting, we disable top-k filtering
+for the current page and instead provide the model
+with all candidate elements, including both posi-
+tive and negative elements, to better simulate real-
+world conditions. In both settings, we keep the
+same configuration for visited-history elements,
+using top-k = 3 retrieval from previously visited
+pages. ⃝ 2 ReasoningBank The agent predicts ac-
+tions with retrieved reasoning memories injected
+into the prompt, and scores are computed by the
+standard evaluation script over the test set.
+GAIA. For the GAIA benchmark, all methods
+are evaluated with a single run per task: ⃝
+                                          1 Lang-
+fun operates with Claude 3.7 Sonnet and associ-
+

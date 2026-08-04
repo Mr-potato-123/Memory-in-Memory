@@ -1,0 +1,420 @@
+{
+  "batch": {
+    "batch_id": "construction_bank1_new_build_0014",
+    "side": "construction",
+    "base_bank_version": "v001",
+    "candidates": [
+      {
+        "candidate_id": "cand_construction_08ddbb70a919",
+        "skill_id": "sk_construction_08914753d6",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "PreserveExplicitQuotedClauses",
+          "description": "When constructing memory from a message containing a speaker's direct quoted statement, before accepting an extraction candidate, check that every explicit claim in the quoted text is represented, not only a paraphrase summary.",
+          "content": [
+            "During extraction, when a source message is a direct quote (e.g., \"John said ...\"), compare the candidate memory content against the quoted utterance claim-by-claim.",
+            "If the candidate omits any explicit claim, especially a recommendation or assessment such as \"you won't regret it,\" revise the candidate to include that claim, either in the same memory or as a separate memory entry.",
+            "Stop once all explicit claims are covered; do not add inferred implications or expand beyond the quoted text."
+          ]
+        },
+        "solves": "The general failure is extraction candidates that paraphrase a speaker's quoted utterance and silently drop an explicit claim, causing later questions about that exact statement to be unsupported. This applies to future construction sessions where a message contains a direct quote with several distinct assertions, including evaluative or persuasive statements that a later question may target. It must not apply to ordinary conversational summaries that are not direct quotes or to exhaustively expanding paraphrase with inferred or general-knowledge content.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-43_conv-43_qa_0102",
+        "source_failure_id": "cons_conv-43_conv-43_qa_0102",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:38:29Z"
+      },
+      {
+        "candidate_id": "cand_construction_0959ca31e358",
+        "skill_id": "sk_construction_3aba7e9c5e",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Attribute relayed condition to the patient, not the speaker",
+          "description": "Use when extracting memories from a message where the speaker relays or acknowledges a fact about another participant's condition (e.g., a doctor's assessment said to the patient). Attribute the memory to that participant, not the speaker; keep separate subjects in separate candidates.",
+          "content": [
+            "During extraction, when a message reports or acknowledges a condition fact about someone other than the speaker (e.g., 'the doctor said it's not too serious' in response to that person), create a separate state memory for that person, with the speaker only as source.",
+            "Resolve subject from pronouns and prior turns: 'your injury' refers to the addressee; a named person refers to that person. Do not merge facts about different subjects into one memory candidate.",
+            "If the same turn also contains the speaker's own state, emit distinct candidates per subject. Stop expanding further once each referenced person's fact has its own candidate."
+          ]
+        },
+        "solves": "Construction extraction often stores a fact about another participant's condition under the speaker, so the patient's state is missing. This skill applies when a message relays or acknowledges a doctor's or other assessment about the addressee or a named third party (e.g., John tells Tim 'the doctor said it's not too serious' after Tim's injury) and requires a separate memory attributed to that party. It does not apply when the message only describes the speaker's own condition or when the subject is already unambiguous.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-43_conv-43_qa_0136",
+        "source_failure_id": "cons_conv-43_conv-43_qa_0136",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:38:58Z"
+      },
+      {
+        "candidate_id": "cand_construction_417cd445e617",
+        "skill_id": "sk_construction_80114549ab",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Extract first-person group behavior statements",
+          "description": "When a speaker uses first-person language to state a durable fact about their own or their group's behavior (e.g., 'we back each other up'), extract a candidate memory even if the statement appears inside a reply with thanks or filler.",
+          "content": [
+            "During extraction, scan each message for explicit first-person statements about the speaker's own or their group's persistent behavior, traits, or approach (e.g., 'we back each other up', 'we won't quit').",
+            "When such a statement is found, create one durable candidate memory (typically a state or relationship) capturing the behavior, even if the statement is embedded in a reply that also contains thanks, pleasantries, or reactions to prior turns.",
+            "Do not create a candidate for transient, conversational, or purely reactive content (e.g., 'thanks', 'that's great') that does not state a durable fact."
+          ]
+        },
+        "solves": "The general failure is that candidate extraction misses durable first-person statements about the speaker's or their group's behavior when they are embedded in conversational replies. This Skill applies when a future message contains an explicit first-person plural or singular statement of persistent behavior or approach (e.g., how a team handles tough opponents) that should become a memory. It does not apply to transient reactions, greetings, or purely conversational content that states no durable fact.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-43_conv-43_qa_0116",
+        "source_failure_id": "cons_conv-43_conv-43_qa_0116",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:38:39Z"
+      },
+      {
+        "candidate_id": "cand_construction_542524f573c4",
+        "skill_id": "sk_construction_87f793d3e5",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Extract implied death from euphemistic loss language",
+          "description": "When a message describes someone with euphemistic permanent-loss phrases (e.g., 'will never be able to...', 'I miss him/her here'), use those cues during candidate extraction to record the implied state (likely deceased) as a hedged fact.",
+          "content": [
+            "During candidate extraction, when a speaker refers to someone with euphemistic permanent-loss language—such as 'will never be able to support me' or 'I miss him/her here'—infer the implied state (likely deceased) and record it with hedged wording (e.g., 'likely no longer alive') instead of only the literal limitation.",
+            "Only apply this inference when the phrasing strongly implies permanent absence (e.g., 'never' combined with 'miss'); for temporary incapacity, mere distance, or estrangement, record only the literal limitation.",
+            "Do not state death as certain unless the message explicitly confirms it, and keep the memory evidence-bound by referencing the euphemistic phrase that supports the implication."
+          ]
+        },
+        "solves": "The general failure is that extraction candidates omit strongly implied facts when the source uses euphemistic loss language, so later memory-based answers cannot address questions about that implied state. This Skill applies when a user describes someone with permanent-loss euphemisms (e.g., 'will never be able to support me' plus 'I miss him here') and a future question may ask whether that person is alive. It must not apply when the language only indicates temporary incapacity, distance, or estrangement, which do not imply death.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-48_conv-48_qa_0070",
+        "source_failure_id": "cons_conv-48_conv-48_qa_0070",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:40:51Z"
+      },
+      {
+        "candidate_id": "cand_construction_90be58fca111",
+        "skill_id": "sk_construction_c3e543ef0a",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Preserve_short_speaker_quotes_during_extraction",
+          "description": "When extracting memory candidates from a message that contains a short, distinctive verbatim quote from a speaker about an event or plan, preserve the exact quoted phrase in a memory candidate.",
+          "content": [
+            "During extraction, if a message contains a short (roughly 2-15 words) verbatim quote from a speaker that is a standalone statement about an event or plan, create a memory candidate that includes the exact quoted phrase (as event or state memory), in addition to any abstract event/relationship summary.",
+            "Limit to one quote memory per speaker-message pair, only when the quote is distinctive enough that a future question could ask 'what did X say about Y'; skip generic, long, or conversational filler utterances."
+          ]
+        },
+        "solves": "General failure mechanism: extraction summarizes a speaker's words into abstract event/relationship memories and drops the verbatim quote, so later questions asking for exact wording cannot be answered. Applies to future construction sessions where a message contains a short, distinctive, attributable quote about an event or plan. Does not apply to messages without direct quotes, long/ordinary statements, or questions requiring only gist.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-30_conv-30_qa_0075",
+        "source_failure_id": "cons_conv-30_conv-30_qa_0075",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:36:49Z"
+      },
+      {
+        "candidate_id": "cand_construction_c6692081b167",
+        "skill_id": "sk_construction_a2f294a83e",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Extract Anaphoric Entity Descriptions",
+          "description": "When a message contains a declarative reply identifying an object, person, or place via a pronoun/demonstrative (e.g., 'It's a ...', 'That's my ...'), and the referent is clear from prior context, extract a memory candidate.",
+          "content": [
+            "During extraction, create a candidate when a speaker's short reply identifies or describes an entity with a pronoun/demonstrative, resolving the referent from the conversation history.",
+            "Record the fact as an event, state, or relationship memory, including the people involved (e.g., the speaker showed the described object to another participant) when the context supports it.",
+            "Do not extract if the statement is transient, purely subjective, or the referent is ambiguous; stop after capturing the core description."
+          ]
+        },
+        "solves": "Extraction often misses durable facts stated in short anaphoric replies because it expects an explicit subject in the same sentence. Apply when a reply identifies/describes an entity via a pronoun (e.g., 'It's a ...', 'That's my ...') and the referent is clear; then extract one memory candidate for the entity and involved participants. Do not apply to transient/subjective remarks, ambiguous referents, or already-captured facts.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-43_conv-43_qa_0171",
+        "source_failure_id": "cons_conv-43_conv-43_qa_0171",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:39:28Z"
+      },
+      {
+        "candidate_id": "cand_construction_c6778198a633",
+        "skill_id": "sk_construction_dbcdc88be9",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Extraction Pronoun Referent Resolution",
+          "description": "When extracting a memory candidate and the source message uses a pronoun or demonstrative (this, it, they) to refer to an entity, resolve the referent from the current conversation before storing the candidate.",
+          "content": [
+            "When a user message contains a pronoun/demonstrative ('this', 'it', 'they') that carries the main predicate of a candidate memory, resolve it to the entity the speaker is discussing in that turn; if a different entity appears nearby, do not attach the predicate to that entity.",
+            "Before accepting an extraction candidate, confirm the subject and object are explicit non-pronominal entities from the session; if the referent is uncertain, check only the current turn and immediately preceding messages, then choose the entity that best matches the predicate."
+          ]
+        },
+        "solves": "Memory extraction sometimes resolves pronouns/demonstratives to the wrong nearby entity, storing a candidate about a different object than the one the speaker meant. This Skill applies when a user message uses 'this', 'it', or 'they' to refer to an entity and the candidate would record an attribute or motivation about it; it directs resolving the referent from the current turn and immediate context before storage. It does not apply when the message uses explicit nouns or the referent is unambiguous.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-49_conv-49_qa_0097",
+        "source_failure_id": "cons_conv-49_conv-49_qa_0097",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:42:33Z"
+      },
+      {
+        "candidate_id": "cand_construction_dcf1ad32ce4b",
+        "skill_id": "sk_construction_39fbdab3ed",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Resolve-pronoun-referents-in-extraction",
+          "description": "When extracting a memory during construction and the user message uses 'this', 'it', or 'that' without a named entity, use to resolve the referent to the current topic and avoid substituting entities from earlier unrelated context.",
+          "content": [
+            "When a candidate memory is extracted from a message containing a pronoun or demonstrative ('it', 'this', 'that'), resolve it to the entity explicitly under discussion in that same exchange or immediately preceding turns.",
+            "If the candidate's subject/object names an entity not present in the same message, verify it is the true antecedent of the pronoun; if it comes from an earlier, unrelated topic, replace it with the current referent.",
+            "Before committing a memory, check that the entity in the candidate content matches the literal referent in the evidence; discard or correct candidates whose object conflicts with the unambiguous antecedent."
+          ]
+        },
+        "solves": "The failure is extraction assigning a pronoun or demonstrative to an entity from an earlier, unrelated part of the conversation, so the memory's subject/object does not match the evidence. It applies when a future user message uses 'this', 'it', or 'that' to refer to the object under discussion and the extracted candidate substitutes a stale entity. It does not apply when the entity is explicitly named in the message or the referent is unambiguous within the same sentence.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-49_conv-49_qa_0096",
+        "source_failure_id": "cons_conv-49_conv-49_qa_0096",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:42:18Z"
+      }
+    ],
+    "retrieved_skill_ids": [],
+    "relations": []
+  },
+  "plan": {
+    "transaction_id": "construction_bank1_new_build_0014",
+    "side": "construction",
+    "base_bank_version": "v001",
+    "candidate_resolutions": [
+      {
+        "candidate_id": "cand_construction_08ddbb70a919",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_construction_08914753d6"
+        ],
+        "reason": "No existing Skill covers preserving explicit claims in direct quotes."
+      },
+      {
+        "candidate_id": "cand_construction_0959ca31e358",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_construction_3aba7e9c5e"
+        ],
+        "reason": "No existing Skill covers attributing relayed conditions to the correct participant."
+      },
+      {
+        "candidate_id": "cand_construction_417cd445e617",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_construction_80114549ab"
+        ],
+        "reason": "No existing Skill covers extracting first-person group behavior statements."
+      },
+      {
+        "candidate_id": "cand_construction_542524f573c4",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_construction_87f793d3e5"
+        ],
+        "reason": "No existing Skill covers inferring implied death from euphemistic loss language."
+      },
+      {
+        "candidate_id": "cand_construction_90be58fca111",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_construction_c3e543ef0a"
+        ],
+        "reason": "No existing Skill covers preserving short verbatim quotes during extraction."
+      },
+      {
+        "candidate_id": "cand_construction_c6692081b167",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_construction_a2f294a83e"
+        ],
+        "reason": "No existing Skill covers extracting anaphoric entity descriptions."
+      },
+      {
+        "candidate_id": "cand_construction_c6778198a633",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_pronoun_resolution"
+        ],
+        "reason": "Merged with candidate dcf1ad32ce4b because both repair the same pronoun referent resolution mechanism."
+      },
+      {
+        "candidate_id": "cand_construction_dcf1ad32ce4b",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_construction_pronoun_resolution"
+        ],
+        "reason": "Creates one merged Skill for pronoun referent resolution."
+      }
+    ],
+    "operations": [
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_08914753d6",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "PreserveExplicitQuotedClauses",
+        "description": "When constructing memory from a message containing a speaker's direct quoted statement, before accepting an extraction candidate, check that every explicit claim in the quoted text is represented, not only a paraphrase summary.",
+        "content": [
+          "During extraction, when a source message is a direct quote (e.g., \"John said ...\"), compare the candidate memory content against the quoted utterance claim-by-claim.",
+          "If the candidate omits any explicit claim, especially a recommendation or assessment such as \"you won't regret it,\" revise the candidate to include that claim, either in the same memory or as a separate memory entry.",
+          "Stop once all explicit claims are covered; do not add inferred implications or expand beyond the quoted text."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_08ddbb70a919"
+        ],
+        "reason": "Creating Skill for preserving explicit claims in direct quotes.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_3aba7e9c5e",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Attribute relayed condition to the patient, not the speaker",
+        "description": "Use when extracting memories from a message where the speaker relays or acknowledges a fact about another participant's condition (e.g., a doctor's assessment said to the patient). Attribute the memory to that participant, not the speaker; keep separate subjects in separate candidates.",
+        "content": [
+          "During extraction, when a message reports or acknowledges a condition fact about someone other than the speaker (e.g., 'the doctor said it's not too serious' in response to that person), create a separate state memory for that person, with the speaker only as source.",
+          "Resolve subject from pronouns and prior turns: 'your injury' refers to the addressee; a named person refers to that person. Do not merge facts about different subjects into one memory candidate.",
+          "If the same turn also contains the speaker's own state, emit distinct candidates per subject. Stop expanding further once each referenced person's fact has its own candidate."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_0959ca31e358"
+        ],
+        "reason": "Creating Skill for attributing relayed conditions to the correct participant.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_80114549ab",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Extract first-person group behavior statements",
+        "description": "When a speaker uses first-person language to state a durable fact about their own or their group's behavior (e.g., 'we back each other up'), extract a candidate memory even if the statement appears inside a reply with thanks or filler.",
+        "content": [
+          "During extraction, scan each message for explicit first-person statements about the speaker's own or their group's persistent behavior, traits, or approach (e.g., 'we back each other up', 'we won't quit').",
+          "When such a statement is found, create one durable candidate memory (typically a state or relationship) capturing the behavior, even if the statement is embedded in a reply that also contains thanks, pleasantries, or reactions to prior turns.",
+          "Do not create a candidate for transient, conversational, or purely reactive content (e.g., 'thanks', 'that's great') that does not state a durable fact."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_417cd445e617"
+        ],
+        "reason": "Creating Skill for extracting first-person group behavior statements.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_87f793d3e5",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Extract implied death from euphemistic loss language",
+        "description": "When a message describes someone with euphemistic permanent-loss phrases (e.g., 'will never be able to...', 'I miss him/her here'), use those cues during candidate extraction to record the implied state (likely deceased) as a hedged fact.",
+        "content": [
+          "During candidate extraction, when a speaker refers to someone with euphemistic permanent-loss language—such as 'will never be able to support me' or 'I miss him/her here'—infer the implied state (likely deceased) and record it with hedged wording (e.g., 'likely no longer alive') instead of only the literal limitation.",
+          "Only apply this inference when the phrasing strongly implies permanent absence (e.g., 'never' combined with 'miss'); for temporary incapacity, mere distance, or estrangement, record only the literal limitation.",
+          "Do not state death as certain unless the message explicitly confirms it, and keep the memory evidence-bound by referencing the euphemistic phrase that supports the implication."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_542524f573c4"
+        ],
+        "reason": "Creating Skill for inferring implied death from euphemistic loss language.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_c3e543ef0a",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Preserve_short_speaker_quotes_during_extraction",
+        "description": "When extracting memory candidates from a message that contains a short, distinctive verbatim quote from a speaker about an event or plan, preserve the exact quoted phrase in a memory candidate.",
+        "content": [
+          "During extraction, if a message contains a short (roughly 2-15 words) verbatim quote from a speaker that is a standalone statement about an event or plan, create a memory candidate that includes the exact quoted phrase (as event or state memory), in addition to any abstract event/relationship summary.",
+          "Limit to one quote memory per speaker-message pair, only when the quote is distinctive enough that a future question could ask 'what did X say about Y'; skip generic, long, or conversational filler utterances."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_90be58fca111"
+        ],
+        "reason": "Creating Skill for preserving short verbatim quotes during extraction.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_a2f294a83e",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Extract Anaphoric Entity Descriptions",
+        "description": "When a message contains a declarative reply identifying an object, person, or place via a pronoun/demonstrative (e.g., 'It's a ...', 'That's my ...'), and the referent is clear from prior context, extract a memory candidate.",
+        "content": [
+          "During extraction, create a candidate when a speaker's short reply identifies or describes an entity with a pronoun/demonstrative, resolving the referent from the conversation history.",
+          "Record the fact as an event, state, or relationship memory, including the people involved (e.g., the speaker showed the described object to another participant) when the context supports it.",
+          "Do not extract if the statement is transient, purely subjective, or the referent is ambiguous; stop after capturing the core description."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_c6692081b167"
+        ],
+        "reason": "Creating Skill for extracting anaphoric entity descriptions.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_pronoun_resolution",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Extraction Pronoun Referent Resolution",
+        "description": "When extracting a memory candidate and the source message uses a pronoun or demonstrative (this, it, they) to refer to an entity, resolve the referent from the current conversation before storing the candidate.",
+        "content": [
+          "When a user message contains a pronoun/demonstrative ('this', 'it', 'they') that carries the main predicate of a candidate memory, resolve it to the entity the speaker is discussing in that turn; if a different entity appears nearby, do not attach the predicate to that entity.",
+          "Before accepting an extraction candidate, confirm the subject and object are explicit non-pronominal entities from the session; if the referent is uncertain, check only the current turn and immediately preceding messages, then choose the entity that best matches the predicate."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_c6778198a633",
+          "cand_construction_dcf1ad32ce4b"
+        ],
+        "reason": "Creating merged Skill for pronoun referent resolution.",
+        "hard_delete": false
+      }
+    ]
+  },
+  "status": "planned"
+}

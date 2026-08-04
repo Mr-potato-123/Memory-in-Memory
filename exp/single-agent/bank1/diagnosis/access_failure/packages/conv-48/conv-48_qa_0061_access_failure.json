@@ -1,0 +1,799 @@
+{
+  "schema_version": "access_diagnosis_v3",
+  "diagnosis_id": "access_conv-48_conv-48_qa_0061",
+  "diagnosis_type": "ACCESS_FAILURE",
+  "status": "completed",
+  "judge_run_id": "judge",
+  "diagnosis_run_id": "bank1_train_flash",
+  "source_runtime_run": "conv-48",
+  "conversation_id": "conv-48",
+  "qa_id": "conv-48_qa_0061",
+  "snapshot_commit_id": 30,
+  "question": "What projects is Jolene planning for next year?",
+  "reference_answer": "developing renewable energy finding ways to supply clean water to those with limited access",
+  "problem_found": true,
+  "reason": "The current memory versions mem_conv-48_0014_v3 and mem_conv-48_0130_v1 directly support the two claims in the reference answer. The other current memories are not relevant to the specific projects mentioned.",
+  "confidence": 1.0,
+  "review_required": false,
+  "skill_trace": {
+    "trace_id": "skilltrace_access_conv-48_conv-48_conv-48_qa_0061",
+    "side": "access",
+    "bank_version": "bank1",
+    "query": "What projects is Jolene planning for next year?",
+    "top_k": 2,
+    "disclose_k": 5,
+    "min_score": 0.2,
+    "scored_fields": [
+      "name",
+      "description"
+    ],
+    "scoring_weights": {
+      "semantic": 0.7,
+      "bm25": 0.3
+    },
+    "retrieval_method": "bank1_hybrid_router",
+    "candidate_k": 10,
+    "reranker": "bank1_applicability_router",
+    "reranker_error": "",
+    "selected": [
+      {
+        "skill_id": "sk_access_plan_goal_retrieval",
+        "version_id": "sk_access_plan_goal_retrieval_v1",
+        "rank": 1,
+        "score": 0.5143565535545349,
+        "semantic_score": 0.34889447689056396,
+        "lexical_score": 0.9004347324371338,
+        "name": "Plan and Goal Retrieval",
+        "description": "Use when a question asks about a person's plans, projects, goals, or intentions.",
+        "content": [
+          "When a question asks about plans, projects, or goals, do not restrict the search to memory_kind 'plan'; include 'event', 'preference', 'state', and 'profile' kinds, because interests and commitments that imply projects are often stored there.",
+          "Expand the query using the question's concrete nouns plus predicate-style phrases such as 'working on', 'interested in', 'goals', 'projects', 'wants to', or 'committed to'; do not rely only on the word 'plan'.",
+          "If initial plan-kind results are off-topic or sparse, issue one follow-up search without the memory_kind or time-range filter; stop once a subject-matching memory describing an active or intended project/goal is retrieved."
+        ],
+        "selected": true,
+        "rerank_rank": 1,
+        "rerank_reason": "The question asks about Jolene's planned projects for next year, which directly relates to retrieving her plans, goals, or intentions. The skill is specifically designed for such queries and includes procedures for expanding the search to relevant memory kinds and predicates."
+      }
+    ],
+    "nearby_not_selected": [
+      {
+        "skill_id": "sk_access_broaden_retrieval",
+        "version_id": "sk_access_broaden_retrieval_v1",
+        "rank": 2,
+        "score": 0.4475550055503845,
+        "semantic_score": 0.21079286932945251,
+        "lexical_score": 1.0,
+        "name": "Broaden Retrieval for Post-Career Questions",
+        "description": "Use when a question asks about alternative careers, next paths, or what someone could do after a current role.",
+        "content": [
+          "When a question asks about alternative careers, next paths, or what someone could do after a current role, do not anchor retrieval to the current activity alone.",
+          "Add searches for the person's hobbies, interests, values, and past helping/teaching/leadership activities using varied phrasings (e.g., 'what does [name] enjoy', '[name] hobbies', 'giving back', 'mentor', 'coach').",
+          "Run semantic and keyword/hybrid searches for these non-work topics so memories about skills or enjoyment outside the current domain can surface.",
+          "Stop after a small number of distinct query attempts (e.g., two or three) and answer only from visible evidence."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_include_plan_memories_future_events",
+        "version_id": "sk_access_include_plan_memories_future_events_v1",
+        "rank": 3,
+        "score": 0.3964797556400299,
+        "semantic_score": 0.24664810299873352,
+        "lexical_score": 0.7460868954658508,
+        "name": "Include Plan Memories for Future-Event Queries",
+        "description": "Use when a query asks about a scheduled or future event such as attending, going, upcoming, plans, or next.",
+        "content": [
+          "When a query asks about a future or scheduled event, include the 'plan' memory kind in memory_kinds together with 'event'; do not restrict to 'event' only.",
+          "If the first search returns no usable evidence, run at least one broader retry: expand memory_kinds to include plan/state, relax time_mode, and vary keywords before concluding no information.",
+          "When searching for relative time phrases, use time_mode to resolve them against the current session timestamp, and prefer a plan memory that directly answers the timing."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_post_event_plan_retrieval",
+        "version_id": "sk_access_post_event_plan_retrieval_v1",
+        "rank": 4,
+        "score": 0.3925878703594208,
+        "semantic_score": 0.28544408082962036,
+        "lexical_score": 0.6425900459289551,
+        "name": "Post-event Plan Retrieval with Action Terms",
+        "description": "Use when a question asks about plans, next steps, or actions following a specific event.",
+        "content": [
+          "If a question asks what a person plans or will do after a specific event, first identify the event's timestamp from retrieved memories.",
+          "When searching, use query expansions with action verbs describing follow-up work, such as 'working on', 'developing', 'preparing', 'building', 'tweaking', alongside 'plans' and 'next steps'.",
+          "Use structured or keyword search with the subject's name and predicate/action terms, and filter by world_start on or after the event date to surface post-event memories.",
+          "If an event memory is found but lacks details, inspect it and run an additional search restricted to that subject and timeframe before answering."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_creative_work_retrieval",
+        "version_id": "sk_access_creative_work_retrieval_v1",
+        "rank": 5,
+        "score": 0.3657185435295105,
+        "semantic_score": 0.17755237221717834,
+        "lexical_score": 0.8047729134559631,
+        "name": "Creative Work Retrieval",
+        "description": "Use when asked what a person's creative work (screenplay, book, film, project) is about or its theme.",
+        "content": [
+          "Before answering what a creative work is about, search using generic descriptors (project, work, piece, story, theme, about) alongside the specific type (screenplay, book, film).",
+          "When the specific work is referenced by order or completion (e.g., third screenplay, finished script), also retrieve memories of completed/achieved works using verbs like completed, finished, wrote, premiered and look for event/achievement memories that state the theme even if they do not name the work type.",
+          "After retrieval, verify the returned memory actually describes the requested instance (e.g., its ordinal or completion status); if it only gives a title or a plan, inspect related versions or broaden the search before answering."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_include_all_memory_kinds",
+        "version_id": "sk_access_include_all_memory_kinds_v1",
+        "rank": 6,
+        "score": 0.3068074584007263,
+        "semantic_score": 0.07805151492357254,
+        "lexical_score": 0.8405712842941284,
+        "name": "Include all memory kinds for attribute and current-activity questions",
+        "description": "When a question asks for a factual attribute (age, birth year, owner, relationship) or a current activity, include state, event, and relationship memory kinds instead of only state.",
+        "content": [
+          "When the question asks for a factual attribute like age, birth year, ownership, or relationship, do not restrict memory_kinds to only 'state'; include 'event' and 'relationship' because such facts are often stored in those kinds.",
+          "If the question asks about a person's current activity, possession, reading material, project, or ongoing engagement, do not limit search_memory to memory_kind ['state']; include memory_kind 'event' as well.",
+          "Before narrowing by memory_kind, run one broad hybrid search across all memory kinds when the exact kind is unknown; then narrow only after evidence reveals the relevant kind.",
+          "Stop searching once the attribute or activity is found in one memory and no conflicting or more recent version exists."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      }
+    ]
+  },
+  "repair_package": {
+    "question": "What projects is Jolene planning for next year?",
+    "reference_answer": "developing renewable energy finding ways to supply clean water to those with limited access",
+    "missing_useful_current_memories": [
+      {
+        "version_id": "mem_conv-48_0014_v3",
+        "memory_id": "mem_conv-48_0014",
+        "version_no": 3,
+        "content": "Jolene is working on an engineering project focused on green tech solutions for disadvantaged areas. She is specifically interested in developing renewable energy solutions, particularly solar energy, to help communities reduce dependence on non-renewables.",
+        "memory_kind": "plan",
+        "subject": "Jolene",
+        "predicate": "project",
+        "object_text": "renewable energy",
+        "world_start": "2023-02-08",
+        "world_end": null,
+        "update_type": "enrichment"
+      },
+      {
+        "version_id": "mem_conv-48_0130_v1",
+        "memory_id": "mem_conv-48_0130",
+        "version_no": 1,
+        "content": "Jolene is focused on finding ways to supply clean water to those with limited access, aligning with her beliefs about sustainability and assisting those in need.",
+        "memory_kind": "plan",
+        "subject": "Jolene",
+        "predicate": "project",
+        "object_text": "clean water access",
+        "world_start": "2023-02-08",
+        "world_end": null,
+        "update_type": "add"
+      }
+    ],
+    "retrieved_current_version_ids": [
+      "mem_conv-48_0002_v1",
+      "mem_conv-48_0010_v5",
+      "mem_conv-48_0027_v1",
+      "mem_conv-48_0076_v1",
+      "mem_conv-48_0077_v1",
+      "mem_conv-48_0082_v1",
+      "mem_conv-48_0177_v1",
+      "mem_conv-48_0180_v1"
+    ],
+    "search_steps": [
+      {
+        "action_id": "access_conv-48_conv-48_conv-48_qa_0061_a000",
+        "step_index": 0,
+        "action_type": "search_memory",
+        "request": {
+          "action": "search_memory",
+          "arguments": {
+            "strategy": "hybrid",
+            "query": "projects Jolene planning next year",
+            "query_expansions": [
+              "Jolene's goals for next year",
+              "Jolene working on next year",
+              "Jolene's commitments for next year"
+            ],
+            "keywords": [
+              "Jolene",
+              "next year"
+            ],
+            "depth": "deep",
+            "memory_kinds": [
+              "plan",
+              "event",
+              "preference",
+              "state",
+              "profile"
+            ],
+            "time_mode": "range",
+            "target_time": "2023-01-01",
+            "target_time_end": "2023-12-31",
+            "include_history": false,
+            "top_k": 8
+          },
+          "reason": "To find projects Jolene is planning for next year, we need to search for relevant memories related to her plans, events, preferences, state, and profile that fall within the timeframe of next year."
+        },
+        "returned_memories": [
+          {
+            "version_id": "mem_conv-48_0077_v1",
+            "memory_id": "mem_conv-48_0077",
+            "content": "Jolene is interning at a well-known engineering firm, gaining real-world experience and applying school knowledge to projects.",
+            "memory_kind": "state",
+            "subject": "Jolene",
+            "world_start": "2023-06-06",
+            "world_end": null,
+            "score": 0.0174,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-48_0177_v1",
+            "memory_id": "mem_conv-48_0177",
+            "content": "Deborah and Jolene plan to try surfing together sometime in the future, with plans to choose a date next month.",
+            "memory_kind": "plan",
+            "subject": "Deborah",
+            "world_start": "2023-09-17",
+            "world_end": null,
+            "score": 0.0173,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-48_0180_v1",
+            "memory_id": "mem_conv-48_0180",
+            "content": "Jolene plans to reconnect with nature next month by spending time outdoors.",
+            "memory_kind": "plan",
+            "subject": "Jolene",
+            "world_start": "2023-09-20",
+            "world_end": null,
+            "score": 0.0172,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-48_0010_v5",
+            "memory_id": "mem_conv-48_0010",
+            "content": "Jolene and her partner take beach trips as a way to relax and enjoy their relationship. They also enjoy playing video games together, including 'It Takes Two' and 'Detroit', and plan to play 'Walking Dead' next Saturday. Jolene mentioned that she and her partner planned to play the console together.",
+            "memory_kind": "event",
+            "subject": "Jolene",
+            "world_start": "2023-09-03",
+            "world_end": null,
+            "score": 0.0169,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-48_0002_v1",
+            "memory_id": "mem_conv-48_0002",
+            "content": "Jolene's mother passed away last year. She has many memories in her room in her mother's house and owns a pendant that was given to her in Paris in 2010, which represents freedom and reminds her to pursue her goals.",
+            "memory_kind": "event",
+            "subject": "Jolene",
+            "world_start": "2022-01-01",
+            "world_end": null,
+            "score": 0.0169,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-48_0076_v1",
+            "memory_id": "mem_conv-48_0076",
+            "content": "Jolene completed a tough engineering project last month, expressing pride in finishing it despite challenges.",
+            "memory_kind": "event",
+            "subject": "Jolene",
+            "world_start": "2023-05-01",
+            "world_end": null,
+            "score": 0.0158,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-48_0082_v1",
+            "memory_id": "mem_conv-48_0082",
+            "content": "Jolene completed a significant project during her internship, achieving a breakthrough and feeling excited and rewarded.",
+            "memory_kind": "event",
+            "subject": "Jolene",
+            "world_start": "2023-06-26",
+            "world_end": null,
+            "score": 0.0154,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-48_0027_v1",
+            "memory_id": "mem_conv-48_0027",
+            "content": "Jolene participated in a mini retreat on Wednesday, February 8, 2023, which provided her with a new outlook and boosted her confidence.",
+            "memory_kind": "event",
+            "subject": "Jolene",
+            "world_start": "2023-02-08",
+            "world_end": null,
+            "score": 0.0149,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          }
+        ],
+        "returned_version_ids": [
+          "mem_conv-48_0077_v1",
+          "mem_conv-48_0177_v1",
+          "mem_conv-48_0180_v1",
+          "mem_conv-48_0010_v5",
+          "mem_conv-48_0002_v1",
+          "mem_conv-48_0076_v1",
+          "mem_conv-48_0082_v1",
+          "mem_conv-48_0027_v1"
+        ]
+      },
+      {
+        "action_id": "access_conv-48_conv-48_conv-48_qa_0061_a001",
+        "step_index": 1,
+        "action_type": "answer",
+        "request": {
+          "action": "answer",
+          "arguments": {
+            "answer": "Jolene is interning at a well-known engineering firm and gaining real-world experience by applying school knowledge to projects.",
+            "evidence_version_ids": [
+              "mem_conv-48_0077_v1"
+            ],
+            "confidence": 0.95
+          },
+          "reason": "The evidence indicates that Jolene is currently interning at an engineering firm, which involves applying her academic knowledge to real-world projects."
+        },
+        "returned_memories": [],
+        "returned_version_ids": []
+      }
+    ],
+    "reason": "The current memory versions mem_conv-48_0014_v3 and mem_conv-48_0130_v1 directly support the two claims in the reference answer. The other current memories are not relevant to the specific projects mentioned.",
+    "skill_trace": {
+      "trace_id": "skilltrace_access_conv-48_conv-48_conv-48_qa_0061",
+      "side": "access",
+      "bank_version": "bank1",
+      "query": "What projects is Jolene planning for next year?",
+      "top_k": 2,
+      "disclose_k": 5,
+      "min_score": 0.2,
+      "scored_fields": [
+        "name",
+        "description"
+      ],
+      "scoring_weights": {
+        "semantic": 0.7,
+        "bm25": 0.3
+      },
+      "retrieval_method": "bank1_hybrid_router",
+      "candidate_k": 10,
+      "reranker": "bank1_applicability_router",
+      "reranker_error": "",
+      "selected": [
+        {
+          "skill_id": "sk_access_plan_goal_retrieval",
+          "version_id": "sk_access_plan_goal_retrieval_v1",
+          "rank": 1,
+          "score": 0.5143565535545349,
+          "semantic_score": 0.34889447689056396,
+          "lexical_score": 0.9004347324371338,
+          "name": "Plan and Goal Retrieval",
+          "description": "Use when a question asks about a person's plans, projects, goals, or intentions.",
+          "content": [
+            "When a question asks about plans, projects, or goals, do not restrict the search to memory_kind 'plan'; include 'event', 'preference', 'state', and 'profile' kinds, because interests and commitments that imply projects are often stored there.",
+            "Expand the query using the question's concrete nouns plus predicate-style phrases such as 'working on', 'interested in', 'goals', 'projects', 'wants to', or 'committed to'; do not rely only on the word 'plan'.",
+            "If initial plan-kind results are off-topic or sparse, issue one follow-up search without the memory_kind or time-range filter; stop once a subject-matching memory describing an active or intended project/goal is retrieved."
+          ],
+          "selected": true,
+          "rerank_rank": 1,
+          "rerank_reason": "The question asks about Jolene's planned projects for next year, which directly relates to retrieving her plans, goals, or intentions. The skill is specifically designed for such queries and includes procedures for expanding the search to relevant memory kinds and predicates."
+        }
+      ],
+      "nearby_not_selected": [
+        {
+          "skill_id": "sk_access_broaden_retrieval",
+          "version_id": "sk_access_broaden_retrieval_v1",
+          "rank": 2,
+          "score": 0.4475550055503845,
+          "semantic_score": 0.21079286932945251,
+          "lexical_score": 1.0,
+          "name": "Broaden Retrieval for Post-Career Questions",
+          "description": "Use when a question asks about alternative careers, next paths, or what someone could do after a current role.",
+          "content": [
+            "When a question asks about alternative careers, next paths, or what someone could do after a current role, do not anchor retrieval to the current activity alone.",
+            "Add searches for the person's hobbies, interests, values, and past helping/teaching/leadership activities using varied phrasings (e.g., 'what does [name] enjoy', '[name] hobbies', 'giving back', 'mentor', 'coach').",
+            "Run semantic and keyword/hybrid searches for these non-work topics so memories about skills or enjoyment outside the current domain can surface.",
+            "Stop after a small number of distinct query attempts (e.g., two or three) and answer only from visible evidence."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_include_plan_memories_future_events",
+          "version_id": "sk_access_include_plan_memories_future_events_v1",
+          "rank": 3,
+          "score": 0.3964797556400299,
+          "semantic_score": 0.24664810299873352,
+          "lexical_score": 0.7460868954658508,
+          "name": "Include Plan Memories for Future-Event Queries",
+          "description": "Use when a query asks about a scheduled or future event such as attending, going, upcoming, plans, or next.",
+          "content": [
+            "When a query asks about a future or scheduled event, include the 'plan' memory kind in memory_kinds together with 'event'; do not restrict to 'event' only.",
+            "If the first search returns no usable evidence, run at least one broader retry: expand memory_kinds to include plan/state, relax time_mode, and vary keywords before concluding no information.",
+            "When searching for relative time phrases, use time_mode to resolve them against the current session timestamp, and prefer a plan memory that directly answers the timing."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_post_event_plan_retrieval",
+          "version_id": "sk_access_post_event_plan_retrieval_v1",
+          "rank": 4,
+          "score": 0.3925878703594208,
+          "semantic_score": 0.28544408082962036,
+          "lexical_score": 0.6425900459289551,
+          "name": "Post-event Plan Retrieval with Action Terms",
+          "description": "Use when a question asks about plans, next steps, or actions following a specific event.",
+          "content": [
+            "If a question asks what a person plans or will do after a specific event, first identify the event's timestamp from retrieved memories.",
+            "When searching, use query expansions with action verbs describing follow-up work, such as 'working on', 'developing', 'preparing', 'building', 'tweaking', alongside 'plans' and 'next steps'.",
+            "Use structured or keyword search with the subject's name and predicate/action terms, and filter by world_start on or after the event date to surface post-event memories.",
+            "If an event memory is found but lacks details, inspect it and run an additional search restricted to that subject and timeframe before answering."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_creative_work_retrieval",
+          "version_id": "sk_access_creative_work_retrieval_v1",
+          "rank": 5,
+          "score": 0.3657185435295105,
+          "semantic_score": 0.17755237221717834,
+          "lexical_score": 0.8047729134559631,
+          "name": "Creative Work Retrieval",
+          "description": "Use when asked what a person's creative work (screenplay, book, film, project) is about or its theme.",
+          "content": [
+            "Before answering what a creative work is about, search using generic descriptors (project, work, piece, story, theme, about) alongside the specific type (screenplay, book, film).",
+            "When the specific work is referenced by order or completion (e.g., third screenplay, finished script), also retrieve memories of completed/achieved works using verbs like completed, finished, wrote, premiered and look for event/achievement memories that state the theme even if they do not name the work type.",
+            "After retrieval, verify the returned memory actually describes the requested instance (e.g., its ordinal or completion status); if it only gives a title or a plan, inspect related versions or broaden the search before answering."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_include_all_memory_kinds",
+          "version_id": "sk_access_include_all_memory_kinds_v1",
+          "rank": 6,
+          "score": 0.3068074584007263,
+          "semantic_score": 0.07805151492357254,
+          "lexical_score": 0.8405712842941284,
+          "name": "Include all memory kinds for attribute and current-activity questions",
+          "description": "When a question asks for a factual attribute (age, birth year, owner, relationship) or a current activity, include state, event, and relationship memory kinds instead of only state.",
+          "content": [
+            "When the question asks for a factual attribute like age, birth year, ownership, or relationship, do not restrict memory_kinds to only 'state'; include 'event' and 'relationship' because such facts are often stored in those kinds.",
+            "If the question asks about a person's current activity, possession, reading material, project, or ongoing engagement, do not limit search_memory to memory_kind ['state']; include memory_kind 'event' as well.",
+            "Before narrowing by memory_kind, run one broad hybrid search across all memory kinds when the exact kind is unknown; then narrow only after evidence reveals the relevant kind.",
+            "Stop searching once the attribute or activity is found in one memory and no conflicting or more recent version exists."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        }
+      ]
+    }
+  },
+  "access_run_id": "access_conv-48_conv-48_conv-48_qa_0061",
+  "claims": [
+    {
+      "claim": "Jolene is planning to develop renewable energy solutions.",
+      "supporting_version_ids": [
+        "mem_conv-48_0014_v3"
+      ],
+      "coverage": null
+    },
+    {
+      "claim": "Jolene is planning to find ways to supply clean water to those with limited access.",
+      "supporting_version_ids": [
+        "mem_conv-48_0130_v1"
+      ],
+      "coverage": null
+    }
+  ],
+  "current_related_memories": [
+    {
+      "version_id": "mem_conv-48_0014_v3",
+      "memory_id": "mem_conv-48_0014",
+      "version_no": 3,
+      "content": "Jolene is working on an engineering project focused on green tech solutions for disadvantaged areas. She is specifically interested in developing renewable energy solutions, particularly solar energy, to help communities reduce dependence on non-renewables.",
+      "memory_kind": "plan",
+      "subject": "Jolene",
+      "predicate": "project",
+      "object_text": "renewable energy",
+      "world_start": "2023-02-08",
+      "world_end": null,
+      "update_type": "enrichment"
+    },
+    {
+      "version_id": "mem_conv-48_0129_v1",
+      "memory_id": "mem_conv-48_0129",
+      "version_no": 1,
+      "content": "Jolene and Deborah discussed the influence of loved ones on their lives, sharing how their values have shaped their goals and aspirations. They talked about incorporating these values into their work and future projects.",
+      "memory_kind": "event",
+      "subject": "Jolene",
+      "predicate": "conversation",
+      "object_text": "Deborah",
+      "world_start": "2023-08-26",
+      "world_end": null,
+      "update_type": "add"
+    },
+    {
+      "version_id": "mem_conv-48_0130_v1",
+      "memory_id": "mem_conv-48_0130",
+      "version_no": 1,
+      "content": "Jolene is focused on finding ways to supply clean water to those with limited access, aligning with her beliefs about sustainability and assisting those in need.",
+      "memory_kind": "plan",
+      "subject": "Jolene",
+      "predicate": "project",
+      "object_text": "clean water access",
+      "world_start": "2023-02-08",
+      "world_end": null,
+      "update_type": "add"
+    }
+  ],
+  "useful_current_version_ids": [
+    "mem_conv-48_0014_v3",
+    "mem_conv-48_0130_v1"
+  ],
+  "retrieved_current_version_ids": [
+    "mem_conv-48_0002_v1",
+    "mem_conv-48_0010_v5",
+    "mem_conv-48_0027_v1",
+    "mem_conv-48_0076_v1",
+    "mem_conv-48_0077_v1",
+    "mem_conv-48_0082_v1",
+    "mem_conv-48_0177_v1",
+    "mem_conv-48_0180_v1"
+  ],
+  "missing_useful_current_version_ids": [
+    "mem_conv-48_0014_v3",
+    "mem_conv-48_0130_v1"
+  ],
+  "search_steps": [
+    {
+      "action_id": "access_conv-48_conv-48_conv-48_qa_0061_a000",
+      "step_index": 0,
+      "action_type": "search_memory",
+      "request": {
+        "action": "search_memory",
+        "arguments": {
+          "strategy": "hybrid",
+          "query": "projects Jolene planning next year",
+          "query_expansions": [
+            "Jolene's goals for next year",
+            "Jolene working on next year",
+            "Jolene's commitments for next year"
+          ],
+          "keywords": [
+            "Jolene",
+            "next year"
+          ],
+          "depth": "deep",
+          "memory_kinds": [
+            "plan",
+            "event",
+            "preference",
+            "state",
+            "profile"
+          ],
+          "time_mode": "range",
+          "target_time": "2023-01-01",
+          "target_time_end": "2023-12-31",
+          "include_history": false,
+          "top_k": 8
+        },
+        "reason": "To find projects Jolene is planning for next year, we need to search for relevant memories related to her plans, events, preferences, state, and profile that fall within the timeframe of next year."
+      },
+      "returned_memories": [
+        {
+          "version_id": "mem_conv-48_0077_v1",
+          "memory_id": "mem_conv-48_0077",
+          "content": "Jolene is interning at a well-known engineering firm, gaining real-world experience and applying school knowledge to projects.",
+          "memory_kind": "state",
+          "subject": "Jolene",
+          "world_start": "2023-06-06",
+          "world_end": null,
+          "score": 0.0174,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-48_0177_v1",
+          "memory_id": "mem_conv-48_0177",
+          "content": "Deborah and Jolene plan to try surfing together sometime in the future, with plans to choose a date next month.",
+          "memory_kind": "plan",
+          "subject": "Deborah",
+          "world_start": "2023-09-17",
+          "world_end": null,
+          "score": 0.0173,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-48_0180_v1",
+          "memory_id": "mem_conv-48_0180",
+          "content": "Jolene plans to reconnect with nature next month by spending time outdoors.",
+          "memory_kind": "plan",
+          "subject": "Jolene",
+          "world_start": "2023-09-20",
+          "world_end": null,
+          "score": 0.0172,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-48_0010_v5",
+          "memory_id": "mem_conv-48_0010",
+          "content": "Jolene and her partner take beach trips as a way to relax and enjoy their relationship. They also enjoy playing video games together, including 'It Takes Two' and 'Detroit', and plan to play 'Walking Dead' next Saturday. Jolene mentioned that she and her partner planned to play the console together.",
+          "memory_kind": "event",
+          "subject": "Jolene",
+          "world_start": "2023-09-03",
+          "world_end": null,
+          "score": 0.0169,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-48_0002_v1",
+          "memory_id": "mem_conv-48_0002",
+          "content": "Jolene's mother passed away last year. She has many memories in her room in her mother's house and owns a pendant that was given to her in Paris in 2010, which represents freedom and reminds her to pursue her goals.",
+          "memory_kind": "event",
+          "subject": "Jolene",
+          "world_start": "2022-01-01",
+          "world_end": null,
+          "score": 0.0169,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-48_0076_v1",
+          "memory_id": "mem_conv-48_0076",
+          "content": "Jolene completed a tough engineering project last month, expressing pride in finishing it despite challenges.",
+          "memory_kind": "event",
+          "subject": "Jolene",
+          "world_start": "2023-05-01",
+          "world_end": null,
+          "score": 0.0158,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-48_0082_v1",
+          "memory_id": "mem_conv-48_0082",
+          "content": "Jolene completed a significant project during her internship, achieving a breakthrough and feeling excited and rewarded.",
+          "memory_kind": "event",
+          "subject": "Jolene",
+          "world_start": "2023-06-26",
+          "world_end": null,
+          "score": 0.0154,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-48_0027_v1",
+          "memory_id": "mem_conv-48_0027",
+          "content": "Jolene participated in a mini retreat on Wednesday, February 8, 2023, which provided her with a new outlook and boosted her confidence.",
+          "memory_kind": "event",
+          "subject": "Jolene",
+          "world_start": "2023-02-08",
+          "world_end": null,
+          "score": 0.0149,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        }
+      ],
+      "returned_version_ids": [
+        "mem_conv-48_0077_v1",
+        "mem_conv-48_0177_v1",
+        "mem_conv-48_0180_v1",
+        "mem_conv-48_0010_v5",
+        "mem_conv-48_0002_v1",
+        "mem_conv-48_0076_v1",
+        "mem_conv-48_0082_v1",
+        "mem_conv-48_0027_v1"
+      ]
+    },
+    {
+      "action_id": "access_conv-48_conv-48_conv-48_qa_0061_a001",
+      "step_index": 1,
+      "action_type": "answer",
+      "request": {
+        "action": "answer",
+        "arguments": {
+          "answer": "Jolene is interning at a well-known engineering firm and gaining real-world experience by applying school knowledge to projects.",
+          "evidence_version_ids": [
+            "mem_conv-48_0077_v1"
+          ],
+          "confidence": 0.95
+        },
+        "reason": "The evidence indicates that Jolene is currently interning at an engineering firm, which involves applying her academic knowledge to real-world projects."
+      },
+      "returned_memories": [],
+      "returned_version_ids": []
+    }
+  ]
+}

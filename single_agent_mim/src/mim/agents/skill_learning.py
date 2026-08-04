@@ -1,0 +1,334 @@
+"""Maintenance agents for candidate generation and batch CRUD planning."""
+
+from __future__ import annotations
+
+import json
+import re
+import time
+import uuid
+from typing import Any, Literal
+
+from ..llm.base import ModelClient
+from ..skill_maker.models import (
+    CandidateResolution,
+    SkillBatchPlan,
+    SkillCandidate,
+    SkillCandidateBatch,
+    SkillOperation,
+    SkillPayload,
+)
+from ..skill_maker.repository import SkillRecord
+from ..skill_maker.success_examples import SuccessfulSkillExampleIndex
+from ..skill_maker.validator import SkillPayloadValidator
+
+
+class CandidateSkillAgent:
+    """Generate an unpublished Skill from one completed diagnosis package."""
+
+    def __init__(
+        self,
+        model: ModelClient,
+        *,
+        prompt: str,
+        success_examples: SuccessfulSkillExampleIndex | None = None,
+    ):
+        self._model = model
+        self._prompt = prompt
+        self._validator = SkillPayloadValidator()
+        self._success_examples = success_examples
+
+    def generate(
+        self,
+        *,
+        diagnosis: dict[str, Any],
+        side: Literal["access", "construction"],
+    ) -> SkillCandidate | None:
+        diagnosis_id = str(
+            diagnosis.get("diagnosis_id")
+            or diagnosis.get("failure_id")
+            or f"diagnosis_{uuid.uuid4().hex[:10]}"
+        )
+        skill_trace = (
+            diagnosis.get("skill_trace")
+            if side == "access"
+            else diagnosis.get("construction_skill_traces", [])
+        )
+        payload = {
+            "side": side,
+            "diagnosis": diagnosis,
+            "official_skill_trace": skill_trace,
+            "successful_skill_use_example": (
+                self._success_examples.select(
+                    side=side,
+                    official_skill_trace=skill_trace,
+                )
+                if self._success_examples is not None
+                else None
+            ),
+            "instruction": (
+                "Generate one narrowly applicable, generalized candidate "
+                "Skill, or state that the official Skill Bank already "
+                "contains sufficient guidance. In solves, name the concrete "
+                "future problem pattern and its non-applicable boundary."
+            ),
+        }
+        messages = [
+            {"role": "system", "content": self._prompt},
+            {
+                "role": "user",
+                "content": json.dumps(
+                    payload, ensure_ascii=False, indent=2
+                ),
+            },
+        ]
+        data: dict[str, Any] = {}
+        decision = ""
+        response_text = ""
+        last_error = ""
+        # DeepSeek V4 thinking tokens share the output budget.  The old 1800
+        # token cap occasionally ended after reasoning but before final JSON.
+        # Retry only protocol-empty responses; semantic validation remains a
+        # separate deterministic gate below.
+        for attempt in range(3):
+            response = self._model.generate(
+                messages,
+                temperature=0.0,
+                max_tokens=12000,
+                json_mode=True,
+            )
+            response_text = response.text
+            data = self._parse_json(response_text)
+            decision = str(data.get("decision", "")).upper()
+            if decision in {
+                "NO_CHANGE_ALREADY_COVERED",
+                "NO_CHANGE_NOT_A_SKILL_PROBLEM",
+            }:
+                return None
+            if decision == "PROPOSE_SKILL":
+                try:
+                    return self._build_candidate(
+                        data=data,
+                        side=side,
+                        diagnosis_id=diagnosis_id,
+                    )
+                except ValueError as exc:
+                    last_error = str(exc)
+            else:
+                last_error = (
+                    "decision must be PROPOSE_SKILL, "
+                    "NO_CHANGE_ALREADY_COVERED, or "
+                    "NO_CHANGE_NOT_A_SKILL_PROBLEM"
+                )
+
+            if attempt < 2:
+                messages.extend([
+                    {"role": "assistant", "content": response_text},
+                    {
+                        "role": "user",
+                        "content": (
+                            "Return a corrected complete JSON object. Preserve "
+                            "the same mechanism and narrow applicability "
+                            "boundary; only repair the listed protocol or "
+                            "length violations. Compress wording instead of "
+                            "broadening scope. Validation errors: "
+                            f"{last_error}"
+                        ),
+                    },
+                ])
+
+        raise ValueError(
+            "Candidate Skill Agent failed after bounded repair retries: "
+            f"{last_error or decision or '<empty>'}; "
+            f"response_chars={len(response_text)}"
+        )
+
+    def _build_candidate(
+        self,
+        *,
+        data: dict[str, Any],
+        side: Literal["access", "construction"],
+        diagnosis_id: str,
+    ) -> SkillCandidate:
+        skill = data.get("skill")
+        if not isinstance(skill, dict):
+            raise ValueError("PROPOSE_SKILL requires a skill object")
+        related = [
+            str(skill_id)
+            for skill_id in data.get("related_existing_skill_ids", [])
+            if str(skill_id)
+        ]
+        candidate = SkillCandidate(
+            candidate_id=f"cand_{side}_{uuid.uuid4().hex[:12]}",
+            skill_id=f"sk_{side}_{uuid.uuid4().hex[:10]}",
+            side=side,
+            payload=SkillPayload(
+                name=skill.get("name", ""),
+                description=skill.get("description", ""),
+                content=skill.get("content", []),
+            ),
+            solves=str(data.get("solves", "")).strip(),
+            related_existing_skill_ids=list(dict.fromkeys(related)),
+            source_diagnosis_id=diagnosis_id,
+            source_failure_id=diagnosis_id,
+            created_at=time.strftime(
+                "%Y-%m-%dT%H:%M:%SZ", time.gmtime()
+            ),
+        )
+        valid, errors = self._validator.validate(
+            candidate.payload,
+            side=side,
+        )
+        if not candidate.solves:
+            errors.append("solves is empty")
+            valid = False
+        if len(candidate.solves) > 600:
+            errors.append("solves is longer than 600 characters")
+            valid = False
+        if not valid:
+            raise ValueError(
+                "Invalid generated candidate Skill: " + "; ".join(errors)
+            )
+        return candidate
+
+    @staticmethod
+    def _parse_json(text: str) -> dict[str, Any]:
+        try:
+            value = json.loads(text)
+            return value if isinstance(value, dict) else {}
+        except json.JSONDecodeError:
+            pass
+
+        # Attempt: extract outermost JSON object and repair common issues
+        repaired = CandidateSkillAgent._repair_json(text)
+        if repaired is not None:
+            return repaired
+        return {}
+
+    @staticmethod
+    def _repair_json(text: str) -> dict[str, Any] | None:
+        """Attempt to repair malformed JSON from DeepSeek.
+
+        Common issues: missing commas between members, trailing commas,
+        markdown fences, extra text before/after the object.
+        """
+        # Strip markdown fences
+        cleaned = re.sub(r"^```(?:json)?\s*", "", text.strip())
+        cleaned = re.sub(r"\s*```$", "", cleaned)
+
+        # Try to find the outermost object
+        match = re.search(r"\{.*\}", cleaned, re.DOTALL)
+        if not match:
+            return None
+        raw = match.group(0)
+
+        # Repair 1: missing comma before a newline + quote (key or string value)
+        # Pattern: "..."\n  "..."  -> need comma between them
+        raw = re.sub(r'("(?:\\.|[^"\\])*")\s*\n\s*(")', r'\1,\n\2', raw)
+        # Repair 2: missing comma before closing bracket after a value
+        raw = re.sub(r'((?:"(?:\\.|[^"\\])*"|\d+|true|false|null))\s*\n\s*(\]|\})', r'\1,\n\2', raw)
+        # Repair 3: trailing comma before closing bracket/brace
+        raw = re.sub(r',\s*(\]|\})', r'\1', raw)
+        # Repair 4: missing comma between a closing brace/bracket and next member
+        raw = re.sub(r'(\]|\})\s*\n\s*(")', r'\1,\n\2', raw)
+
+        try:
+            value = json.loads(raw)
+            return value if isinstance(value, dict) else None
+        except json.JSONDecodeError:
+            pass
+
+        # Second pass: more aggressive comma insertion
+        # Between a value and the next quote
+        raw2 = re.sub(
+            r'((?:\d+|true|false|null|"[^"]*"|\]|\}))\s*\n\s*(")',
+            r'\1,\n\2', raw,
+        )
+        try:
+            value = json.loads(raw2)
+            return value if isinstance(value, dict) else None
+        except json.JSONDecodeError:
+            return None
+
+
+class BatchSkillCrudAgent:
+    """Plan multiple atomic operations without seeing diagnosis packages."""
+
+    def __init__(self, model: ModelClient, *, prompt: str):
+        self._model = model
+        self._prompt = prompt
+
+    def plan(
+        self,
+        *,
+        batch: SkillCandidateBatch,
+        official_records: list[SkillRecord],
+        validation_feedback: str = "",
+    ) -> SkillBatchPlan:
+        allowed_ids = set(batch.retrieved_skill_ids)
+        official = [
+            record.to_dict()
+            for record in official_records
+            if record.skill_id in allowed_ids
+        ]
+        payload = {
+            "candidate_batch": batch.model_dump(mode="json"),
+            "retrieved_official_skills": official,
+            "important_boundary": (
+                "Diagnosis packages and runtime traces are intentionally not "
+                "available here. Use each candidate's solves field."
+            ),
+        }
+        if validation_feedback:
+            payload["previous_validation_error"] = validation_feedback
+            repair_instruction = (
+                "Return a corrected complete plan. For update_content, "
+                "delete_content, or move_content, include content_index and "
+                "expected_content copied exactly from the supplied target "
+                "Skill. Do not repeat the reported protocol error."
+            )
+            if "content too long" in validation_feedback.lower():
+                repair_instruction += (
+                    " The previous plan made a Skill too long. Consolidate "
+                    "overlapping rules with update_content/delete_content, or "
+                    "create a separate narrowly-triggered Skill; do not append "
+                    "the candidate wholesale. Keep total content under 2000 "
+                    "characters."
+                )
+            payload["repair_instruction"] = repair_instruction
+        # CRUD needs structured JSON output. Thinking tokens consume the
+        # output budget before emitting JSON, especially with large batches.
+        response = self._model.generate(
+            [
+                {"role": "system", "content": self._prompt},
+                {
+                    "role": "user",
+                    "content": json.dumps(
+                        payload, ensure_ascii=False, indent=2
+                    ),
+                },
+            ],
+            temperature=0.0,
+            max_tokens=max(12000, 3000 * len(batch.candidates)),
+            json_mode=True,
+        )
+        data = CandidateSkillAgent._parse_json(response.text)
+        operations = [SkillOperation(**item) for item in data.get("operations", [])]
+        # The operation-level side is redundant with the batch side.  Models
+        # occasionally copy the other prompt's literal example; the batch is
+        # authoritative and keeps the two physical banks isolated.
+        for operation in operations:
+            operation.side = batch.side
+        plan = SkillBatchPlan(
+            transaction_id=str(
+                data.get("transaction_id")
+                or f"tx_{batch.batch_id}_{uuid.uuid4().hex[:8]}"
+            ),
+            side=batch.side,
+            base_bank_version=batch.base_bank_version,
+            candidate_resolutions=[
+                CandidateResolution(**item)
+                for item in data.get("candidate_resolutions", [])
+            ],
+            operations=operations,
+        )
+        return plan

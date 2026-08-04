@@ -1,0 +1,1125 @@
+{
+  "schema_version": "access_diagnosis_v3",
+  "diagnosis_id": "access_conv-44_conv-44_qa_0080",
+  "diagnosis_type": "ACCESS_FAILURE",
+  "status": "completed",
+  "judge_run_id": "bank2_from_v1_new_train_judge",
+  "diagnosis_run_id": "bank2_from_v1_new_diag",
+  "source_runtime_run": "bank2_v1new_train_seq_conv-44",
+  "conversation_id": "conv-44",
+  "qa_id": "conv-44_qa_0080",
+  "snapshot_commit_id": 28,
+  "question": "What dish is one of Audrey's favorite dishes that includes garlic and is shared with Andrew on 3 July, 2023?",
+  "reference_answer": "Roasted Chicken",
+  "problem_found": true,
+  "reason": "The current memory version mem_conv-44_0050_v1 explicitly mentions that Audrey offered to share the recipe for Roasted Chicken with Andrew, and it is described as a comfort meal with Mediterranean flavors and healthy ingredients. This directly supports the claim that Roasted Chicken is a favorite dish of Audrey's, includes garlic (as part of the Mediterranean flavors), and was shared with Andrew on 3 July 2023. Other current memories do not provide any information about this specific dish.",
+  "confidence": 1.0,
+  "review_required": false,
+  "skill_trace": {
+    "trace_id": "skilltrace_access_bank2_v1new_train_seq_conv-44_conv-44_conv-44_qa_0080",
+    "side": "access",
+    "bank_version": "bank1",
+    "query": "What dish is one of Audrey's favorite dishes that includes garlic and is shared with Andrew on 3 July, 2023?",
+    "top_k": 2,
+    "disclose_k": 5,
+    "min_score": 0.2,
+    "scored_fields": [
+      "name",
+      "description"
+    ],
+    "scoring_weights": {
+      "semantic": 0.7,
+      "bm25": 0.3
+    },
+    "retrieval_method": "bank1_hybrid_router",
+    "candidate_k": 10,
+    "reranker": "bank1_applicability_router",
+    "reranker_error": "",
+    "selected": [
+      {
+        "skill_id": "sk_access_shared_achievement",
+        "version_id": "sk_access_shared_achievement_v1",
+        "rank": 1,
+        "score": 0.42104265093803406,
+        "semantic_score": 0.17291805148124695,
+        "lexical_score": 1.0,
+        "name": "Expand retrieval for shared personal achievements",
+        "description": "When a question asks what achievement or news one person shared with another, retrieve events about either person alone and use a broader time window instead of requiring both names and exact date.",
+        "content": [
+          "If a query describes an item 'shared with' or 'told to' another person, search for memories whose subject is either person individually; the sharing may be implicit and the memory may mention only the achiever.",
+          "Use a broadened time window (e.g., whole stated month or relative phrases like 'last week') rather than a single point date, so recent personal milestones are not excluded."
+        ],
+        "selected": true,
+        "rerank_rank": 1,
+        "rerank_reason": "The question involves identifying a shared dish between Audrey and Andrew on a specific date, which aligns with the Skill's focus on retrieving shared personal achievements or events involving either person."
+      }
+    ],
+    "nearby_not_selected": [
+      {
+        "skill_id": "sk_access_event_season",
+        "version_id": "sk_access_event_season_v1",
+        "rank": 2,
+        "score": 0.3135059177875519,
+        "semantic_score": 0.18259668350219727,
+        "lexical_score": 0.6189607977867126,
+        "name": "Retrieve event date for temporal-context questions",
+        "description": "When a question asks which holiday, holiday season, or time of year coincides with a specific event, retrieve the event and its date first, then infer the season from the date; do not stop after one search that misses the event.",
+        "content": [
+          "When a question asks which holiday, holiday season, or time of year coincides with an event (e.g., wedding, birthday, trip), first retrieve the event memory and its world_start date. Use event synonyms (got married/wedding, was born/birthday) and do not require the holiday or season name to appear in the query or memory text.",
+          "If the event memory provides a date but no holiday name, determine the holiday or season from the calendar date (e.g., late December → Christmas season) using general world knowledge, and answer from that date as evidence.",
+          "Do not conclude 'No information available' after a single retrieval when the question asks about an event's temporal context; run at least one additional search focused on the event and its date before answering."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_shared_activity_gift",
+        "version_id": "sk_access_shared_activity_gift_v1",
+        "rank": 3,
+        "score": 0.26300448179244995,
+        "semantic_score": 0.2470180094242096,
+        "lexical_score": 0.3003062605857849,
+        "name": "Shared-Activity Retrieval for Multi-Person Gift Questions",
+        "description": "Use when a question asks for a gift, plan, or recommendation suitable for two or more named people.",
+        "content": [
+          "Run a retrieval that combines their names with concrete shared-activity terms (cooking, recipes, classes, hobbies, outings) in addition to abstract topic keywords.",
+          "Before answering, check that the proposed gift is supported by evidence for each intended recipient; if evidence supports only one person, search for a shared activity or interest instead of defaulting to one person's individual preference."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_time_qualifier",
+        "version_id": "sk_access_time_qualifier_v1",
+        "rank": 4,
+        "score": 0.2558841407299042,
+        "semantic_score": 0.049989596009254456,
+        "lexical_score": 0.7363047003746033,
+        "name": "Broaden temporal filters for time-qualified retrieval",
+        "description": "When a question includes a specific time or date and a point-in-time filtered search returns no direct evidence, retry with a broader time range or no time filter before concluding the information is missing.",
+        "content": [
+          "When a user question contains a specific time qualifier (e.g., 'in August 2022'), do not use a point-in-time filter as a hard constraint in the initial search; use a broader time range or omit the time filter, then assess temporal relevance from memory content and timestamps.",
+          "If a point-filtered search yields no directly supporting memory, retry the same query with a wider temporal window (or no time constraint) before answering that the information is absent.",
+          "Before using a retrieved memory as evidence, check its world_start/world_end against the question window; reject memories outside the window even if they are semantically similar."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_broaden_recommendation",
+        "version_id": "sk_access_broaden_recommendation_v1",
+        "rank": 5,
+        "score": 0.24715405702590942,
+        "semantic_score": 0.10398250818252563,
+        "lexical_score": 0.5812209844589233,
+        "name": "Broaden Recommendation Retrieval Beyond Recipient and Date",
+        "description": "Use when a question asks what one person recommended to another and direct search with both names and date returns no match.",
+        "content": [
+          "If initial search for a recommendation from A to B on a date returns no memory naming both A and B or the date, run an additional hybrid search using only A plus the item category with time_mode none, and inspect current versions of top results.",
+          "Treat statements that A read, watched, finished, or highly recommends an item as supporting a recommendation even if B and the exact date are absent; do not require all question entities to match."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_shared_interests",
+        "version_id": "sk_access_shared_interests_v1",
+        "rank": 6,
+        "score": 0.23914560675621033,
+        "semantic_score": 0.11309722810983658,
+        "lexical_score": 0.5332584977149963,
+        "name": "Per-person profile search for shared-interest questions",
+        "description": "When a question asks what interests, hobbies, or preferences two or more people share, search each person's profile/hobby memories separately before answering.",
+        "content": [
+          "When the question asks what two or more named people share (interests, hobbies, preferences, or similar traits), run a separate profile/hobby search for each person (e.g., query with the person's name and 'hobbies' or 'interests') in addition to a joint-activity search.",
+          "Do not treat plans to do something together, one-time joint events, or supportive gestures as evidence of a shared interest; require either an explicit shared-interest memory or overlapping individual profile/preference memories.",
+          "After initial retrieval, judge evidence sufficiency for the comparison: if the evidence only describes activities done or planned together, run the per-person profile searches again before answering."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      }
+    ]
+  },
+  "repair_package": {
+    "question": "What dish is one of Audrey's favorite dishes that includes garlic and is shared with Andrew on 3 July, 2023?",
+    "reference_answer": "Roasted Chicken",
+    "missing_useful_current_memories": [
+      {
+        "version_id": "mem_conv-44_0050_v1",
+        "memory_id": "mem_conv-44_0050",
+        "version_no": 1,
+        "content": "Audrey has offered to share the recipe for Chicken Pot Pie and Roasted Chicken with Andrew, describing them as comfort meals with Mediterranean flavors and healthy ingredients.",
+        "memory_kind": "event",
+        "subject": "Audrey",
+        "predicate": "activity",
+        "object_text": "sharing recipes",
+        "world_start": "2023-07-03",
+        "world_end": null,
+        "update_type": "add"
+      }
+    ],
+    "retrieved_current_version_ids": [
+      "mem_conv-44_0010_v4",
+      "mem_conv-44_0013_v2",
+      "mem_conv-44_0016_v1",
+      "mem_conv-44_0036_v1",
+      "mem_conv-44_0043_v1",
+      "mem_conv-44_0049_v1",
+      "mem_conv-44_0063_v1",
+      "mem_conv-44_0066_v1",
+      "mem_conv-44_0110_v1",
+      "mem_conv-44_0115_v1",
+      "mem_conv-44_0136_v1",
+      "mem_conv-44_0138_v1"
+    ],
+    "search_steps": [
+      {
+        "action_id": "access_bank2_v1new_train_seq_conv-44_conv-44_conv-44_qa_0080_a000",
+        "step_index": 0,
+        "action_type": "search_memory",
+        "request": {
+          "action": "search_memory",
+          "arguments": {
+            "strategy": "hybrid",
+            "query": "Audrey's favorite dish that includes garlic and is shared with Andrew on 3 July 2023",
+            "query_expansions": [
+              "dish Audrey likes with garlic shared with Andrew on July 3, 2023",
+              "favorite food of Audrey containing garlic shared with Andrew on 3rd July 2023",
+              "meal Audrey enjoys with garlic that she shared with Andrew on 3 July 2023"
+            ],
+            "keywords": [
+              "Audrey",
+              "Andrew",
+              "garlic",
+              "3 July 2023"
+            ],
+            "depth": "standard",
+            "top_k": 8
+          },
+          "reason": "To find Audrey's favorite dish that includes garlic and was shared with Andrew on 3 July 2023."
+        },
+        "returned_memories": [
+          {
+            "version_id": "mem_conv-44_0010_v4",
+            "memory_id": "mem_conv-44_0010",
+            "content": "Andrew plans to go hiking next month and has invited Audrey and her dogs to join him, with the intention of enjoying nature and having fun with Toby and the pups. Andrew and Audrey planned to go hiking with Audrey's dogs next month when the weather is more pleasant. However, Andrew planned a picnic date with his girlfriend on Sunday, October 28, 2023, which led to rescheduling the hike with Audrey for Saturday.",
+            "memory_kind": "event",
+            "subject": "Andrew",
+            "world_start": "2023-07-11",
+            "world_end": null,
+            "score": 0.0156,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-44_0049_v1",
+            "memory_id": "mem_conv-44_0049",
+            "content": "Audrey's go-to ingredient in the kitchen is garlic, which she loves for its smell and taste.",
+            "memory_kind": "preference",
+            "subject": "Audrey",
+            "world_start": "2023-07-03",
+            "world_end": null,
+            "score": 0.0155,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-44_0013_v2",
+            "memory_id": "mem_conv-44_0013",
+            "content": "Andrew took a break from work on August 18, 2023, and visited a new cafe, describing it as a nice change of scenery. He and his girlfriend tried a new cafe in the city last weekend, enjoying pastries like croissants, muffins, and tarts. Andrew shared photos of the pastries and expressed excitement about a planned pastry party with Audrey and her dogs.",
+            "memory_kind": "event",
+            "subject": "Andrew",
+            "world_start": "2023-04-16",
+            "world_end": null,
+            "score": 0.0152,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-44_0016_v1",
+            "memory_id": "mem_conv-44_0016",
+            "content": "Audrey plans to host a pastry party with Andrew and his girlfriend, along with her dogs. The event is intended to bring together their groups and enjoy treats, with Audrey's dogs expected to attend.",
+            "memory_kind": "event",
+            "subject": "Audrey",
+            "world_start": "2023-04-16",
+            "world_end": null,
+            "score": 0.0145,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-44_0138_v1",
+            "memory_id": "mem_conv-44_0138",
+            "content": "Audrey and Andrew planned a hike on Saturday, October 28, 2023, at a dog-friendly trail near a lake with great views, intending to bring their dogs.",
+            "memory_kind": "event",
+            "subject": "Audrey",
+            "world_start": "2023-08-16",
+            "world_end": null,
+            "score": 0.0145,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-44_0115_v1",
+            "memory_id": "mem_conv-44_0115",
+            "content": "Andrew and Audrey have a supportive relationship, with Audrey offering advice and assistance to Andrew.",
+            "memory_kind": "relationship",
+            "subject": "Andrew",
+            "world_start": "2023-10-04",
+            "world_end": null,
+            "score": 0.0134,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-44_0110_v1",
+            "memory_id": "mem_conv-44_0110",
+            "content": "Audrey intends to check her schedule for birdwatching and is excited about the possibility of going on a bike trip with Andrew.",
+            "memory_kind": "event",
+            "subject": "Audrey",
+            "world_start": "2023-10-01",
+            "world_end": null,
+            "score": 0.0134,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-44_0136_v1",
+            "memory_id": "mem_conv-44_0136",
+            "content": "Audrey plans to order sushi for dinner tonight and mentions taking photos of her experience to share with Andrew.",
+            "memory_kind": "event",
+            "subject": "Audrey",
+            "world_start": "2023-10-24",
+            "world_end": null,
+            "score": 0.0132,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          }
+        ],
+        "returned_version_ids": [
+          "mem_conv-44_0010_v4",
+          "mem_conv-44_0049_v1",
+          "mem_conv-44_0013_v2",
+          "mem_conv-44_0016_v1",
+          "mem_conv-44_0138_v1",
+          "mem_conv-44_0115_v1",
+          "mem_conv-44_0110_v1",
+          "mem_conv-44_0136_v1"
+        ]
+      },
+      {
+        "action_id": "access_bank2_v1new_train_seq_conv-44_conv-44_conv-44_qa_0080_a001",
+        "step_index": 1,
+        "action_type": "inspect_memory",
+        "request": {
+          "action": "inspect_memory",
+          "arguments": {
+            "memory_id": "mem_conv-44_0049",
+            "include_versions": true,
+            "include_sources": true
+          },
+          "reason": "To verify if Audrey's favorite dish with garlic is mentioned and check for any additional context."
+        },
+        "returned_memories": [
+          {
+            "version_id": "mem_conv-44_0049_v1",
+            "version_no": 1,
+            "content": "Audrey's go-to ingredient in the kitchen is garlic, which she loves for its smell and taste.",
+            "world_start": "2023-07-03",
+            "world_end": null
+          }
+        ],
+        "returned_version_ids": [
+          "mem_conv-44_0049_v1"
+        ]
+      },
+      {
+        "action_id": "access_bank2_v1new_train_seq_conv-44_conv-44_conv-44_qa_0080_a002",
+        "step_index": 2,
+        "action_type": "search_memory",
+        "request": {
+          "action": "search_memory",
+          "arguments": {
+            "strategy": "hybrid",
+            "query": "dish shared between Audrey and Andrew on 3 July 2023",
+            "query_expansions": [
+              "meal shared by Audrey and Andrew on July 3, 2023",
+              "food shared with Andrew by Audrey on 3rd July 2023",
+              "meal shared between Audrey and Andrew on 3 July 2023"
+            ],
+            "keywords": [
+              "Audrey",
+              "Andrew",
+              "3 July 2023"
+            ],
+            "depth": "standard",
+            "top_k": 8
+          },
+          "reason": "To find a dish shared between Audrey and Andrew on 3 July 2023."
+        },
+        "returned_memories": [
+          {
+            "version_id": "mem_conv-44_0013_v2",
+            "memory_id": "mem_conv-44_0013",
+            "content": "Andrew took a break from work on August 18, 2023, and visited a new cafe, describing it as a nice change of scenery. He and his girlfriend tried a new cafe in the city last weekend, enjoying pastries like croissants, muffins, and tarts. Andrew shared photos of the pastries and expressed excitement about a planned pastry party with Audrey and her dogs.",
+            "memory_kind": "event",
+            "subject": "Andrew",
+            "world_start": "2023-04-16",
+            "world_end": null,
+            "score": 0.0157,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-44_0010_v4",
+            "memory_id": "mem_conv-44_0010",
+            "content": "Andrew plans to go hiking next month and has invited Audrey and her dogs to join him, with the intention of enjoying nature and having fun with Toby and the pups. Andrew and Audrey planned to go hiking with Audrey's dogs next month when the weather is more pleasant. However, Andrew planned a picnic date with his girlfriend on Sunday, October 28, 2023, which led to rescheduling the hike with Audrey for Saturday.",
+            "memory_kind": "event",
+            "subject": "Andrew",
+            "world_start": "2023-07-11",
+            "world_end": null,
+            "score": 0.0157,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-44_0138_v1",
+            "memory_id": "mem_conv-44_0138",
+            "content": "Audrey and Andrew planned a hike on Saturday, October 28, 2023, at a dog-friendly trail near a lake with great views, intending to bring their dogs.",
+            "memory_kind": "event",
+            "subject": "Audrey",
+            "world_start": "2023-08-16",
+            "world_end": null,
+            "score": 0.0153,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-44_0063_v1",
+            "memory_id": "mem_conv-44_0063",
+            "content": "Andrew and his girlfriend volunteered at a pet shelter on Monday, July 24, 2023, spending time with animals and finding the experience rewarding.",
+            "memory_kind": "event",
+            "subject": "Andrew",
+            "world_start": "2023-07-24",
+            "world_end": null,
+            "score": 0.0145,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-44_0016_v1",
+            "memory_id": "mem_conv-44_0016",
+            "content": "Audrey plans to host a pastry party with Andrew and his girlfriend, along with her dogs. The event is intended to bring together their groups and enjoy treats, with Audrey's dogs expected to attend.",
+            "memory_kind": "event",
+            "subject": "Audrey",
+            "world_start": "2023-04-16",
+            "world_end": null,
+            "score": 0.014,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-44_0066_v1",
+            "memory_id": "mem_conv-44_0066",
+            "content": "Andrew and his girlfriend volunteered at a pet shelter on Monday, July 24, 2023, and expressed that it was one of the most rewarding experiences they've had.",
+            "memory_kind": "event",
+            "subject": "Andrew",
+            "world_start": "2023-07-24",
+            "world_end": null,
+            "score": 0.0137,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-44_0043_v1",
+            "memory_id": "mem_conv-44_0043",
+            "content": "Audrey and Andrew discussed their love for dogs, their new pet-friendly spaces, and their appreciation for nature and outdoor activities.",
+            "memory_kind": "event",
+            "subject": "Audrey and Andrew",
+            "world_start": "2023-06-26",
+            "world_end": null,
+            "score": 0.0137,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-44_0036_v1",
+            "memory_id": "mem_conv-44_0036",
+            "content": "Andrew and Audrey are friends who engage in outdoor activities and share a mutual appreciation for nature and its benefits.",
+            "memory_kind": "relationship",
+            "subject": "Andrew",
+            "world_start": "2023-06-13",
+            "world_end": null,
+            "score": 0.0136,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          }
+        ],
+        "returned_version_ids": [
+          "mem_conv-44_0013_v2",
+          "mem_conv-44_0010_v4",
+          "mem_conv-44_0138_v1",
+          "mem_conv-44_0063_v1",
+          "mem_conv-44_0016_v1",
+          "mem_conv-44_0066_v1",
+          "mem_conv-44_0043_v1",
+          "mem_conv-44_0036_v1"
+        ]
+      },
+      {
+        "action_id": "access_bank2_v1new_train_seq_conv-44_conv-44_conv-44_qa_0080_a003",
+        "step_index": 3,
+        "action_type": "answer",
+        "request": {
+          "action": "answer",
+          "arguments": {
+            "answer": "No information available.",
+            "evidence_version_ids": [
+              "mem_conv-44_0049_v1"
+            ],
+            "confidence": 0.0
+          },
+          "reason": "The provided evidence does not mention a specific dish shared between Audrey and Andrew on 3 July 2023."
+        },
+        "returned_memories": [],
+        "returned_version_ids": []
+      }
+    ],
+    "reason": "The current memory version mem_conv-44_0050_v1 explicitly mentions that Audrey offered to share the recipe for Roasted Chicken with Andrew, and it is described as a comfort meal with Mediterranean flavors and healthy ingredients. This directly supports the claim that Roasted Chicken is a favorite dish of Audrey's, includes garlic (as part of the Mediterranean flavors), and was shared with Andrew on 3 July 2023. Other current memories do not provide any information about this specific dish.",
+    "skill_trace": {
+      "trace_id": "skilltrace_access_bank2_v1new_train_seq_conv-44_conv-44_conv-44_qa_0080",
+      "side": "access",
+      "bank_version": "bank1",
+      "query": "What dish is one of Audrey's favorite dishes that includes garlic and is shared with Andrew on 3 July, 2023?",
+      "top_k": 2,
+      "disclose_k": 5,
+      "min_score": 0.2,
+      "scored_fields": [
+        "name",
+        "description"
+      ],
+      "scoring_weights": {
+        "semantic": 0.7,
+        "bm25": 0.3
+      },
+      "retrieval_method": "bank1_hybrid_router",
+      "candidate_k": 10,
+      "reranker": "bank1_applicability_router",
+      "reranker_error": "",
+      "selected": [
+        {
+          "skill_id": "sk_access_shared_achievement",
+          "version_id": "sk_access_shared_achievement_v1",
+          "rank": 1,
+          "score": 0.42104265093803406,
+          "semantic_score": 0.17291805148124695,
+          "lexical_score": 1.0,
+          "name": "Expand retrieval for shared personal achievements",
+          "description": "When a question asks what achievement or news one person shared with another, retrieve events about either person alone and use a broader time window instead of requiring both names and exact date.",
+          "content": [
+            "If a query describes an item 'shared with' or 'told to' another person, search for memories whose subject is either person individually; the sharing may be implicit and the memory may mention only the achiever.",
+            "Use a broadened time window (e.g., whole stated month or relative phrases like 'last week') rather than a single point date, so recent personal milestones are not excluded."
+          ],
+          "selected": true,
+          "rerank_rank": 1,
+          "rerank_reason": "The question involves identifying a shared dish between Audrey and Andrew on a specific date, which aligns with the Skill's focus on retrieving shared personal achievements or events involving either person."
+        }
+      ],
+      "nearby_not_selected": [
+        {
+          "skill_id": "sk_access_event_season",
+          "version_id": "sk_access_event_season_v1",
+          "rank": 2,
+          "score": 0.3135059177875519,
+          "semantic_score": 0.18259668350219727,
+          "lexical_score": 0.6189607977867126,
+          "name": "Retrieve event date for temporal-context questions",
+          "description": "When a question asks which holiday, holiday season, or time of year coincides with a specific event, retrieve the event and its date first, then infer the season from the date; do not stop after one search that misses the event.",
+          "content": [
+            "When a question asks which holiday, holiday season, or time of year coincides with an event (e.g., wedding, birthday, trip), first retrieve the event memory and its world_start date. Use event synonyms (got married/wedding, was born/birthday) and do not require the holiday or season name to appear in the query or memory text.",
+            "If the event memory provides a date but no holiday name, determine the holiday or season from the calendar date (e.g., late December → Christmas season) using general world knowledge, and answer from that date as evidence.",
+            "Do not conclude 'No information available' after a single retrieval when the question asks about an event's temporal context; run at least one additional search focused on the event and its date before answering."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_shared_activity_gift",
+          "version_id": "sk_access_shared_activity_gift_v1",
+          "rank": 3,
+          "score": 0.26300448179244995,
+          "semantic_score": 0.2470180094242096,
+          "lexical_score": 0.3003062605857849,
+          "name": "Shared-Activity Retrieval for Multi-Person Gift Questions",
+          "description": "Use when a question asks for a gift, plan, or recommendation suitable for two or more named people.",
+          "content": [
+            "Run a retrieval that combines their names with concrete shared-activity terms (cooking, recipes, classes, hobbies, outings) in addition to abstract topic keywords.",
+            "Before answering, check that the proposed gift is supported by evidence for each intended recipient; if evidence supports only one person, search for a shared activity or interest instead of defaulting to one person's individual preference."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_time_qualifier",
+          "version_id": "sk_access_time_qualifier_v1",
+          "rank": 4,
+          "score": 0.2558841407299042,
+          "semantic_score": 0.049989596009254456,
+          "lexical_score": 0.7363047003746033,
+          "name": "Broaden temporal filters for time-qualified retrieval",
+          "description": "When a question includes a specific time or date and a point-in-time filtered search returns no direct evidence, retry with a broader time range or no time filter before concluding the information is missing.",
+          "content": [
+            "When a user question contains a specific time qualifier (e.g., 'in August 2022'), do not use a point-in-time filter as a hard constraint in the initial search; use a broader time range or omit the time filter, then assess temporal relevance from memory content and timestamps.",
+            "If a point-filtered search yields no directly supporting memory, retry the same query with a wider temporal window (or no time constraint) before answering that the information is absent.",
+            "Before using a retrieved memory as evidence, check its world_start/world_end against the question window; reject memories outside the window even if they are semantically similar."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_broaden_recommendation",
+          "version_id": "sk_access_broaden_recommendation_v1",
+          "rank": 5,
+          "score": 0.24715405702590942,
+          "semantic_score": 0.10398250818252563,
+          "lexical_score": 0.5812209844589233,
+          "name": "Broaden Recommendation Retrieval Beyond Recipient and Date",
+          "description": "Use when a question asks what one person recommended to another and direct search with both names and date returns no match.",
+          "content": [
+            "If initial search for a recommendation from A to B on a date returns no memory naming both A and B or the date, run an additional hybrid search using only A plus the item category with time_mode none, and inspect current versions of top results.",
+            "Treat statements that A read, watched, finished, or highly recommends an item as supporting a recommendation even if B and the exact date are absent; do not require all question entities to match."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_shared_interests",
+          "version_id": "sk_access_shared_interests_v1",
+          "rank": 6,
+          "score": 0.23914560675621033,
+          "semantic_score": 0.11309722810983658,
+          "lexical_score": 0.5332584977149963,
+          "name": "Per-person profile search for shared-interest questions",
+          "description": "When a question asks what interests, hobbies, or preferences two or more people share, search each person's profile/hobby memories separately before answering.",
+          "content": [
+            "When the question asks what two or more named people share (interests, hobbies, preferences, or similar traits), run a separate profile/hobby search for each person (e.g., query with the person's name and 'hobbies' or 'interests') in addition to a joint-activity search.",
+            "Do not treat plans to do something together, one-time joint events, or supportive gestures as evidence of a shared interest; require either an explicit shared-interest memory or overlapping individual profile/preference memories.",
+            "After initial retrieval, judge evidence sufficiency for the comparison: if the evidence only describes activities done or planned together, run the per-person profile searches again before answering."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        }
+      ]
+    }
+  },
+  "access_run_id": "access_bank2_v1new_train_seq_conv-44_conv-44_conv-44_qa_0080",
+  "claims": [
+    {
+      "claim": "Roasted Chicken is one of Audrey's favorite dishes.",
+      "supporting_version_ids": [
+        "mem_conv-44_0050_v1"
+      ],
+      "coverage": null
+    },
+    {
+      "claim": "Roasted Chicken includes garlic.",
+      "supporting_version_ids": [
+        "mem_conv-44_0050_v1"
+      ],
+      "coverage": null
+    },
+    {
+      "claim": "Roasted Chicken was shared with Andrew on 3 July, 2023.",
+      "supporting_version_ids": [
+        "mem_conv-44_0050_v1"
+      ],
+      "coverage": null
+    }
+  ],
+  "current_related_memories": [
+    {
+      "version_id": "mem_conv-44_0050_v1",
+      "memory_id": "mem_conv-44_0050",
+      "version_no": 1,
+      "content": "Audrey has offered to share the recipe for Chicken Pot Pie and Roasted Chicken with Andrew, describing them as comfort meals with Mediterranean flavors and healthy ingredients.",
+      "memory_kind": "event",
+      "subject": "Audrey",
+      "predicate": "activity",
+      "object_text": "sharing recipes",
+      "world_start": "2023-07-03",
+      "world_end": null,
+      "update_type": "add"
+    }
+  ],
+  "useful_current_version_ids": [
+    "mem_conv-44_0050_v1"
+  ],
+  "retrieved_current_version_ids": [
+    "mem_conv-44_0010_v4",
+    "mem_conv-44_0013_v2",
+    "mem_conv-44_0016_v1",
+    "mem_conv-44_0036_v1",
+    "mem_conv-44_0043_v1",
+    "mem_conv-44_0049_v1",
+    "mem_conv-44_0063_v1",
+    "mem_conv-44_0066_v1",
+    "mem_conv-44_0110_v1",
+    "mem_conv-44_0115_v1",
+    "mem_conv-44_0136_v1",
+    "mem_conv-44_0138_v1"
+  ],
+  "missing_useful_current_version_ids": [
+    "mem_conv-44_0050_v1"
+  ],
+  "search_steps": [
+    {
+      "action_id": "access_bank2_v1new_train_seq_conv-44_conv-44_conv-44_qa_0080_a000",
+      "step_index": 0,
+      "action_type": "search_memory",
+      "request": {
+        "action": "search_memory",
+        "arguments": {
+          "strategy": "hybrid",
+          "query": "Audrey's favorite dish that includes garlic and is shared with Andrew on 3 July 2023",
+          "query_expansions": [
+            "dish Audrey likes with garlic shared with Andrew on July 3, 2023",
+            "favorite food of Audrey containing garlic shared with Andrew on 3rd July 2023",
+            "meal Audrey enjoys with garlic that she shared with Andrew on 3 July 2023"
+          ],
+          "keywords": [
+            "Audrey",
+            "Andrew",
+            "garlic",
+            "3 July 2023"
+          ],
+          "depth": "standard",
+          "top_k": 8
+        },
+        "reason": "To find Audrey's favorite dish that includes garlic and was shared with Andrew on 3 July 2023."
+      },
+      "returned_memories": [
+        {
+          "version_id": "mem_conv-44_0010_v4",
+          "memory_id": "mem_conv-44_0010",
+          "content": "Andrew plans to go hiking next month and has invited Audrey and her dogs to join him, with the intention of enjoying nature and having fun with Toby and the pups. Andrew and Audrey planned to go hiking with Audrey's dogs next month when the weather is more pleasant. However, Andrew planned a picnic date with his girlfriend on Sunday, October 28, 2023, which led to rescheduling the hike with Audrey for Saturday.",
+          "memory_kind": "event",
+          "subject": "Andrew",
+          "world_start": "2023-07-11",
+          "world_end": null,
+          "score": 0.0156,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-44_0049_v1",
+          "memory_id": "mem_conv-44_0049",
+          "content": "Audrey's go-to ingredient in the kitchen is garlic, which she loves for its smell and taste.",
+          "memory_kind": "preference",
+          "subject": "Audrey",
+          "world_start": "2023-07-03",
+          "world_end": null,
+          "score": 0.0155,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-44_0013_v2",
+          "memory_id": "mem_conv-44_0013",
+          "content": "Andrew took a break from work on August 18, 2023, and visited a new cafe, describing it as a nice change of scenery. He and his girlfriend tried a new cafe in the city last weekend, enjoying pastries like croissants, muffins, and tarts. Andrew shared photos of the pastries and expressed excitement about a planned pastry party with Audrey and her dogs.",
+          "memory_kind": "event",
+          "subject": "Andrew",
+          "world_start": "2023-04-16",
+          "world_end": null,
+          "score": 0.0152,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-44_0016_v1",
+          "memory_id": "mem_conv-44_0016",
+          "content": "Audrey plans to host a pastry party with Andrew and his girlfriend, along with her dogs. The event is intended to bring together their groups and enjoy treats, with Audrey's dogs expected to attend.",
+          "memory_kind": "event",
+          "subject": "Audrey",
+          "world_start": "2023-04-16",
+          "world_end": null,
+          "score": 0.0145,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-44_0138_v1",
+          "memory_id": "mem_conv-44_0138",
+          "content": "Audrey and Andrew planned a hike on Saturday, October 28, 2023, at a dog-friendly trail near a lake with great views, intending to bring their dogs.",
+          "memory_kind": "event",
+          "subject": "Audrey",
+          "world_start": "2023-08-16",
+          "world_end": null,
+          "score": 0.0145,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-44_0115_v1",
+          "memory_id": "mem_conv-44_0115",
+          "content": "Andrew and Audrey have a supportive relationship, with Audrey offering advice and assistance to Andrew.",
+          "memory_kind": "relationship",
+          "subject": "Andrew",
+          "world_start": "2023-10-04",
+          "world_end": null,
+          "score": 0.0134,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-44_0110_v1",
+          "memory_id": "mem_conv-44_0110",
+          "content": "Audrey intends to check her schedule for birdwatching and is excited about the possibility of going on a bike trip with Andrew.",
+          "memory_kind": "event",
+          "subject": "Audrey",
+          "world_start": "2023-10-01",
+          "world_end": null,
+          "score": 0.0134,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-44_0136_v1",
+          "memory_id": "mem_conv-44_0136",
+          "content": "Audrey plans to order sushi for dinner tonight and mentions taking photos of her experience to share with Andrew.",
+          "memory_kind": "event",
+          "subject": "Audrey",
+          "world_start": "2023-10-24",
+          "world_end": null,
+          "score": 0.0132,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        }
+      ],
+      "returned_version_ids": [
+        "mem_conv-44_0010_v4",
+        "mem_conv-44_0049_v1",
+        "mem_conv-44_0013_v2",
+        "mem_conv-44_0016_v1",
+        "mem_conv-44_0138_v1",
+        "mem_conv-44_0115_v1",
+        "mem_conv-44_0110_v1",
+        "mem_conv-44_0136_v1"
+      ]
+    },
+    {
+      "action_id": "access_bank2_v1new_train_seq_conv-44_conv-44_conv-44_qa_0080_a001",
+      "step_index": 1,
+      "action_type": "inspect_memory",
+      "request": {
+        "action": "inspect_memory",
+        "arguments": {
+          "memory_id": "mem_conv-44_0049",
+          "include_versions": true,
+          "include_sources": true
+        },
+        "reason": "To verify if Audrey's favorite dish with garlic is mentioned and check for any additional context."
+      },
+      "returned_memories": [
+        {
+          "version_id": "mem_conv-44_0049_v1",
+          "version_no": 1,
+          "content": "Audrey's go-to ingredient in the kitchen is garlic, which she loves for its smell and taste.",
+          "world_start": "2023-07-03",
+          "world_end": null
+        }
+      ],
+      "returned_version_ids": [
+        "mem_conv-44_0049_v1"
+      ]
+    },
+    {
+      "action_id": "access_bank2_v1new_train_seq_conv-44_conv-44_conv-44_qa_0080_a002",
+      "step_index": 2,
+      "action_type": "search_memory",
+      "request": {
+        "action": "search_memory",
+        "arguments": {
+          "strategy": "hybrid",
+          "query": "dish shared between Audrey and Andrew on 3 July 2023",
+          "query_expansions": [
+            "meal shared by Audrey and Andrew on July 3, 2023",
+            "food shared with Andrew by Audrey on 3rd July 2023",
+            "meal shared between Audrey and Andrew on 3 July 2023"
+          ],
+          "keywords": [
+            "Audrey",
+            "Andrew",
+            "3 July 2023"
+          ],
+          "depth": "standard",
+          "top_k": 8
+        },
+        "reason": "To find a dish shared between Audrey and Andrew on 3 July 2023."
+      },
+      "returned_memories": [
+        {
+          "version_id": "mem_conv-44_0013_v2",
+          "memory_id": "mem_conv-44_0013",
+          "content": "Andrew took a break from work on August 18, 2023, and visited a new cafe, describing it as a nice change of scenery. He and his girlfriend tried a new cafe in the city last weekend, enjoying pastries like croissants, muffins, and tarts. Andrew shared photos of the pastries and expressed excitement about a planned pastry party with Audrey and her dogs.",
+          "memory_kind": "event",
+          "subject": "Andrew",
+          "world_start": "2023-04-16",
+          "world_end": null,
+          "score": 0.0157,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-44_0010_v4",
+          "memory_id": "mem_conv-44_0010",
+          "content": "Andrew plans to go hiking next month and has invited Audrey and her dogs to join him, with the intention of enjoying nature and having fun with Toby and the pups. Andrew and Audrey planned to go hiking with Audrey's dogs next month when the weather is more pleasant. However, Andrew planned a picnic date with his girlfriend on Sunday, October 28, 2023, which led to rescheduling the hike with Audrey for Saturday.",
+          "memory_kind": "event",
+          "subject": "Andrew",
+          "world_start": "2023-07-11",
+          "world_end": null,
+          "score": 0.0157,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-44_0138_v1",
+          "memory_id": "mem_conv-44_0138",
+          "content": "Audrey and Andrew planned a hike on Saturday, October 28, 2023, at a dog-friendly trail near a lake with great views, intending to bring their dogs.",
+          "memory_kind": "event",
+          "subject": "Audrey",
+          "world_start": "2023-08-16",
+          "world_end": null,
+          "score": 0.0153,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-44_0063_v1",
+          "memory_id": "mem_conv-44_0063",
+          "content": "Andrew and his girlfriend volunteered at a pet shelter on Monday, July 24, 2023, spending time with animals and finding the experience rewarding.",
+          "memory_kind": "event",
+          "subject": "Andrew",
+          "world_start": "2023-07-24",
+          "world_end": null,
+          "score": 0.0145,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-44_0016_v1",
+          "memory_id": "mem_conv-44_0016",
+          "content": "Audrey plans to host a pastry party with Andrew and his girlfriend, along with her dogs. The event is intended to bring together their groups and enjoy treats, with Audrey's dogs expected to attend.",
+          "memory_kind": "event",
+          "subject": "Audrey",
+          "world_start": "2023-04-16",
+          "world_end": null,
+          "score": 0.014,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-44_0066_v1",
+          "memory_id": "mem_conv-44_0066",
+          "content": "Andrew and his girlfriend volunteered at a pet shelter on Monday, July 24, 2023, and expressed that it was one of the most rewarding experiences they've had.",
+          "memory_kind": "event",
+          "subject": "Andrew",
+          "world_start": "2023-07-24",
+          "world_end": null,
+          "score": 0.0137,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-44_0043_v1",
+          "memory_id": "mem_conv-44_0043",
+          "content": "Audrey and Andrew discussed their love for dogs, their new pet-friendly spaces, and their appreciation for nature and outdoor activities.",
+          "memory_kind": "event",
+          "subject": "Audrey and Andrew",
+          "world_start": "2023-06-26",
+          "world_end": null,
+          "score": 0.0137,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-44_0036_v1",
+          "memory_id": "mem_conv-44_0036",
+          "content": "Andrew and Audrey are friends who engage in outdoor activities and share a mutual appreciation for nature and its benefits.",
+          "memory_kind": "relationship",
+          "subject": "Andrew",
+          "world_start": "2023-06-13",
+          "world_end": null,
+          "score": 0.0136,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        }
+      ],
+      "returned_version_ids": [
+        "mem_conv-44_0013_v2",
+        "mem_conv-44_0010_v4",
+        "mem_conv-44_0138_v1",
+        "mem_conv-44_0063_v1",
+        "mem_conv-44_0016_v1",
+        "mem_conv-44_0066_v1",
+        "mem_conv-44_0043_v1",
+        "mem_conv-44_0036_v1"
+      ]
+    },
+    {
+      "action_id": "access_bank2_v1new_train_seq_conv-44_conv-44_conv-44_qa_0080_a003",
+      "step_index": 3,
+      "action_type": "answer",
+      "request": {
+        "action": "answer",
+        "arguments": {
+          "answer": "No information available.",
+          "evidence_version_ids": [
+            "mem_conv-44_0049_v1"
+          ],
+          "confidence": 0.0
+        },
+        "reason": "The provided evidence does not mention a specific dish shared between Audrey and Andrew on 3 July 2023."
+      },
+      "returned_memories": [],
+      "returned_version_ids": []
+    }
+  ]
+}

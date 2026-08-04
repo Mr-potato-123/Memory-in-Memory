@@ -1,0 +1,550 @@
+{
+  "batch": {
+    "batch_id": "access_bank1_new_build_0006",
+    "side": "access",
+    "base_bank_version": "v000",
+    "candidates": [
+      {
+        "candidate_id": "cand_access_23c7a45b8c6c",
+        "skill_id": "sk_access_bea3bab5e6",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Venue-List Search Expansion",
+          "description": "When a question asks for the places/venues where a person submitted, entered, or published work (e.g., 'what places has X submitted to?'), use complementary venue-term searches before answering.",
+          "content": [
+            "When the question is enumerative about submission/entry venues, do not answer from the first generic search alone.",
+            "After the initial search, run targeted searches for each obvious venue category in the domain (e.g., contest, competition, festival, exhibition, publication, conference) combined with the subject and a submission verb, and merge the evidence.",
+            "Stop after two consecutive venue-category searches yield no new submission/participation memories, or once the standard venue categories for that domain have been checked; do not search unrelated topics."
+          ]
+        },
+        "solves": "The general failure is that an enumerative question about places/venues (e.g., 'what places has X submitted her work to?') is answered from a single generic search, so memories that name a different venue type (like a contest) are missed. This skill applies when the question asks for multiple submission/entry venues and the initial retrieval returns only one venue category or is sparse. It does not apply to single-venue questions, to non-venue questions, or when the first search already surfaces all relevant venue types.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-42_conv-42_qa_0027",
+        "source_failure_id": "access_conv-42_conv-42_qa_0027",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:31:19Z"
+      },
+      {
+        "candidate_id": "cand_access_4e9952c03dae",
+        "skill_id": "sk_access_f831e88b0a",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Travel destination retrieval with synonym coverage",
+          "description": "When a question asks where a person traveled/visited/went in a specific month or year and the first search returns no location memory, use travel-verb synonyms and a time-filtered event query before answering.",
+          "content": [
+            "For questions asking where someone traveled, visited, or went in a specific month/year, if the initial hybrid search returns no memory containing a place, run one additional search that adds travel-verb synonyms such as 'road trip', 'trip', 'visit', 'traveled to', and 'went to' together with the time frame from the question.",
+            "Also issue a structured search over memory_kind='event' with world_start falling within the month/year named in the question; destination memories are often stored as events with a world_start date even when the text omits the word 'travel'.",
+            "Stop after this one extra retrieval pass; if still no memory with a destination appears, answer with the best available evidence or state that no information is available."
+          ]
+        },
+        "solves": "When a question asks where a person traveled or visited in a specific month, the first hybrid search may miss the destination memory because the memory uses wording like 'road trip' rather than 'travel'. The Skill applies to future travel/location questions with a time window, requiring one extra search with travel-verb synonyms and an event/date-filtered structured query before concluding no information. It does not apply when initial results already contain a location or when the question is not about travels/destinations.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-42_conv-42_qa_0032",
+        "source_failure_id": "access_conv-42_conv-42_qa_0032",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:31:43Z"
+      },
+      {
+        "candidate_id": "cand_access_6c61b62608d1",
+        "skill_id": "sk_access_edad4039ab",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Follow-up search for indirect state evidence",
+          "description": "When a question asks for the US state a named person was in during a stated activity/period and the first memory search returns no explicit location, run one additional search for the person's activities and named places, and treat a recognizable landmark's state as evidence.",
+          "content": [
+            "If the question asks which US state a person was in during a stated activity/period (e.g., an internship) and the first search returns no explicit state, issue a follow-up search with the person's name plus location/activity clues such as 'visited', 'went to', 'at', 'in', 'hikes', 'trip', or any topic surfaced in the first results (e.g., a hobby or challenge).",
+            "If a returned memory names a recognizable US landmark (mountain, park, city, monument), map it to its state and use that as candidate evidence even if the memory says neither 'state' nor 'visited'. Stop after one such inference, or if the follow-up returns no named place and evidence sufficiency remains negative."
+          ]
+        },
+        "solves": "Direct location searches can miss evidence when the only supporting memory records an activity at a recognizable place but omits the word 'state' and the region name. Applies when a question asks which US state a person visited during a stated period/internship and the first search returns only general context; then run one follow-up search for activity/location memories and, if a named landmark appears, infer its state as evidence. Does not apply when the memory explicitly names the state or when the question is not about a location.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-48_conv-48_qa_0048",
+        "source_failure_id": "access_conv-48_conv-48_qa_0048",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:34:28Z"
+      },
+      {
+        "candidate_id": "cand_access_92eb2e3dd44f",
+        "skill_id": "sk_access_fd65b72824",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Count visits from place-anchored events",
+          "description": "When a question asks how many times a person has been to a specific city or country, and the memory evidence may describe actions that occurred there without using the word 'visit' or 'trip'.",
+          "content": [
+            "Before answering a how-many-visits question, run a search that uses the place name itself (city and country) combined with the person's name, in addition to any literal 'visited <place>' query.",
+            "Count as a visit any distinct memory in which the person was present in that place, including receiving/giving something there, buying something there, attending an event there, or staying there; use the event date or world_start to separate distinct visits.",
+            "Stop expanding once the place-name search returns no new location-anchored events; do not enumerate every possible location synonym."
+          ]
+        },
+        "solves": "Counting visits to a place fails when the only evidence is event memories that mention the place as the location of an action (e.g., received a gift, bought an item) rather than as a stated trip. The Skill applies to 'how many times has <person> been to <place>' questions where such place-anchored events exist; it must not be used when explicit visit/trip memories already answer the count, since the base retrieval is then sufficient.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-48_conv-48_qa_0019",
+        "source_failure_id": "access_conv-48_conv-48_qa_0019",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:33:42Z"
+      },
+      {
+        "candidate_id": "cand_access_93b4059f86a1",
+        "skill_id": "sk_access_7b75939f67",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Location search via planned landmarks",
+          "description": "When a question asks for a person's location, US state, or whereabouts during a time period and direct searches do not surface an explicit location, apply this before concluding no information exists.",
+          "content": [
+            "Before answering 'no information', search memory for the person's event/plan memories with world_start inside the target time window, using the person's name with activity or destination keywords found in their existing plans (e.g., visit, lake, trip, kayak).",
+            "If any retrieved plan/event names a geographic landmark, use that landmark as a query term in a follow-up search; when the landmark is tied to a state, use that to answer the location question.",
+            "Stop after one confirming follow-up if the landmark resolves the location; if the landmark spans multiple states, report those states or use other retrieved context to disambiguate, and do not enumerate landmarks beyond those already present in the retrieved memories."
+          ]
+        },
+        "solves": "Generic location queries miss plan/event memories whose named landmarks imply the state. Applies to future 'Which US state was X in during [month/year]?' questions where an event/plan in that window names a place. Exclude cases where direct search already reveals an explicit location, or where no landmark-bearing plan/event exists in the window.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-49_conv-49_qa_0057",
+        "source_failure_id": "access_conv-49_conv-49_qa_0057",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:35:12Z"
+      },
+      {
+        "candidate_id": "cand_access_a7059e1c7adb",
+        "skill_id": "sk_access_41b10000d2",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Per-person travel overlap retrieval",
+          "description": "When a question asks which city/place several named people both visited and initial combined search lacks travel memories for one, search per person with travel synonyms (visited, went, trip, been to) and any candidate city names before concluding no evidence.",
+          "content": [
+            "Before answering a multi-person shared-place question, if the combined search did not return travel/location memories for every named person, run one bounded search per person using their name plus travel synonyms (visited, went, took a trip, traveled, been to).",
+            "When a retrieved memory names a candidate place, include that place name in a follow-up search for the other person(s), and account for close name variants (e.g., Jon/John) when matching.",
+            "Stop once each person has relevant travel memories or after one search per person plus one candidate-place follow-up; then intersect the places. Do not repeat identical combined queries, and do not exhaustively enumerate all possible places."
+          ]
+        },
+        "solves": "Multi-person shared-place questions fail when one literal combined query misses memories phrased with travel synonyms or explicit place names and the agent concludes 'no information.' Applies when asking which city/place two or more named people both visited and initial retrieval lacks evidence for one person; not when the combined search already supplies sufficient travel memories or the question is single-person.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-30_conv-30_qa_0009",
+        "source_failure_id": "access_conv-30_conv-30_qa_0009",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:31:17Z"
+      },
+      {
+        "candidate_id": "cand_access_bb6610275aa7",
+        "skill_id": "sk_access_ba7a4304f9",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Destination-name retrieval for country-travel questions",
+          "description": "Use when the user asks which countries or places someone has traveled to or visited, and the first retrieval does not return an explicit country list.",
+          "content": [
+            "When answering 'which countries/places did [person] travel to or visit?', run a keyword search using the person's name plus at least the verb variants 'visited', 'traveled', 'went to', and 'trip' (memory_kinds ['event'], depth 'deep', top_k >= 8) before concluding no travel memories exist.",
+            "Examine retrieved event memories for named cities, regions, or countries. If a memory names only a city or region, add that destination name to one follow-up search (e.g., '[person] [destination]') and inspect the result for additional country-level travel evidence.",
+            "Stop after two consecutive searches return no new destination mentions; then answer using the countries either stated in, or unambiguously implied by, the retrieved destination evidence. Do not answer from a single vacation memory when the question asks for a list."
+          ]
+        },
+        "solves": "Generic travel-history searches can miss memories that name a specific city or region instead of a country, causing the agent to answer prematurely from a single trip mention. This Skill applies to future 'which countries/places did [person] travel to or visit' questions when initial retrieval returns only broad trip or activity memories. It should not be used when the question already names a specific country or when retrieval already contains the full list of destination countries.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-48_conv-48_qa_0087",
+        "source_failure_id": "access_conv-48_conv-48_qa_0087",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:34:38Z"
+      },
+      {
+        "candidate_id": "cand_access_d45aa0595dc4",
+        "skill_id": "sk_access_067a30e6d2",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Expand retrieval for all visited locations",
+          "description": "When answering a question that asks for all places a person has visited or been to, and the first search returns only general travel stories, use this Skill to broaden the query and verify coverage before answering.",
+          "content": [
+            "If the question asks for all visited locations (e.g., 'Where has X been?', 'What locations has X visited?'), run an additional search using the person's name together with location-oriented phrases such as 'went to', 'visited', 'trip', 'traveled to', and 'took a photo in'.",
+            "Do not stop at the first result set. Inspect retrieved memories that describe any geographic setting even if the exact place name is not in the original query, and check whether each such location is already in your evidence list.",
+            "Before finalizing an enumerative answer, explicitly verify that every location you found across the retrieved memories is covered by the evidence version IDs you cite; if a location appears only in a memory you did not inspect, inspect it and add it when supported."
+          ]
+        },
+        "solves": "When a question asks to enumerate all geographical locations a person has visited, a single hybrid top-k search often misses memories where the location is embedded inside a broader event narrative, leading to incomplete answers. This Skill applies when answering such list-style location questions and guides expanding retrieval with location-oriented terms and verifying coverage before answering. It should not apply to questions about a single specific location or to non-location enumeration questions.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-43_conv-43_qa_0007",
+        "source_failure_id": "access_conv-43_conv-43_qa_0007",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:32:02Z"
+      },
+      {
+        "candidate_id": "cand_access_d844565c3d3d",
+        "skill_id": "sk_access_34252d625e",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "InferRegionFromCityLocation",
+          "description": "When a question asks which state, province, or country a person visited and the initial memory search returns no location, search again for city-level location memories about the person and infer the region from the city before answering.",
+          "content": [
+            "If a question asks for an administrative region (state, province, country) a person visited and the first search returns no usable location memory, run one additional search using city-level terms (city, town, beach, went to) combined with the person's name.",
+            "When the additional search returns a city, use standard geographic knowledge to infer the region (e.g., Tampa → Florida) and answer with the inferred region, citing the city memory as evidence.",
+            "Do not continue searching further if no city or region is found; answer 'No information available' and stop."
+          ]
+        },
+        "solves": "Retrieval fails because the answer is stored at city level (e.g., Tampa) while the question asks for a region (e.g., Florida), and the agent stops after one empty search. Use when a question asks which state, province, or country a person visited and direct search finds no region; search city-level locations and infer the region from the city. Do not use when the region is already present in retrieved memory or the question is not about a geographic region.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-42_conv-42_qa_0087",
+        "source_failure_id": "access_conv-42_conv-42_qa_0087",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:31:46Z"
+      },
+      {
+        "candidate_id": "cand_access_e2da8cb2a1c3",
+        "skill_id": "sk_access_4a3c491ab3",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Location-mention recall via event/plan search",
+          "description": "When a question asks which cities/places a person mentioned, visited, or plans to explore and the first retrieval returns only past-travel results, run an additional event/plan-focused search with location and travel-expansion terms before answering.",
+          "content": [
+            "When a question asks which cities, countries, or places a person mentioned, visited, or plans to explore, do not restrict queries to the verb 'visit' or past-tense travel language; include travel-intent expansions such as 'explore', 'trip', 'game/match at', 'favorite city', and 'plan to go'.",
+            "If the first pass returns no location-bearing memories for that person or misses expected locations, run one additional structured or hybrid search combining the person's name with location tokens (city/country names, 'city', 'travel', 'trip', 'event') and accept event/plan memories that name a location even without the word 'visit'.",
+            "Stop once the distinct locations recoverable from the person's event/plan/travel memories have been enumerated; do not perform per-city exhaustive searches."
+          ]
+        },
+        "solves": "Retrieval for questions asking which places a person mentioned can miss memories that express locations via future events, plans, or preferences rather than the literal verb 'visit'. Future 'which cities did X mention' questions should trigger an additional event/plan-focused search with location and travel-expansion terms. Not for stated-opinion or simple past-travel questions where standard keyword search already suffices.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-43_conv-43_qa_0021",
+        "source_failure_id": "access_conv-43_conv-43_qa_0021",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:32:28Z"
+      }
+    ],
+    "retrieved_skill_ids": [],
+    "relations": []
+  },
+  "plan": {
+    "transaction_id": "tx_access_bank1_new_build_0006",
+    "side": "access",
+    "base_bank_version": "v000",
+    "candidate_resolutions": [
+      {
+        "candidate_id": "cand_access_23c7a45b8c6c",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_venue_list_expansion"
+        ],
+        "reason": "No existing Skill covers enumerative venue-list retrieval with complementary venue-category searches."
+      },
+      {
+        "candidate_id": "cand_access_4e9952c03dae",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_travel_synonym_time"
+        ],
+        "reason": "No existing Skill covers travel destination retrieval with synonym expansion and time-filtered event search."
+      },
+      {
+        "candidate_id": "cand_access_6c61b62608d1",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_indirect_state_evidence"
+        ],
+        "reason": "No existing Skill covers inferring US state from landmark evidence in follow-up searches."
+      },
+      {
+        "candidate_id": "cand_access_92eb2e3dd44f",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_count_place_visits"
+        ],
+        "reason": "No existing Skill covers counting visits from place-anchored events without literal visit terms."
+      },
+      {
+        "candidate_id": "cand_access_93b4059f86a1",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_planned_landmark_location"
+        ],
+        "reason": "No existing Skill covers using planned landmarks to infer location during a time window."
+      },
+      {
+        "candidate_id": "cand_access_a7059e1c7adb",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_multi_person_travel_overlap"
+        ],
+        "reason": "No existing Skill covers per-person travel synonym searches for multi-person shared-place questions."
+      },
+      {
+        "candidate_id": "cand_access_bb6610275aa7",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_destination_name_retrieval"
+        ],
+        "reason": "No existing Skill covers destination-name follow-up for country-travel list questions."
+      },
+      {
+        "candidate_id": "cand_access_d45aa0595dc4",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_all_visited_locations"
+        ],
+        "reason": "No existing Skill covers enumerating all visited locations with location-oriented expansion and coverage verification."
+      },
+      {
+        "candidate_id": "cand_access_d844565c3d3d",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_infer_region_from_city"
+        ],
+        "reason": "No existing Skill covers inferring region from city-level memories when direct search fails."
+      },
+      {
+        "candidate_id": "cand_access_e2da8cb2a1c3",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_location_mention_event_plan"
+        ],
+        "reason": "No existing Skill covers location-mention retrieval via event/plan search with travel-intent expansions."
+      }
+    ],
+    "operations": [
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_venue_list_expansion",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Venue-List Search Expansion",
+        "description": "Use when a question asks for multiple submission/entry venues (e.g., contests, festivals) and initial retrieval is sparse or single-category.",
+        "content": [
+          "When the question is enumerative about submission/entry venues, do not answer from the first generic search alone.",
+          "After the initial search, run targeted searches for each obvious venue category (contest, competition, festival, exhibition, publication, conference) combined with the subject and a submission verb, and merge the evidence.",
+          "Stop after two consecutive venue-category searches yield no new submission/participation memories, or once the standard venue categories for that domain have been checked; do not search unrelated topics."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_23c7a45b8c6c"
+        ],
+        "reason": "Creating new Skill for enumerative venue-list retrieval.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_travel_synonym_time",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Travel Destination Synonym and Time Search",
+        "description": "Use when asking where someone traveled/visited in a specific month/year and initial search returns no location memory.",
+        "content": [
+          "If the initial hybrid search returns no memory containing a place, run one additional search adding travel-verb synonyms ('road trip', 'trip', 'visit', 'traveled to', 'went to') together with the time frame.",
+          "Also issue a structured search over memory_kind='event' with world_start within the month/year named in the question.",
+          "Stop after this one extra retrieval pass; if still no destination appears, answer with best available evidence or state no information."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_4e9952c03dae"
+        ],
+        "reason": "Creating new Skill for travel destination retrieval with synonyms and time filter.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_indirect_state_evidence",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Indirect State Evidence via Landmark",
+        "description": "Use when asking which US state a person was in during a stated activity/period and first search returns no explicit state.",
+        "content": [
+          "Run a follow-up search with the person's name plus location/activity clues such as 'visited', 'went to', 'at', 'in', 'hikes', 'trip', or any topic surfaced in first results.",
+          "If a returned memory names a recognizable US landmark, map it to its state and use as candidate evidence even if the memory says neither 'state' nor 'visited'.",
+          "Stop after one such inference, or if the follow-up returns no named place and evidence sufficiency remains negative."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_6c61b62608d1"
+        ],
+        "reason": "Creating new Skill for inferring state from landmark evidence.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_count_place_visits",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Count Visits from Place-Anchored Events",
+        "description": "Use when asking how many times a person has been to a specific city/country and evidence may describe actions there without 'visit' or 'trip'.",
+        "content": [
+          "Run a search using the place name (city and country) combined with the person's name, in addition to any literal 'visited <place>' query.",
+          "Count as a visit any distinct memory where the person was present in that place, including receiving/giving, buying, attending, or staying; use event date or world_start to separate distinct visits.",
+          "Stop expanding once the place-name search returns no new location-anchored events; do not enumerate every possible location synonym."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_92eb2e3dd44f"
+        ],
+        "reason": "Creating new Skill for counting visits from place-anchored events.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_planned_landmark_location",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Location via Planned Landmarks",
+        "description": "Use when asking a person's location/state during a time period and direct searches do not surface an explicit location.",
+        "content": [
+          "Before answering 'no information', search event/plan memories with world_start inside the target window, using the person's name with activity or destination keywords from existing plans (e.g., visit, lake, trip, kayak).",
+          "If any retrieved plan/event names a geographic landmark, use that landmark as a query term in a follow-up search; when tied to a state, use that to answer.",
+          "Stop after one confirming follow-up if the landmark resolves the location; if it spans multiple states, report those states or use other context to disambiguate."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_93b4059f86a1"
+        ],
+        "reason": "Creating new Skill for using planned landmarks to infer location.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_multi_person_travel_overlap",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Per-Person Travel Overlap Retrieval",
+        "description": "Use when asking which city/place several named people both visited and combined search lacks travel memories for one.",
+        "content": [
+          "If the combined search did not return travel/location memories for every named person, run one bounded search per person using their name plus travel synonyms (visited, went, took a trip, traveled, been to).",
+          "When a retrieved memory names a candidate place, include that place name in a follow-up search for the other person(s), and account for close name variants (e.g., Jon/John).",
+          "Stop once each person has relevant travel memories or after one search per person plus one candidate-place follow-up; then intersect the places."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_a7059e1c7adb"
+        ],
+        "reason": "Creating new Skill for multi-person shared-place retrieval.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_destination_name_retrieval",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Destination-Name Retrieval for Country-Travel",
+        "description": "Use when asking which countries/places someone traveled to and first retrieval does not return an explicit country list.",
+        "content": [
+          "Run a keyword search using the person's name plus verb variants 'visited', 'traveled', 'went to', 'trip' (memory_kinds ['event'], depth 'deep', top_k >= 8) before concluding no travel memories.",
+          "Examine retrieved event memories for named cities, regions, or countries; if a memory names only a city/region, add that destination name to one follow-up search and inspect for additional country-level evidence.",
+          "Stop after two consecutive searches return no new destination mentions; then answer using countries stated or unambiguously implied by retrieved evidence."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_bb6610275aa7"
+        ],
+        "reason": "Creating new Skill for destination-name follow-up in country-travel questions.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_all_visited_locations",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Expand Retrieval for All Visited Locations",
+        "description": "Use when answering a question that asks for all places a person has visited and first search returns only general travel stories.",
+        "content": [
+          "Run an additional search using the person's name with location-oriented phrases such as 'went to', 'visited', 'trip', 'traveled to', 'took a photo in'.",
+          "Do not stop at the first result set; inspect memories describing any geographic setting even if the exact place name is not in the original query, and check whether each location is already in your evidence list.",
+          "Before finalizing an enumerative answer, verify that every location found is covered by the evidence version IDs you cite; inspect and add any location from an uninspected memory."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_d45aa0595dc4"
+        ],
+        "reason": "Creating new Skill for enumerating all visited locations.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_infer_region_from_city",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Infer Region from City Location",
+        "description": "Use when asking which state/province/country a person visited and initial search returns no location.",
+        "content": [
+          "Run one additional search using city-level terms (city, town, beach, went to) combined with the person's name.",
+          "When the additional search returns a city, use standard geographic knowledge to infer the region (e.g., Tampa → Florida) and answer with the inferred region, citing the city memory as evidence.",
+          "Do not continue searching further if no city or region is found; answer 'No information available' and stop."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_d844565c3d3d"
+        ],
+        "reason": "Creating new Skill for inferring region from city-level memories.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_location_mention_event_plan",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Location-Mention Recall via Event/Plan Search",
+        "description": "Use when asking which cities/places a person mentioned, visited, or plans to explore and first retrieval returns only past-travel results.",
+        "content": [
+          "Do not restrict queries to the verb 'visit' or past-tense travel language; include travel-intent expansions such as 'explore', 'trip', 'game/match at', 'favorite city', 'plan to go'.",
+          "If the first pass returns no location-bearing memories or misses expected locations, run one additional structured or hybrid search combining the person's name with location tokens (city/country names, 'city', 'travel', 'trip', 'event') and accept event/plan memories that name a location even without 'visit'.",
+          "Stop once the distinct locations recoverable from the person's event/plan/travel memories have been enumerated; do not perform per-city exhaustive searches."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_e2da8cb2a1c3"
+        ],
+        "reason": "Creating new Skill for location-mention retrieval via event/plan search.",
+        "hard_delete": false
+      }
+    ]
+  },
+  "status": "planned"
+}

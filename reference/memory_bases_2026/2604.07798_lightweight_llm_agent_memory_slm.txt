@@ -1,0 +1,910 @@
+                                                 Lightweight LLM Agent Memory with Small Language Models
+
+                                         Jiaquan Zhang1 , Chaoning Zhang1,* , Shuxu Chen2 , Zhenzhen Huang1 , Pengcheng Zheng1 ,
+                                          Zhicheng Wang1 , Ping Guo3 , Fan Mo4 , Sung-Ho Bae2 , Jie Zou1 , Jiwei Wei1 , Yang Yang1
+                                                         1
+                                                           University of Electronic Science and Technology of China;
+                                                2
+                                                  Kyung Hee University; 3 City University of Hong Kong; 4 University of Oxford
+                                                                       *Corresponding author: chaoningzhang1990@gmail.com
+
+
+
+
+                                                               Abstract
+                                             Although LLM agents can leverage tools for
+arXiv:2604.07798v3 [cs.AI] 22 Apr 2026
+
+
+
+
+                                             complex tasks, they still need memory to main-
+                                             tain cross-turn consistency and accumulate
+                                             reusable information in long-horizon interac-
+                                             tions. However, retrieval-based external mem-
+                                             ory systems incur low online overhead but suf-
+                                             fer from unstable accuracy due to limited query
+                                             construction and candidate filtering. In con-
+                                             trast, many systems use repeated large-model        Figure 1: LightMem combines enhanced retrieval with
+                                             calls for online memory operations, improv-         SLMs, achieving high retrieval accuracy while signif-
+                                             ing accuracy but accumulating latency over          icantly reducing online latency compared to retrieval-
+                                             long interactions. We propose LightMem, a           based and LLM-based memory systems.
+                                             lightweight memory system for better agent
+                                             memory driven by Small Language Models
+                                             (SLMs). LightMem modularizes memory re-             cross-turn consistency beyond the context window,
+                                             trieval, writing, and long-term consolidation,      many systems augment agents with external mem-
+                                             and separates online processing from offline        ory (Lee et al., 2024; Xu et al., 2025; Hu et al.,
+                                             consolidation to enable efficient memory in-        2025; Wang et al., 2026). Long-term memory sup-
+                                             vocation under bounded compute. We orga-            ports continual learning and planning.
+                                             nize memory into short-term memory (STM)
+                                             for immediate conversational context, mid-term
+                                                                                                    Existing memory systems can be broadly di-
+                                             memory (MTM) for reusable interaction sum-          vided into two categories. One line is based on
+                                             maries, and long-term memory (LTM) for con-         retrieval–driven external memory, where past in-
+                                             solidated knowledge, and uses user identifiers      teractions are compressed into retrievable entries
+                                             to support independent retrieval and incremen-      (Asai et al.; Maharana et al., 2024) and the top-K
+                                             tal maintenance in multi-user settings. Online,     memories are recalled via similarity search (Zhong
+                                             LightMem operates under a fixed retrieval bud-      et al., 2024). These methods are efficient, but lim-
+                                             get and selects memories via a two-stage proce-
+                                                                                                 ited query construction and candidate filtering often
+                                             dure: vector-based coarse retrieval followed by
+                                             semantic consistency re-ranking. Offline, it ab-    introduce retrieval noise, resulting in unstable an-
+                                             stracts reusable interaction evidence and incre-    swer accuracy. Another line of methods (Tan et al.,
+                                             mentally integrates it into LTM. Experiments        2025; Zhang et al., 2025b) introduces LLM-driven
+                                             show consistent gains across model scales, with     memory operations on top of external memory, re-
+                                             an average F1 improvement of about 2.5 over         peatedly invoking large models for memory writ-
+                                             A-MEM on LoCoMo, while achieving higher             ing, retrieval and controlling. As these operations
+                                             efficiency and low median latency (83 ms for
+                                                                                                 are typically implemented via repeated model in-
+                                             retrieval and 581 ms end-to-end).
+                                                                                                 vocations, they can introduce non-trivial runtime
+                                         1   Introduction                                        overhead over long interactions (Packer et al., 2023;
+                                                                                                 Park et al., 2023). This contrast suggests a natu-
+                                         LLM-driven agents excel at long-term dialogue,          ral separation: keep high-frequency online mem-
+                                         multi-step reasoning, and task-oriented interaction     ory decisions lightweight and controllable, while
+                                         (Zhang et al., 2026c; Huang et al., 2024; Zhu et al.,   deferring heavy abstraction and consolidation to
+                                         2025; Zhang et al., 2026a,b, 2025a). To maintain        offline processing (see Figure 1). Recent advances
+in SLMs (Magister et al., 2023; Han et al., 2024)        by semantic-consistency based re-ranking to out-
+make this separation practical. SLMs can reliably        put the final Top-K memories. After each turn,
+handle high-frequency, structured decision tasks in      the Writer summarizes the interaction into compact
+online memory processing, enabling different mem-        MTM entries and maintains MTM incrementally.
+ory stages to be assigned to models of appropriate       Long-term abstraction and consolidation are han-
+scale (Liu et al., 2025). Online memory handling         dled offline by a large-context model, keeping the
+typically consists of structured subtasks (such as       online path lightweight. Our main contributions
+intent routing (Zhang et al., 2024), query construc-     are summarized as:
+tion (Hong and He, 2025) and semantic filtering
+(Hatalis et al., 2023)). These tasks place greater           • We propose LightMem, a lightweight mem-
+emphasis on predictable behavior and low over-                 ory system collaboratively driven by SLMs.
+head than on maximal generative capacity. In this              Different SLMs handle lightweight, high-
+setting, lightweight SLMs provide a suitable choice            frequency online memory operations (query
+(Sinha et al., 2025) for online control and filtering,         construction, retrieval, and writing), while
+while heavier abstraction and consolidation can be             heavier abstraction and consolidation are de-
+deferred to offline processing. Overall, existing              ferred to offline processing.
+memory systems face an efficiency–effectiveness
+                                                             • We propose a two-stage memory querying de-
+trade-off. Moreover, SLMs are not a silver bullet
+                                                               sign. Given a user query, LightMem first nar-
+due to limited capacity and representation. Bridg-
+                                                               rows down the candidate set with fast retrieval,
+ing this gap requires strengthening the external
+                                                               and then applies semantic-level verification to
+memory pipeline, especially how memories are
+                                                               select the truly relevant memories.
+written and retrieved.
+   To address the above questions, we propose                • We evaluate LightMem on LoCoMo and Dial-
+LightMem, a lightweight memory system for LLM                  Sim, demonstrating gains across model scales,
+agents that models long-term memory as an incre-               including an average F1 improvement of about
+mentally evolvable process via specialized SLMs.               2.5 on LoCoMo, improved semantic consis-
+LightMem modularizes and decouples query pars-                 tency on DialSim and low median latency (83
+ing, memory retrieval, memory writing, and long-               ms retrieval; 581 ms end-to-end).
+term consolidation, enabling independent optimiza-
+tion and elastic scaling of each component. This         2     Related Work
+separation allows for lightweight online processing
+to be distinct from offline consolidation, achiev-       2.1    LLM Memory Systems
+ing efficient memory use under tight compute bud-        Prior work can be broadly categorized into retrieval-
+gets and supporting long-term evolution. Mem-            based memory and LLM-driven memory opera-
+ories are organized into STM, MTM, and LTM               tions. Retrieval-based Memory. MemoryBank
+stores based on temporal and access characteris-         (Zhong et al., 2024) supports personalized long-
+tics. User-identity metadata is embedded in each         term dialogue by storing summarized user events in
+memory unit to enforce user-level logical isola-         an external memory and retrieving relevant entries
+tion, balancing privacy, consistency, and scalabil-      for each query, with forgetting to control growth.
+ity. We propose a modular online–offline memory          MemGPT (Packer et al., 2023) treats the context
+pipeline in which distinct SLMs specialize in com-       window as virtual memory and performs paging
+plementary memory operations. Online, LightMem           between the prompt and an external store, with run-
+uses three specialized small language model mod-         time eviction and on-demand retrieval. ReadAgent
+ules: a Controller (SLM-1) for intent and query          (Lee et al., 2024) similarly relies on retrieval over
+planning, a Selector (SLM-2) for candidate ver-          an external cache: it indexes compressed gists and
+ification and compression, and a Writer (SLM-            performs on-demand lookup to fetch supporting
+3) for incremental memory writing. Specifically,         evidence when needed. LLM-driven Memory.
+the Controller rewrites the user input into intent-      HiAgent (Hu et al., 2025) manages in-trial working
+conditioned hypothetical queries (HQs) and allo-         memory by chunking trajectories into subgoals and
+cates a fixed Top-K budget across MTM and LTM.           summarizing past steps with LLMs. A-MEM (Xu
+Given the retrieved candidates, the Selector per-        et al., 2025) further builds self-organizing mem-
+forms metadata-constrained prefiltering followed         ory networks through LLM-driven note-taking and
+automatic linking, but typically does not empha-         3.3   Intent Modeling and Retrieval Control
+size strict online/offline decoupling under resource     Given (xt , Ct ), SLM-1 serves as a lightweight re-
+constraints. These lines expose a recurring trade-       trieval controller rather than a retriever. It converts
+off between lightweight but noisy retrieval-based        the raw input into a structured retrieval plan that
+memory and more effective yet costly LLM-driven          specifies: (i) what to search (queries), (ii) how
+online memory operations. LightMem addresses             to constrain the search (metadata filters), and (iii)
+it with SLM-based lightweight online control and         how many items to return under a fixed Top-K bud-
+filtering, coupled with improved external memory         get. Concretely, SLM-1 first infers coarse intent
+writing and retrieval under a fixed budget.              attributes, e.g., whether the query depends more on
+                                                         recent episodic details or long-term stable knowl-
+3     Method
+                                                         edge, and whether strong personalization is needed.
+As shown in Figure 2, LightMem uses specialized          These attributes are used only for retrieval plan-
+SLMs to modularize memory operations, separat-           ning (query rewriting, routing, and budgeting), not
+ing lightweight online querying from offline long-       for answer generation. SLM-1 then rewrites the
+term consolidation.                                                                    (i)
+                                                         input into a set of HQs {qt } and outputs meta-
+                                                         data constraints ϕt (user identifier, optional time
+3.1   Problem Setup and Preliminaries
+                                                         window, and type tags) to reduce noise and enforce
+We consider a multi-turn dialogue setting with mul-      user-level isolation. Finally, it issues the retrieval
+tiple users. At turn t, a user provides an input xt ,    request:
+and the model generates a response yt . Due to                                D                E
+                                                                                  (i)
+the limited context capacity of SLMs, the acces-                        Qt = {qt }, ϕt , K .                 (1)
+sible dialogue context at turn t is denoted by Ct ,
+                                                         This request is consumed by §3.4.
+typically a truncated window of recent turns. Light-
+Mem maintains a user-scoped memory store Mu              3.4   Two-Stage Retrieval
+with user-level logical isolation via user identifiers   Given Qt , SLM-2 executes a two-stage retrieval
+(see §3.2 for the definition of STM/MTM/LTM).            procedure and returns a memory set Rt that satis-
+Given (xt , Ct ), the system retrieves a memory set      fies the Top-K constraint:
+Rt ⊆ Mu with |Rt | ≤ K and uses Rt to assist in
+generating yt . The specific symbols are provided              Rt = R ETRIEVE(Qt ),          |Rt | ≤ K.     (2)
+in the Appendix 8.1.                                     The retrieved memories Rt are appended to the
+3.2   Memory Stores                                      context to condition response generation for yt .
+                                                            For a single user query, SLM-1 may generate
+STM. STM is implemented as the SLM context                                       (i)
+                                                         n HQs, denoted by {qt }ni=1 , to improve recall
+window that buffers the most recent interaction
+                                                         coverage. We impose a single final return budget
+sequence in the current session. It serves only as
+                                                         K and adopt a double-budget rule in the coarse
+working memory and is updated turn by turn within
+                                                         stage: the total number of candidates returned by
+the prompt; STM is neither persisted nor retrieved.
+                                                         Stage 1 is fixed to 2K.
+MTM. MTM is the sole carrier of personalized
+                                                         Stage 1: metadata-constrained coarse retrieval.
+episodic memory. It stores a set of memory items,
+                                                         Under metadata constraints ϕt (including the
+each consisting of (i) a concise semantic summary,
+                                                         user identifier, an optional time window, and
+(ii) temporal information and access statistics, (iii)
+                                                         type/source tags), the system performs vector-
+an embedding for similarity-based retrieval, and
+                                                         based coarse retrieval for each HQ. The Stage 1
+(iv) a user identifier for strict per-user isolation.
+                                                         candidate budget is evenly split across HQs:
+LTM. LTM stores de-identified, user-agnostic                     n
+                                                                 X      (i)                (i)   2K
+semantic knowledge distilled offline from high-                        K1 = 2K,          K1 =       .       (3)
+                                                                                                  n
+value MTM episodes. It contains no raw personal                  i=1
+episodes or user identifiers; instead, it represents     Let C (i) denote the candidate list returned for the
+stable facts, domain regularities, and cross-user        i-th HQ. The aggregated candidate set is
+trends. LTM is organized as a lightweight graph-                         n
+structured knowledge base to support multi-hop
+                                                                         [
+                                                                   C=          C (i) ,   |C| = 2K.          (4)
+reasoning and knowledge sharing across tasks.                            i=1
+Figure 2: Multiple SLMs coordinate an online pathway for query-time routing and retrieval over STM/MTM, and
+an offline pathway that incrementally consolidates MTM into a graph-structured LTM.
+
+
+Stage 1 is designed for coverage, acting as an effi-    we enforce a capacity bound on MTM:
+cient filter that compresses the large search space
+into a fixed-size candidate set.                                           |MuMTM | ≤ B                   (6)
+
+Stage 2: semantic filtering and compression.            When the bound is reached, MTM is maintained
+                                         (i)
+In Stage 2, SLM-2 takes the HQ set {qt }ni=1 and        by evicting stale, low-utility items and further com-
+the Stage 1 candidates C (memory summaries with         pressing redundant content.
+necessary structured metadata) and performs se-
+mantic consistency checking and relevance judg-         3.6   Offline Consolidation
+ment. Instead of generating answers, SLM-2 con-         To avoid increasing online retrieval and writing
+ducts controlled selection on a fixed-size candidate    latency, LightMem performs offline consolidation
+pool: it keeps the most relevant half of |C| = 2K       to distill high-value episodic evidence in MTM
+candidates and outputs the final retrieval results      into de-identified, long-term semantic knowledge,
+                                                        enabling sustained evolution of LTM. An LLM han-
+             Rt ⊆ C,        |Rt | ≤ K            (5)
+                                                        dles this offline path with a large context window
+This two-to-one compression yields (i) stable com-      and is strictly decoupled from online operation.
+putation with a fixed candidate size, (ii) semantic     In each cycle, the LLM processes only an incre-
+refinement beyond vector similarity by leveraging       mental batch (newly written or retrieval-reactivated
+intent and metadata, and (iii) noise suppression by     MTM items and low-utility candidates flagged un-
+explicitly discarding roughly half of the candidates.   der MTM capacity pressure), rather than rebuild-
+The resulting Top-K memories Rt are provided to         ing MTM/LTM from scratch. It abstracts episodes
+the downstream agent or response generator.             into privacy-preserving knowledge candidates, per-
+                                                        forms similarity search over LTM to locate seman-
+3.5   Memory Writing and Update                         tically nearest anchors, and incrementally inserts
+After generating yt , SLM-3 extracts reusable user-     and links candidates within the local neighborhood,
+relevant information from the current interaction,      thereby maintaining LTM as lightweight graph-
+compresses it into a concise memory item, and ap-       structured knowledge. Evidence accumulated over
+pends it to MTM. To prevent redundancy and noise        time further drives merge/update/drop decisions,
+accumulation, highly repetitive items are merged or     while confidence decay is applied to weakly sup-
+rewritten, while conflicting information is handled     ported candidates to enable natural forgetting and
+using temporal cues and evidence strength. To en-       to limit the impact of stale or incidental information
+sure consistently low-latency personalized retrieval,   on subsequent retrieval and reasoning. We provide
+each component with algorithmic details deferred        4.1.4   Implement Details
+to Appendix 8.1.
+                                                        To isolate the effect of memory, we use GPT-4o-
+4     Experiment                                        mini as the fixed response generator for LightMem
+                                                        and all baselines. LightMem’s control plane uses
+4.1     Experimental Setup                              locally deployed, quantized SLMs: SLM-1 for HQ
+4.1.1    Datasets                                       generation and retrieval control, SLM-2 for seman-
+                                                        tic re-ranking and compression, and SLM-3 for
+To evaluate the effectiveness of LightMem, we con-      online writing and MTM maintenance. For HQ
+duct experiments on two datasets. LoCoMo (Maha-         generation, SLM-1 follows a structured prompt for
+rana et al., 2024) is a benchmark designed to evalu-    query decomposition and routing; Table 1 summa-
+ate logical reasoning over extended conversational      rizes the prompt logic and provides an example.
+contexts. It contains long dialogues (on average 9K     We deploy quantized Llama-3.2-1B-Instruct via Ol-
+tokens) and covers five core task categories: Single-   lama by default and additionally evaluate Qwen2.5-
+hop, Multi-hop, Temporal, Open-domain, and Ad-          1.5B-Instruct for robustness. Offline consolidation
+versarial. DialSim (Kim et al., 2024) is a dialogue     is handled by a large-context LLM and is decou-
+simulation dataset derived from TV shows, contain-      pled from the online path. We encode all queries
+ing 1,300 multi-party sessions spanning years.          and memory entries using all-MiniLM-L6-v2 (384
+                                                        dimensions) and retrieve the top-10 nearest neigh-
+4.1.2    Baselines
+                                                        bors in the coarse vector retrieval stage. SLM-2 is
+Baselines We select baselines that are represen-        fine-tuned with LoRA on 2,000 constructed (Query,
+tative in prior work on long-term memory, cover-        Subgraph, Path) samples. We cap MTM capacity
+ing common designs for storing, retrieving, and         at B = 104 and apply dynamic pruning beyond
+updating dialogue histories and that can be evalu-      this limit by evicting stale, low-utility items and
+ated under the same backbone and retrieval budget       merging/compressing redundant content. Light-
+for a fair comparison: LoCoMo (Maharana et al.,         Mem inference and latency measurements are con-
+2024), ReadAgent (Lee et al., 2024), Memory-            ducted on a single NVIDIA RTX 4090 (24GB)
+Bank (Zhong et al., 2024), MemGPT (Packer et al.,       GPU. Other unspecified settings follow A-MEM
+2023), and A-MEM (Xu et al., 2025). When se-            (Xu et al., 2025).
+lecting backbone models, a diverse array of LLMs
+is used to assess their generalization capabilities.
+                                                        Table 1: Structured HQ prompt used by SLM-1 for
+These models encompass GPT-4o, GPT-4o-mini              query decomposition and routing.
+(Hurst et al., 2024), Qwen2.5 (available in 1.5B
+and 3B) (Bai et al., 2025), and Llama 3.2 (offered       HQ prompt      Example
+in 1B and 3B) (Dubey et al., 2024).                      step
+                                                         Detect miss-   Identify underspecified references (e.g., pro-
+4.1.3    Metric                                          ing info       nouns such as “it/that/he/the project”), im-
+                                                                        plicit context dependencies, and vague time
+We evaluate response quality using both lexical-                        cues (e.g., “recently/last time/before”).
+overlap and semantic metrics. Specifically, we re-       Generate       Rewrite the user request into one or more
+port F1 and BLEU-1 to measure answer correctness         HQs            standalone HQs, optionally splitting intent
+and token-level overlap with reference responses,                       into user-specific vs. factual queries, and
+                                                                        making implied context (time/location) ex-
+which are commonly used for short factual and                           plicit.
+span-like outputs. For DialSim (Kim et al., 2024),       Route and      Assign each HQ to MTM (user-specific) or
+where multiple surface forms can express the same        budget         LTM (general/public knowledge) and allo-
+meaning, we additionally report ROUGE-L and                             cate a retrieval budget under a fixed top-K
+                                                                        constraint.
+METEOR to capture sequence-level overlap and
+                                                         Example        Input: “Recommend a dinner spot.” The
+soft token matching, and use SBERT similarity to                        prompt yields two HQs: one asks about
+quantify semantic consistency between generated                         the user’s preferred cuisines or dietary con-
+and reference responses beyond n-gram matches.                          straints (routed to MTM), and the other asks
+                                                                        about highly rated nearby restaurants (routed
+These metrics provide a reliable assessment of both                     to LTM).
+precision and meaning retention in long-horizon
+dialogue scenarios.
+Table 2: Main results on LoCoMo across question categories. We report F1 and BLEU-1 for each category, along
+with the token length of the effective context. Best results within each model block are in bold.
+
+ Model          Method        Single-hop      Multi-hop        Temporal      Open-domain      Adversarial    Token Length
+                              F1     BLEU     F1     BLEU     F1     BLEU     F1     BLEU     F1     BLEU
+                LoCoMo       40.36   29.05   25.02   19.75   18.41   14.77   12.04   11.16   69.23   68.75      16,910
+                ReadAgent     9.67    7.66    9.15    6.48   12.60    8.87    5.31    5.12    9.81    9.02        643
+                MemoryBank   6.61    5.16    5.00    4.77    9.68     6.99    5.56    5.94    7.36    6.48        432
+ GPT-4o-mini
+                MemGPT       41.04   34.34   26.65   17.72   25.52   19.44    9.15    7.44   43.29   42.73      16,977
+                A-MEM        44.65   37.06   27.02   20.09   45.85   36.67   12.14   12.00   50.03   49.47       2,520
+                LightMem     45.81   38.24   28.85   21.43   46.28   37.15   13.52   12.96   54.57   52.19       1,150
+                LoCoMo       61.56   54.19   28.00   18.47   9.09     5.78   16.47   14.80   52.61   51.13      16,910
+                ReadAgent    12.46   10.29   14.61    9.95   4.16     3.19    8.84    8.37    6.81    6.13        805
+                MemoryBank   8.28    7.10    6.49    4.69    2.47     2.43    6.43    5.30    4.42    3.67        569
+ GPT-4o
+                MemGPT       60.16   53.35   30.36   22.83   17.29   13.18   12.24   11.87   34.96   34.25      16,987
+                A-MEM        48.43   42.97   32.86   23.76   39.41   31.23   17.10   15.84   36.35   35.53       1,216
+                LightMem     49.87   44.25   34.52   25.18   40.16   32.04   18.43   16.91   41.59   39.82        685
+              LoCoMo         11.15    8.67    9.05    6.55   4.25     4.04    9.91    8.50   40.38   40.23      16,910
+              ReadAgent      10.13    7.54    6.61    4.93   2.55     2.51    5.31   12.24    5.42   27.32       752
+              MemoryBank     13.42   11.01   11.14   8.25    4.46     2.87    8.05    6.21   36.76   34.00       284
+ Qwen2.5-1.5B
+              MemGPT          9.56    7.34   10.44    7.61    4.21    3.89   13.42   11.64   31.51   28.90      16,953
+              A-MEM          23.63   19.23   18.23   11.94   24.32   19.74   16.48   14.31   46.00   43.26      1,300
+              LightMem       25.13   20.56   21.57   13.82   25.64   20.89   17.21   15.18   49.82   46.54       728
+                LoCoMo      7.03      5.69   4.61     4.29   3.11     2.71   4.55    5.97    16.95   14.81      16,910
+                ReadAgent   3.25      2.51    2.47    1.78    3.01    3.01   5.57    5.22    15.78   14.01       776
+                MemoryBank 4.11      3.32    3.60    3.39    1.72     1.97   6.63    6.58    13.07   10.30       298
+ Qwen2.5-3B
+                MemGPT      7.26      5.52    5.07    4.31    2.94    2.95   7.04    7.10    14.47   12.39      16,961
+                A-MEM      17.23     13.12   12.57    9.01   27.59   25.07   7.12    7.28    27.91   25.15      1,137
+                LightMem   19.85     15.21   15.86   11.23   29.17   26.52   9.58    9.14    33.54   29.87       611
+                LoCoMo       12.86   10.50   11.25    9.18   7.38     6.82   11.90   10.38   51.89   48.27      16,910
+                ReadAgent     7.75    6.03    5.96    5.12    1.93    2.30   12.46   11.17   44.64   40.15       665
+                MemoryBank   17.30   14.03   13.18   10.03   7.61     6.27   15.78   12.94   52.61   47.53       274
+ Llama-3.2-1B
+                MemGPT       10.16    7.68    9.19    6.96    4.02    4.79   11.14    8.24   49.75   45.11      16,950
+                A-MEM        28.51   24.13   19.06   11.71   17.80   10.28   17.55   14.67   58.81   54.28      1,376
+                LightMem     30.88   26.24   22.41   14.27   19.93   12.16   18.95   16.12   63.52   58.49       754
+                LoCoMo      8.37      6.93   6.88     5.77   4.37     4.40   10.65    9.29   30.25   28.46      16,910
+                ReadAgent   3.25      2.51    2.47    1.78    3.01    3.01    5.57    5.22   15.78   14.01       461
+                MemoryBank 7.61      6.03    6.19    4.47    3.49     3.13    4.07    4.57   18.65   17.05       263
+ Llama-3.2-3B
+                MemGPT      4.32      3.51    5.32    3.99    2.68    2.72    5.64    5.54   21.45   19.37      16,956
+                A-MEM      28.14     23.87   17.44   11.74   26.38   19.50   12.53   11.83   42.04   40.60      1,126
+                LightMem   30.26     25.91   20.15   13.54   28.29   21.13   14.28   13.57   47.16   44.83       642
+
+
+
+4.2   Performance                                            and temporal reasoning. When compared to the
+                                                             strongest memory-centric baseline, A-MEM, Light-
+Performance. As shown in Table 2, LightMem                   Mem further improves overall performance in most
+achieves the best overall performance on the Lo-             model settings. On GPT-4o, LightMem attains an
+CoMo benchmark. In comparison to baselines that              F1 score of 34.52 for multi-hop questions, sur-
+directly rely on long-context replay (such as Lo-            passing A-MEM’s score of 32.86. Overall, Light-
+CoMo and MemGPT), LightMem demonstrates                      Mem demonstrates more robust long-term memory
+more stable performance across the majority of               across different model scales and question types.
+question categories. It has particularly distinct ad-        In addition, it maintains significant advantages in
+vantages for multi-hop and temporal questions, all           cross-session reasoning tasks.
+while not relying on a single long-context input. In           Table 3 reports the comparison on DialSim
+comparison with summarization- or compression-               with GPT-4o-mini. We incorporate METEOR and
+based methods (MemoryBank and ReadAgent),                    SBERT similarity. This is driven by the char-
+LightMem consistently outperforms them across                acteristics of long-term dialogue generation. In
+all categories, with larger margins on multi-hop             long-term dialogue generation, semantically ac-
+curate answers can be presented in diverse sur-                    • w/o offline consolidation We disable the of-
+face forms. Consequently, metrics based solely                       fline consolidation pipeline so that LTM is not
+on n-grams may undervalue advancements. ME-                          periodically updated from MTM.
+TEOR partially accounts for morphological and
+synonym-level matching, while SBERT directly                       • w/o graph structure We replace the graph-
+measures semantic alignment between the gener-                       structured LTM with a flat vector store.
+ated response and the reference, providing a com-
+plementary view of memory effectiveness. Across                    Figure 3 shows that removing any single compo-
+all metrics, LightMem achieves the best results. Im-            nent consistently degrades performance across met-
+portantly, LightMem improves not only lexical over-             rics. Disabling semantic reranking or HQ-based re-
+lap (e.g., ROUGE-L/ROUGE-2 and METEOR) but                      trieval routing leads to clear drops in F1; on Llama-
+also semantic similarity, with SBERT increasing                 3.2-1B, LightMem achieves an F1 of 4.12, while
+from 19.51 (A-MEM) to 23.40. This indicates that                the variant without semantic reranking scores 3.83
+the gains are not limited to reproducing similar                and the variant without HQ and retrieval routing
+wording, but also reflect stronger semantic consis-             scores 3.87. Removing MTM further lowers per-
+tency enabled by more effective use of long-term                formance, with an F1 of 3.75, indicating the benefit
+conversational history.                                         of retaining mid-term episodic memory. In com-
+                                                                parison, disabling offline consolidation results in a
+Table 3: Comparison of different memory mechanisms              smaller but still consistent decline, with an F1 of
+on DialSim with GPT-4o-mini.                                    3.96 on Llama-3.2-1B. Removing the graph struc-
+Method      F1    BLEU-1   ROUGE-L   ROUGE-2   METEOR   SBERT
+                                                                ture also reduces both lexical and semantic quality,
+LoCoMo     2.55    3.13      2.75      0.90     1.64    15.76   as reflected by a lower SBERT similarity of 22.82
+MemGPT     1.18    1.07      0.96      0.42     0.95     8.54   compared to 23.40 for the full LightMem. Over-
+A-MEM      3.45    3.37      3.54      3.60     2.05    19.51
+LightMem   4.12    3.95      4.20      4.15     2.48    23.40   all, the full LightMem achieves the best results,
+                                                                suggesting that these components contribute com-
+Generalization. We evaluate all methods across di-              plementary benefits.
+verse backbones, ranging from large models (GPT-
+4o / GPT-4o-mini) to small open-source models                   4.4   Scalability and Latency
+(Qwen2.5 and Llama-3.2). As shown in Table 2,                   Under a unified deployment configuration, we as-
+LightMem remains the best or near-best method                   sess the scalability and latency by utilizing GPT-
+across these settings, indicating that its gains are            4o-mini. Subsequently, we present the following
+robust and not tied to a specific backbone.                     latency metrics:
+
+4.3      Ablation Study                                            • Retrieval Latency (ms). Time from receiv-
+To quantify the contribution of each component                       ing a user query to finishing memory retrieval
+in LightMem, we conduct ablation studies by re-                      and constructing the final prompt. It includes
+moving or simplifying one key module at a time                       local computation but excludes remote GPT-
+while keeping the rest of the system unchanged.                      4o-mini generation time. For the full-context
+We consider the following variants:                                  LoCoMo baseline, retrieval latency is 0 ms
+                                                                     since no external memory is retrieved.
+   • w/o semantic reranking We remove the LM-
+     based semantic filtering stage and keep only                  • End-to-End Latency (ms). The time from
+     embedding-based Top-K retrieval.                                receiving a user query to producing the fi-
+                                                                     nal response, including retrieval, remote API
+   • w/o HQ and retrieval routing We disable                         transmission and queuing, and GPT-4o-mini
+     HQs as well as the controller-based rout-                       inference and decoding.
+     ing/budget allocation, and retrieve using the
+     original query directly.                                      • P50 / P95. The median (P50) and 95th-
+                                                                     percentile (P95) latency across all samples.
+   • w/o MTM We remove the MTM layer, relying                        P95 captures tail latency from network jitter
+     only on the current context (STM) and LTM                       and service queuing, reflecting real-world sys-
+     for retrieval and generation.                                   tem stability.
+      (a) Ablation study on Dialsim with Llama-3.2-1B                 (b) Ablation study on Dialsim with Qwen2.5-1.5B
+
+Figure 3: Ablation study on DialSim. We report F1, BLEU-1, ROUGE-L, ROUGE-2, METEOR, and SBERT
+similarity.
+
+                  Table 4: Scalability and latency analysis across five baselines on GPT-4o-mini.
+
+ Method         Retrieval Latency P50 (ms)↓   Retrieval Latency P95 (ms)↓      End-to-End P50 (ms)↓    End-to-End P95 (ms)↓
+ LoCoMo                       0                             0                         2054                      3658
+ ReadAgent                   34                            97                          614                      1027
+ MemoryBank                  16                            51                          439                      1047
+ MemGPT                     143                           451                         2087                      3451
+ A-MEM                      856                          1583                         914                       3682
+ LightMem                    83                           167                          581                      1325
+
+
+
+   Table 4 compares retrieval and end-to-end la-                entries. As shown in Table 5, the gap between the
+tency on GPT-4o-mini. Among memory-enabled                      two methods is small when MTM remains rela-
+methods, LightMem achieves a good balance be-                   tively small. However, as memory entries accu-
+tween retrieval overhead and end-to-end respon-                 mulate along the dialogue trajectory, pure vector
+siveness. Its retrieval latency remains low, with               retrieval becomes increasingly affected by retrieval
+P50/P95 of 83/167 ms, substantially lower than                  noise, whereas LightMem maintains more stable
+MemGPT and especially A-MEM, which exhibits                     performance. This trend is consistent with the role
+heavy tail latency. LightMem also shows competi-                of Stage 2 semantic filtering, which helps preserve
+tive end-to-end latency, with a P50 of 581 ms and a             retrieval quality as the memory store grows.
+controlled P95, indicating stable behavior under re-
+mote API settings. When considered together with                Table 5: Performance stability under natural MTM
+the effective context length in Table 2, these results          growth on DialSim with Llama-3.2-1B. Statistics are
+                                                                computed cumulatively along the same full dialogue
+are more interpretable: LoCoMo and MemGPT
+                                                                trajectory at different MTM sizes.
+rely on replaying large dialogue histories with ef-
+fective contexts close to 16K tokens, whereas Light-                  MTM size      Vector retrieval   LightMem        ∆F1
+Mem consistently operates with much shorter con-                      ∼100               3.95            3.98          0.03
+texts (around 1K tokens on GPT-4o-mini). This                         ∼1,000             3.90            4.05          0.15
+reduction in effective context length lowers prompt                   ∼5,000             3.86            4.09          0.23
+                                                                      10,000             3.83            4.12          0.29
+construction and inference cost, contributing to bet-
+ter scalability and practical deployability.
+
+4.5   Performance Stability under MTM                           4.6     Error Injection Stress Test
+      Growth                                                    To study error accumulation in long-horizon mem-
+We analyze how MTM size affects performance sta-                ory systems, we conduct an end-to-end error injec-
+bility on DialSim with Llama-3.2-1B. Rather than                tion stress test on DialSim under a fixed final Top-
+rerunning the model with different memory sizes,                K memory budget. Group A is the full LightMem
+we report cumulative F1 at several natural growth               system. Group B injects 50% irrelevant HQs to
+stages along the same full dialogue trajectory, ap-             simulate SLM-1 failures in query planning. Group
+proximately at 100, 1,000, 5,000, and 10,000 MTM                C removes SLM-2 semantic reranking and directly
+Table 6: Error injection stress test on DialSim under a   Table 7: Update gap stress test on the LoCoMo multi-
+fixed final Top-K memory budget.                          hop subset with GPT-4o-mini.
+
+      Group    Setting                 F1     SBERT           Group   Setting                      Multi-hop F1
+      A        Full LightMem           4.12   23.40           A       Full LightMem (normal gap)      28.85
+      B        SLM-1 50% HQ noise      3.95   23.08           B       LTM-only retrieval              19.45
+      C        w/o SLM-2 reranking     3.83   22.56           C       MTM-only retrieval              20.12
+      D        SLM-3 50% write noise   3.78   22.45           D       MTM noise saturation            23.10
+      E        Cascading failure       1.85   11.20
+
+                                                          5       Conclusion
+uses the stage-one vector Top-K. Group D re-              We present LightMem, a lightweight external mem-
+places 50% of SLM-3 writes with noisy strings,            ory system for LLM agents driven by SLMs. Light-
+simulating persistent MTM pollution. Group E              Mem decouples high-frequency online memory op-
+combines all three perturbations to simulate cas-         erations (query control, retrieval, and writing) from
+cading failure. As shown in Table 6, performance          offline consolidation, and organizes memory into
+degrades consistently as errors are introduced into       STM/MTM/LTM with user-scoped isolation. On-
+different stages of the pipeline. Query noise in          line, it operates under a fixed retrieval budget and
+SLM-1 causes a moderate drop, suggesting partial          uses HQ-based routing plus a two-stage retrieval
+robustness to retrieval-side perturbations. Remov-        (coarse vector search followed by semantic consis-
+ing SLM-2 leads to a larger decline, confirming           tency re-ranking) to reduce retrieval noise. Exper-
+the importance of semantic filtering after coarse         iments on LoCoMo and DialSim show consistent
+retrieval. Noisy writes in SLM-3 further degrade          gains across model scales, including +2.5 average
+performance, indicating that memory pollution in-         F1 on LoCoMo, improved semantic consistency on
+troduces persistent downstream effects by contami-        DialSim, and low median latency (83 ms retrieval;
+nating future retrieval. Cascading failure causes the     581 ms end-to-end).
+largest collapse, showing that errors can accumu-
+late and amplify across turns when noisy retrieval,       6       Limitations
+missing filtering, and corrupted writing occur si-
+                                                          This work focuses on a specific design of on-
+multaneously.
+                                                          line–offline decoupled memory pipelines driven
+                                                          by specialized small language models. The impact
+4.7       Update Gap Stress Test                          of alternative consolidation strategies and control
+                                                          policies is not fully explored and remains an inter-
+As shown in Table 7, concurrent retrieval from            esting direction for future investigation.
+MTM and LTM is important for handling the up-
+date gap. The full LightMem system achieves the           7       Acknowledgements
+best performance, with a multi-hop F1 of 28.85,
+whereas using only LTM or only MTM results in             This work was partially supported by the National
+clear performance drops. This suggests that con-          Natural Science Foundation of China under grant
+current routing effectively bridges recent unconsol-      62572104, and 62220106008.
+idated facts in MTM and older consolidated knowl-
+edge in LTM. A more challenging case appears in           References
+Group D. Under MTM noise saturation, the multi-
+                                                          A Asai, Z Wu, Y Wang, A Sil, and H Self-RAG Ha-
+hop F1 decreases to 23.10, indicating that heavy
+                                                            jishirzi. Learning to retrieve, generate, and critique
+recent noise can interfere with retrieval during the        through self-reflection. arxiv 2023. arXiv preprint
+update gap. This is likely because the fixed Top-K          arXiv:2310.11511.
+budget is increasingly occupied by irrelevant recent
+                                                          Shuai Bai, Keqin Chen, Xuejing Liu, Jialin Wang, Wen-
+records, making the newest relevant fact harder to          bin Ge, Sibo Song, Kai Dang, Peng Wang, Shijie
+retrieve before it is consolidated into LTM. Overall,       Wang, Jun Tang, and 1 others. 2025. Qwen2. 5-vl
+the results show that concurrent retrieval provides         technical report. arXiv preprint arXiv:2502.13923.
+a practical and effective solution for update-gap         Abhimanyu Dubey, Abhinav Jauhri, Abhinav Pandey,
+reasoning, especially when recent and long-term             Abhishek Kadian, Ahmad Al-Dahle, Aiesha Letman,
+evidence must be combined.                                  Akhil Mathur, Alan Schelten, Amy Yang, Angela
+  Fan, and 1 others. 2024. The llama 3 herd of models.    Adyasha Maharana, Dong-Ho Lee, Sergey Tulyakov,
+  arXiv preprint arXiv:2407.21783.                          Mohit Bansal, Francesco Barbieri, and Yuwei Fang.
+                                                            2024. Evaluating very long-term conversational
+Haixia Han, Jiaqing Liang, Jie Shi, Qianyu He, and          memory of LLM agents. In Proceedings of the
+  Yanghua Xiao. 2024. Small language model can              62nd Annual Meeting of the Association for Com-
+  self-correct. In Proceedings of the AAAI Conference       putational Linguistics (Volume 1: Long Papers), ACL
+  on Artificial Intelligence, volume 38, pages 18162–       2024, Bangkok, Thailand, August 11-16, 2024, pages
+  18170.                                                    13851–13870. Association for Computational Lin-
+Kostas Hatalis, Despina Christou, Joshua Myers, Steven      guistics.
+  Jones, Keith Lambert, Adam Amos-Binks, Zohreh
+  Dannenhauer, and Dustin Dannenhauer. 2023. Mem-         Charles Packer, Vivian Fang, Shishir_G Patil, Kevin
+  ory matters: The need to improve long-term memory         Lin, Sarah Wooders, and Joseph_E Gonzalez. 2023.
+  in llm-agents. In Proceedings of the AAAI Sympo-          Memgpt: Towards llms as operating systems.
+  sium Series, volume 2, pages 277–280.
+                                                          Joon Sung Park, Joseph O’Brien, Carrie Jun Cai, Mered-
+Chuanyang Hong and Qingyun He. 2025. Enhancing              ith Ringel Morris, Percy Liang, and Michael S Bern-
+  memory retrieval in generative agents through llm-        stein. 2023. Generative agents: Interactive simulacra
+  trained cross attention networks. Frontiers in Psy-       of human behavior. In Proceedings of the 36th an-
+  chology, 16:1591618.                                      nual acm symposium on user interface software and
+                                                            technology, pages 1–22.
+Mengkang Hu, Tianxing Chen, Qiguang Chen, Yao Mu,
+ Wenqi Shao, and Ping Luo. 2025. Hiagent: Hier-           Neelabh Sinha, Vinija Jain, and Aman Chadha. 2025.
+  archical working memory management for solving            Are small language models ready to compete with
+  long-horizon agent tasks with large language model.       large language models for practical applications? In
+  In Proceedings of the 63rd Annual Meeting of the          Proceedings of the 5th Workshop on Trustworthy NLP
+ Association for Computational Linguistics (Volume          (TrustNLP 2025), pages 365–398.
+ 1: Long Papers), pages 32779–32798.
+                                                          Haoran Tan, Zeyu Zhang, Chen Ma, Xu Chen, Quanyu
+Xu Huang, Weiwen Liu, Xiaolong Chen, Xingmei
+                                                            Dai, and Zhenhua Dong. 2025. Membench: Towards
+  Wang, Hao Wang, Defu Lian, Yasheng Wang, Ruim-
+                                                            more comprehensive evaluation on the memory of
+  ing Tang, and Enhong Chen. 2024. Understanding
+                                                            llm-based agents. In Findings of the Association for
+  the planning of llm agents: A survey. arXiv preprint
+                                                            Computational Linguistics, ACL 2025, Vienna, Aus-
+  arXiv:2402.02716.
+                                                            tria, July 27 - August 1, 2025, pages 19336–19352.
+Aaron Hurst, Adam Lerer, Adam P Goucher, Adam               Association for Computational Linguistics.
+  Perelman, Aditya Ramesh, Aidan Clark, AJ Ostrow,
+  Akila Welihinda, Alan Hayes, Alec Radford, and 1        Xudong Wang, Chaoning Zhang, Jiaquan Zhang, Cheng-
+  others. 2024. Gpt-4o system card. arXiv preprint          hao Li, Qigan Sun, Sung-Ho Bae, Peng Wang,
+  arXiv:2410.21276.                                         Ning Xie, Jie Zou, Yang Yang, and 1 others. 2026.
+                                                            Efficient and interpretable multi-agent llm rout-
+Jiho Kim, Woosog Chay, Hyeonji Hwang, Daeun                 ing via ant colony optimization. arXiv preprint
+   Kyung, Hyunseung Chung, Eunbyeol Cho, Yohan              arXiv:2603.12933.
+   Jo, and Edward Choi. 2024. Dialsim: A real-time
+   simulator for evaluating long-term multi-party dia-    Wujiang Xu, Zujie Liang, Kai Mei, Hang Gao, Jun-
+   logue understanding of conversation systems. arXiv      tao Tan, and Yongfeng Zhang. 2025. A-mem:
+   preprint arXiv:2406.13144.                              Agentic memory for llm agents. arXiv preprint
+                                                           arXiv:2502.12110.
+Kuang-Huei Lee, Xinyun Chen, Hiroki Furuta, John F.
+  Canny, and Ian Fischer. 2024. A human-inspired          Jiaquan Zhang, Qigan Sun, Chaoning Zhang, Xudong
+  reading agent with gist memory of very long contexts.      Wang, Zhenzhen Huang, Yitian Zhou, Pengcheng
+  In Forty-first International Conference on Machine         Zheng, Chi lok Andy Tai, Sung-Ho Bae, Zeyu Ma,
+  Learning, ICML 2024, Vienna, Austria, July 21-27,          Caiyan Qin, Jinyu Guo, Yang Yang, and Hengtao
+  2024.                                                      Shen. 2026a. Tda-rc: Task-driven alignment for
+Guangliang Liu, Zhiyu Xue, Xitong Zhang, Rongrong            knowledge-based reasoning chains in large language
+  Wang, and Kristen Johnson. 2025. Smaller large             models.
+  language models can do moral self-correction. In
+  Proceedings of the 5th Workshop on Trustworthy NLP      Jiaquan Zhang, Chaoning Zhang, Shuxu Chen, Yibei
+  (TrustNLP 2025), pages 56–65.                              Liu, Chenghao Li, Qigan Sun, Shuai Yuan, Fach-
+                                                             rina Dewi Puspitasari, Dongshen Han, Guoqing
+Lucie Charlotte Magister, Jonathan Mallinson, Jakub          Wang, and 1 others. 2026b. Text summarization
+  Adamek, Eric Malmi, and Aliaksei Severyn. 2023.            via global structure awareness. arXiv preprint
+  Teaching small language models to reason. In Pro-          arXiv:2602.09821.
+  ceedings of the 61st annual meeting of the associa-
+  tion for computational linguistics (volume 2: short     Jiaquan Zhang, Chaoning Zhang, Shuxu Chen, Xudong
+  papers), pages 1773–1781.                                  Wang, Zhenzhen Huang, Pengcheng Zheng, Shuai
+    Yuan, Sheng Zheng, Qigan Sun, Jie Zou, and 1 oth-      Mid-Term Memory (MTM). Each MTM entry
+    ers. 2026c. Learning global hypothesis space for en-   represents a compressed interaction record, consist-
+    hancing synergistic reasoning chain. arXiv preprint
+                                                           ing of a concise semantic summary, a retrieval em-
+    arXiv:2602.09794.
+                                                           bedding, associated temporal metadata (e.g., times-
+Malu Zhang, Wenjie Wei, Zijian Zhou, Wanlong Liu, Jie      tamps and access frequencies), and a user identifier
+  Zhang, Ammar Belatreche, and Yang Yang. 2025a.           for user-level isolation.
+  Spike-driven lightweight large language model with
+  evolutionary computation. IEEE Transactions on           Long-Term Memory (LTM). Each LTM node
+ Evolutionary Computation.
+                                                           represents a de-identified semantic knowledge unit
+Qinyao Zhang, Bin Guo, Yao Jing, Yan Liu, and Zhiwen       and is stored in a lightweight graph structure, which
+  Yu. 2024. Mindmemory: Augmented llm with long-           supports associative organization and multi-hop
+  term memory and mental personality. In CCF Con-          access across memory units.
+  ference on Computer Supported Cooperative Work
+  and Social Computing, pages 462–476. Springer.
+                                                           8.1.2    Online Retrieval Procedure
+Zeyu Zhang, Quanyu Dai, Xiaohe Bo, Chen Ma, Rui Li,        Algorithm 1 describes the full online retrieval pro-
+  Xu Chen, Jieming Zhu, Zhenhua Dong, and Ji-Rong          cess executed at each dialogue turn.
+  Wen. 2025b. A survey on the memory mechanism of
+  large language model-based agents. ACM Trans. Inf.
+  Syst., 43(6):155:1–155:47.                               Algorithm 1 LightMem Online Retrieval
+                                                           Require: User query xt , truncated context Ct , user memory
+Wanjun Zhong, Lianghong Guo, Qiqi Gao, He Ye, and              MuMTM , global memory M LTM , retrieval budget K
+ Yanlin Wang. 2024. Memorybank: Enhancing large            Ensure: Retrieved memory set Rt
+  language models with long-term memory. In Pro-               Intent Modeling and Query Control (SLM-1)
+  ceedings of the AAAI Conference on Artificial Intelli-    1: Infer high-level intent signals from (xt , Ct ), including (i)
+  gence, volume 38, pages 19724–19731.                         degree of personalization and (ii) reliance on recent vs.
+                                                               long-term information.
+                                                                                            (i)
+Kunlun Zhu, Hongyi Du, Zhaochen Hong, Xiaocheng             2: Generate a set of HQs {qt }n     i=1 .
+
+  Yang, Shuyi Guo, Daisy Zhe Wang, Zhenhailong              3: Produce metadata constraints ϕt (e.g., user identifier and
+                                                               optional temporal filters).
+  Wang, Cheng Qian, Robert Tang, Heng Ji, and 1 oth-        4: Allocate retrieval quotas across memory layers under a
+  ers. 2025. Multiagentbench: Evaluating the collabo-          fixed Top-K constraint.
+  ration and competition of llm agents. In Proceedings         Stage 1: Metadata-Constrained Coarse Retrieval
+  of the 63rd Annual Meeting of the Association for         5: Initialize candidate set C ← ∅.
+                                                                           (i)
+  Computational Linguistics (Volume 1: Long Papers),        6: for each qt , i = 1, . . . , n do
+  pages 8580–8622.                                          7:     Retrieve candidates from MuMTM and/or M LTM us-
+                                                               ing vector search under ϕt .
+                                                                           (i)                                (i)
+                                                                   Let K1 ← 2K
+                                                                                  
+8     Appendices                                            8:                     n
+                                                                                        and collect up to K1 candidates
+                                                                    (i)
+                                                               as C .
+8.1     Complete Algorithm and Process                      9:     Update C ← C ∪ C (i) .
+                                                           10: end for
+        Specifications                                     11: Optionally truncate C to size 2K if |C| > 2K.
+8.1.1    Symbols and Data Structures                           Stage 2: Semantic Filtering and Compression (SLM-2)
+                                                           12: Perform semantic consistency checking and relevance
+At interaction turn t, we denote the user input by                                               (i)
+                                                               assessment conditioned on {qt } and C.
+xt and the system response by yt . The recent di-          13: Select up to K items to form the final retrieved set Rt ⊆
+                                                               C with |Rt | ≤ K.
+alogue context maintained in short-term memory                 Output
+(STM) is represented by Ct , which corresponds             14: return Rt (to be appended to the prompt for response
+to a truncated window of the latest conversation               generation).
+history. For each user u, the associated mid-term
+memory (MTM) store is denoted by MuMTM , while
+the global long-term memory (LTM), shared across           8.1.3    Response Generation
+users, is denoted by M LTM . We use K to denote            At each dialogue turn, the retrieved memory set Rt
+the fixed Top-K retrieval budget and B to denote           is concatenated with the short-term context Ct and
+the capacity limit of the MTM store. In addition,          provided to a fixed response generator (e.g., GPT-
+HQs refers to the hypotheses or query hints gener-         4o-mini) to produce the system response yt . This
+ated by SLM-1 for guiding memory retrieval, and            stage does not involve any memory control or mod-
+ϕt denotes the metadata constraints applied at turn        ification, and the same response generation setup
+t, including user identifiers, temporal windows, and       is used for LightMem and all baseline methods in
+type tags.                                                 our experiments.
+8.1.4   Online Memory Writing and MTM                             Algorithm 3 LightMem Offline Consolidation into
+        Maintenance                                               LTM
+After response generation, LightMem updates mid-                  Require: MTM items flagged for consolidation, existing
+                                                                      LTM graph M LTM
+term memory via SLM-3, as described in Algo-                      Ensure: Updated LTM graph M LTM
+rithm 2.                                                              Selection of Candidate Episodes
+                                                                   1: Select MTM items that are newly written, frequently re-
+Algorithm 2 LightMem Online Memory Writing                            trieved, or marked as low-utility under MTM capacity
+                                                                      pressure.
+and MTM Maintenance                                                   Abstraction and De-identification
+Require: Current interaction (xt , yt , Ct ), user mid-term        2: Abstract episodic interaction records into user-agnostic
+    memory MuMTM , capacity bound B                                   semantic knowledge units.
+Ensure: Updated MuMTM                                              3: Remove personal identifiers and session-specific details.
+    Memory Extraction and Compression (SLM-3)                         Graph Insertion and Update
+ 1: Extract reusable, user-relevant information from the cur-      4: Perform similarity search over M LTM to identify nearby
+    rent interaction (xt , yt , Ct ).                                 semantic anchors.
+ 2: Compress the extracted content into a concise semantic         5: Insert new nodes and edges within the local neighborhood
+    memory summary.                                                   of matched anchors.
+    Memory Appending                                               6: Merge or update existing nodes when semantic overlap
+ 3: Append the compressed memory summary to the user-                 exceeds a threshold.
+    scoped MTM MuMTM .                                                Evidence Accumulation and Forgetting
+    Redundancy and Conflict Handling                               7: Aggregate supporting evidence across consolidation cy-
+ 4: Identify highly repetitive or semantically overlapping            cles.
+    MTM entries and merge or rewrite them to reduce re-            8: Apply confidence decay to weakly supported knowledge
+    dundancy.                                                         units.
+ 5: Resolve conflicting information using temporal cues and        9: Remove or down-weight stale or incidental knowledge.
+    accumulated evidence strength.                                10: return Updated M LTM .
+    Capacity-Bound Maintenance
+ 6: if |MuMTM | > B then
+ 7:     Evict stale or low-utility entries based on recency and   difference (∆), its 95% confidence interval (CI),
+    access statistics.
+ 8:     Further compress redundant content to enforce the         and two-sided p-values. We present results against
+    capacity bound.                                               the strongest baseline (A-MEM) under the same
+ 9: end if                                                        backbone model and retrieval budget.
+10: return Updated MuMTM .
+                                                                  Table 8: Statistical significance results against A-MEM
+                                                                  under the same backbone and retrieval budget.
+8.1.5  Offline Consolidation into Long-Term
+       Memory                                                      Category    Method     F1 (mean ± std)   ∆ F1    95% CI of ∆       p-value
+                                                                               A-MEM       27.02 ± 0.31      —           —             —
+                                                                   Multi-hop
+The consolidation procedure is summarized in Al-                               LightMem    28.85 ± 0.28     1.83   [ +1.24, +2.41 ]   0.001
+gorithm 3.                                                         Temporal
+                                                                               A-MEM       45.85 ± 0.37      —           —             —
+                                                                               LightMem    46.20 ± 0.34     0.35   [ +0.12, +0.58 ]   0.008
+
+8.1.6 Online-Offline Decoupling Guarantee
+All operations in Algorithm 1 and Algorithm 2                     9.2    Failure Analysis: Ambiguous Intent
+are executed under strict latency and compute con-                       Decomposition in SLM-1
+straints using small language models. In contrast,
+Algorithm 3 is performed asynchronously and does                  We observe a mild failure mode when SLM-1 gen-
+not block online interaction. This design ensures                 erates both episodic and general HQs for an un-
+that (i) the cost of online retrieval remains bounded             derspecified recall query. For example, given the
+by O(K), and (ii) the evolution of long-term mem-                 user query “Can you remind me what I decided
+ory does not introduce additional overhead to on-                 about the project timeline?”, the relevant decision
+line inference.                                                   is stored in MTM, while general planning advice
+                                                                  may exist in LTM. SLM-1 may produce HQs for (i)
+9     Experiment                                                  decision recall (MTM), (ii) project disambiguation
+                                                                  (MTM), and (iii) generic timeline principles (LTM).
+9.1     Statistical Significance Analysis                         Under a fixed Top-K budget, allocating quota to the
+We report mean ± standard deviation across three                  LTM HQ can introduce a small amount of generic
+random seeds for all stochastic components (see                   content in the retrieved set. In practice, the final
+Table 8). Statistical significance is assessed us-                response typically remains correct (the key MTM
+ing paired bootstrap resampling over evaluation                   decision is recalled), but becomes slightly less fo-
+instances (1,000 resamples), reporting the mean                   cused or concise due to additional general advice.
+This “focus dilution” mainly affects lexical-overlap     then rewrites the original request into one or more
+metrics (e.g., F1/BLEU), while semantic similar-         independent and explicit HQs suitable for down-
+ity remains stable, and SLM-2’s semantic filtering       stream retrieval. These queries should not simply
+helps preserve the most relevant MTM evidence.           copy the user’s raw wording, but instead resolve
+                                                         implicit entities, make hidden constraints explicit,
+10     Full Prompt Templates and Control                 and normalize the request into retrieval-oriented
+       Interface Definitions                             formulations. When a request simultaneously in-
+This appendix provides the complete prompt tem-          volves user-specific preferences and objective fac-
+plates used by all language model components in          tual information, the two aspects should be sep-
+LightMem, including SLM-1, SLM-2, SLM-3, and             arated into different queries. Likewise, temporal
+the offline LLM. All prompts are designed to be          or spatial constraints should be explicitly formu-
+functionally complete, explicitly specifying model       lated whenever they are implied by context. Fi-
+roles, accessible inputs, required tasks, prohibited     nally, for each generated HQ, SLM-1 assigns a
+behaviors, and output formats, to ensure repro-          target memory layer according to the nature of the
+ducibility and auditability of the system implemen-      information need. Queries involving user-specific
+tation.                                                  or personalized information should be routed to
+                                                         MTM, whereas queries involving public, factual,
+10.1    Unified Prompt Design Principles                 or generally shared knowledge should be routed to
+All prompts in LightMem adhere to a unified de-          LTM.
+sign schema in order to eliminate implicit assump-
+                                                         Constraints SLM-1 must not answer the user,
+tions and avoid relying on undeclared capabilities.
+                                                         must not generate user-facing natural language re-
+Specifically, each prompt explicitly defines the
+                                                         sponses, and must not perform retrieval itself.
+Role of the model, namely its functional responsi-
+bility within the overall system; the Input, namely      Output Format The output must be returned in
+the information made accessible to the model; the        JSON format only.
+Task, namely the concrete objectives the model is
+required to accomplish; the Constraints, namely          10.2     SLM-2: Semantic Consistency Filtering
+the behaviors or actions the model is prohibited                  and Candidate Compression
+from performing; and the Output Format, namely           SLM-2 is responsible for semantic consistency
+a fixed and machine-parsable specification for its       checking and candidate selection over a fixed-size
+returned results. This design ensures that online        set of retrieved memory items, with the goal of
+models are used for structured control and decision-     suppressing retrieval noise and reducing the effec-
+making rather than open-ended generation.                tive context size. Its role is purely selective: it
+10.1.1 Full Prompt Template (SLM-1)                      neither generates new content nor rewrites existing
+Role SLM-1 serves as the query decomposition             memory entries.
+and routing engine within the memory system. Its         10.2.1    Full Prompt Template (SLM-2)
+function is not to answer the user directly, but to
+convert the user’s raw input into a set of explicit      Role SLM-2 serves as the semantic consistency
+HQs that can be used to retrieve the required infor-     filtering engine for memory retrieval. Its function is
+mation from the memory database.                         not to answer the user or produce any new content,
+                                                         but to determine which retrieved memory items
+Input The model receives two forms of input: the         should be retained for downstream use.
+current user query and a truncated dialogue context
+from the ongoing session.                                Input The model takes as input a set of HQs
+                                                         together with a fixed-size list of candidate memory
+Task Logic For each user input, SLM-1 first iden-        summaries and their associated metadata.
+tifies missing or underspecified information in the
+request. This includes vague or ambiguous expres-        Task For each candidate memory item, SLM-2
+sions, unresolved pronouns such as “it,” “that,” or      evaluates whether the item is semantically consis-
+“the project,” implicit dependencies on prior con-       tent with at least one HQ. Based on this assessment,
+versational context, and incomplete temporal refer-      it selects the most relevant memory items subject
+ences such as “recently,” “last time,” or “before.” It   to a fixed budget constraint. The objective is to pre-
+serve only those items that meaningfully support        and must not generate responses intended for the
+the retrieval intent expressed by the HQ set.           user.
+Guidelines Relevance should be determined pri-          Output Format The output should consist of one
+marily on the basis of semantic alignment rather        or more short semantic memory summaries.
+than superficial lexical overlap. In addition, each
+selected memory item should provide direct sup-         10.4   Offline LLM: Long-Term Memory
+port for at least one HQ, rather than being merely             Consolidation
+topically related in a loose sense.                     Role The offline LLM serves as the consolidation
+Constraints SLM-2 must not rewrite or modify            model responsible for maintaining LTM. Its role
+memory content, must not generate explanations          is to transform selected MTM content into stable
+or user-facing responses, and must not perform          long-term knowledge representations and to inte-
+retrieval or expansion. Its function is restricted to   grate those representations into the global memory
+selection only.                                         structure.
+
+Output Format The output must be returned in            Input The model receives as input a batch of
+JSON format only.                                       MTM items selected for consolidation. These
+                                                        items may include newly written entries, retrieval-
+10.3     SLM-3: Interaction Summarization and           reactivated entries, and low-utility entries that have
+         Online MTM Maintenance                         been flagged under MTM capacity pressure.
+SLM-3 is responsible for compressing the current
+                                                        Task The model is responsible for abstracting
+interaction into reusable MTM entries and for sup-
+                                                        episodic MTM items into de-identified semantic
+porting online maintenance of the MTM store.
+                                                        knowledge units, identifying semantic overlap be-
+10.3.1    Full Prompt Template (SLM-3)                  tween candidate knowledge units and existing LTM
+Role SLM-3 serves as the memory writing and             nodes, and determining whether each candidate
+maintenance engine for MTM. Its function is to          should be merged with existing knowledge, used to
+distill interaction-level information into compact      update an existing node, or discarded. For retained
+semantic memory units that can be reused in future      knowledge, it further integrates the resulting rep-
+user interactions.                                      resentations into the LTM graph by inserting new
+                                                        nodes and edges or updating existing ones.
+Input The model receives as input the current
+user utterance, the generated system response, and      Guidelines During abstraction, the model should
+the relevant short-term dialogue context associated     remove user-specific and session-specific details so
+with the ongoing interaction.                           that the resulting knowledge remains de-identified
+                                                        and reusable across contexts. It should prioritize
+Task SLM-3 is responsible for identifying user-         stable and generalizable knowledge over episodic,
+relevant information that may be useful beyond the      incidental, or overly context-bound information.
+current turn, compressing that information into con-
+cise semantic memory entries, and supporting the        Constraints The offline LLM must not generate
+incremental maintenance of the MTM store over           user-facing responses and must not directly modify
+time. Its purpose is not merely to record interaction   MTM. In addition, this process is executed offline
+content, but to transform transient dialogue into       and asynchronously, and therefore must not affect
+reusable memory representations.                        the latency of online interactions.
+
+Guidelines The model should focus on informa-           Output Format The output should consist of a
+tion that is likely to remain useful in future inter-   set of newly inserted or updated LTM knowledge
+actions. It should prefer concise, self-contained       units together with their associated graph links.
+semantic summaries rather than preserving raw di-
+alogue content or turn-level transcripts.               11 LTM Graph Schema and Maintenance
+                                                           Dynamics
+Constraints SLM-3 must not store full dialogue
+transcripts, must not retrieve or search existing       This section supplements Section 3.6 by providing
+memory, must not perform cross-user abstraction,        a detailed definition of the schema used for the
+graph-structured LTM and by discussing its mainte-
+nance dynamics, including update frequency, node
+growth behavior, and the impact of offline consoli-
+dation on downstream reasoning performance.
+
+11.1    Graph Schema: Node and Edge Types
+As described in Section 3.6, LTM is designed as
+a lightweight, de-identified semantic knowledge
+graph. Unlike MTM, which stores episodic in-
+teraction summaries, LTM aims to capture stable
+factual knowledge and domain-level regularities.
+To support cross-task generalization and multi-hop
+reasoning, elements in the LTM graph are stan-
+dardized into a small set of node and edge types,
+summarized in Table 9.
+
+11.2    Maintenance Dynamics and
+        Performance Impact
+LightMem adopts a decoupled architecture that sep-
+arates online retrieval from offline consolidation.
+The offline LLM processes updates in incremen-
+tal batches, ensuring that maintenance does not
+block real-time user interaction. Table 10 summa-
+rizes key operational metrics of the consolidation
+process and analyzes their impact on model perfor-
+mance.
+
+12     Declaration of AI Use
+Authors use AI-assisted tools to help polish the
+language of this manuscript.
+                          Table 9: Node and edge types used in the LTM knowledge graph.
+
+Category                  Type                         Description and Example
+                          Entity                       Concrete objects, locations, or named items extracted from interactions
+Nodes
+                                                       (e.g., “Python script”, “Paris”, “Project X”).
+                          Concept                      Abstract categories or generalized classes that characterize shared proper-
+                                                       ties of entities (e.g., “Programming Language”, “Capital City”, “Urgent
+                                                       Task”).
+                          IsA                          Hierarchical membership relation between an entity and a concept (e.g.,
+                                                              ISA
+Edges                                                  Paris −−→ Capital City).
+                                                                                                                     H AS P ROPERTY
+                          HasProperty                  Links an entity to a specific attribute or state (e.g., Project X −−−−−−−→
+                                                       Completed).
+                          RelatedTo                    Generic semantic association based on co-occurrence or functional relat-
+                                                                          R ELATED T O
+                                                       edness (e.g., SNN −−−−−−→ Neural Operator).
+                          Implies                      Logical or causal dependency extracted from reasoning traces (e.g., High
+                                                                I MPLIES
+                                                       Density −−−−→ Congestion).
+
+
+
+
+         Table 10: LTM update frequency, consolidation cost, and ablation results on reasoning accuracy.
+
+Metric                          Value                       Description and Analysis
+Batch update interval           Every 10–15 turns           Offline consolidation is periodically triggered when MTM accumu-
+                                                            lates sufficient new entries or reaches capacity pressure, enabling
+                                                            amortized long-term updates without interfering with online pro-
+                                                            cessing.
+Node growth rate                ∼1 node / 4 turns           On average, only one new semantic node is added to LTM every
+                                                            four dialogue turns. This sparsity reflects the high compression
+                                                            ratio of LightMem, where noise is filtered and only high-value
+                                                            evidence is retained for persistent storage.
+Offline processing time         ∼3.5 s / batch              Average time for the offline LLM to perform abstraction, graph
+                                                            linkage, and structural updates. This latency occurs entirely on the
+                                                            offline path and is fully decoupled from online retrieval (average
+                                                            retrieval latency ∼83 ms), making it invisible to users.
+Reasoning accuracy (F1)         4.12 (full)                 The full LightMem system (4.12) outperforms a variant without
+                                vs. 3.96 (no update)        offline consolidation (3.96), corresponding to an approximately 4%
+                                                            performance drop when LTM evolution is disabled. This result
+                                                            highlights the importance of sustained LTM growth and consolida-
+                                                            tion for long-horizon reasoning.
+

@@ -1,0 +1,1730 @@
+{
+  "schema_version": 1,
+  "bank": "bank1",
+  "side": "construction",
+  "created_at": "2026-08-02T01:32:43Z",
+  "source_snapshot": "bank_v002.json",
+  "skills": [
+    {
+      "skill_id": "sk_construction_04d2a9bb1d",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Aggregate-repeat-place-visits",
+        "description": "When a message mentions a visit to a place and an earlier distinct visit to the same place is already known, create a memory with the total visit count.",
+        "content": [
+          "During candidate extraction, when the current message reveals a subject's visit to a specific place (city/country) and the session history or existing memory already contains a distinct earlier visit by the same subject to that same place at a different time, add an additional compact memory stating the total number of visits to that place (e.g., '<subject> has been to <place> N times'). Use memory kind 'state' or 'event' as appropriate. Do not add this aggregate when only one visit is known, when the two mentions refer to the same visit, or when the total count is already recorded; stop once the count is stated without enumerating each trip."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_50b659d843e4",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_08914753d6",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "PreserveExplicitQuotedClauses",
+        "description": "When constructing memory from a message containing a speaker's direct quoted statement, before accepting an extraction candidate, check that every explicit claim in the quoted text is represented, not only a paraphrase summary.",
+        "content": [
+          "During extraction, when a source message is a direct quote (e.g., \"John said ...\"), compare the candidate memory content against the quoted utterance claim-by-claim.",
+          "If the candidate omits any explicit claim, especially a recommendation or assessment such as \"you won't regret it,\" revise the candidate to include that claim, either in the same memory or as a separate memory entry.",
+          "Stop once all explicit claims are covered; do not add inferred implications or expand beyond the quoted text."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_08ddbb70a919",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_3aba7e9c5e",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Attribute relayed condition to the patient, not the speaker",
+        "description": "Use when extracting memories from a message where the speaker relays or acknowledges a fact about another participant's condition (e.g., a doctor's assessment said to the patient). Attribute the memory to that participant, not the speaker; keep separate subjects in separate candidates.",
+        "content": [
+          "During extraction, when a message reports or acknowledges a condition fact about someone other than the speaker (e.g., 'the doctor said it's not too serious' in response to that person), create a separate state memory for that person, with the speaker only as source.",
+          "Resolve subject from pronouns and prior turns: 'your injury' refers to the addressee; a named person refers to that person. Do not merge facts about different subjects into one memory candidate.",
+          "If the same turn also contains the speaker's own state, emit distinct candidates per subject. Stop expanding further once each referenced person's fact has its own candidate."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_0959ca31e358",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_4e28d28926",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Propagate established location to later activity events",
+        "description": "When extracting an event memory for an activity or discovery and the speaker's current location was set in an earlier message of the same conversation or recent session, include that location in the memory content.",
+        "content": [
+          "Before finalizing an event candidate, scan prior turns for an explicit location associated with the speaker's ongoing trip or stay.",
+          "If the activity in the current message occurs during that same stay and no different location is mentioned, add the location to the candidate content (e.g., 'in <location>').",
+          "Do not add a location when the message states a different location, when the event is generic with no temporal/spatial tie to the established stay, or when no location anchor exists."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_eeb6c9463b6b",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_558226b23d",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Preserve Explicit Motivation Statements",
+        "description": "When a message explicitly states the reason or motivation behind a behavior, commitment, or ongoing activity (e.g., 'what keeps me going', 'motivates me', 'I keep doing X because'), use that stated reason as the core of the extracted or updated memory content rather than only the surrounding feelings.",
+        "content": [
+          "During extraction, when a message contains an explicit motivational or causal statement such as '...is what keeps me going', '...motivates me', or 'I keep doing X because...', capture the stated reason as an explicit clause or separate claim in the candidate; do not replace it with only emotional or evaluative paraphrases.",
+          "During CRUD updates, when enriching or merging an existing memory, carry forward any explicitly stated motivation from the source message; prune only redundant detail, not the stated reason itself.",
+          "Apply only to motivations explicitly stated by the speaker; do not infer hidden motives, and stop once the stated reason is captured."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_3b90d669211f",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_5e59a05f59",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Preserve image-sharing action from provenance references",
+        "description": "When extracting memories from a message where the speaker credits or describes a picture/image they shared (e.g., 'That picture is from...', 'This was made by...'), use this Skill to record the sharing event and its source.",
+        "content": [
+          "If a user message refers to a previously shared picture or image and states its creator/provenance (e.g., 'That picture is from X'), extract an event memory that the user shared that picture, including the creator/source as a detail.",
+          "Do not convert the picture's source into ownership of a physical themed object (e.g., a bookshelf or decoration) unless the message explicitly states the user owns such an object; do not infer physical objects from figurative praise.",
+          "During CRUD, if an existing memory records an inferred ownership but the evidence only supports a sharing event, ADD the sharing event or UPDATE the memory to include the sharing action so the shared picture's provenance is not lost."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_96eb74405798",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_738be2fadd",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Preserve-scope-qualifiers-for-partial-artifacts",
+        "description": "Use when a user mentions writing, creating, or producing a partial or preliminary version of an artifact (e.g., 'a few bits for a screenplay', 'part of a book', 'draft of a song') during construction extraction or update, especially if an existing memory might refer to the completed artifact.",
+        "content": [
+          "During extraction, preserve scope qualifiers such as 'bits for', 'part of', 'draft of', or 'portion of' in the candidate content; do not upgrade them to the full artifact name (e.g., 'a screenplay') unless the source explicitly states the complete artifact was finished.",
+          "During CRUD, before UPDATE or MERGE, compare the candidate's scope with any existing memory about the same artifact. If the candidate is partial or preliminary and the existing memory describes the whole completed item, keep them as distinct memories or add a scope-qualified separate event; do not append the partial event as if it were the same completed artifact.",
+          "Stop after applying the qualifier and checking the single most relevant existing memory; do not expand into exhaustive searches or comparisons."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_0a2fe85162be",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_80114549ab",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Extract first-person group behavior statements",
+        "description": "When a speaker uses first-person language to state a durable fact about their own or their group's behavior (e.g., 'we back each other up'), extract a candidate memory even if the statement appears inside a reply with thanks or filler.",
+        "content": [
+          "During extraction, scan each message for explicit first-person statements about the speaker's own or their group's persistent behavior, traits, or approach (e.g., 'we back each other up', 'we won't quit').",
+          "When such a statement is found, create one durable candidate memory (typically a state or relationship) capturing the behavior, even if the statement is embedded in a reply that also contains thanks, pleasantries, or reactions to prior turns.",
+          "Do not create a candidate for transient, conversational, or purely reactive content (e.g., 'thanks', 'that's great') that does not state a durable fact."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_417cd445e617",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_87f793d3e5",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Extract implied death from euphemistic loss language",
+        "description": "When a message describes someone with euphemistic permanent-loss phrases (e.g., 'will never be able to...', 'I miss him/her here'), use those cues during candidate extraction to record the implied state (likely deceased) as a hedged fact.",
+        "content": [
+          "During candidate extraction, when a speaker refers to someone with euphemistic permanent-loss language—such as 'will never be able to support me' or 'I miss him/her here'—infer the implied state (likely deceased) and record it with hedged wording (e.g., 'likely no longer alive') instead of only the literal limitation.",
+          "Only apply this inference when the phrasing strongly implies permanent absence (e.g., 'never' combined with 'miss'); for temporary incapacity, mere distance, or estrangement, record only the literal limitation.",
+          "Do not state death as certain unless the message explicitly confirms it, and keep the memory evidence-bound by referencing the euphemistic phrase that supports the implication."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_542524f573c4",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_a2f294a83e",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Extract Anaphoric Entity Descriptions",
+        "description": "When a message contains a declarative reply identifying an object, person, or place via a pronoun/demonstrative (e.g., 'It's a ...', 'That's my ...'), and the referent is clear from prior context, extract a memory candidate.",
+        "content": [
+          "During extraction, create a candidate when a speaker's short reply identifies or describes an entity with a pronoun/demonstrative, resolving the referent from the conversation history.",
+          "Record the fact as an event, state, or relationship memory, including the people involved (e.g., the speaker showed the described object to another participant) when the context supports it.",
+          "Do not extract if the statement is transient, purely subjective, or the referent is ambiguous; stop after capturing the core description."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_c6692081b167",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_a649eea61f",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Preserve object in product-line memories",
+        "description": "When a message says someone made/created a limited edition line or collection of a specific item, use during extraction and memory writing to keep the item name instead of writing only 'a line'.",
+        "content": [
+          "During extraction and CRUD, if the source explicitly names the item in a creation/line statement (e.g., 'made a limited edition line of hoodies'), include that item as the object in the candidate and final memory content.",
+          "Do not reduce to 'created a limited edition line' when the evidence states what the line was of; keep the concrete noun so later questions about the line's subject can be answered."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_901030642276",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_aa2d3f2f5e",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Extract encouragement after setbacks",
+        "description": "When a speaker offers encouragement, reassurance, or advice to persist after a listener's setback or failure, during extraction and CRUD.",
+        "content": [
+          "When a speaker responds to a listener's setback with explicit encouragement, reassurance, or advice to persist, capture the core gist as a candidate memory that records the speaker, listener, and the substance of the encouragement (e.g., rejections don't define you, keep trying, you'll find the right opportunity).",
+          "During CRUD, if no memory of that encouragement exists, create it as a relationship or event memory; if a partial version exists, update it with the missing outlook or advice.",
+          "Stop after the core encouragement; do not extract generic pleasantries, greetings, or unsupported factual claims."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_14e8bf00755b",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_aab5d70075",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Extract idiomatic commitment statements",
+        "description": "When a speaker states their own intention or commitment using idiomatic or negated phrasing such as 'not giving up', 'won't stop', or 'keep going', extract a memory capturing the underlying action.",
+        "content": [
+          "During extraction, treat statements where a person says they will or won't do something, including idiomatic or negated equivalents, as candidates for a 'state' or 'plan' memory (e.g., [person] intends to / not to [action]).",
+          "Resolve the idiomatic expression to its concrete action (e.g., 'not giving up' -> not quit) and link the memory to the source message. Only apply when the statement is a personal commitment about a future course of action."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_edfb9c02a539",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_action_commitment_plan",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Extract Action Commitments as Plans",
+        "description": "Use when a speaker explicitly commits or offers to perform a concrete future action for someone.",
+        "content": [
+          "When a speaker states an explicit commitment or offer to perform a concrete future action, create a plan memory with the action, recipient, and time reference.",
+          "Do not create a plan for hypothetical, conditional, or non-committal statements."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_97911fdb0f21",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_actions_despite_emotion",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Extract Actions Despite Emotional Coda",
+        "description": "Use when a user describes concrete actions they performed and also expresses a feeling or relationship remark.",
+        "content": [
+          "If a user message lists first-person actions (e.g., 'I petted, hugged, spoke calmly, walked') followed by an emotional or relational reflection, do not let the reflection block the extraction of the actions. Create an event memory for the actions.",
+          "Record the action(s), the target (person/animal), and any stated purpose (e.g., 'to relax') as a single event memory candidate."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_66473799dd70",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_activity_domain_disclosure",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Extract Activity Domain Disclosures",
+        "description": "Use when a user explicitly states what they write about, study, research, or recommend.",
+        "content": [
+          "Treat explicit first-person statements of ongoing activities as candidate memories, even if conversational.",
+          "Emit one preference or state memory recording the activity and subjects.",
+          "Skip if an existing candidate or memory already covers the same fact."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_7c887f408e90",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_advice_between_speakers",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Extract Advice Between Speakers",
+        "description": "Use when a message contains explicit advice, recommendation, or suggestion from one speaker to another about a specific action.",
+        "content": [
+          "When a speaker gives explicit advice or a suggestion to another speaker, create an event candidate capturing the advisor, advisee, and the recommended action.",
+          "Apply even if phrased as a question or with hedges like maybe/could/perhaps.",
+          "Skip generic pleasantries, rhetorical statements, or advice without a specific action or recipient."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_8751496a5f92,cand_construction_96dc3dd563c8,cand_construction_aae62917993c,cand_construction_ac00f08a987a,cand_construction_c55237a3c915",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_advice_details_in_offer",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Preserve Advice Details in Offers",
+        "description": "Use when a message contains an offer or plan plus concrete advice, tips, or steps.",
+        "content": [
+          "When a speaker offers help and also lists specific advice or steps, create a separate memory candidate for that advice.",
+          "Do not let the offer memory absorb the advice; preserve concrete details.",
+          "Skip when the advice is only a generic courtesy with no substantive content."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_a64db554c7dd",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_announced_event_recipients",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Extract announced-event recipients from addressed messages",
+        "description": "When a user message directly addresses a named person (including the assistant) and announces a personal life event such as marriage, birth, or a move, extract a memory that records both the event and that it was told to that person.",
+        "content": [
+          "During candidate extraction, when a user message addresses a named person (for example 'Hey Sam!') and announces a personal life event such as a marriage, birth, or move, extract the disclosure as a durable fact: the event occurred and that named person was told about it.",
+          "Record the audience explicitly in the event memory or as a separate relationship/event memory (e.g., 'Evan told Sam he got married'), citing the message as the source.",
+          "Stop at recipients explicitly addressed or named as the audience; do not infer other recipients from general context, and do not apply when no addressee is present."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_4e26488664ab",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_bf3cc888f8",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Extract implicit photo-sharing from 'Here are' cues",
+        "description": "When a message uses 'Here are/is' to present physical items the speaker made or has, without naming a photo, extract that the speaker shared a photo of those items.",
+        "content": [
+          "During extraction, if a speaker presents physical items with 'Here are/is' (e.g., 'Here are some bowls I made') and no photo/picture word appears, include a memory/event that the speaker shared a photo of those items, alongside facts about making/possession.",
+          "Do not apply this when 'Here are/is' introduces abstract content (steps, thoughts, lists) or when the message already explicitly mentions sharing a photo; rely on the base policy in those cases."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_970211130158",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_c114d3121d",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Extract travel-location state memories",
+        "description": "During extraction, apply when a participant mentions a past vacation, trip, or travel photo with a named place and a time period, and no location-state or event candidate exists for that mention.",
+        "content": [
+          "During candidate extraction, convert explicit travel/vacation mentions into state/event candidates: record that the speaker was at the named place during the stated time period, resolving relative time from the session timestamp.",
+          "If the named place is a city, include its unambiguous country in the same memory; do not guess when the city name maps to more than one country.",
+          "Stop after one candidate per distinct place-and-time mention; do not add candidates for places shown in photos or mentioned only as context without claiming the speaker was there."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_4f14dc43843b",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_c3e543ef0a",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Preserve_short_speaker_quotes_during_extraction",
+        "description": "When extracting memory candidates from a message that contains a short, distinctive verbatim quote from a speaker about an event or plan, preserve the exact quoted phrase in a memory candidate.",
+        "content": [
+          "During extraction, if a message contains a short (roughly 2-15 words) verbatim quote from a speaker that is a standalone statement about an event or plan, create a memory candidate that includes the exact quoted phrase (as event or state memory), in addition to any abstract event/relationship summary.",
+          "Limit to one quote memory per speaker-message pair, only when the quote is distinctive enough that a future question could ask 'what did X say about Y'; skip generic, long, or conversational filler utterances."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_90be58fca111",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_capture_all_participant_roles",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Capture all participant roles in shared activities",
+        "description": "When extracting or updating a memory from a message where the speaker describes a shared activity or event (e.g., playdates, group outings) involving themselves and another party, and the source states what each party does.",
+        "content": [
+          "During extraction, when a statement describes a joint activity with the speaker and another party (people or pets), capture the speaker's own explicit action or benefit as well as the other party's, rather than summarizing only the setting or the other party's behavior.",
+          "When updating or enriching an existing event memory with such a statement, preserve the speaker's role and add any newly stated action; do not let a topic-focused paraphrase replace it.",
+          "Stop after recording the explicitly stated actions of all named participants; do not infer additional roles or add unstated details."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_5b93960a3215",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_casual_factual_claims",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Extract Explicit Factual Claims from Casual Messages",
+        "description": "Use when a message mixes casual small talk with an explicit factual claim about the speaker's past or current state.",
+        "content": [
+          "During extraction, if a message mixes pleasantries with an explicit factual claim about the speaker's past or current state (e.g., 'I finished a project last week'), still create a candidate for that factual claim.",
+          "Do not extract the pleasantries, opinions, or unrelated details; limit the candidate to the concrete claim.",
+          "For casual messages with no explicit factual claim (greetings, filler, social niceties), do not create a candidate."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_511a8ed5d552",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_comfort_source",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Capture Named Comfort and Peace Sources",
+        "description": "Use when a speaker explicitly names a specific thing, place, or activity that gives them comfort, peace, or joy during hardship or difficult times.",
+        "content": [
+          "During extraction, if a message contains both a hardship or difficult time and a clearly named source of comfort, peace, or joy (e.g., 'my turtles cheer me up', 'X gives me peace'), extract the named source as its own standalone memory (preference or state) stating the speaker relies on it for comfort.",
+          "Preserve the named source and any explicit qualifier verbatim; do not fold it into a broader thematic summary or replace it with a generic noun.",
+          "During CRUD, ADD the new memory unless an equivalent already exists; if it does, MERGE/UPDATE instead of duplicating.",
+          "Do not apply when the comfort source is unnamed, generic, or already fully captured."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_073655c67431,cand_construction_29db6e0bb060,cand_construction_bcb82d23da52",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_companion_activity_statements",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Extract companion activity statements",
+        "description": "When a message contains an explicit statement by the speaker about taking a walk, hike, or similar activity with a named companion (pet or person), extract a state or event candidate during extraction, even if the statement is in a closing or small-talk phrase.",
+        "content": [
+          "During extraction, if a message explicitly states the speaker's activity with a named companion (e.g., walks, hikes, plays with), create one candidate memory even when the phrase is a sign-off or small talk.",
+          "Classify the candidate as event when the activity is one-off or explicitly planned, and as state when the phrasing implies a recurring habit; include the activity and companion in the memory content, and keep the source message ID.",
+          "Stop after the explicit activity: do not infer additional activities or habits beyond what the message states."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_77976f142fc6",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_completed_project_work",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Extract Past Completed Project Work",
+        "description": "Use when a message states a speaker finished, completed, or wrapped up a named project.",
+        "content": [
+          "If a message states that the speaker finished/completed a named project, extract an event memory recording that the speaker worked on that project, with the work period ending at the stated completion time.",
+          "If the message includes a relative completion time (e.g., 'last week'), anchor the event to the period before that time; otherwise record a generic past work event.",
+          "Apply only when the completion statement is the sole evidence of the project; if the project is already described as ongoing in the same or an earlier message, rely on normal event extraction and do not add a duplicate."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_87e5d3efc2f0",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_concrete_events",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Extract Concrete Start Events with Temporal Anchors",
+        "description": "Use when a user explicitly states they started, began, or just started a specific durable project, activity, skill, or hobby.",
+        "content": [
+          "During extraction, when a message contains an explicit start marker (e.g., 'started learning', 'began', 'just started') for a new activity, skill, hobby, or durable project, create a distinct event candidate recording the start, the activity, and the temporal anchor from the message/session timestamp.",
+          "Keep the initiation event separate from any state candidate about enjoyment or current practice; do not merge the start time into a general state note.",
+          "Stop after the single explicit start—do not infer starts without a marker and do not expand to every activity mentioned."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_3114fbf84a9d,cand_construction_37ea245f790b,cand_construction_571ad0141f08",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_coping_behaviors",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Capture Self-Disclosed Coping Behaviors",
+        "description": "Use when a speaker explicitly links a behavior to a purpose such as stress relief, comfort, or relieving boredom.",
+        "content": [
+          "During extraction, when a speaker explicitly links a behavior to a coping purpose (e.g., eating sweets to relieve stress), create a durable memory (preference or event) recording the behavior and its purpose; do not capture only the transient emotional state.",
+          "During CRUD, when updating a memory that contains such a behavior-purpose link, preserve the behavioral fact either in the updated content or as a separate memory.",
+          "Stop after capturing the explicitly stated behavior; do not infer additional unstated coping activities."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_e141080c53f1",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_coping_preferences",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Extract Coping and Distraction Preferences",
+        "description": "When a session message explicitly links an activity, object, or companion to helping the user cope, distract, or get through tough times, create a preference memory.",
+        "content": [
+          "During extraction, if a message explicitly states that something helps the user through tough times (e.g., 'helps when times get tough', 'nice distraction', 'great company'), create a preference memory for that activity, object, or companion, linked to the source message.",
+          "Do not apply to casual mentions of likes or hobbies without a coping or difficult-time context; default extraction handles those. Keep the memory evidence-bound and durable."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_ce9c5e07bb7c",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_cumulative_counts",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Maintain Cumulative Counts from Ordinal Milestones",
+        "description": "Use when a speaker reports a recurring personal achievement using an explicit ordinal milestone.",
+        "content": [
+          "Extraction: When a message contains an explicit ordinal milestone (first/second/third/fourth, etc.) for a recurring personal achievement already present in memory, create or update a state memory tracking the cumulative count for that subject and event type (e.g., '<subject> has won N <event type>'), in addition to the individual event candidate.",
+          "CRUD: When the new milestone is a distinct occurrence, ADD a new event memory; do not UPDATE or MERGE an earlier event memory to replace its content with the new event, even if the topic matches.",
+          "Stop: Maintain the cumulative count only when the ordinal is explicitly stated; do not infer or chain counts from generic mentions such as 'another win' or 'won again'."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_3d72352f6058",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_discovery_sources",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Extract Stated Discovery-Source Events",
+        "description": "Use when a user explicitly states how they learned about an event, workshop, class, or other opportunity.",
+        "content": [
+          "During extraction, when the speaker explicitly states how they learned about an event, workshop, class, or other opportunity (e.g., saw a flyer, heard from a friend, found it online), create a separate event memory capturing that discovery, including the stated source and location if given.",
+          "Keep the discovery as its own memory rather than folding it into the sign-up or attendance memory so the source stays independently queryable. Do not infer a source the speaker did not state, and do not extract this when no discovery channel is mentioned."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_3af7398ed835",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_distinct_event_occurrences",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Preserve Distinct Event Occurrences",
+        "description": "Use when a candidate event is the same type and subject as an existing memory but is a separate occurrence with a different date, ordinal, venue, or result.",
+        "content": [
+          "When a candidate event is the same type and subject as an existing event memory but is a separate occurrence (different date, ordinal, venue, or result), ADD a new event memory instead of UPDATING the old one; preserve the prior occurrence's time and details.",
+          "Before choosing UPDATE/enrichment, check whether the incoming message describes the same specific occurrence already stored (matching time and place). If it is a new instance, create a new memory; only enrich when the same occurrence gains extra detail.",
+          "Resolve relative dates from the message/session timestamp and keep the resolved date in the candidate's world_start; do not overwrite an existing world_start with a conflicting date."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_20ad3bcdbd09,cand_construction_86899b1761b0",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_distinct_facts_per_message",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Extract Distinct Facts Per Message",
+        "description": "Use when a later message contains a new durable fact about a subject already mentioned earlier, or when a single message bundles a new fact with an already-known fact, to ensure the new fact is extracted separately.",
+        "content": [
+          "During candidate extraction, treat each user message independently: identify every durable fact it states, even if the same subject or vehicle appears in an earlier message.",
+          "If a later message adds a distinct event or state (e.g., an item breaking down, a purchase, an accident) not present in the earlier extraction, create a separate candidate for it rather than reusing or merging it into the candidate from the earlier message.",
+          "Emit one candidate per distinct factual claim in a message; do not bundle a new event/purchase under an already-known ownership or state fact.",
+          "Before SKIPping any candidate because its subject is already in memory, check the full message for another claim carrying new information; if found, create a separate candidate for that new fact and resolve relative times to concrete dates from the message timestamp.",
+          "Do not create duplicate candidates when the later message only restates or elaborates a fact already captured in an earlier candidate."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_f1ac80350a4e,cand_construction_f4d3f78095a0",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_entity_status",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Extract Entity Status Statements",
+        "description": "Use when a participant explicitly states the current condition or performance of an entity they own or manage.",
+        "content": [
+          "When a message explicitly states the current condition or performance of a specific entity the speaker owns or manages, extract a state memory with the entity, condition, speaker, and timestamp.",
+          "Apply even in casual greetings; do not wait for a later question.",
+          "Do not extract vague sentiment without a specific entity or infer unstated conditions."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_0194d58601f9",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_enumerated_routine_steps",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Extract Enumerated Routine Steps",
+        "description": "Use when a speaker answers a question by enumerating steps of a routine or care process.",
+        "content": [
+          "When a speaker lists multiple components of a routine or care process, create a separate candidate memory for each component.",
+          "Also extract any explicit overall evaluation as its own candidate.",
+          "Stop after enumerated items and evaluation; do not apply to direct commands or one-time events."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_6961d5a5c21d",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_explicit_durations_group",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Extract explicit durations from group statements",
+        "description": "When a message states the speaker's past group involvement with an explicit duration, even if it also contains a question or filler, during extraction create a relationship/event candidate.",
+        "content": [
+          "During extraction, if a message states the speaker's past involvement in a group or relationship with an explicit duration (e.g., 'we were teammates for four years'), create a relationship or event candidate capturing the speaker, the group, and the duration, even when the utterance also ends with a question or casual filler.",
+          "Treat the explicit duration alone as sufficient evidence for a candidate; do not require additional corroborating sentences. Do not apply this to statements about another person's experience or to turns without a factual predicate."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_786cc0a49bd5",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_explicit_emotions",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Capture Explicitly Stated Emotions",
+        "description": "Use when a speaker explicitly names one or more emotions or feelings about a subject, event, or plan (e.g., 'I feel peace', 'discouraged but determined', 'sense of accomplishment').",
+        "content": [
+          "During extraction, when a speaker explicitly states emotions or feelings about a subject, create or update a state memory capturing each named emotion and the subject; do not omit, paraphrase, or collapse them into a generic term.",
+          "Preserve the exact emotion terms as given; do not substitute synonyms or add unstated emotions.",
+          "Include all explicitly stated emotions, including contrasting ones joined by 'but' or 'yet'.",
+          "Anchor the memory to the specific subject or triggering event; do not store transient or trivial emotions without a clear anchor.",
+          "Stop after capturing the explicitly stated emotions; do not infer additional feelings."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_76af040cf179,cand_construction_a36d3c644620,cand_construction_a8da1a774f51,cand_construction_d3915d18c4e5,cand_construction_f433438287ed",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_explicit_evaluations",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Extract Explicit Evaluations Alongside Events",
+        "description": "Use when a user explicitly evaluates a personal milestone, achievement, or health change and also describes a concrete event.",
+        "content": [
+          "During extraction, if a speaker explicitly evaluates a personal milestone, achievement, or health change (e.g., 'was a huge success', 'felt amazing', 'was a relief'), create a memory recording that evaluation even if the same message describes a separate concrete event such as a gathering or celebration.",
+          "When both the evaluation and a concrete event appear in the same message, either include the evaluation in the event memory or emit an additional memory (state or event) for the evaluation so the sentiment is not lost."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_85a09e48c52b",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_explicit_life_event_dates",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Extract Explicit Life-Event Dates",
+        "description": "Use when a speaker explicitly states a year/date for a personal or family life event (wedding, birth, graduation, move) inside emotional or reflective narrative.",
+        "content": [
+          "During extraction, scan user messages for directly stated dates tied to life events (e.g., 'my parents' wedding in 1993', 'she was born in 1987'). Do not skip these because the surrounding sentence is emotional, nostalgic, or photo-related.",
+          "Create one candidate with memory type 'event', subject = the person or persons involved, predicate = the event type (e.g., wedding, birth), and the stated date as the event date. Anchor to session timestamp only if no explicit date is given.",
+          "Stop after extracting the explicitly stated fact; do not infer dates from vague references, do not extract the same fact from later rephrasings, and do not treat a date attached only to a photo or object as a life-event date."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_364f81300325",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_explicit_preference",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Extract Explicit First-Person Preferences",
+        "description": "When a speaker explicitly states their own preference, favorite, or enjoyment (e.g., 'I love', 'my favorite is', 'really into'), create a preference memory candidate during extraction.",
+        "content": [
+          "During extraction, treat explicit first-person positive preference statements as mandatory candidates: phrases like 'I love', 'I like', 'my favorite is/are', 'I enjoy', 'I am a big fan of', 'really into', 'so beautiful' should each yield a preference memory candidate.",
+          "Preserve qualifiers and category context (e.g., 'dairy-free chocolate mousse' as a favorite dairy-free treat).",
+          "Do not skip a candidate because the message also contains other topics or questions; extract every distinct stated preference.",
+          "Do not create candidates from negations, hypotheticals, or preferences stated about other people; if an identical preference memory already exists, merge/skip instead of duplicating.",
+          "When a message contains both a preference and a recommendation, keep the preference as a preference memory and the recommendation as a separate event memory."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_1fbeaa01d1fd,cand_construction_8ccc8d42aa5c,cand_construction_d365bea332ce,cand_construction_d69105bdcbd5,cand_construction_d7b7241244ec,cand_construction_f5b80da454ad,cand_construction_fe41515666ac",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_explicit_reasons",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Capture Explicit Reasons for Actions",
+        "description": "Use when a user explicitly states a reason, value, or motivation for an action they performed.",
+        "content": [
+          "During candidate extraction, when a user message contains both an action/event and an explicit reason or motivation for it (e.g., 'I took the photo because the sunset was incredible'), capture the reason as part of the same event memory or as a clearly linked memory.",
+          "Only include the reason if it is directly tied to the event in the same message and represents a durable fact, not a passing opinion. Do not add reasons that are merely inferred or speculative.",
+          "If the reason is already present in an existing memory, do not duplicate it; merge or reference the existing memory instead."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_27872d7c622f,cand_construction_2915fa1718f0",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_extract_item_descriptions",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Extract User Item Descriptions",
+        "description": "When a user shares a photo or link and adds a qualitative description of an owned object, pet, or recent purchase, create a memory candidate for the description.",
+        "content": [
+          "During candidate extraction, treat short evaluative statements about the user's own items (e.g., new purchases, pets, home improvements) as memory candidates even when they accompany a photo or casual message.",
+          "Extract the description as a preference or state fact only if it conveys a durable quality or opinion the user would want recalled (e.g., 'super cozy and comfy').",
+          "Skip statements that are temporary, purely conversational, or not tied to a concrete object the user owns or uses; do not expand one mention into multiple memories."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_8522ab4dbce6",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_extract_nickname_relationships",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Extract Nickname Relationships",
+        "description": "When a message contains a person being addressed by a nickname, diminutive, or shortened name with the full name identifiable from context, extract a relationship memory for the nickname.",
+        "content": [
+          "During extraction, when a speaker addresses or refers to a person by a nickname or shortened form of the person's name, and the full name is identifiable from the same message, recent context, or existing memory, also create a `relationship` candidate recording that the speaker uses that nickname for the person.",
+          "Keep the nickname relationship separate from any event or state candidates in the same message; do not fold it into the event memory.",
+          "Do not extract a nickname when the referenced name is the person's full proper name, a title, or an ambiguous placeholder that cannot be confidently linked to a known individual."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_d8b2ade1694f",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_extract_relationship_framing",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Extract Relationship Framing Statements",
+        "description": "When a user explicitly states how they view someone or something (e.g., 'pets are family', 'she is my best friend'), create a preference or relationship memory candidate.",
+        "content": [
+          "During extraction, treat first-person statements assigning personal meaning or relationship to an entity (e.g., 'pets feel like family') as durable preference/relationship facts; produce a candidate even if the sentence is phrased with the entity as subject.",
+          "If a message contains an explicit statement of how the speaker views a person, pet, or thing (e.g., 'pets are family', 'she is my best friend'), always create a profile or relationship memory capturing that framing, even when the same message also describes activities or shared photos.",
+          "When a later message repeats the same relational framing for an already-known subject (e.g., 'my little family'), prefer confirming/merging into the existing profile memory rather than creating a new activity-only memory.",
+          "Stop after capturing the explicit relational claim; do not enumerate every sentiment or opinion in the message. Do not extract general world statements (e.g., 'dogs are loyal') or transient opinions (e.g., 'this movie is great') as user memories."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_9b10fbfae352,cand_construction_b20d0d223d24",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_extract_same_item_confirmation",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Extract Same-Item Confirmation Replies",
+        "description": "When a speaker replies to another person's description of a possession or attribute with an explicit confirmation that they also have the same item, create a candidate memory for that speaker.",
+        "content": [
+          "During extraction, identify turns where the speaker explicitly confirms possessing the same kind of item or attribute that the previous speaker described (e.g., 'I also have a pendant', 'I have one too', 'me too').",
+          "Create a candidate memory for the current speaker (not the previous speaker) recording that they possess that item/attribute; use `state` for a current possession, or `event` when the speaker adds origin or time details.",
+          "Do not copy attributes, origins, or symbolic meanings from the previous speaker's description unless the current speaker states them; record only what the current speaker says.",
+          "Do not extract when the reply only acknowledges or comments on the other's item without claiming the same item for the speaker (e.g., 'That sounds nice')."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_ef9a794e1a10",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_fcc604eaf2",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Implied venue locations in trip plans",
+        "description": "When extracting or updating a plan/event memory about a trip to a named major venue with widely known location(s), include the implied states or city, unless the user already states the location.",
+        "content": [
+          "During extraction or any update of a plan/event memory, if the destination is a major, well-known venue whose location is common knowledge and the user did not state it, add the venue's canonical location(s) (e.g., state or city) to the memory content.",
+          "Stop after adding the canonical known location(s); do not infer locations for obscure or ambiguous venues, and do not add any location the source message does not support."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_c585fa936e93",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_figurative_evaluations",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Extract Figurative Subjective Evaluations",
+        "description": "Use when a speaker evaluates an activity, object, or experience using figurative or exclamatory language (e.g., 'it's magical!') that expresses a durable feeling or opinion.",
+        "content": [
+          "During extraction, treat figurative or exclamatory statements about how something feels or matters as explicit subjective evaluations; create a preference or state candidate even without literal 'I feel' or 'I like' phrasing.",
+          "Record the underlying evaluation and link it to the specific activity, object, or experience mentioned.",
+          "Stop when the exclamation is a transient reaction with no stable subject or does not express a durable feeling about a specific topic."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_67521d210af1",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_frequency_statements",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Extract Routine Frequency Statements",
+        "description": "Use when a user states how often they perform a recurring activity.",
+        "content": [
+          "During extraction, if a message contains an explicit frequency or schedule for a recurring activity the user performs (e.g., 'very often', 'multiple times a day', 'every weekend'), create a candidate memory of type 'state' or 'event' that records the activity and its frequency, linked to the source message.",
+          "Do not extract when the frequency is about a one-time event, a hypothetical scenario, or someone other than the user."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_5b42b5db2107",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_future_activity_proposal",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Extract Future Activity Proposals",
+        "description": "Use when a speaker concretely proposes a future activity with another person, including tentative or alternative phrasings.",
+        "content": [
+          "When a message contains a concrete proposal for a future activity involving the speaker and another person, create a plan candidate even if tentative.",
+          "If the proposal offers multiple alternatives as one intention, keep them in one plan candidate.",
+          "Skip vague hypothetical remarks and re-statements of already-stored plans."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_10a78344962f",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_hopes_goals",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Capture Explicitly Stated Hopes and Impact Goals",
+        "description": "Use when a user explicitly states a hope, goal, or desired impact for an activity.",
+        "content": [
+          "During extraction, when a message contains an explicit statement of what the subject hopes to achieve or the impact they want their activity to have (e.g., 'hope to share my stories and have an impact'), add a memory entry capturing that aspiration for the activity.",
+          "When updating an existing memory about the activity, enrich the relevant memory with the stated hope or desired impact rather than replacing it with a summary that omits the goal.",
+          "Stop after capturing the stated aspiration; do not infer additional goals beyond what is explicitly said."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_1b8d21e2c727",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_ideal_attributes",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Extract Attributes from Casual Ideal-Description Clauses",
+        "description": "When a user states an ideal, preferred, dream, or desired version of something in a short, directive, or parenthetical clause, extract each named attribute as a preference memory.",
+        "content": [
+          "Scan every user message for attributes of an ideal, preferred, dream, or desired object even when the sentence is a short directive (e.g., 'Check my ideal X...') or an aside; do not skip the message just because its main intent is a request.",
+          "For each distinct attribute stated about that object, create a separate `preference` memory with subject equal to the user, citing the message evidence.",
+          "Stop after the attributes explicitly named in the clause; do not infer unstated features or expand into a list of possible preferences."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_b47515745f59",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_indirect_appreciation",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Extract Appreciation from Indirect Statements",
+        "description": "When a speaker makes an appreciative or positively evaluative statement about a subject, even phrased generally or reflectively, extract a preference memory for that speaker.",
+        "content": [
+          "During extraction: if a message contains an explicit appreciative or positively evaluative statement about a subject (e.g., 'Nature truly has a way of reminding us to appreciate the beauty around us'), create a candidate memory (preference or event) recording that the speaker appreciates that subject, even when the statement is not first-person or is phrased as a general reflection.",
+          "During CRUD: keep each speaker's appreciation as its own memory; if an appreciation memory for the same subject already exists for another speaker, ADD a separate memory for the current speaker rather than merging or skipping."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_a18cad649408",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_infer_informal_shared_activities",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Infer informal shared activities in relationship contexts",
+        "description": "When a user describes a past shared activity with a named partner or family member and explicitly mentions bonding, making memories, or closeness, extract an event/relationship memory even if the activity term is informal or generic; use strong contextual clues such as 'gaming' to infer the concrete activity.",
+        "content": [
+          "During extraction, treat informal activity phrases (e.g., 'played games', 'gaming', 'used to do puzzles') as valid event/relationship candidates when the speaker links the activity to bonding, making memories, or spending time with a named person; do not skip them because the wording is generic.",
+          "Concretize the activity only when the wording strongly implies one specific type (e.g., 'gaming' → video games); if the activity is ambiguous (e.g., 'games' alone could be board or video), record the generic term as stated or skip instead of guessing.",
+          "Include the named person in the relationship and cite the bonding/memories purpose in the memory. Apply the same rule during CRUD: do not discard or over-merge such candidates merely because the activity was described informally."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_0d3225f8adf9",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_inspiration_sources",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Extract All Explicit Inspiration Sources",
+        "description": "Use when a user explicitly names a source of inspiration or motivation for their work or activity.",
+        "content": [
+          "When a user message explicitly states that something or someone inspired or motivated them (e.g., 'X really inspired me', 'Y motivated me'), extract a memory for each distinct named source, including specific people, even if the same message also describes an activity, scene, or broader reflection.",
+          "Do not summarise the message into only the most salient event and drop the named person; if the source is a person, record the fact that this person inspires the user (as a profile/preference/event as appropriate) with the message timestamp as evidence.",
+          "Stop once every explicit inspiration source in the message has been captured; do not add speculative sources beyond what the user states."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_24dfda2a0768,cand_construction_532b66dea8a9",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_interval_between_events",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Store Intervals Between Related Events",
+        "description": "When a message introduces a new event for a subject who already has a stored event of the same type and both dates are known, also record the elapsed time between them.",
+        "content": [
+          "During extraction, when a message introduces a new event for a subject who already has a stored event of the same type (e.g., a second adoption or relocation) and both event dates are known, also extract a candidate memory of kind 'event' recording the elapsed time between the two events.",
+          "Only create this interval memory when the two events are directly comparable (same subject, same event type) and their dates are present in the message or existing memory; skip it when events are unrelated, either date is unknown, or the interval is already stored."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_e9554a7c0ac2",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_multi_party_first_person_attribution",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Multi-party first-person attribution",
+        "description": "When a multi-party conversation contains a message where a participant uses first-person language ('I', 'my', 'me') to state their own preference, opinion, or state, use the message's speaker as the memory subject during extraction and CRUD.",
+        "content": [
+          "During extraction, read the speaker of each message and, for any first-person statement ('I', 'my', 'me', 'we'), set the memory subject to that speaker, never to another participant.",
+          "When a candidate combines statements from multiple speakers, split it into one candidate per speaker; do not merge different speakers' views into a single profile memory.",
+          "Before accepting an ADD/UPDATE, compare the candidate subject with the source speaker: if a first-person statement is attributed to someone else, correct the subject or reject the candidate."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_83996e20aa4b",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_offer_help_support",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Extract Offers of Help or Support",
+        "description": "Use when a participant explicitly offers help, support, tips, or assistance on a specific topic to another participant.",
+        "content": [
+          "When a message contains an explicit offer of help or tips on a named topic, create one relationship or event candidate capturing the offerer, topic, and recipient.",
+          "Signal words include 'if you need', 'let me know', 'happy to help', 'just ask'.",
+          "Do not extract generic polite closings without a concrete offer."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_9df7fdab07d7",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_ordinal_preservation",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Preserve Ordinal Qualifiers in Extracted Memories",
+        "description": "Use when extracting memories from messages that explicitly identify an entity by an ordinal or sequential qualifier.",
+        "content": [
+          "During extraction, if a message states an ordinal or sequential qualifier for an entity (e.g., 'third screenplay', 'second apartment', 'first day'), copy that qualifier into the candidate content rather than paraphrasing the entity generically.",
+          "Apply this when the qualifier distinguishes the entity among multiple instances of the same type; if the qualifier is incidental, contextual, or already represented in the memory's subject/relationship, skip it to keep memories compact.",
+          "Do not exhaustively list all qualifiers of an entity; only preserve those explicitly needed to answer future ordinal-based identification."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_32e3b00813f7,cand_construction_883822c01f2d",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_origin_events",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Extract Origin Events Separately from Preferences",
+        "description": "Use when a user explicitly states how they started an activity, hobby, or interest (who or what got them into it).",
+        "content": [
+          "When a message contains both a current preference/state and an explicit origin (e.g., 'my friend got me into it', 'I started after...'), extract both: keep the preference/state memory and add an 'event' memory for the origin with its subject and resolved time.",
+          "Record the origin only when explicitly stated; do not infer or speculate origins from absence. If the origin is already covered by an existing memory, skip it to avoid duplication.",
+          "During CRUD, an origin event is a separate ADD unless a matching event already exists; merge only when timestamps and details align."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_0f99c7bbb55e,cand_construction_892f766ff4d8",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_past_coping_strategies",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Extract Explicit Past Coping Strategies",
+        "description": "Use when a user explicitly states that a past activity was their way of dealing with doubts, stress, or other negative emotions.",
+        "content": [
+          "If a message contains a first-person statement that a specific past activity (e.g., practicing a sport, hobby, routine) was their way of coping with doubts, stress, or similar negative emotions, extract a compact memory capturing the activity and its purpose.",
+          "Use an 'event' or 'state' memory kind linked to the relevant earlier period, and bind it to the source message as evidence.",
+          "Do not extract when the statement is hypothetical, about another person, or merely a passing remark with no clear durability."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_81259386271f",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_plan_details",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Preserve Explicit Plan Details from Earlier Messages",
+        "description": "Use when multiple messages in the same session discuss one upcoming plan/event and an earlier message explicitly names a component not repeated later.",
+        "content": [
+          "During extraction, scan each message in a session for explicit plan/event details; do not skip a message just because a later message in the same session also describes the meeting.",
+          "When an earlier message explicitly states a component (e.g., activity, item, place, time) that a later message omits, emit a candidate for that component and, if merging into an existing event candidate, include it in the final event memory.",
+          "Stop after the explicitly stated components; do not infer or search for unstated details."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_9faf3ff74881",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_preserve_all_reasons",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Preserve All Stated Preference Reasons",
+        "description": "When a speaker explicitly gives multiple distinct reasons or qualities for liking or preferring something, include every stated reason in the preference memory.",
+        "content": [
+          "During extraction, read the full source message for all explicitly enumerated reasons or qualities attached to a preference (e.g., 'because of X and Y', 'it is A, B, and C').",
+          "Build the candidate content so each distinct stated reason appears; do not keep only the first, most salient, or most recent reason.",
+          "Stop after all reasons explicitly present in the message are captured; do not add implied or inferred reasons not stated by the speaker."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_973460717c7c",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_preserve_co_participants",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Preserve co-participants in shared event memories",
+        "description": "When a message describes a travel, retreat, or activity shared with an explicit companion ('my partner and I'), keep the companion in the extracted event memory instead of attributing the event to the speaker alone.",
+        "content": [
+          "During extraction, when a message states that the speaker and an explicitly identified companion (partner, friend, family member, named person) experienced a shared event such as travel, a retreat, or an activity, include all participants in the event candidate content (e.g., 'Jolene and her partner traveled...').",
+          "Do not reduce the event to the speaker alone just because the memory subject is the speaker; preserve explicit companion details that are part of the event.",
+          "When updating an existing event memory with new information confirming a companion shared it, amend the content to add the companion rather than creating a new memory. Stop after capturing the explicitly stated participants; do not infer companions from pronouns alone unless the message identifies them."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_0b10a4e2ff3d",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_preserve_enumerated",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Preserve All Enumerated Items in Extraction",
+        "description": "Use when extracting or updating a memory from a message that explicitly lists multiple distinct items, attributes, facts, or recommendations, to ensure every enumerated item is preserved.",
+        "content": [
+          "During extraction, if a message explicitly enumerates two or more distinct items (e.g., attributes, activities, preferences, advice, goals, impacts), include every enumerated item in the candidate content or create separate candidates for each; do not drop any item or paraphrase the list into a broader term that loses specifics.",
+          "When an existing memory already covers some of the items, UPDATE or MERGE to add the missing enumerated items instead of creating a partial duplicate.",
+          "Stop once every explicitly stated distinct item is captured; do not add inferred details or split a single claim into redundant paraphrases."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_188fff621803,cand_construction_1e0de19d88f3,cand_construction_3c1b9b07f0b6,cand_construction_3d29fb021ebc,cand_construction_49d33b6ec39c,cand_construction_562333278311,cand_construction_5841eba41953,cand_construction_5c1c02724dcb,cand_construction_61abce35222a,cand_construction_61f343a51f20,cand_construction_739ffa7bf4a9,cand_construction_783058323700,cand_construction_7ad6b8c92275,cand_construction_8aa9eeff6082,cand_construction_aab29d84fea6,cand_construction_ab6000246e66,cand_construction_acd37c8969f6,cand_construction_c1a05e017ce9,cand_construction_c597c6658c45,cand_construction_d0e55163be4c",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_preserve_enumerated_items",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Preserve All Explicitly Enumerated Items in Extraction",
+        "description": "Use when a message explicitly lists multiple distinct facts, traits, reasons, purposes, or ordinal-labeled entities, to ensure every listed item is captured and no unlisted detail is added.",
+        "content": [
+          "When a source message explicitly enumerates multiple distinct items (traits, reasons, purposes, strategies, preferences, steps, or entities with ordinal labels), create one candidate per listed item or one candidate containing the complete explicit list; never drop a listed item.",
+          "Before accepting the candidate, compare it against the source: every distinct item in the enumeration must be represented; if any is missing, revise the candidate.",
+          "Do not add any item that is not stated in the source message, and do not expand the enumeration beyond what the speaker stated.",
+          "For ordinal enumerations (oldest, second, third, etc.), preserve the entity type, the ordinal descriptor, and the stated attribute for each item."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_eb93372dcccc,cand_construction_ec8b6d118fe8,cand_construction_fa575ddc49be,cand_construction_fefabc15a1c9,cand_construction_ff5536ca5140",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_preserve_exact_object_noun",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Preserve Exact Object Noun",
+        "description": "When extracting an event memory that mentions a gift or object being given or received, use the exact noun the speaker used for that object.",
+        "content": [
+          "During extraction, when a message explicitly names a concrete object or gift (e.g., 'pup', 'ring', 'book') given or received, record that exact noun in the candidate memory; do not replace it with a different object type, hypernym, or invented item.",
+          "If the object is only referenced vaguely (pronoun, metaphor, or no explicit noun), do not guess the object type; either omit it or mark it as unclear based on surrounding evidence."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_bacff9e011f2",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_preserve_explicit_facts",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Preserve Explicit Facts in Extraction",
+        "description": "Use when extracting memory candidates from messages that contain explicit factual details (attributes, reasons, outcomes, activities, origins, decisions, values, etc.) that risk being lost in summarization.",
+        "content": [
+          "During extraction, preserve explicitly stated factual details (attributes, reasons, outcomes, activities, origins, decisions, values, etc.) in the candidate content; do not replace them with generic summaries or inferred context.",
+          "When a message contains multiple distinct explicit facts, extract them as separate candidates or keep each fact distinct; do not merge in a way that omits any.",
+          "Do not add unstated entities or infer motivations; only include what the source explicitly states.",
+          "During CRUD, when updating or merging, retain explicit details already stored unless a newer source explicitly changes them."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_0bbc5f645632,cand_construction_24a9ce716b8f,cand_construction_30ade9fb885f,cand_construction_37515597e6e1,cand_construction_44978c9d9eca,cand_construction_50b7f40e583a,cand_construction_536d7a827498,cand_construction_63a98f956edb,cand_construction_63da671c2bfa,cand_construction_64ba8983ec55,cand_construction_64d8b529bd48,cand_construction_6f2edf3b4b4b,cand_construction_769adcf53802,cand_construction_bfe7d18b0bc3,cand_construction_dd0c6dd5944c,cand_construction_df09e8c8e17f,cand_construction_f8222913af89,cand_construction_fc3a39182f02,cand_construction_b3cb2f4049fe,cand_construction_c052eefa166d,cand_construction_c904fa47f4fa,cand_construction_d0057a007433,cand_construction_d1d69dd80f40,cand_construction_d730e36803e8,cand_construction_ea9de86ea0e9,cand_construction_f74da701fe19,cand_construction_fbff07e7dc0e,cand_construction_fdb5fc066056",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_preserve_named_activities",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Preserve All Explicitly Named Activities in Event Memories",
+        "description": "Use when multiple messages describe the same trip or event and explicitly name several activities.",
+        "content": [
+          "During extraction, when multiple messages describe the same trip or event, read each explicitly stated activity and include all of them in the single event memory; do not summarize away any explicitly named activity.",
+          "Before an ADD decision, re-scan the source messages and verify each explicitly named activity appears in the candidate content; if one is missing, amend the candidate rather than dropping it.",
+          "When a later message names another activity for an existing event memory, issue an UPDATE to append only that missing activity, keeping the memory compact; do not create a duplicate memory."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_6fecbcaf5bc6",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_preserve_purpose",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Preserve Preference Purpose Across Extraction and Updates",
+        "description": "Use when creating or updating a memory for a user's stated preference/plan that includes an explicit purpose clause ('so that', 'to', 'because', 'in order to').",
+        "content": [
+          "When a statement contains a preference and an explicit purpose clause, extract the preference and the purpose as one memory object; do not emit a candidate that only repeats the surface preference.",
+          "During CRUD, before rewriting an existing memory that captures a durable preference, check whether the incoming message is about a different topic; if it is, ADD a new memory instead of UPDATE or MERGE, so the original preference and its purpose remain available.",
+          "Only preserve purposes that are explicit in the message; a time or place modifier alone is not a purpose, so do not fabricate one."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_54850d103fc8",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_preserve_qualifiers",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Preserve Explicit Qualifiers in Extraction",
+        "description": "Use when a speaker explicitly names what they miss, enjoy, or value using a qualitative word (e.g., 'calm', 'fun') and a memory candidate is being created or updated.",
+        "content": [
+          "During extraction, if the source message contains an explicit qualitative descriptor for an experience the speaker misses, enjoys, or values, keep that descriptor verbatim in the candidate content; do not reduce it to a generic noun.",
+          "When ADD, UPDATE, or MERGE affects an existing memory that preserves such a qualifier, retain it unless new evidence explicitly contradicts it.",
+          "Stop once the qualifiers actually present are preserved; do not invent synonyms or add extra adjectives."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_43bf64cd6efa",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_preserve_recommendation",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Preserve Recommendation Claims in Preference Memories",
+        "description": "Use when enriching an existing preference/enjoyment memory with a candidate that contains an explicit recommendation, suggestion, or offer about the same items.",
+        "content": [
+          "During extraction, capture an explicit recommendation, suggestion, or offer as a distinct claim, not merely as the speaker's enjoyment or preference.",
+          "During UPDATE/MERGE, if the candidate includes a recommendation claim and the target memory only records personal enjoyment/preference for the same items, do not collapse the recommendation into enjoyment. Preserve the recommendation verb and qualifier in the updated content (e.g., 'recommends X to Y') or create a separate relationship/event memory for the recommendation.",
+          "Only apply when the source explicitly recommends, suggests, or offers; do not apply when new evidence only reinforces enjoyment without any recommendation."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_1f7430f5226e,cand_construction_a4d7f7a1a0f9,cand_construction_f8ee44f2438c",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_preserve_struggle_success",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Preserve Separate Memories for Struggle and Success",
+        "description": "Use when a single message explicitly reports both a difficulty/struggle and a positive outcome/achievement, to avoid losing the positive fact by merging.",
+        "content": [
+          "During extraction, keep both the challenge and the positive outcome in the candidate content when a single message explicitly states both. During CRUD, do not merge them into one memory that records only the struggle; create separate memories (e.g., one event for the challenge, one event for the achievement) unless the positive statement is not a real result.",
+          "Split only when both facets are explicitly supported by the message. If the message states only one facet, or the positive wording is a future plan, preference, or neutral comment rather than a result, keep a single memory to avoid over-splitting."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_d99b3a4af9db",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_preserve_we_shared_activities",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Preserve joint participants when 'we' is used",
+        "description": "When a user message describes an activity with first-person plural pronouns ('we', 'our') and the session establishes a specific partner/companion, include that companion in the event memory instead of attributing the activity to the speaker alone.",
+        "content": [
+          "During extraction and update, when a user uses 'we'/'our' for an activity and a specific partner, spouse, or companion is established in the session, record the event with the speaker and that companion as co-participants.",
+          "Add the co-participant only if their identity is explicit or directly implied by recent context (e.g., wedding, honeymoon, 'my partner'); stop if 'we' is generic or no specific companion is identifiable.",
+          "Do not invent participants for unnamed or collective groups; keep the memory at the level of evidence."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_48cf629455cc,cand_construction_c962acc8f56e",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_principle_statements",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Extract Attributable Principle Statements as Preference Memories",
+        "description": "When a message from an identifiable participant states a general belief, principle, or value judgment (e.g., 'X is the key to Y', 'the best way to ...'), create a preference/state memory attributed to that speaker.",
+        "content": [
+          "During candidate extraction, whenever a message contains an explicit general statement from a participant about what is important, key, or best (e.g., 'is the key to', 'is important', 'the best way', 'should always'), create a preference/state candidate that preserves the claim and its speaker attribution.",
+          "Require the speaker to be identifiable in the message; do not extract impersonal world knowledge or generic advice that is not tied to a specific participant.",
+          "Stop after the principle is captured; do not also extract surrounding encouragement or small talk from the same message."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_b4c8c1df072c",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_progress_evaluation",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Extract Progress Evaluations",
+        "description": "Use when a speaker explicitly evaluates someone's progress or success on a named project.",
+        "content": [
+          "When a speaker explicitly evaluates another person's progress or success on a named project, create a candidate memory recording the speaker, subject, evaluation, and project topic.",
+          "Choose type event for reported speech or state for underlying condition.",
+          "Exclude generic praise with no named project."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_d4437b2af443",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_pronoun_resolution",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Extraction Pronoun Referent Resolution",
+        "description": "When extracting a memory candidate and the source message uses a pronoun or demonstrative (this, it, they) to refer to an entity, resolve the referent from the current conversation before storing the candidate.",
+        "content": [
+          "When a user message contains a pronoun/demonstrative ('this', 'it', 'they') that carries the main predicate of a candidate memory, resolve it to the entity the speaker is discussing in that turn; if a different entity appears nearby, do not attach the predicate to that entity.",
+          "Before accepting an extraction candidate, confirm the subject and object are explicit non-pronominal entities from the session; if the referent is uncertain, check only the current turn and immediately preceding messages, then choose the entity that best matches the predicate."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_c6778198a633,cand_construction_dcf1ad32ce4b",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_record_family_pet_ownership",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Record Family Pet Ownership",
+        "description": "When a speaker mentions a pet as belonging to their family or household, create a state memory of that ownership during extraction.",
+        "content": [
+          "During extraction, when a message includes a possessive reference to a family pet (e.g., 'my family's dog', 'our cat', or a photo caption like 'here's my family's dog'), generate a candidate state memory that the speaker's family has that pet. Include pet type and name if stated.",
+          "Do not extract when the pet is hypothetical, explicitly belongs to someone outside the speaker's family, or when the ownership fact is already captured in an existing memory."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_9930f251df2a",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_recurring_event_interval",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Recurring Event Interval Extraction",
+        "description": "Use when a message describes a repeated event for the same person and an earlier occurrence already exists in memory; extract the time elapsed between occurrences when computable.",
+        "content": [
+          "During extraction, if the message mentions a second or later occurrence of an event type already stored for the same subject (e.g., appointment, trip, class), compare it against prior occurrences and compute the interval from session timestamps or explicit dates.",
+          "If the interval is derivable and the repeated occurrence is contextually significant, add a relationship memory capturing the gap (e.g., 'first and second appointments were N months apart') in addition to the new event memory; otherwise keep the event memory alone.",
+          "Do not generate intervals for one-off events, unrelated event pairs, or when the gap cannot be resolved; stop after comparing with the most recent prior occurrence."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_3f7f66a3de2a",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_relative_event",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Resolve Relative Time in Event Extraction",
+        "description": "When extracting event memories from messages that state when something happened using a relative time phrase (e.g., last week, yesterday, on Friday), resolve it to a concrete date and store it.",
+        "content": [
+          "During extraction, when a message reports a past event using a relative time phrase (e.g., 'last week', 'yesterday', 'on Friday', 'two days ago'), resolve the phrase against the message timestamp to a concrete calendar date.",
+          "Create an event memory for the speaker with the activity and the resolved date; include the original phrase for traceability and set world_start to the resolved event date.",
+          "If the relative time confirms a plan/event already discussed earlier in the session, update that existing plan memory with the resolved date instead of creating a new one.",
+          "Do not apply to future plans, hypothetical events, recurring habits, or when the relative time cannot be resolved."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_c6b9e63bf294,cand_construction_cefa30bf1547,cand_construction_e3b4cf20c912,cand_construction_e9c68694b070,cand_construction_ff825da1c2ea",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_request_help_discussion",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Extract Requests for Help or Discussion",
+        "description": "Use when a message contains an explicit ask from one person to another for help, advice, or to discuss a specific topic.",
+        "content": [
+          "When a message contains an explicit request like 'Can we talk about X?' or 'Can you help me with X?', extract an event memory with the speaker, recipient, and topic.",
+          "Keep this request memory separate from memories about struggle or intention to reach out.",
+          "Do not create a request memory when only a need or future intention is expressed without a direct ask."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_a2ceb2ae3c89",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_resolve_relative_time",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Resolve Relative Time in Event Extraction",
+        "description": "Use when extracting or updating event/state memories from messages with relative time expressions (yesterday, last week, N days ago) and a known message timestamp.",
+        "content": [
+          "During extraction, when a message describes an event with a relative time expression (e.g., 'yesterday', 'last week', 'last Friday', 'N days ago'), resolve it against the message's occurred_at timestamp to an absolute date and set world_start to that date; do not use the message timestamp as the event date.",
+          "Record the resolved absolute date in the memory content (e.g., 'met Anna on 31 January 2023') instead of leaving the bare relative phrase.",
+          "When a message contains a first-person past action or a secondary clause with a relative time, create a separate event memory for it even if the main topic differs.",
+          "Do not apply when the message already has an absolute date, when the event occurs at message time ('today', 'now'), or when no reliable timestamp exists."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_0108ec115210,cand_construction_11e8fbaf9049,cand_construction_1c83a0024ca7,cand_construction_3b9b4fc25bef,cand_construction_41ab3059dc03,cand_construction_4b8f0511d51b,cand_construction_4ee1914f01b6,cand_construction_52753cd2bfab,cand_construction_5ff4d909ac93,cand_construction_7696ce06908a,cand_construction_839289fafa90,cand_construction_86f003ade0bf,cand_construction_99a070bfadee,cand_construction_b2cca5b4b30f,cand_construction_c61117e0eb41",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_resource_suggestion",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Extract Resource Suggestions",
+        "description": "Use when a speaker explicitly recommends a specific named resource to another for insights on a topic.",
+        "content": [
+          "When a message explicitly recommends a specific named resource to another speaker, create an event candidate capturing who suggested, to whom, the resource, and the topic.",
+          "Do not skip because the resource appears as advice or the topic is personal.",
+          "Stop after one candidate per suggestion; skip if no concrete resource is named or the message only asks for a recommendation."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_634ba86a7fe5",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_separate_subject_facts",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Separate Facts by Subject",
+        "description": "When a message describes both the speaker and their pets or another group, create separate memory candidates per subject and resolve pronoun antecedents correctly.",
+        "content": [
+          "During extraction, identify every entity mentioned in the message (speaker, pets, family, colleagues, etc.) before assigning a memory subject.",
+          "If the subject of a claim is a pronoun, resolve it to the most recent matching antecedent in the same message; do not default it to the speaker.",
+          "When a speaker says their pets (or another group) 'they' do or prefer something, create a separate candidate whose subject is the pets/group, and do not merge that claim with a candidate about the speaker.",
+          "If a candidate would combine claims with different subjects, split it so each memory has exactly one subject and remains evidence-bound to the source message."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_86b7f7587ddc,cand_construction_d123b75844e2",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_shared_activity_relationship",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Extract shared-activity relationship from casual enjoyment",
+        "description": "When a message says the speaker or a named person enjoys or regularly does an activity with another named person/pet, phrased casually like 'we have a great time doing X' or 'we love doing X together'.",
+        "content": [
+          "During extraction, when a message states that the speaker or another named person enjoys or regularly does an activity together with a second named person or pet, expressed with casual mutual-enjoyment language (e.g., 'we have a great time doing X', 'we love X together'), create one relationship memory linking both participants with attributes for the activity and the enjoyment. Link the memory to the source message and use the session timestamp.",
+          "Do not create this memory for a single past occurrence (e.g., 'we went to the beach yesterday') unless the message also asserts a general preference; treat such one-off events as event memories. Create at most one memory per distinct (participants, activity) pair."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_16943cbc250e",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_shared_frustration",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Extract Shared Frustration from Explicit Empathy",
+        "description": "Use when a speaker explicitly says they share, understand, or relate to a frustration previously voiced by another participant in the session.",
+        "content": [
+          "During extraction, when a speaker explicitly aligns with another participant's earlier frustration (e.g., 'I get how frustrating it is'), create a candidate recording the shared frustration for both participants, not just the speaker's isolated sentiment.",
+          "If an existing memory captures the other person's individual struggle, create or update a memory expressing the joint experience rather than duplicating the earlier event.",
+          "Do not apply to generic sympathy without personal alignment, unrelated complaints, or mere acknowledgment without shared experience."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_3773002b5fe2",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_shared_habit_confirmation",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Shared-habit confirmation to addressed person",
+        "description": "When a message uses 'same here, <Name>!' or 'me too, <Name>!' to confirm the addressed person shares the speaker's listed habits, extract memory candidates for both speaker and addressed person.",
+        "content": [
+          "During candidate extraction, when a speaker says 'same here, <Name>!' or 'me too, <Name>!' and then lists practices/habits, create a separate state candidate with <Name> as subject containing the same listed practices, in addition to the speaker's candidate.",
+          "Only generate the addressee candidate when the sharing phrase clearly refers to the same listed practices; do not expand to other people or invent practices not explicitly named."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_05a7cc72083f",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_stated_benefits",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Preserve Stated Benefits of Activities in Extraction",
+        "description": "Use when a user explicitly states an activity and also states its benefit, effect, or purpose.",
+        "content": [
+          "If a message states an activity the speaker enjoys and explicitly states what that activity does for them (benefit, effect, purpose), include both the activity and the stated benefit/effect in the same profile or preference candidate.",
+          "Do not infer benefits the speaker did not state, and do not apply when the stated benefit is already present in the existing memory being updated."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_b3360bee9f99",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_subject_attribution",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Preference Subject Attribution from First-Person Cues",
+        "description": "When a message uses first-person evaluative forms (I, my, love, enjoy) about a person or thing, set the memory subject to the speaker, not another participant mentioned in the session.",
+        "content": [
+          "During extraction, if a message uses first-person evaluative forms ('I', 'my', 'I love', 'I enjoy') about a person, team, or thing, set the memory subject to the message's speaker.",
+          "Do not reassign the subject to another participant only because that person was discussed earlier in the session or appears in the same commit window.",
+          "Before ADDing a preference/opinion memory, verify the subject field: if the message states the speaker's own view, the subject must be the speaker. Use a non-speaker subject only when the message explicitly describes that person's preference (e.g., 'Tim loves ...')."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_9ac6256277c7",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_update_ongoing_event",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Update Ongoing Event on Completion",
+        "description": "Use when a later message describes the completion or end of an activity previously stored as an ongoing event without an end time.",
+        "content": [
+          "During extraction, when a candidate describes the completion of an activity, search the existing memory pool for an event memory of the same subject and activity with world_end null.",
+          "If a matching ongoing event exists, represent the completion as an UPDATE of that memory: set world_end from the message timestamp or stated completion time, and include the duration if inferable; do not ADD a separate completion event.",
+          "Only ADD a new event if no matching ongoing event exists or the activity is clearly different."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_42c5decd54b7",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    },
+    {
+      "skill_id": "sk_construction_verify_before_skip",
+      "version": 1,
+      "side": "construction",
+      "status": "active",
+      "payload": {
+        "name": "Verify Memory Coverage Before SKIP",
+        "description": "Use during construction CRUD when a candidate is about to be SKIPped or MERGEd as duplicate or already represented; verify the covering memory exists in the retrieved pool before skipping.",
+        "content": [
+          "Before choosing SKIP or MERGE for a candidate, verify that the retrieved existing-memory pool (or a memory created earlier in this batch) actually contains a memory that covers the candidate's specific factual claims (subject, predicate, object, and time).",
+          "If no covering memory exists, ADD the candidate as a new memory; do not skip based on thematic overlap, similar wording, or an absent memory.",
+          "If the candidate shares only a broad topic or category but adds a distinct specific fact, ADD it or MERGE only the matching portion; preserve the new claim.",
+          "Only SKIP or MERGE when you can point to the specific existing memory ID(s) that fully represent the candidate's content."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_construction_57d13ff5b1c3,cand_construction_6a80ce25a89f,cand_construction_848e1be3bf1f,cand_construction_8b9bab6279c8,cand_construction_9712c2f3cc90,cand_construction_bb259013c60d,cand_construction_bd42fb281040,cand_construction_c24aae61a563,cand_construction_d5c6e23bfdb6,cand_construction_e6a10c17226b",
+      "bank_version_created": 2,
+      "created_at": "2026-08-02T01:32:43Z"
+    }
+  ]
+}

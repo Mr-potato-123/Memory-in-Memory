@@ -1,0 +1,537 @@
+{
+  "batch": {
+    "batch_id": "access_bank1_new_build_0004",
+    "side": "access",
+    "base_bank_version": "v000",
+    "candidates": [
+      {
+        "candidate_id": "cand_access_1807a9288a4a",
+        "skill_id": "sk_access_4a9ba31b07",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Expand frustration queries to unmet-need evidence",
+          "description": "When a question asks about a frustration, problem, or difficulty, expand retrieval to memories of unmet needs or ongoing searches (e.g., 'searching for X but has not found one') rather than only literal emotion words.",
+          "content": [
+            "When the question uses an emotional label such as 'frustration', 'problem', or 'difficulty', do not search only those literal words; add expansions that capture the underlying situation: 'searching for', 'looking for', 'has not found', 'unable to find', 'struggling with', 'wants to find'.",
+            "For a stated 'shared' or common experience, include targeted searches on the relationship between the named people and on each person's events about the same topic; the memory may describe only one person's unmet need that the other supports.",
+            "If the first search returns no direct match, issue at least one alternate retrieval (keyword/BM25 or structured) using the concrete activity (e.g., 'pet-friendly', 'spot', 'search') before concluding the information is unavailable."
+          ]
+        },
+        "solves": "The diagnosed failure is a lexical mismatch: the question asked about a 'shared frustration', but the supporting memory stated the concrete situation ('Andrew is searching for a pet-friendly spot and has not found one'), so the literal-word search missed it. The rule to expand emotion-word queries into unmet-need and ongoing-search evidence is reusable for any future question about frustrations, problems, or difficulties, where memories typically record behavior rather than the label.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-44_conv-44_qa_0015",
+        "source_failure_id": "access_conv-44_conv-44_qa_0015",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:06:36Z"
+      },
+      {
+        "candidate_id": "cand_access_1dad6451edfd",
+        "skill_id": "sk_access_5399db2ef0",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Emotion-location answers need activity-place searches",
+          "description": "When a question asks which places give a person peace, calm, joy, or similar positive emotion, search using both emotion terms and the person's recurring activities at candidate locations before answering.",
+          "content": [
+            "If the question asks for places/locations that give a person a positive emotion (peace, calm, joy, comfort), run at least two searches: one with the emotion-focused phrasing and one that combines the person's known activities (e.g., yoga, meditation, walking) with candidate place types (beach, park, trail, home, retreat, garden).",
+            "Before listing a place in the answer, require a retrieved memory that connects that place to the person AND contains an emotion/calm descriptor, preferring the most recent version of the memory.",
+            "When the first search returns only generic places, broaden with location nouns and activity nouns in the query instead of simply increasing top-k or using the same query again."
+          ]
+        },
+        "solves": "Answers to 'which places give a person peace/calm/joy' can be missed when retrieval uses only emotion-focused queries, because these memories may be encoded as an activity performed at a place (e.g., practicing yoga at the beach). The skill applies to any question asking for places linked to a person's positive emotion; it is not needed for questions about static attributes or about activities themselves.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-48_conv-48_qa_0013",
+        "source_failure_id": "access_conv-48_conv-48_qa_0013",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:07:19Z"
+      },
+      {
+        "candidate_id": "cand_access_4394d2b8550b",
+        "skill_id": "sk_access_058e8afbf9",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Count-event-mentions-with-inflections",
+          "description": "When a question asks how many times someone performed an activity (won, played, mentioned, etc.), expand keyword searches to cover inflections and singular/plural forms before retrieving memories.",
+          "content": [
+            "For counting questions about past actions, first list morphological variants of the action verb (e.g., win/wins/won/winning) and both singular/plural object nouns (game/games).",
+            "Issue keyword searches for each variant and combine with semantic/hybrid search to retrieve memories phrased differently; do not assume a single query captures all mentions."
+          ]
+        },
+        "solves": "The agent missed multiple memory entries because it searched only one keyword inflection (\"winning games\") while the stored memories used different verb forms and singular nouns (\"won\", \"win a game\", \"game\"). The failure mechanism is over-reliance on a single keyword form when counting repeated actions or events. This applies to any count-of-action question where memories may phrase the action with varied inflections or synonyms, so future searches must expand to all morphological variants and combine keyword with semantic retrieval.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-43_conv-43_qa_0017",
+        "source_failure_id": "access_conv-43_conv-43_qa_0017",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:06:05Z"
+      },
+      {
+        "candidate_id": "cand_access_48639ee6c303",
+        "skill_id": "sk_access_c43ab9a8c7",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Psychological-state synonym search",
+          "description": "When a question asks how someone stays or becomes confident, motivated, positive, or keeps going, expand retrieval with equivalent mental-state synonyms and strategy-oriented phrases before concluding evidence is missing.",
+          "content": [
+            "If the user asks how a person maintains or achieves a psychological state (e.g., confidence, motivation, positivity), run at least one extra search using synonyms of that state (motivated, encouraged, determined, positive, strong) combined with strategy phrases like 'strategies for staying', 'ways to keep', 'support system', 'goals', 'reasons for starting'.",
+            "Treat memories that describe the person's motivation, encouragement, or coping strategies as relevant evidence for confidence-related questions, and do not depend on the exact keyword from the question appearing in the memory."
+          ]
+        },
+        "solves": "When a question asks how a person maintains a psychological state like confidence, retrieval can miss memories that express the same state through different words such as motivation or encouragement. This rule expands the search with synonyms and strategy-oriented phrases and accepts such memories as relevant evidence. It does not apply to factual, non-psychological questions.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-30_conv-30_qa_0062",
+        "source_failure_id": "access_conv-30_conv-30_qa_0062",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:05:45Z"
+      },
+      {
+        "candidate_id": "cand_access_4c834bc20428",
+        "skill_id": "sk_access_227a00b678",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Implicit inspiration source search",
+          "description": "When a question asks about what inspires or motivates a person, and the initial search lacks an explicit inspiration memory, run additional searches for achievement, validation, and positive feedback memories.",
+          "content": [
+            "During questions about a person's inspiration or motivation, treat 'validation', 'achievement', 'recognition', and 'positive feedback' as potential inspiration sources; run additional hybrid searches for these terms before concluding.",
+            "If an answer claim lacks direct supporting memory and the memory pool contains events about the subject's successes or well-received work, retrieve those events as evidence for implicit inspiration.",
+            "After each retrieval round, verify whether the evidence covers all plausible answer components; if a component remains unsupported, issue another search with broader semantic expansions instead of answering immediately."
+          ]
+        },
+        "solves": "The diagnosed cause was a single literal 'inspiration' search that missed a memory where Joanna's work was validated, leaving the 'validation' answer component unsupported. The abstract mechanism is that inspiration sources are often implicit in validation, achievement, or feedback memories, so literal keyword searches are insufficient. This skill applies to any future question asking what a person is inspired or motivated by, regardless of topic, and ensures evidence sufficiency before answering. It does not apply to non-motivational factual questions.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-42_conv-42_qa_0055",
+        "source_failure_id": "access_conv-42_conv-42_qa_0055",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:05:29Z"
+      },
+      {
+        "candidate_id": "cand_access_6025148c81c5",
+        "skill_id": "sk_access_7e38571b77",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Find competing interests for delayed activity",
+          "description": "When asked why a person sometimes delays, skips, or puts off a regular activity, also search for that person's other hobbies, interests, and preferred activities to explain the behavior.",
+          "content": [
+            "Before answering why someone sometimes delays or omits a recurring activity, run an additional semantic or keyword search for that person's other hobbies, interests, and preferred activities (e.g., query '<person> hobbies and interests').",
+            "If the retrieved memories only describe the activity itself or direct mentions of delay, treat evidence as insufficient and expand the search to competing interests; a strong competing interest can explain the delay even if it never mentions the delayed activity."
+          ]
+        },
+        "solves": "When a question asks why someone sometimes delays, skips, or puts off a recurring activity, the runtime searches only for direct delay statements and misses competing hobbies that explain the behavior. Apply when seeking reasons for intermittent non-participation by any person; do not apply to external obstacles, scheduling conflicts, or intrinsic activity drawbacks.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-48_conv-48_qa_0023",
+        "source_failure_id": "access_conv-48_conv-48_qa_0023",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:06:59Z"
+      },
+      {
+        "candidate_id": "cand_access_71a09ea51624",
+        "skill_id": "sk_access_672f18cb56",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Enumeration-Question Synonym-Expanded Searches",
+          "description": "When a question asks how a person did something and expects a list of actions, use expanded synonym searches to find all action memories before answering.",
+          "content": [
+            "When a question asks 'How did <entity> <outcome>?' or 'What actions did <entity> take?', treat it as an enumeration request whose answer may span multiple distinct activities stored in separate memories.",
+            "Before answering, if the initial retrieval returns only some action memories, run additional searches using action-oriented synonyms and paraphrases of the target verb/outcome (e.g., for 'promote': marketing, advertising, partner, collaboration, launch, campaign, showcase, content, video) to surface memories that describe the same activity category with different wording.",
+            "Check sufficiency after each search: if the question asks for 'how' and new searches keep finding different actions, continue until no new distinct actions appear; do not finalize an answer after a single top-k retrieval when the question is enumerative."
+          ]
+        },
+        "solves": "One search with only the question's verb can miss memories describing the same activity category in different words (e.g., 'promote' versus 'partnered with an artist', 'limited-edition line', 'video presentation'). The diagnosed agent answered after a single hybrid retrieval, leaving valid action memories out. This applies to any future 'how' / 'what actions' enumeration question: run synonym-expanded searches and verify completeness before answering.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-30_conv-30_qa_0023",
+        "source_failure_id": "access_conv-30_conv-30_qa_0023",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:05:30Z"
+      },
+      {
+        "candidate_id": "cand_access_af910104c5cd",
+        "skill_id": "sk_access_c7530c4205",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Expand_rewarding_experience_queries_with_achievement_terms",
+          "description": "When a question asks what someone recently did that was rewarding/fulfilling and the first search lacks a clear achievement event, run an additional search with concrete achievement vocabulary (presented, conference, received positive feedback, award, recognized) before answering.",
+          "content": [
+            "If the question uses abstract positive descriptors like 'rewarding experience', 'fulfilling', or 'sense of accomplishment' and the initial retrieval does not return an event memory that explicitly describes an achievement or positive outcome, run an additional keyword or structured search using concrete achievement verbs and nouns (e.g., 'presented', 'conference', 'received positive feedback', 'award', 'recognized').",
+            "Do not answer from the first result set if it lacks a high-confidence direct match; perform this additional search first, and if it yields an achievement event, weigh it above loosely matching experiential activities."
+          ]
+        },
+        "solves": "Questions that ask what someone recently did that was 'rewarding' or 'fulfilling' are often grounded in event memories of achievements or positive feedback, which may not contain the abstract reward vocabulary and therefore can be missed by a single semantic search. This rule triggers an extra targeted retrieval using concrete achievement/recognition terms before answering, and applies to any future question with abstract positive-evaluative wording.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-48_conv-48_qa_0158",
+        "source_failure_id": "access_conv-48_conv-48_qa_0158",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:07:34Z"
+      },
+      {
+        "candidate_id": "cand_access_c669241d2cc9",
+        "skill_id": "sk_access_9045318e4e",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Subject-centric retry for theme queries",
+          "description": "When a question asks about a theme/pattern emerging in one person's life (especially 'as mentioned by another'), and initial hybrid results lack relevant episodic memories, retry with queries on the subject's own interactions/encounters, omitting the abstract theme word and the other person's name.",
+          "content": [
+            "When a question asks about a theme, pattern, or trend emerging in a specific person's life, do not rely only on queries containing the abstract theme word or a mentioner's name; those terms may be absent from stored episodic memories.",
+            "If the first hybrid search returns only unrelated general memories, run at least one follow-up search focused on the subject's own recent activities, interactions, and encounters (e.g., subject + 'helping', 'encounters', 'recurring'), and do not include the abstract theme word or the other person's name.",
+            "Before answering, verify the retrieved evidence actually reflects the asked theme; if the evidence contains only generic plans, relationships, or unrelated events, continue searching the subject's discrete episodes until a recurring behavioral pattern is found or exhausted."
+          ]
+        },
+        "solves": "When a question asks about a theme or pattern emerging in a person's life (often phrased as 'as mentioned by someone else'), retrieval can fail because the supporting memory describes the subject's concrete recurring interactions without containing the abstract theme word or the mentioner's name. Future such questions should trigger supplementary subject-centric searches that drop abstract labels and mentioner names to surface discrete episodic memories.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-49_conv-49_qa_0123",
+        "source_failure_id": "access_conv-49_conv-49_qa_0123",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:08:03Z"
+      },
+      {
+        "candidate_id": "cand_access_e27e410713da",
+        "skill_id": "sk_access_1594889898",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Recurring-frustration behavioral search expansion",
+          "description": "When a question asks about a person's recurring frustration, repeated issue, or ongoing problem, expand retrieval from the abstract emotion word to concrete behavior/object plus frequency terms, and prefer explicit recurrence statements as evidence.",
+          "content": [
+            "When a question asks about a person's recurring frustration, repeated issue, or ongoing problem, do not limit searches to the abstract emotion word (e.g., 'frustration', 'annoyance'). Issue follow-up searches combining concrete behavior/object terms implied by the question or by already-retrieved memories with frequency terms such as 'every week', 'weekly', 'always', 'keeps', or 'ritual'.",
+            "Before answering with a candidate frustration, check whether a retrieved memory explicitly states the recurrence or pattern (e.g., 'has been doing X on a weekly basis'); prefer that explicit statement as evidence over an indirect, one-time, or jocular mention."
+          ]
+        },
+        "solves": "Questions using abstract emotion words (e.g., 'recurring frustration') often fail to match memories that state the same pattern with concrete behavioral verbs and frequency terms (e.g., 'does X weekly, calls it a ritual'). The retrieval searched only the emotion term and missed a direct, newer memory. This skill requires expanding to concrete behavior/object plus frequency terms for such questions, and preferring an explicit recurrence statement over an indirect or jocular mention. Applies to questions about any user's recurring frustration or repeated issue.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-49_conv-49_qa_0032",
+        "source_failure_id": "access_conv-49_conv-49_qa_0032",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:07:56Z"
+      },
+      {
+        "candidate_id": "cand_access_e35080cf82fd",
+        "skill_id": "sk_access_9f88979624",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Expand searches for stressor questions beyond literal wording",
+          "description": "When a question asks about a person's main stressor, source of stress, or biggest difficulty, expand retrieval with stress-related synonyms and common life domains before answering.",
+          "content": [
+            "Before answering a question about a person's main stressor, source of stress, or biggest difficulty, issue searches that go beyond the literal question wording: include stress-related synonyms (stressful, tough, difficult, hard, pressure, overwhelmed) and common life domains (work, family, school, health, finances, relationships).",
+            "If the question explicitly excludes a topic ('besides X', 'other than X', 'apart from X'), do not let that excluded topic dominate the query; run an additional search replacing the excluded topic with likely alternative domains.",
+            "Do not answer from an indirect memory that only implies the stressor through an overlap or trade-off; keep searching until a memory explicitly states what is stressful, tough, or difficult."
+          ]
+        },
+        "solves": "Questions about a person's main stressor or biggest difficulty often miss the directly relevant memory because retrieval anchors on literal wording and any explicitly excluded topic. Expanding searches with stress-related synonyms and common life domains, and refusing indirect evidence, surfaces the explicit statement. Applies to any future question about a person's stressors or difficulties.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-44_conv-44_qa_0026",
+        "source_failure_id": "access_conv-44_conv-44_qa_0026",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:07:00Z"
+      }
+    ],
+    "retrieved_skill_ids": [],
+    "relations": []
+  },
+  "plan": {
+    "transaction_id": "tx_access_bank1_new_build_0004",
+    "side": "access",
+    "base_bank_version": "v000",
+    "candidate_resolutions": [
+      {
+        "candidate_id": "cand_access_1807a9288a4a",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_access_emotion_behavior_expansion"
+        ],
+        "reason": "Merged with cand_access_e27e410713da because both repair the same mechanism of expanding abstract emotion-word queries into concrete behavioral evidence."
+      },
+      {
+        "candidate_id": "cand_access_1dad6451edfd",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_emotion_place_search"
+        ],
+        "reason": "No existing Skill covers the specific mechanism of linking positive emotions to places via activity-place searches."
+      },
+      {
+        "candidate_id": "cand_access_4394d2b8550b",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_count_inflection_expansion"
+        ],
+        "reason": "No existing Skill covers the specific mechanism of expanding keyword inflections for counting questions."
+      },
+      {
+        "candidate_id": "cand_access_48639ee6c303",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_access_psychological_state_synonym"
+        ],
+        "reason": "Merged with cand_access_4c834bc20428 because both repair the same mechanism of expanding psychological-state queries with synonyms and implicit evidence."
+      },
+      {
+        "candidate_id": "cand_access_4c834bc20428",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_psychological_state_synonym"
+        ],
+        "reason": "Absorbing cand_access_48639ee6c303 into this merged Skill."
+      },
+      {
+        "candidate_id": "cand_access_6025148c81c5",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_competing_interest_search"
+        ],
+        "reason": "No existing Skill covers the specific mechanism of searching for competing interests to explain delayed activities."
+      },
+      {
+        "candidate_id": "cand_access_71a09ea51624",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_enumeration_synonym_search"
+        ],
+        "reason": "No existing Skill covers the specific mechanism of synonym-expanded searches for enumeration questions."
+      },
+      {
+        "candidate_id": "cand_access_af910104c5cd",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_access_abstract_positive_expansion"
+        ],
+        "reason": "Merged with cand_access_e35080cf82fd because both repair the same mechanism of expanding abstract evaluative queries with concrete vocabulary."
+      },
+      {
+        "candidate_id": "cand_access_c669241d2cc9",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_subject_centric_retry"
+        ],
+        "reason": "No existing Skill covers the specific mechanism of subject-centric retry for theme queries."
+      },
+      {
+        "candidate_id": "cand_access_e27e410713da",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_emotion_behavior_expansion"
+        ],
+        "reason": "Absorbing cand_access_1807a9288a4a into this merged Skill."
+      },
+      {
+        "candidate_id": "cand_access_e35080cf82fd",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_abstract_positive_expansion"
+        ],
+        "reason": "Absorbing cand_access_af910104c5cd into this merged Skill."
+      }
+    ],
+    "operations": [
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_emotion_behavior_expansion",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Expand emotion-word queries to behavioral evidence",
+        "description": "Use when a question asks about a frustration, problem, difficulty, or recurring issue.",
+        "content": [
+          "When the question uses an emotional label such as 'frustration', 'problem', or 'difficulty', do not search only those literal words; add expansions that capture the underlying situation: 'searching for', 'looking for', 'has not found', 'unable to find', 'struggling with', 'wants to find'.",
+          "For recurring frustrations or repeated issues, combine concrete behavior/object terms with frequency terms such as 'every week', 'weekly', 'always', 'keeps', or 'ritual'.",
+          "Prefer explicit recurrence statements as evidence over indirect, one-time, or jocular mentions.",
+          "If the first search returns no direct match, issue at least one alternate retrieval using the concrete activity before concluding the information is unavailable."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_1807a9288a4a",
+          "cand_access_e27e410713da"
+        ],
+        "reason": "Creating merged Skill from two candidates that both expand abstract emotion queries into concrete behavioral evidence.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_emotion_place_search",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Emotion-location answers need activity-place searches",
+        "description": "Use when a question asks which places give a person peace, calm, joy, or similar positive emotion.",
+        "content": [
+          "If the question asks for places/locations that give a person a positive emotion (peace, calm, joy, comfort), run at least two searches: one with the emotion-focused phrasing and one that combines the person's known activities (e.g., yoga, meditation, walking) with candidate place types (beach, park, trail, home, retreat, garden).",
+          "Before listing a place in the answer, require a retrieved memory that connects that place to the person AND contains an emotion/calm descriptor, preferring the most recent version of the memory.",
+          "When the first search returns only generic places, broaden with location nouns and activity nouns in the query instead of simply increasing top-k or using the same query again."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_1dad6451edfd"
+        ],
+        "reason": "Creating new Skill for emotion-location retrieval.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_count_inflection_expansion",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Count-event-mentions-with-inflections",
+        "description": "Use when a question asks how many times someone performed an activity (won, played, mentioned, etc.).",
+        "content": [
+          "For counting questions about past actions, first list morphological variants of the action verb (e.g., win/wins/won/winning) and both singular/plural object nouns (game/games).",
+          "Issue keyword searches for each variant and combine with semantic/hybrid search to retrieve memories phrased differently; do not assume a single query captures all mentions."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_4394d2b8550b"
+        ],
+        "reason": "Creating new Skill for counting action mentions.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_psychological_state_synonym",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Psychological-state synonym search",
+        "description": "Use when a question asks how someone stays or becomes confident, motivated, positive, or keeps going.",
+        "content": [
+          "If the user asks how a person maintains or achieves a psychological state (e.g., confidence, motivation, positivity), run at least one extra search using synonyms of that state (motivated, encouraged, determined, positive, strong) combined with strategy phrases like 'strategies for staying', 'ways to keep', 'support system', 'goals', 'reasons for starting'.",
+          "Treat memories that describe the person's motivation, encouragement, or coping strategies as relevant evidence for confidence-related questions, and do not depend on the exact keyword from the question appearing in the memory.",
+          "During questions about a person's inspiration or motivation, treat 'validation', 'achievement', 'recognition', and 'positive feedback' as potential inspiration sources; run additional hybrid searches for these terms before concluding.",
+          "After each retrieval round, verify whether the evidence covers all plausible answer components; if a component remains unsupported, issue another search with broader semantic expansions instead of answering immediately."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_48639ee6c303",
+          "cand_access_4c834bc20428"
+        ],
+        "reason": "Creating merged Skill from two candidates that both expand psychological-state queries with synonyms and implicit evidence.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_competing_interest_search",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Find competing interests for delayed activity",
+        "description": "Use when asked why a person sometimes delays, skips, or puts off a regular activity.",
+        "content": [
+          "Before answering why someone sometimes delays or omits a recurring activity, run an additional semantic or keyword search for that person's other hobbies, interests, and preferred activities (e.g., query '<person> hobbies and interests').",
+          "If the retrieved memories only describe the activity itself or direct mentions of delay, treat evidence as insufficient and expand the search to competing interests; a strong competing interest can explain the delay even if it never mentions the delayed activity."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_6025148c81c5"
+        ],
+        "reason": "Creating new Skill for competing interest search.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_enumeration_synonym_search",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Enumeration-Question Synonym-Expanded Searches",
+        "description": "Use when a question asks how a person did something and expects a list of actions.",
+        "content": [
+          "When a question asks 'How did <entity> <outcome>?' or 'What actions did <entity> take?', treat it as an enumeration request whose answer may span multiple distinct activities stored in separate memories.",
+          "Before answering, if the initial retrieval returns only some action memories, run additional searches using action-oriented synonyms and paraphrases of the target verb/outcome (e.g., for 'promote': marketing, advertising, partner, collaboration, launch, campaign, showcase, content, video) to surface memories that describe the same activity category with different wording.",
+          "Check sufficiency after each search: if the question asks for 'how' and new searches keep finding different actions, continue until no new distinct actions appear; do not finalize an answer after a single top-k retrieval when the question is enumerative."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_71a09ea51624"
+        ],
+        "reason": "Creating new Skill for enumeration synonym searches.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_abstract_positive_expansion",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Expand abstract positive-evaluative queries with concrete vocabulary",
+        "description": "Use when a question asks what someone recently did that was rewarding, fulfilling, or a main stressor.",
+        "content": [
+          "If the question uses abstract positive descriptors like 'rewarding experience', 'fulfilling', or 'sense of accomplishment' and the initial retrieval does not return an event memory that explicitly describes an achievement or positive outcome, run an additional keyword or structured search using concrete achievement verbs and nouns (e.g., 'presented', 'conference', 'received positive feedback', 'award', 'recognized').",
+          "Before answering a question about a person's main stressor, source of stress, or biggest difficulty, issue searches that go beyond the literal question wording: include stress-related synonyms (stressful, tough, difficult, hard, pressure, overwhelmed) and common life domains (work, family, school, health, finances, relationships).",
+          "If the question explicitly excludes a topic ('besides X', 'other than X', 'apart from X'), do not let that excluded topic dominate the query; run an additional search replacing the excluded topic with likely alternative domains.",
+          "Do not answer from an indirect memory that only implies the stressor through an overlap or trade-off; keep searching until a memory explicitly states what is stressful, tough, or difficult."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_af910104c5cd",
+          "cand_access_e35080cf82fd"
+        ],
+        "reason": "Creating merged Skill from two candidates that both expand abstract evaluative queries with concrete vocabulary.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_subject_centric_retry",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Subject-centric retry for theme queries",
+        "description": "Use when a question asks about a theme/pattern emerging in one person's life (especially 'as mentioned by another').",
+        "content": [
+          "When a question asks about a theme, pattern, or trend emerging in a specific person's life, do not rely only on queries containing the abstract theme word or a mentioner's name; those terms may be absent from stored episodic memories.",
+          "If the first hybrid search returns only unrelated general memories, run at least one follow-up search focused on the subject's own recent activities, interactions, and encounters (e.g., subject + 'helping', 'encounters', 'recurring'), and do not include the abstract theme word or the other person's name.",
+          "Before answering, verify the retrieved evidence actually reflects the asked theme; if the evidence contains only generic plans, relationships, or unrelated events, continue searching the subject's discrete episodes until a recurring behavioral pattern is found or exhausted."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_c669241d2cc9"
+        ],
+        "reason": "Creating new Skill for subject-centric retry.",
+        "hard_delete": false
+      }
+    ]
+  },
+  "status": "planned"
+}

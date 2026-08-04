@@ -1,0 +1,1689 @@
+{
+  "schema_version": 1,
+  "bank": "bank1",
+  "side": "access",
+  "created_at": "2026-08-02T17:30:48Z",
+  "source_snapshot": "selected.json",
+  "skills": [
+    {
+      "skill_id": "sk_access_08105f029d",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Include event memories for current activity questions",
+        "description": "Use when a question asks what someone is currently reading, watching, working on, doing, or another ongoing activity. The initial search should not be limited to memory_kind 'state'; include 'event' memories and add activity-oriented query expansions.",
+        "content": [
+          "If the question asks about a person's current activity (e.g., 'What book is X reading?', 'What is X working on?', 'What is X currently doing?'), set the search's memory_kinds to include both 'state' and 'event' (or omit the filter entirely) rather than only 'state'.",
+          "Add query expansions that phrase the activity directly, such as 'X is reading [book]', 'currently reading', or 'reading now'.",
+          "When reviewing results, inspect any event memory whose subject matches the person and whose predicate relates to activity/reading/working; the answer (e.g., the book title) is often in the object_text."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_525da603c338",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_0edca92731",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Time-window event search with synonym expansion",
+        "description": "Use when a question specifies a time period (month/year) and asks about travel, activities, or changes. Apply structured time filters and expand action verbs with synonyms.",
+        "content": [
+          "When the question specifies a time period, treat it as a structured filter: search event memories whose world_start/world_end falls inside that period, using the subject and relevant predicate.",
+          "Expand action verbs with synonyms: for travel also search 'trip', 'road trip', 'visit', 'vacation', 'went to', 'headed to', 'journey'; for other activities use similar expansions.",
+          "For abstract changes (e.g., 'physical transformation'), run a second search with concrete terms like 'dyed hair', 'haircut', 'shaved', 'tattoo', 'piercing', 'new glasses', 'beard', 'weight loss'.",
+          "A memory is relevant if its stored date falls within the requested period, even if the month name is not in the text.",
+          "Only answer 'No information available' after time-filtered and synonym-expanded searches fail."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_219fc2dcc93a,cand_access_3cebefbacf73",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_1f580fcdc5",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Broaden memory kinds for plan and future questions",
+        "description": "Use when a question asks about plans, projects, future events, scheduled activities, or location during a period. Do not restrict memory_kind to 'plan' or 'event' alone; include both and related kinds.",
+        "content": [
+          "When the question is about a plan, project, future event, or scheduled activity, do not restrict memory_kinds to only 'plan' or only 'event'. Include both 'plan' and 'event' (and 'goal' if available) or omit the filter.",
+          "Add query expansions with plan-related terms: 'planned', 'planning', 'plans', 'scheduled', 'intends', 'will attend', 'next [time]'.",
+          "For location-period questions, include travel-related terms: 'traveled to', 'went to', 'visited', 'stayed in', 'trip to'.",
+          "Inspect returned memories for predicate values like 'project', 'goal', 'plan', 'interest' even if memory_kind is 'event'.",
+          "Do not set a narrow past-time filter when the question references a future period; use no time filter or a range around the memory creation date.",
+          "Before concluding 'No information available', run at least one additional search with the broader memory-kind set and relevant synonyms."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_0724a8e3502a,cand_access_21508a9e8bfd,cand_access_65b347e66e51,cand_access_a463dd7fbcb2,cand_access_c99bf2163d67,cand_access_dfac97564f78,cand_access_e8456d2b2ce5",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_25edc3b815",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Exhaustive list-search for submission/application targets",
+        "description": "Use when a question asks for an enumerated list of targets of an action, especially with plural wording such as 'what places', 'which organizations', 'who did X submit/send/apply to', or 'places has X submitted her work to'. Also use when the initial search returns only one candidate but the question implies multiple possible answers.",
+        "content": [
+          "If the question asks for multiple targets (places, organizations, contests, festivals, companies), treat the answer as a list and do not stop after one retrieved memory.",
+          "Run multiple search_memory calls: one with the original wording, one replacing the action with synonyms ('submitted', 'entered', 'sent', 'applied', 'presented'), and one replacing the target type with synonyms relevant to the domain ('contest', 'festival', 'competition', 'award', 'publication', 'production company', 'studio').",
+          "For past-tense questions ('has submitted', 'did submit', 'submitted to'), prefer event memories that record a completed action over plan/intention memories. If a retrieved memory only states a plan or intention, continue searching for the actual event and, if not found, phrase the answer to reflect the plan rather than a completed submission.",
+          "Before answering, check that each distinct list item in the final answer has at least one supporting memory version. If an item lacks support, run an additional targeted query for that item before finalizing."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_fe8a264cfa33",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_2a7af04899",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Duration and ownership profile search",
+        "description": "Use when a question asks how long or since when an entity has owned/had something. Search across profile/state memories and answer with a duration, not a date.",
+        "content": [
+          "Recognize duration/ownership questions (how long, for how long, since when). These require profile/state facts, not just events.",
+          "Do not restrict memory_kinds to 'event'. Search across profile, event, and other relevant kinds, using expansions like 'has had', 'owned', 'possessed', 'kept for'.",
+          "If retrieved memories mention acquisition dates, do not answer with a date unless the question explicitly asks 'when'.",
+          "If no duration is found, run an additional search including the entity's memory kind 'profile' and inspect the entity's profile."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_ad8d56a013a3",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_2cea9a2a2e",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Ordinal Achievement Resolution",
+        "description": "When a question asks about a specific numbered item in a person's works (e.g., 'third screenplay', 'second novel') and the initial search returns candidate works or titles, use this Skill. It guides the agent to verify the ordinal and to search for explicit completed-achievement memories instead of guessing from the most similar title.",
+        "content": [
+          "If the question includes an ordinal (first, second, third, etc.) for a creative work, do not answer from a memory that only names or describes a work unless that memory explicitly links the work to the ordinal or is the only work of that type in the retrieved memory set.",
+          "After an initial search that lacks an explicit answer, run additional searches using completion/achievement phrasing: combine the subject's name with terms like 'completed', 'finished', 'creative project', 'achievement', 'wrote', plus the work type (e.g., screenplay, novel). Include a structured search on the subject for memory kinds event/state or predicates achievement/plan.",
+          "If a memory is found that directly states the content of the completed work (e.g., 'about loss, identity, and connection'), prefer it over a memory that gives only a title or a work-in-progress idea, even if the title is semantically closer to the query.",
+          "Before answering, check evidence sufficiency: the cited memory must either explicitly mention the ordinal or be the only possible matching work given the question. Otherwise, inspect more memories (e.g., filter by subject and time) or answer with low confidence/insufficient evidence."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_7386385d3809",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_355f9720912a",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Enumeration Retrieval for Category Questions",
+        "description": "Use when a question asks for kinds, types, lists, or examples of projects, accomplishments, or activities of a person or entity (e.g., 'what kind of engineering projects has X worked on?', 'list X's achievements'). Also use when an initial generic search returns only generic memories and the expected answer requires naming specific diverse instances.",
+        "content": [
+          "Identify enumeration questions: wording such as 'what kind(s) of ...', 'what projects has X worked on', 'list ...', or 'which ...' that expects multiple distinct named items.",
+          "Do not rely on a single query built around the generic category term. Run multiple searches: (a) one with the generic category; (b) one or more with concrete subcategory terms extracted from the question and common sense for that domain (e.g., for engineering projects: robotics, water, aerial, software, prototype, design); (c) use structured search on relevant predicates such as 'project', 'accomplishment', 'activity', 'built', 'designed', 'working on' to catch memories that describe the item without using the generic category word.",
+          "After the first search, evaluate coverage against the question's expected format: if it asks for a list of specific items and your evidence supports only generic statements, conduct at least one additional targeted search before answering.",
+          "If an expected item or claim is not found in current memories, check the version history of related memories (e.g., an earlier version of a memory) before concluding the claim is unsupported by access."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_355f9720912a,cand_access_0287add92d5b,cand_access_64d7f9ae5170,cand_access_f3f32a25b182,cand_access_ffd1c732d25a",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_3783f871e4",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "LocationFromLandmarkFollowUp",
+        "description": "Use when a question asks for a state, city, or country where someone was during a specific time, and initial search results contain named geographic features or activities tied to places (e.g., lakes, mountains, parks). Also use if initial retrieval used only abstract terms like 'state' or 'travel' and returned no explicit-location memory.",
+        "content": [
+          "If the target is a person's location during a time range and no retrieved memory explicitly names the location, scan the returned memories for named geographic entities (lakes, cities, parks, mountains) or activities that imply a place (kayaking on a lake, hiking a trail).",
+          "For each named entity, run an additional hybrid and keyword search combining the entity name with the person's name and the target date range to surface memories tying the person to that place at the relevant time.",
+          "If a memory links the person to a named place during the target period, answer with the known location of that place. If the place spans multiple states and context does not disambiguate, state the ambiguity instead of guessing.",
+          "Do not conclude 'no information available' after a single round of abstract queries. Use retrieved-memory content to drive a second round of searches before judging evidence insufficient."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_4643c1a53bb0",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_4080c3a1cc",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Life-event search for why questions",
+        "description": "Use when a question asks why a person made a decision or took an action. After initial retrieval, search for precipitating life events that triggered the decision.",
+        "content": [
+          "Identify the subject and the decision/action in the 'why' question.",
+          "After initial retrieval, check if returned memories mention a precipitating life event (e.g., 'lost job', 'left position', 'relocated', 'experienced a loss').",
+          "If not, run a supplementary search combining subject's name with causal/life-event terms: 'lost job', 'unemployed', 'fired', 'left job', 'career change'.",
+          "Use structured search if available (e.g., subject=<person>, predicate=employment_status or event type).",
+          "When a trigger event is found, include it as evidence for the answer."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_9d8a174fc97f",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_47fcd2adb3",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Attribute queries on named pets: expand with names and verify latest version",
+        "description": "Use when a question asks for a specific attribute (breed, age, color, etc.) of a person's pets or other named animals, and the initial search returns only generic memories about the pet's activities, the owner's bond, or general ownership without the queried attribute value.",
+        "content": [
+          "If the initial retrieval does not contain the attribute value, re-run hybrid search using the named sub-entities (e.g., each pet's name if known) paired with attribute synonyms and colloquial terms (e.g., breed, mix, mutt, purebred, age, color, markings), rather than only the owner's name.",
+          "When scanning results, inspect any memory that mentions the entity even if its headline topic seems unrelated (e.g., favorite spots, daily routine, play habits); the requested attribute may be stated in a consolidated enrichment version of that memory.",
+          "Before answering, verify that each cited evidence memory version is the latest version for its memory ID. If inspecting a memory returns a newer version with different content, use the newer version and ignore any older version seen only in search snippets."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_ff49a3caf117",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_4bd151bd3d",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Promotion-Method Multi-Query Search",
+        "description": "Use when a question asks how someone promoted, marketed, advertised, or grew a business, store, or brand, e.g., 'How did X promote her clothes store?' or 'What did X do to market her business?'. The initial generic search often returns partial evidence because promotion memories use concrete tactic words rather than the word 'promote'.",
+        "content": [
+          "When the question asks how someone promoted or marketed their business, do not answer after a single search for 'promote' or 'marketing'. Promotion-related memories often mention concrete tactics instead or only partially overlap with the generic query.",
+          "Run multiple targeted searches using promotion tactic vocabulary: 'ad campaign', 'advertisement', 'collaboration', 'partnership', 'limited edition', 'video presentation', 'demo', 'social media', 'event', 'offer', 'discount', 'promotion', 'launch', 'showcase', 'styling'.",
+          "Include a structured search when available: subject = the person, predicate in ['action', 'activity', 'business'], object_text containing store/business terms; also inspect recent event memories for business activities in the last few months.",
+          "Combine the unique memories from all queries and check whether the answer covers a breadth of distinct promotion methods. If a new tactic is found, search once more for its synonyms before finalizing the answer."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_8c11eaa59df6",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_4e72e6ce62",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Relax recipient and time for recommendation-object questions",
+        "description": "Use when a question asks what/which item (city, place, book, etc.) one person recommended to another, possibly within a time period, and the initial search returns no memory containing the requested recommendation. Also use if the retrieved memories mention the two people or travel but none explicitly states the recommendation.",
+        "content": [
+          "If the first memory search fails to find a direct recommendation, do not answer 'no information' immediately. The stored memory may record the recommendation without the recipient's name or the requested date.",
+          "Re-run search using only the core action and the object category, omitting the recipient and the time phrase. For example, search the recommender's name plus 'recommended' and the object type (city, place, book, restaurant, etc.), or simply the recommender's name plus the likely object if the domain is clear.",
+          "Also try structured search with subject=the recommender and predicate=recommendation/recommended/recommend, and inspect memories whose world_start falls within or overlaps the requested period even if their text does not mention the recipient or the date.",
+          "Treat a memory as sufficient evidence if it states that the person recommended the requested kind of object, even when the recipient and exact date are not explicitly present, provided the memory's world_start is consistent with the question's time constraint.",
+          "Only after these broadened/structured searches return no relevant object should you answer that no information is available."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_df6a0caa41c2",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_5087935b4a",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Indirect Preference Recovery",
+        "description": "When a question asks about how a person describes their pets' (or other people's) response to a weather condition or situational context, and the initial hybrid search does not return direct evidence, retrieve this skill. Also applies when a query asks about a preference stated as a contrast (e.g., 'response to X' answered by 'prefers Y').",
+        "content": [
+          "Do not answer 'No information available' after a single failed search. Perform at least two additional search passes.",
+          "Expand the query with morphological and synonymous variants of the condition term (e.g., if the condition is 'snow', also search 'snowy', 'snowing', 'winter') AND with contrasting/preferred alternatives that often appear in such descriptions (e.g., 'sunny', 'grass', 'prefer', 'like').",
+          "Run a structured search to retrieve all memories about the person's pets: use subject=person and predicate=pet (or object=pet) to get the complete pet memory set, then scan those memories for weather, environment, or preference statements.",
+          "Check both 'profile' and 'preference' memory kinds, not just 'event' memories, since personal descriptions of pet behavior are often stored as profile/preference statements.",
+          "If a memory states the person's preference in relation to the query's context (e.g., preferring one condition over another), treat it as likely evidence for the pet's described response and include it in the answer with appropriate reasoning."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_4b34a67f8717",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_51bd500abe",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Resumed-activity gap search",
+        "description": "Use when a question asks which activity a person resumed after a long time. Search with gap/return phrases and require explicit evidence of a gap.",
+        "content": [
+          "Identify the activity category. Run hybrid and keyword searches pairing the activity with gap/return phrases: 'used to', 'loved', 'hasn't had the chance', 'recently', 'long time', 'again', 'resume', 'return', 'took up'.",
+          "Include preference-kind memories in the search, not only dated events.",
+          "Require explicit evidence of a long gap: a memory stating the person used to do/love the activity and has not done it recently, or a memory about returning after a gap.",
+          "If initial top results are dated events of other activities, expand with the activity name plus gap/return phrases and re-search."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_90c8994c16f6",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_580728dedd",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Infer Personal Attributes from Life-Stage Context",
+        "description": "When a question asks about a personal attribute (age, profession, marital status, etc.) and the initial search over memory does not retrieve a memory that directly states the attribute value, this skill should be retrieved. Observable triggers include questions like 'How old is X?' or 'What does X do?' when the first search returns only tangential facts and no direct answer.",
+        "content": [
+          "Do not answer 'No information available' after a single keyword search fails to return a direct statement of the requested attribute.",
+          "Perform additional searches for life-stage or role indicators: for age, use terms like 'studying', 'school', 'student', 'finals', 'classes', 'internship', 'job', 'career'; for other attributes, use related roles (e.g., 'partner', 'married', 'parent', 'retired').",
+          "Include a semantic or hybrid search with a query that expresses the inferred concept (e.g., 'X student school education' instead of literal 'age of X') to surface memories that do not contain the attribute keyword.",
+          "If circumstantial memories are found, answer with a qualified inference (e.g., 'likely no more than 30, since she is in school') and cite those circumstantial memories as evidence; do not fabricate a direct value."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_f4129cdea644",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_5c0ed76a95",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Temporal-aware post-event activity search",
+        "description": "Use when a question asks what a person did after a specific event. Verify retrieved memories' dates against the anchor event and re-search with post-event vocabulary.",
+        "content": [
+          "Identify the temporal anchor in the question (e.g., 'after the wedding') and find the date of that anchor event from retrieved memories.",
+          "Check each retrieved memory's world_start/world_end against the anchor date. Discard any memory that clearly occurs before the anchor.",
+          "If no post-anchor memories are retrieved, re-search using vocabulary typical of the post-event period and relationship terms, and apply a time filter starting at the anchor date if supported.",
+          "Include planned or future activities mentioned in memories because questions about 'spends time' can refer to upcoming plans.",
+          "Do not finalize an answer until you have at least one memory that both contains relevant activities and occurs after the anchor event (or is a plan made after it)."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_d192225994c1",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_6c6bb07ceb",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Relative-time and synonym expansion for activity queries",
+        "description": "Use when a question asks about activities, classes, trips, or places visited in a specific time window, and initial search returns nothing relevant. Expand with synonyms and relative-time phrases.",
+        "content": [
+          "If the first search returns no relevant activity, rerun with action synonyms: joined, started, took, attended, enrolled, began, signed up for, traveled, visited, went to, stayed in.",
+          "Include object synonyms: class, course, lesson, workshop, training, program, trip, vacation, retreat.",
+          "Add relative-time phrases anchored to the conversation date: 'last week', 'recently', 'a few days ago', 'this month', 'last month'.",
+          "Widen the time window to at least ±7 days around the target date; stored world_start may be the recording date, not the event date.",
+          "When the question asks for multiple places, enumerate all distinct places from retrieved memories; do not stop at the first match.",
+          "Inspect world_start/world_end of returned memories; a memory with a date inside the window is relevant even if text uses relative wording."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_17a16d60be0b,cand_access_4b6e774392af,cand_access_659bb5b0ab16",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_77e8f386b3",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Miss-Preference Direct Evidence Follow-up",
+        "description": "Retrieve when a question asks what someone misses, longs for, wishes for, or finds lacking in a place/situation, especially if the first search returns only paraphrase-level or event-based evidence.",
+        "content": [
+          "If the question is about missing or longing for something, after the initial retrieval run a targeted search using exact predicate phrasing: '<subject> misses <object>', '<subject> longs for <object>', or '<subject> wishes for <object>', and include 'miss', 'misses', 'longing' as keywords.",
+          "Prefer memory_kind 'preference' or 'state' memories that explicitly name the missed thing over event memories that only imply it through related activities.",
+          "If an explicit missed-thing memory appears in any current version but was not in the first top-k, answer using that exact memory and cite it; do not settle for a broader paraphrase when the memory names the precise object."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_557524de5d30",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_7f9847cea6",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "AttributeListSearchAcrossMemoryKinds",
+        "description": "Use when a question asks for a person's books read, favorites, or other attribute lists, especially if the first search was filtered to events or returned only event memories.",
+        "content": [
+          "For attribute/list questions, do not limit the search to memory_kind 'event'. Include 'preference' (and other relevant kinds) or omit the filter.",
+          "Run a structured search on the subject with predicates like 'reading', 'favorite', or 'activity' to find preference memories.",
+          "If no preference memories appear, rerun the search with memory_kind 'preference' using the person's name and the attribute noun.",
+          "Before answering, confirm every expected list item has a supporting memory; if specific items are missing, run targeted searches for those item names."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_5af66c3e71c4",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_809a051cca",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "AllergySynonymExpansion",
+        "description": "Use when a question asks about a person's allergies (e.g., 'What is X allergic to?') or asks what substances cause allergic reactions. Also triggers when initial search results cover only one allergen category (e.g., animal/fur) but the question is broad and may include food or other substance allergies.",
+        "content": [
+          "When answering an allergy question, do not limit queries to the literal word 'allergy'. Run at least one query that combines the person's name with related terms: intolerant, intolerance, dairy-free, gluten-free, avoid, can't eat, sensitive, reaction.",
+          "Treat memories that describe dietary restrictions, intolerances, or avoidance behaviors as evidence for allergies (for example, 'lactose intolerant' supports a dairy allergy) and include them in the evidence list.",
+          "If the question is general ('What is X allergic to?') and initial results only cover one category, explicitly search for food-related terms (e.g., food, diet, dairy, nut, shellfish, gluten) to capture allergens stored under different terminology."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_8e914feb4893",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_822a0dd77a",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Search for concrete keepsakes when asked about memory methods",
+        "description": "Use when a question asks how a person remembers, records, or preserves memories or happy moments. It signals that the evidence may be in concrete keepsake objects like corkboards, notebooks, photos, albums, or journals, rather than explicit 'remember' language.",
+        "content": [
+          "If the question asks what someone does to remember or preserve memories, expand the search query with concrete keepsake terms: corkboard, notebook, journal, diary, photo, album, scrapbook, letter.",
+          "Run a second search using these object terms with the person's name. Do not dismiss a memory merely because it mentions the object in passing; such mentions are candidate evidence.",
+          "When composing the answer, treat memories about these objects as possible memory-retention methods and include them as evidence, even if the memory does not explicitly say 'remember'."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_8d49c34b5d59",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_8d9bf2f914",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "RetrieveNamedAilment",
+        "description": "Use when a question asks for a specific ailment, disease, medical condition, or health problem that a person has (e.g., 'What illness does X face?', 'Which condition is caused by X?'). Also use if the initial search returns only generic risk, discomfort, or weight-related statements without naming a condition.",
+        "content": [
+          "If the question asks for a named ailment or medical condition, do not restrict the search to the cause or symptom terms alone (e.g., 'weight', 'pain'). The memory containing the condition name may not mention the cause.",
+          "Run additional searches with generic medical-condition vocabulary such as 'health issue', 'medical condition', 'ailment', 'illness', 'disease', 'diagnosis', combined with the subject's name.",
+          "Use structured search on the subject with a health-issue predicate (e.g., predicate='health_issue') if available; otherwise perform a broad hybrid search and inspect memories whose object_text or content contains a recognized medical condition name.",
+          "Before finalizing an answer, verify that a named condition was actually found. If only generic terms like 'health risk' or 'weight-related health risk' are present and the question expects a specific ailment, continue searching or return low confidence instead of supplying a generic phrase."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_aebb2d91f0d4",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_8fb88802c4",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Co-referent expansion for milestone time questions",
+        "description": "Use when a question asks for the time/date of a personal milestone (meeting, marriage, dating) and direct searches fail. Expand with co-referent terms and inspect subject-level event memories.",
+        "content": [
+          "If a direct search for the role term (e.g., 'future wife') fails, re-query using co-referent terms: person's name combined with 'met', 'met a woman/man', 'trip', 'vacation', 'relationship', 'announced', 'partner', or locations mentioned.",
+          "Run a subject-scoped search over event memories for the person and inspect memories describing meeting or getting involved with someone.",
+          "When the question asks 'when', use world_start of candidate event memories and interpret relative time words using the conversation date.",
+          "Only output 'No information available' after checking subject's event memories for any plausible meeting/involvement event."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_83055fbe1724",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_9220dc8791",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Per-Entity Coverage for Multi-Subject Questions",
+        "description": "Retrieve this Skill when a question asks for a property, technique, activity, or attribute of two or more named people or entities (e.g., 'What methods do X and Y use?', 'How do A and B manage...?'), especially if the first search results mention only one of the named subjects. Use it to plan per-person searches and check evidence sufficiency for every named entity.",
+        "content": [
+          "Step 1: Identify every named person or entity the question requires covering. The final answer must have at least one supporting memory for each of them.",
+          "Step 2: After the initial combined retrieval, check the returned memories per subject. A memory counts toward a subject if its subject field matches the person or its content clearly ascribes the property to that person. Ignore memories where the person is only mentioned incidentally.",
+          "Step 3: If any named subject lacks coverage from the combined search, run targeted searches for that subject alone, using the subject's name plus the property keywords (e.g., 'Deborah time management techniques', 'Deborah schedule', 'Jolene bullet journal'). Try multiple phrasings if the first targeted search returns nothing relevant.",
+          "Step 4: Only compose the answer when every named subject has at least one directly supporting memory. If after targeted searches a subject still has no relevant memory, state that the information for that subject is unavailable; do not substitute another subject's techniques or infer from conversations about the person.",
+          "Step 5: Prioritize explicit statements of the person's own behavior or tools (e.g., 'X uses Y') over plans, offers of help, or struggles, which are weaker evidence for what the person actually does."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_5fca900a6b98",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_9834090281",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Event-count queries with synonym and morphology expansion",
+        "description": "Use when a question asks for a count, frequency, or total number of a repeated event (e.g., 'how many times', 'number of rejections'). Also use if the initial keyword search returns no direct match but the question relies on specific words (e.g., 'rejected', 'scripts') that could be phrased differently in memory ('rejection', 'screenplay', 'creative work').",
+        "content": [
+          "When the user asks for a count of an event, treat the event term as a family of synonyms and inflections instead of one exact string. For example, for 'rejected' also search 'rejection', 'reject', 'rejection letter'; for 'script' also search 'screenplay', 'creative work', 'work'.",
+          "Run multiple searches before concluding 'No information available': (a) keyword searches combining the subject with each synonym/inflection of the event (e.g., 'Joanna rejection', 'Joanna rejected'), and (b) at least one semantic or hybrid search using the full natural-language question to catch paraphrases.",
+          "Collect all returned memories that clearly describe an instance of the event. Count each distinct event record; include memories whose object is a related term when the question uses a broader category (e.g., include 'screenplay' and 'creative work' rejections when the question asks about 'scripts').",
+          "Only answer 'No information available' if none of the expanded keyword and semantic searches yields any event memory."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_6f9449998c68,cand_access_801830481704",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_9837a7660b",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Persuasion-statement retrieval",
+        "description": "Use when a question asks what a person said about a location/topic that made another person want to do something (e.g., 'What did X say about Y that enticed Z to ...?'). The initial search may miss the speaker's own description of the topic. Also applies when a query uses an abbreviation (e.g., NYC) while the memory stores the full name (e.g., New York City).",
+        "content": [
+          "Decompose the question: identify the speaker and the topic/place being described. Search for memories containing the speaker as subject and the topic (or its variants) as a key term, rather than searching for the persuasion phrase.",
+          "When the topic has a common abbreviation or alias, include both the abbreviation and the full name in the query and keywords (e.g., 'NYC' and 'New York City').",
+          "If the initial top-k results do not obviously contain the speaker's statement about the topic, run a follow-up search (before concluding no information) with a simpler query such as \"<speaker> <topic>\" or \"<speaker> visited <topic>\" and consider increasing top_k.",
+          "Do not require the persuasion/influence relationship to be explicitly present in memory; the speaker's positive description alone is usually sufficient evidence to answer the question."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_1a788a88094f",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_abstract_benefit",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Abstract-Benefit Activity Questions Require Hobby-Profile Search",
+        "description": "When a question asks which activity helps someone escape, stimulates imagination, relaxes, or provides a similar abstract benefit, and initial search returns memories using those benefit words, retrieve the person's hobby/interest profile before answering.",
+        "content": [
+          "Do not rely only on benefit terms as search keywords.",
+          "Independently search for person's stated hobbies and interests: structured search with predicates 'interest' or 'hobby', or keyword query with 'hobbies', 'interests', 'enjoys', 'favorite activities'.",
+          "If initial evidence contains only one activity type, compare against profile/hobby memories.",
+          "Prefer profile-based activity when it matches question's intent."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_c5d18de55c8e",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_abstract_theme",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Abstract Theme Concrete Evidence Search",
+        "description": "Use when a question asks about a theme, pattern, or emerging trend in a person's life, and initial search returns only relationship, plan, or generic activity memories without directly stating the theme.",
+        "content": [
+          "Search memories with person as subject using concrete behaviors that could instantiate the theme.",
+          "Do not restrict retrieval to memories mentioning both theme's subject and person who mentioned theme.",
+          "Include literal phrases like 'becoming known for', 'recurring theme', 'theme in his interactions', 'multiple', 'encountered'.",
+          "If first search returns no direct theme statement, re-run with concretely rephrased query before answering."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_2c2efda44933",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_activity_enumeration",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Activity-Enumeration Search Diversification",
+        "description": "Use when a question asks which activities/hobbies/sports a person enjoys, especially if initial hybrid search returns only low-relevance memories or agent is about to answer from a memory lacking explicit enjoyment/person link.",
+        "content": [
+          "Do not repeat same query with same keywords; each new search must introduce distinct retrieval angle.",
+          "Generate concrete candidate activity keywords from common categories and run targeted keyword/BM25 searches combining person's name with each term.",
+          "Run structured search on person as subject with predicates recreation, hobby, interest, pastime, leisure.",
+          "Only count activity as 'enjoyed' when memory explicitly ties person to activity with participation or enjoyment signal.",
+          "Verify coverage: if question implies multiple activities, keep trying new concrete terms and predicate filters."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_229af184b904",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_advice_coping",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Inferring Advice from Coping Activities",
+        "description": "Use when a question asks what advice, lessons, or guidance someone would give about facing a major life transition or challenge, and initial search returns only explicit advice/support statements.",
+        "content": [
+          "Do not restrict retrieval to explicit statements of advice, support, or encouragement.",
+          "Add searches for coping mechanisms and self-care activities: hobbies, leisure, outdoor activities, relaxation, creative outlets, lifestyle changes.",
+          "Check whether memories about each named person's coping/hobby activities have been retrieved; they are required evidence.",
+          "Do not generalize from one person's activity to another's advice."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_3c9584bfc849",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_alternative_plan",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Alternative Plan Activity Search",
+        "description": "Use when a question asks what activity two people planned to do together instead of another named activity, or when initial retrieval for 'instead of' questions returns only memories about the replaced activity.",
+        "content": [
+          "After initial search, run additional hybrid/keyword search using two people plus generic terms like 'plan', 'together', 'play', 'activity', 'hobby', without repeating replaced activity.",
+          "If broad results dominated by replaced activity, search profile/enrichment memories about interests or shared activities.",
+          "Prefer memory that explicitly states what pair planned to do together; do not infer from plausible trip or retreat memory."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_462ad1e8b9d8",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_b0d78818da",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Concrete event recall for recent participation questions",
+        "description": "Use when a question asks about recent participation or rewarding experiences. Run additional concrete-event searches and prefer recency-aware evidence.",
+        "content": [
+          "Run at least one additional search after the first hybrid search. Use concrete event verbs and nouns: 'participated in', 'presented at', 'attended', 'spoke at', 'joined', combined with artifact nouns like 'conference', 'workshop', 'retreat', 'seminar', 'event'. Include the person's name.",
+          "When the question emphasizes 'recently', sort candidate memories by world_start date (newer first) and filter to memory_kind='event' before choosing evidence.",
+          "If top results only mention an activity indirectly, do not answer yet. Continue searching with alternative concrete queries until a memory explicitly matches an event participation."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_bdf72aa03e73",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_b69a584221",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Attribute queries: include event memories and owner-scoped search",
+        "description": "Use when a question asks for a factual attribute (age, birthday, job, etc.) of a named entity, especially if the entity could be a pet, child, or possession mentioned in an event memory. Avoid using memory_kinds=['state'] as a hard filter, and consider querying via the owner/related entity.",
+        "content": [
+          "When a question asks for an attribute like age, birth year, or ownership, do not restrict the search to memory_kind 'state'. Include 'event' and other kinds because attributes frequently appear in event statements such as 'X owns Y (Z years old)'.",
+          "If the named entity is a pet, possession, or dependent, also search using the owner or possessor as the subject (e.g., query the owner's memories for the attribute value).",
+          "Before concluding 'no information available', perform at least one fallback search without a memory_kind filter, using the entity name plus the attribute word, and if relevant, the owner's name."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_bc835211bab4",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_bb912d0e5c",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Indirect location evidence for visited places",
+        "description": "Use when a question asks which places a person has visited. Search for indirect location mentions in event memories and verify physical presence.",
+        "content": [
+          "Do not rely only on 'visited' or 'location'. Also search event memories with indirect travel phrases: 'took a photo in', 'had a conversation with ... in', 'attended ... in', 'stayed in', 'went to', 'was in', 'participated in ... in'.",
+          "If initial top results are dominated by travel planning or stories, run an additional search focused on event memories containing location names/prepositions.",
+          "Treat a location as visited only if the person was physically present there; do not count locations from books, stories, future plans, or travel research.",
+          "Verify that each candidate evidence describes the person's own presence, not another person's trip."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_ad83013aaab9",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_bc8109316f01",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Recommendation-preference fallback search",
+        "description": "Use when a question asks what one person recommends, suggests, or would recommend for another (e.g., games, books, movies, restaurants) and the initial memory search for explicit recommendation terms returns no strong evidence. Also use when the top results are about the recipient rather than the recommender's preferences.",
+        "content": [
+          "Parse the question into the recommender and the recipient, plus the item category (e.g., game, book, movie).",
+          "First search for explicit recommendation memories using queries like '<item> recommended by <recommender> for <recipient>' and keywords for 'recommend', 'suggest', the recommender, and the recipient.",
+          "If no high-confidence explicit recommendation memory is found, run a second search focused on the recommender's own preferences: query '<recommender> favorite <item>', '<recommender> enjoys <item>', '<recommender> likes <item>', and '<recommender> plays <item>' (adjust verb to category). Include the recommender and the item category in keywords; do not require the recipient's name in this query because preference memories often do not mention the recipient.",
+          "Use structured search when available, e.g., subject=recommender, predicate=hobby/favorite/preference, to surface preference memories that lexical search may miss.",
+          "Before answering, verify that the named items in the answer are supported by a memory about the recommender's preferences or an explicit recommendation. If you only found the recipient's own activities or unrelated topics, do not infer a recommendation; state that the information is not found.",
+          "When multiple candidate items are found, prefer those explicitly listed together in one memory as the recommender's preferences over items mentioned incidentally in unrelated memories."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_bc8109316f01",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_c299695a4b",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Motto-and-Phrase Paraphrase Retrieval",
+        "description": "Use when a question asks about a motto, slogan, saying, quote, catchphrase, family value, or symbolic phrase attributed to a person or family. Also use if an initial keyword search for such terms returns no direct match, or if the question involves a meaningful object/sign that might represent a motto.",
+        "content": [
+          "When a question asks for a motto, saying, quote, slogan, or family phrase, do not rely only on exact keywords like 'motto'. Run a hybrid or semantic search with the full question as the query, because the memory may paraphrase the motto (e.g., a sign that 'serves as' a motto, or a phrase that symbolizes the family bond).",
+          "Expand the query with synonymous and associated terms: 'motto', 'saying', 'quote', 'catchphrase', 'slogan', 'phrase', 'sign', 'symbol', 'family value', 'togetherness'. Combine at least one term for the person (e.g., their name or pronoun) with these terms.",
+          "If the initial results contain memories about travel, objects, signs, or symbolic items for that person, inspect them for language like 'read', 'serves as', 'means to us', or 'emphasizes' that may indicate the motto even if the word 'motto' is absent.",
+          "Only answer 'No information available' after at least one semantic/hybrid search and one synonym-expanded keyword search have both failed to surface any candidate memory."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_5af75dd3f403",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_commonality_comparison_retrieval",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Commonality_Comparison_Retrieval",
+        "description": "When a question asks what two or more named people have in common, share, or both did, search for each person's key life events separately and compare parallel predicates, rather than relying only on a single similarity query that returns relationship memories.",
+        "content": [
+          "Identify all named people in a 'what do X and Y have in common' style question. Run a separate search for each person that combines their name with high-level event concepts relevant to life transitions and careers, such as 'job', 'lost job', 'business', 'started', 'founded', 'career'. Include both current and older memory versions, because the commonality may be recorded in earlier event memories.",
+          "After the per-person searches, compare predicates across the retrieved memories. If both people share the same or analogous predicates (e.g., both 'lost job' and both 'started a business'), treat those matched event pairs as the answer, even if no relationship memory explicitly states the commonality.",
+          "If the initial similarity query returns mostly relationship or support memories, do not consider that sufficient. Re-run the per-person event searches until either parallel event pairs are found or you have evidence that no such pairs exist in memory."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_8c5f98bf3fcc",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_compare_individual_profiles",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Compare_Individual_Profiles_For_Shared_Interests",
+        "description": "Use when a question asks what interests, hobbies, or activities two named people share, have in common, or both enjoy. Trigger also if the first search about 'shared interests' returns only joint events, plans, or emotional-support memories and no individual profile or preference memories about either person's own hobbies.",
+        "content": [
+          "Decompose the question: instead of searching only 'interests shared by X and Y', run separate searches for each person's individual interests/hobbies.",
+          "For each person, perform a structured search or hybrid query combining the person's name with predicates/terms such as 'interest', 'hobby', 'enjoys', 'likes', 'passion', 'preference', and include profile memory kinds.",
+          "Also expand with the other person's name and the same predicates to catch profile memories that mention both.",
+          "Intersect the two individuals' interest sets. A common interest exists when both people have the same or semantically aligned hobby/interest in their own profile, even if no joint activity is recorded.",
+          "If an interest is expressed through different facets (e.g., one person's hobby is 'making dairy-free desserts' and the other's preference is 'experimenting with dairy-free dessert recipes'), treat the shared underlying activity as a common interest.",
+          "Before answering, verify that every claimed common interest has at least one supporting memory for each person; if a common item is only supported for one person, do not report it as shared."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_aa6ce384466c",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_competing_interest",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Competing-Interest Check for Delay Questions",
+        "description": "Use when a question asks why a person delayed, postponed, put off, skipped, avoided, or did not do an activity. The reason may involve a competing interest or preference.",
+        "content": [
+          "Run additional search about person's hobbies, interests, and enjoyments (e.g., '{person} hobbies and interests', '{person} enjoys', '{person} prefers').",
+          "Do not require target activity name in retrieved memories; reason may be a competing activity.",
+          "If initial search returns only target activity memories, inspect hobby/interest/profile memories for strong competing interests.",
+          "If multiple competing interests, use stated preferences to rank probable causes."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_0e78234cf8b3",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_context_free_hobby",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Context-Free Hobby Search for Keep-Busy Questions",
+        "description": "Use when a question asks what activity a person does to keep busy during a period or condition, and initial context-focused search does not return a specific activity.",
+        "content": [
+          "Do not limit search to context terms like condition or timeframe.",
+          "After initial search, if no concrete activity memory, run additional search targeting hobbies and interests: '<Person> hobbies', 'activities <Person> enjoys', '<Person> leisure', or structured filter by predicate 'hobby' or 'interest'.",
+          "Treat hobby memories as candidates even if they do not mention the condition; judge plausibility by general knowledge.",
+          "Do not default to therapy/exercise unless question explicitly asks for recovery activities."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_1e6f42ea58ef",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_d16ec37b99",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Completion-date queries with relative-time qualifiers",
+        "description": "Use when a question asks when a specific work was completed, finished, or created. Expand with completion-action synonyms and relative-time qualifiers; avoid substituting publication/exhibit dates.",
+        "content": [
+          "For 'when was X finished/completed/created' questions, build queries combining person, action synonyms (completed, created, finished, made), relative-time qualifiers (a few days ago, recently, just finished), and descriptors of the work.",
+          "If a memory says the work was completed 'a few days ago' or 'recently', compute the completion date from the relative qualifier relative to world_start; do not report world_start itself.",
+          "Keep searching if the best evidence is a publication/exhibition memory; being published does not mean completed then.",
+          "Only answer 'No information available' after exhausting these expansions."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_6e8400d67c80",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_d5cea80d24",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Stressor and emotion synonym retrieval",
+        "description": "Use when a question asks about a person's stressors, worries, fears, pressures, or other negative emotional states, especially when an activity is explicitly excluded (e.g., 'besides not being able to hike'). Retrieve when the initial hybrid search returns mostly memories about the excluded activity or unrelated topics.",
+        "content": [
+          "Rewrite the query using the target subject and semantic synonyms of the emotional concept: 'stressor' → 'stress', 'stressful', 'pressure', 'tough', 'hard', 'burden', 'worried', 'anxious'. Do not rely on the exact word used in the question.",
+          "If the question excludes a factor (e.g., 'besides X' or 'other than X'), remove that excluded factor from the keyword list and do not weight it heavily in the query; instead search for the active domain of the stressor (e.g., work, family, health, money).",
+          "If the first search does not return a memory that explicitly names the stressor, run a follow-up retrieval using the subject plus the synonym set, and also try a keyword or structured search targeting memory fields where the emotion might appear (e.g., predicates like 'work' combined with 'stressful').",
+          "Do not answer from indirect evidence alone; a memory that explicitly connects the subject to the stress-related term is required. If only indirect evidence is found, continue searching or explicitly report the limitation."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_7dfc32e09175",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_direct_authorship",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Direct Authorship Evidence Before Preference Inference",
+        "description": "Use when a question asks what kind of fiction, stories, books, novels, or articles a person writes, creates, or is working on. Also triggered if initial search returns mostly preference or reading memories.",
+        "content": [
+          "Run initial search with literal question, treat result as provisional.",
+          "Check for direct authorship evidence: 'X is working on', 'X is writing', 'X wrote a', 'X published', or 'X's novel/story/article'.",
+          "If only preference memories, perform additional search with authorship-focused keywords and increase top_k.",
+          "Look for event memories about recent writing activities.",
+          "Base final answer on direct evidence of what person writes; use preference memories only as supporting context."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_acfca07b2b9c",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_e46294ca78",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Verify activity start time",
+        "description": "Use when a question asks what activity someone started learning in a specific month/year. Require explicit temporal anchors and search for alternative activities.",
+        "content": [
+          "Run initial hybrid search with the person, exact month/year, and verbs like 'started learning', 'began', 'took up', 'new activity', 'hobby', 'skill'.",
+          "Do not accept a memory whose start is implied only by a duration phrase (e.g., 'for about N months'). Prefer memories with an explicit world_start within the asked period.",
+          "If the candidate is an instrument, sport, language, or other category, run additional keyword searches pairing the exact month/year with broader category terms and alternatives.",
+          "Compare memories whose world_start overlaps the asked period. Prefer one that explicitly states the activity was started or enjoyed as a learning experience in that period.",
+          "Before finalizing, verify the chosen activity appears in the evidence memory content and that its world_start is consistent with the question's timeframe."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_f0eb9adf5209",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_e4908b70b2",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Resolve vague help-or-challenge references",
+        "description": "Use when a question asks for the specific topic of help, assistance, or a challenge (e.g., 'What did X ask Y to help with on <date>?') and the retrieved memories only mention 'help', 'challenges', or 'support' without naming the concrete subject. Also use when the answer about a person's struggle or request appears vague in retrieved evidence.",
+        "content": [
+          "If the question asks for the specific topic of help/assistance and a retrieved memory says only that the person 'would reach out for help with her challenges' or similar, do NOT answer with a guessed topic that is not literally present in the retrieved memory.",
+          "Run a follow-up targeted search using the requester's name plus terms like 'struggling', 'challenge', 'managing', 'needs help', 'assignments', combined with the date or date range from the vague memory (e.g., world_start ± a few days), to find the memory that explicitly names the concrete subject of the difficulty.",
+          "When both a vague 'reached out for help' memory and an explicit 'struggling with X' memory are found for the same person/date, use the explicit memory to identify the subject, and cite both memories as evidence.",
+          "Before answering, verify that each claimed specific topic (e.g., 'time management') appears verbatim or by clear paraphrase in at least one supporting memory version; if no retrieved memory explicitly names the topic, continue searching instead of answering from inference."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_72953423bf9d",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_e84c19ab03",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Location-synonym expansion for activity-place questions",
+        "description": "Use when a question asks for a place/location where a person does an activity, and initial search misses explicit location memories. Expand with location-synonyms and verify evidence.",
+        "content": [
+          "When the question asks for a place/location related to an activity, perform an additional search if top results do not name a location.",
+          "Expand with location-synonym keywords: 'spot', 'tranquil', 'serene', 'nearby', 'location', 'area', 'goes to', combined with subject and activity verb.",
+          "Increase top_k or depth on follow-up search to surface lower-ranked location-bearing memories.",
+          "Verify that the chosen evidence answers the question: a future plan is not sufficient for a present habitual location.",
+          "Prefer a memory with an explicit location phrase over an activity-only memory."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_4783bf818acc",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_ea3b13e859",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Concrete-term expansion for post-event plan questions",
+        "description": "Use when a question asks about plans or next steps after an event. Expand with concrete domain terms and search for sibling memories sharing the event's timestamp.",
+        "content": [
+          "When the question asks about plans/next steps after an event, do not keep repeating the question's abstract vocabulary. Build a second query using concrete nouns and verbs the target memory would likely contain, and run keyword and hybrid searches with those terms.",
+          "Use structured search on the person's subject with likely predicates (e.g., plan, action, goal, next_step) to list memory versions that describe actions.",
+          "After the first search returns an event memory, retrieve other memories with the same subject and the same or nearby world date, because post-event plans are often stored as separate enrichment memories sharing the event's timestamp.",
+          "Before finalizing, map each concrete claim in the draft answer to a supporting memory version; if a concrete term appears in no retrieved version, search for that term explicitly."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_e2ce11434102",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_enumerate_group_members",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Enumerate group members for who-questions",
+        "description": "Use when a question asks 'who' about a family, team, or other group and implies possibly multiple persons. Also use if initial search returns only the main subject's memory or an answer that names just one person.",
+        "content": [
+          "When the question asks 'who' about a group (family, team, friend group), enumerate the likely members: retrieve memories mentioning family/relationship terms (son, daughter, spouse, partner, wife, husband, parent, sibling, etc.) related to the main subject.",
+          "For each enumerated member, run an additional targeted hybrid/BM25 search pairing the member term with the event/attribute in the question (e.g., 'Evan's son injury', 'Evan's son ankle', 'Evan partner injured'). Include the member name and the question's key verb/noun.",
+          "Increase retrieval coverage: if the initial search used a low top_k or standard depth, repeat with keywords derived from the question and with top_k increased (e.g., 15–20), or use structured filters (subject=main subject, predicate related to injury/health/event) to surface all relevant memories.",
+          "Before finalizing an answer to a 'who' question, verify that you have identified every distinct person that evidence supports. If the question is plural or open-ended and you have found only one person, actively search for other members rather than assuming the list is complete.",
+          "If no memory is found for a candidate after a targeted search, treat that as negative evidence but continue until all reasonable candidates are exhausted or a memory explicitly confirms the full set."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_7b2ec2830ba7",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_enumerate_performed_activities",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Enumerate Performed Activities",
+        "description": "Use when a question asks for activities, hobbies, or experiences a person has done, especially with an exclusion like 'other than X'. Also relevant if initial search returns mostly interest/intent memories rather than event memories.",
+        "content": [
+          "Do not rely on single broad hybrid search; run additional targeted searches using BM25 or keyword strategy for each plausible activity type.",
+          "Do not dismiss memory because headline predicate or object_text does not match; read full content for additional performed activities.",
+          "Before including activity, verify memory explicitly states person performed it; exclude interests, wishes, future plans.",
+          "If top-k too narrow or mostly preference/intent, explicitly search for event memories about person and target activity."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_e8131fbe54ec",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_exhaustive_activity_enumeration",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Exhaustive Activity Enumeration Beyond a Core Activity",
+        "description": "Use when a question asks for a list of activities, hobbies, or interests a person pursues, especially when phrased as 'besides', 'other than', 'in addition to', or 'apart from' a specified core activity.",
+        "content": [
+          "Do not anchor all search queries on core activity; exclusion phrase biases retrieval.",
+          "Run broad search using only person's name plus generic activity/hobby terms.",
+          "If structured search available, issue query with subject = person and predicate in ['activity', 'hobby', 'interest', 'routine', 'pastime'].",
+          "If sparse, run targeted searches with common concrete activity terms and merge results.",
+          "Verify all activity-related memories collected before finalizing."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_78b8201128fc",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_exhaustive_attribute_list",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Exhaustive Attribute-List Retrieval",
+        "description": "Use when a question asks for a list of attributes, activities, or interests belonging to a person (e.g., stress relievers, hobbies, foods, goals). Also retrieve when initial search returns mostly tentative or intention memories.",
+        "content": [
+          "Do not treat first hybrid search as sufficient; run multiple iterations with synonym variants.",
+          "Expand retrieval across memory kinds: events, states, plans, preferences, shared plans.",
+          "Separate confirmed list items from tentative ones; ignore hypothetical language unless asked.",
+          "Verify sufficiency: if more near-topic items exist, continue searching; if completeness cannot be ensured, express lower confidence."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_d36cdb898357",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_exhaustive_count",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Exhaustive Event Count Retrieval with Time Window",
+        "description": "Use when a question asks for the number or count of a specific event/activity type for a person within a date range (e.g., 'How many trips did X take in May 2023?', 'Count the roadtrips in June'). Triggers structured, time-filtered retrieval of event memories plus synonym-expanded searches so no matching memory is missed.",
+        "content": [
+          "Parse the question to extract (1) the subject person, (2) the event/activity type (e.g., roadtrip, trip, vacation, visit), and (3) the target time range (e.g., May 2023).",
+          "Expand the activity type into common synonyms and variants: e.g., roadtrip -> 'road trip', 'drive', 'travel', 'trip'; vacation -> 'holiday', 'getaway', 'trip'.",
+          "Run a structured memory search filtering by subject, memory_kind = event, and world_start/world_end overlapping the target range, in addition to hybrid/keyword searches using each synonym variant as the query.",
+          "For each retrieved candidate, verify the world_start/world_end metadata fields explicitly fall within the requested range; do not rely on prose date references alone.",
+          "Only answer with a count or 'No information available' after completing these synonym and structured searches for all plausible memories matching the activity type."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_31f6f3fab30e",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_exhaustive_enumeration",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Exhaustive Enumeration for List Questions",
+        "description": "When a question asks for a set/list of items from memory, such as a person's hobbies, interests, activities, goals, or plans, use this skill to enumerate all relevant memories instead of stopping after the first top-k results.",
+        "content": [
+          "Classify question as enumeration request when it asks 'what / which / how many' over a category.",
+          "Run structured search scoped to subject and predicates like preference, interest, hobby, recreation, plan, intent, event with large top_k.",
+          "Add complementary keyword or semantic query using paraphrases of category.",
+          "Merge and deduplicate candidate items across all search results.",
+          "Before answering, verify each candidate item appears in final answer or is consciously excluded; if union contains more entries, expand answer."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_f8380de13f8f",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_exhaustive_hobby_enumeration",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Exhaustive Hobby Enumeration",
+        "description": "Use when a question asks for a person's hobbies, interests, pastimes, or free-time activities and expects a list of multiple items. Also trigger if first search returns only a few activity tokens.",
+        "content": [
+          "Recognize enumeration-style questions; treat as list-completion tasks.",
+          "Run multiple complementary searches with category queries: 'outdoor activities', 'winter sports', 'travel', 'reading', 'art/painting', 'fitness/exercise', 'water sports', 'camping'.",
+          "Run structured search with person as subject and predicates like interest, activity, enjoy, plan, experience.",
+          "Extract every distinct activity explicitly tied to person, including from plans, health routines, trips, past events.",
+          "Before finalizing, check candidate list covers diverse domains; only stop after targeted expansions exhausted."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_a76d9c88a1fb",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_fa00e6df0d",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Concrete-term expansion for abstract change queries",
+        "description": "Use when a question asks about an abstract physical/personal transformation in a specific time window. Expand with concrete event terms and run a structured date-window search.",
+        "content": [
+          "If the initial search for an abstract change returns no relevant evidence, run a second search with concrete terms: for physical transformations include 'dyed hair', 'haircut', 'shaved', 'tattoo', 'piercing', 'new glasses', 'beard', 'weight loss/gain'; for other changes include 'got a new ...', 'started ...', 'changed ...'.",
+          "Run a structured search for memories whose world_start falls within the target date window, using the subject's name plus the concrete terms.",
+          "Only after both the concrete-expanded hybrid search and the date-window structured search return no matches should you answer 'No information available'."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_b5b06f9e566e",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_facet_decomposition",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Facet Decomposition for Conjunctive Activity Questions",
+        "description": "Use when a question asks for an activity or object satisfying multiple constraints about the same subject, and initial search returns memories for only one constraint.",
+        "content": [
+          "Parse question into separate constraints (facets).",
+          "Run independent searches for each facet rather than one combined query.",
+          "If one facet absent, explicitly search for that facet before deciding to answer.",
+          "Find item supported by at least one memory for each facet; verify each supporting memory.",
+          "If best candidate only satisfies one facet, continue searching for other facet."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_4933b4b59a41",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_fba3a5b64a35",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "EnumerateNamedInstancesForCounts",
+        "description": "When a question asks 'how many' of a category a person has/owns as of a time (e.g., 'How many pets will Andrew have as of December 2023?'), and direct search for the category word does not retrieve an explicit count, use this skill to enumerate named instances and aggregate.",
+        "content": [
+          "Treat count questions as aggregation problems. Do not rely on finding an explicit number; instead find all individual items that belong to the category.",
+          "Search for acquisition/ownership events with multiple query variants: 'adopted', 'got', 'bought', 'owns', 'has', plus the category and the person's name. Include synonyms for the category (e.g., dog, puppy, pup, pet, cat, kitten).",
+          "Also search by likely individual names if any are already known (e.g., a previous search returned a pet name); inspect the returned memories for all named items.",
+          "When inspecting memories, read the full content for lists of names (e.g., 'introducing him to Toby and Buddy' indicates at least three dogs). Count each distinct named individual that the person owns or has acquired by the target date.",
+          "Check versions of the same memory to ensure you have the latest state and that all listed pets are still owned (no removal or death stated).",
+          "If a search returns a memory stating the person is 'considering getting another' or similar plan, do not count planned/uncertain items; only count confirmed acquisitions with a world_start on or before the target date.",
+          "Before answering, verify that the number of distinct named individuals matches the total you intend to report; if you found N names but the answer expected is different, search again for missing names."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_fba3a5b64a35,cand_access_9d56e33fa0b4",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_ff87dab63a9a",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Entity Name Variant Expansion",
+        "description": "Use when a question asks about specific people, places, or other named entities, especially when the initial retrieval returns no relevant memories or returns memories only for one of several mentioned entities. Trigger when query names might appear in memory under different spellings, short forms, or typos (e.g., 'John' vs 'Jon', 'Jean' vs 'Gina').",
+        "content": [
+          "When a question mentions a named individual/entity, enumerate plausible alternative spellings before searching: common short forms and nicknames, frequent one-letter typos, phonetic variants, and names that sound similar in conversation (e.g., Jon/John, Gina/Jean).",
+          "Run at least one separate retrieval per entity variant, combining the variant with the question's predicate terms (e.g., 'visited', 'trip to', 'traveled to', 'city'). Do not rely solely on a single combined query using the exact names from the question.",
+          "When reviewing returned memories, accept near-matching names (edit distance 1–2) as potential references to the same entity; do not discard a memory merely because the subject string differs slightly from the queried name.",
+          "If the first search returns memories for only one of the required entities, do not repeat the identical query. Instead, run a modified query targeting the missing entity's name variants, and check structured/subject fields as well as free text."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_ff87dab63a9a,cand_access_816db1d5e03d",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_generic_activity_event_date_search",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Generic-Activity Event-Date Search",
+        "description": "Use when a question asks for the date when a person made, baked, tried, or created a specific named thing (e.g., a dish, item, project), and the initial search returns no event memory explicitly naming that thing, or returns only preferences/states or memories about similar but different items.",
+        "content": [
+          "When a 'when did X do/make Y?' question yields no event memory mentioning both X and Y, do not use the date from a lexically similar but different memory as evidence for the queried event.",
+          "Run an additional search using generic activity vocabulary instead of only the specific item name — e.g., expand with 'made a recipe', 'tried a recipe', 'baked', 'made a family recipe', 'made a dessert' — and prefer memory_kind='event' results.",
+          "Accept an event memory only if its described activity could unambiguously correspond to the queried item; otherwise report the date as unknown rather than guessing from the closest dated memory."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_99397ab61b8e",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_goal_memory_search",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Goal-Oriented Memory Search Without Kind Restriction",
+        "description": "Use when a question asks about a person's goals, aspirations, career objectives, desires, ambitions, or plans that may go beyond their primary skill or profession. Also apply when initial search for 'goals' returns only vague motivational statements.",
+        "content": [
+          "Do NOT restrict memory_kinds to 'profile' or 'state'; include preference and event memories.",
+          "Use structured search targeting predicates like 'goal', 'endorsement', 'aspiration', 'plan', 'career', 'ambition'.",
+          "Search with multiple query phrasings naming person explicitly: '<Person> career goals', '<Person> non-basketball goals', '<Person> endorsements', '<Person> charity'.",
+          "If initial results contain only general statements, inspect entities by searching specific goal categories."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_b7af9268722b",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_goal_retrieval",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Exhaustive Goal Retrieval",
+        "description": "Use when a question asks about a person's goals, aims, objectives, aspirations, or plans, especially within a specific domain. Also use if initial search may miss goal-related memories with different wording.",
+        "content": [
+          "After initial hybrid search, run structured search with subject from question and predicates in [goal, objective, aspiration, plan, aim, ambition].",
+          "If domain specified, include only goals pertaining to that domain; exclude off-domain unless question asks broadly.",
+          "Before answering, verify each claim is supported by retrieved memory; if not, search with goal-relevant synonyms like improve, win, achieve, aim, want, aspire.",
+          "For exhaustive list, combine results from initial and structured searches to cover all goal-predicate memories."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_07798a412f55",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_hobby_preference",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Hobby Questions: Include Preference Memories and Prefer Specific Answers",
+        "description": "Use when a question asks about a person's hobby, interest, pastime, or an activity they enjoy. Also applies when initial search returns only event memories or when answer uses a general category while evidence names a specific subtype.",
+        "content": [
+          "For hobby/interest/preference questions, do not restrict search to one memory kind such as 'event'. Include preference and interest memory kinds.",
+          "If temporal qualifier, check preference memories with long-running world_start dates.",
+          "When evidence contains both general and specific form, answer with most specific form explicitly supported."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_1bc77d7ab1f3",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_hobby_recommendation",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Hobby Recommendation Across Interests",
+        "description": "Use when a question asks for a hobby, activity, project, or recommendation tied to a stated interest, goal, or dream. Retrieval should also fetch subject's other hobbies, skills, and creative outlets.",
+        "content": [
+          "Identify subject and anchor interest/dream; run initial search for activities matching anchor.",
+          "Run at least two separate searches for general interests and skills: '<subject> hobbies interests', '<subject> skills creative activities', '<subject> writing projects'.",
+          "Look for intersections where anchor interest can be expressed through demonstrated skill or hobby.",
+          "Verify chosen combined recommendation is supported by at least one memory for anchor and one for bridging skill."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_58f926aaee59",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_hobby_to_career",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Hobby-to-Career Search After Primary Domain",
+        "description": "Use when a question asks what alternative career, job, or life direction someone might consider after or in addition to a primary occupation/field.",
+        "content": [
+          "Identify primary domain and note requested direction is 'alternative' or 'after' that domain.",
+          "Do not rely solely on searches phrased as 'alternative careers for someone with a [domain] background'.",
+          "Run additional search targeting non-domain personal interests: '<Name> hobbies and interests', 'activities <Name> enjoys outside <domain>', 'what <Name> is passionate about', '<Name> pet care / animal interests'.",
+          "Add query expansions that explicitly exclude the primary domain, e.g., '<Name> non-gaming interests'.",
+          "Treat memories about personal hobbies, pet care, volunteer work as valid evidence for alternative career."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_181d7b136477",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_holiday_event_inference",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Holiday Season Inference from Event Dates",
+        "description": "Use when a question asks which major holiday season coincides with a person's event (e.g., wedding, party, trip) and the initial search does not return a memory mentioning both the event and the holiday. This skill retrieves the person's recent event memories and maps their world_start dates to standard holiday windows.",
+        "content": [
+          "Identify the person and event type from the question (e.g., 'Evan's wedding' -> subject Evan, event types marriage/wedding).",
+          "If hybrid search returns no direct evidence, run a structured search for memories with subject = that person and memory_kind = 'event'. Optionally include semantic variants of the event type (e.g., 'married', 'got married', 'celebration'). If the question implies recency, filter to recent weeks/months relative to current world time.",
+          "For each retrieved event memory with a world_start date, map that date to a major holiday season using standard calendar windows (e.g., Christmas: late Nov-Dec; New Year: around Jan 1; Thanksgiving: late Nov; Halloween: Oct 31).",
+          "Answer by naming the holiday season containing the event's world_start date. If multiple memories match, prefer the most recent one that satisfies the event semantics.",
+          "Do not answer 'No information available' after one hybrid search; run the structured retrieval first and only give up if no event memory with a usable world_start date exists."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_0de2f3fc9ff2",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_indirect_social_connection_search",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "IndirectSocialConnectionSearch",
+        "description": "When a question asks whether someone has friends, teammates, colleagues, or other social contacts beyond a named person, especially after a search for 'friends of X' returns only the known relationship or no additional names. Also relevant when the answer likely depends on implied social roles.",
+        "content": [
+          "If initial searches for 'friends of {person}' or '{person}'s social circle' return only one known relationship or nothing, do not answer 'no information available'. Instead, search for the person's group activities and memberships.",
+          "Run follow-up queries combining the person's name with terms such as 'team', 'tournament', 'club', 'league', 'competition', 'won', 'participated', 'joined', 'group', 'band', 'company', or 'project' to surface memories of collaborative or group contexts.",
+          "When evaluating evidence for a social-connection question, treat any memory showing the person participating in a team-based, competitive, or collaborative activity (e.g., winning a tournament, being on a team, attending a group event) as support for having teammates/peers/acquaintances beyond the named friend.",
+          "Before concluding that the memory store lacks evidence, inspect memories of the person's achievements and events—these often imply other people without explicitly using the word 'friend'."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_bf4fc6664338",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_lifestyle_change_enumeration",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Activity Enumeration for Lifestyle-Change Questions",
+        "description": "Use when a question asks what new habits, diet, exercise, or lifestyle changes a person adopted, started, or does 'over time' — especially when expected answer enumerates multiple distinct activities.",
+        "content": [
+          "After first retrieval, run targeted follow-up searches with concrete activity terms rather than only paraphrases.",
+          "For every candidate activity, verify memory's subject is the asked person; exclude others' suggestions.",
+          "Before finalizing, map each distinct change type to a retrieved current memory version; if specific activity only hinted, run one more targeted search."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_e30e8146c909",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_loss_euphemism_death_recall",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Loss-Euphemism Death Recall",
+        "description": "Use when a question asks who in a person's life has died, passed away, or been lost, especially when it enumerates relationship categories such as 'family and friends'. Also use if initial search for death-related terms returns explicit death memories but the question asks for an exhaustive list across categories.",
+        "content": [
+          "When the question asks about deaths or losses ('who passed away', 'who died', 'who has been lost'), include euphemistic and indirect expressions in query expansions: 'lost', 'grieving', 'in memory of', 'late', 'passed', 'coping after losing'.",
+          "If the question enumerates relationship categories (e.g., 'family and friends'), run a separate targeted search for each category that combines the person's name with the relationship word and a loss/grief term, for example: '<person> friend lost', '<person> family grief', '<person> remembers'. Do not rely on a single hybrid search.",
+          "Inspect retrieved memories about coping activities, memorials, reminiscing, gardens, or comfort rituals—these frequently reference the deceased without using the word 'passed away' or 'died'.",
+          "Before answering, verify that every relationship category mentioned in the question has at least one supporting evidence memory. If a category is missing, perform an additional search step instead of finalizing the answer.",
+          "Do not consider the retrieval complete just because explicit death records were found; the question may require an exhaustive list, so missing evidence for any category is a signal to search further."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_7e2ad703ba82",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_milestone_enumeration",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Life-milestone event enumeration with time verification",
+        "description": "Use when a question asks for 'which two events', 'what significant life events', 'major milestones', or otherwise requests a specific count of notable events for a person within a time period. Also retrieve if the initial search returns casual or out-of-window events while the question implies milestone events.",
+        "content": [
+          "Parse the requested time window and the requested number of events (e.g., 'two events', 'which two'). Treat 'significant life events' as milestones: marriage/wedding, engagement, pregnancy/birth, death, graduation, new job, moving, etc., not routine activities.",
+          "After the initial hybrid search, run one additional targeted search for each plausible milestone type using the person's name plus a milestone keyword (e.g., 'Evan married', 'Evan wedding', 'Evan pregnant', 'Evan baby', 'Evan engaged', 'Evan graduated') and applying the requested time window if a time filter is available.",
+          "For every candidate memory, check its structured world_start/world_end (or inferred date) against the requested window. Discard memories whose date falls outside the window, even if they appear semantically related (e.g., a honeymoon planned for February or a snowshoeing trip in January should not answer a December question).",
+          "If a memory describes the partner indirectly (e.g., 'a woman from Canada', 'his wife') but other evidence links that person to the partner, treat it as partner-related and do not reject it solely for missing the word 'partner'.",
+          "Before answering, confirm that you have at least as many distinct, in-window milestone events as the question requests. If you have fewer, run more milestone-specific searches rather than substituting recreational or routine events to fill the count."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_31bda6f687c7",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_multi_person_gift_grounding",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "MultiPersonGiftGrounding",
+        "description": "Use when a user asks for a gift, recommendation, or activity suitable for two or more named people, especially when tied to health, diet, or lifestyle changes. Also consider when the first search returns only generic health/profile memories and no concrete shared activities.",
+        "content": [
+          "Identify all named people and the recommendation purpose (gift, activity, item, plan).",
+          "Build the initial hybrid query from the purpose plus each person's name, but add query expansions that translate the purpose into concrete candidate categories (e.g., for a healthy-lifestyle gift: cookbook, cooking class, meal delivery, recipe, gym equipment, running gear, healthy snack alternatives, diet plan).",
+          "In addition to the hybrid search, run structured searches filtered to memory_kind 'event' and 'preference' for each person to surface recent classes, hobbies, meals, shared recipes, and plans that may inspire the recommendation.",
+          "When the question involves multiple people, explicitly search for memories that connect the people (e.g., shared events, recipes, plans, mutual interests) and treat those shared connections as primary evidence for the recommendation.",
+          "Before finalizing, verify the recommended answer is supported for every named person: each person should have at least one supporting memory, or there should be a memory that mentions both. If support is missing for any person, run another search using terms derived from already-retrieved memories (e.g., if a memory mentions cooking, search 'cookbook recipe' before answering)."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_93df5f88a5e0",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_ordinal_event",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "ORDINAL_EVENT_ENUMERATION",
+        "description": "Use when a question asks about the first, second, third, Nth occurrence of a recurring event (e.g., 'when did X win his third tournament?', 'what was her second marathon?'). Detect the ordinal and the event type, and retrieve all instances of that event across the memory store rather than searching only with the ordinal term.",
+        "content": [
+          "If the question contains an ordinal ('first', 'second', 'third', 'Nth', etc.) applied to a recurring event, do not limit retrieval to queries containing the ordinal. Issue searches for the event type itself using several phrasings and synonyms (e.g., for a tournament win: 'tournament win', 'won', 'victory', 'champion', 'placed first') and combine results from semantic, BM25, keyword, and structured search.",
+          "Collect every memory that describes the event type, including memories without an explicit ordinal label. Sort them chronologically using explicit event dates when present; otherwise use the memory's world_start only as a reference point and account for relative time expressions (e.g., 'won last week' means the event occurred about one week before world_start; 'won yesterday' means about one day before).",
+          "Select the event that falls at the requested ordinal position in the chronological order and report its date as the answer. Verify the selected memory actually describes the same kind of event as the question, not a different one (e.g., don't answer with the fourth tournament when the question asks for the third).",
+          "If the total number of retrieved events is smaller than the requested ordinal, state that evidence is insufficient rather than substituting a differently-numbered or unrelated event."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_8b4f57c95826",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_origin_introduction",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Origin and Introduction Retrieval",
+        "description": "Use when a question asks how a person was introduced to, started, or first began an activity, interest, hobby, or role. Trigger especially when initial search returns only current or recent activity memories.",
+        "content": [
+          "Expand with origin and temporal phrases: 'since childhood', 'started playing', 'began', 'first started', 'starting with', 'grew up', 'early years', 'first experience with'.",
+          "Search for memories describing subject's history over long period: preference, enrichment, state memories.",
+          "If first retrieval returns only current events, run follow-up search targeting entry point with life-stage terms.",
+          "Check evidence actually explains how introduction happened; if not, continue searching or report absence.",
+          "Look for family or mentor references in life-history memories for causal origin."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_7bd6636241ad",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_per_person_method",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Per-Person Method Coverage",
+        "description": "Use when a question asks about the ways, methods, tools, or techniques that two or more named people use for a shared activity or routine. Also triggered when expected answer is a union of per-person attributes.",
+        "content": [
+          "Identify every named person and shared activity; run standalone search per person with paraphrase variants.",
+          "Method descriptions often use sensory/environmental vocabulary; if initial results lack method-like terms, run additional query with those terms.",
+          "If structured filters available, run targeted search for preference-kind memories about each person and activity.",
+          "Before answering, verify every named person has at least one retrieved method; if not, run more targeted searches."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_e2762c959491",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_per_subject_coverage",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Per-Subject Coverage for Multi-Person Questions",
+        "description": "Use when a question asks about experiences, events, or attributes of multiple named individuals, especially when the question implies multiple instances. Also use if initial search returns results for only some of the named people.",
+        "content": [
+          "Identify every named individual in the question. If more than one person is named, treat each as a separate retrieval target.",
+          "Run a dedicated search for each named individual separately (e.g., '[Person name] [topic keyword]'), even if a combined search already returned results. Do not rely only on a combined query or on a per-person search for just one of the people.",
+          "When the question uses a plural (e.g., 'health scares', 'incidents', 'issues'), check whether there may be multiple relevant memories per person. If the per-person search returns only one memory and the question implies multiple, issue additional query variants (synonyms, related events, time-windowed searches) to surface other memories.",
+          "If a per-person search returns a list at the top_k limit, increase depth or top_k, or refine with additional keywords, to avoid missing lower-ranked but relevant memories for that person.",
+          "Before answering, explicitly verify that every named individual has at least one supporting memory. If any person is missing evidence, continue searching for that person rather than finalizing the answer with incomplete coverage."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_7db655fd6916",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_recurring_pattern",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Recurring Pattern Concrete Search",
+        "description": "Use when a question asks about a person's recurring frustration, problem, complaint, or ongoing difficulty, and initial searches with abstract emotion word return weak results.",
+        "content": [
+          "Do not search only with abstract noun plus person's name; target memory may state pattern concretely.",
+          "Generate concrete candidate objects/actions and run searches with frequency indicators: 'weekly', 'every week', 'constantly', 'repeatedly', 'ritual', 'keeps'.",
+          "After retrieving one supporting memory, check for more recent or explicit version via structured search."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_1fedb5ee6c6d",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_related_activity_expansion",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Related-Activity Expansion for Practice-Bound Questions",
+        "description": "Use when a question asks about music, tracks, albums, or similar items a person uses during a practice/activity, or when initial search returns a partial set of such items.",
+        "content": [
+          "Identify activity and list closely related activities or contexts.",
+          "Run additional searches pairing person's name with each related activity plus item terms and verbs like 'recommended', 'prefers', 'listens to'.",
+          "Treat recommendation/preference memories as evidence for queried activity even if activity name absent.",
+          "Before finalizing, verify searches across related activities and review relevant recommendation memories."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_994e49f72251",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_related_context_music",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Related-Context Music Recall",
+        "description": "Use when a question asks for music pieces, songs, albums, or artists associated with a person and an activity (yoga, meditation, workout), especially if multiple items are implied or first search returns only one explicit item.",
+        "content": [
+          "Expand activity with semantically adjacent terms: for yoga use meditation, relaxation, calming, mindfulness; for workout use exercise, training, focus.",
+          "Run complementary searches using each expanded activity term joined with person's name and music-related verb/noun.",
+          "Check if any recalled memory mentions recommendation for closely related activity; treat as candidate evidence.",
+          "If relevant recommendation found but original query terms did not match, perform verification search using item's entity type and related activity term."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_e50424096e37",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_shared_experience_concrete_search",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Concrete Search for Shared Experiences",
+        "description": "Use when a question asks about a shared feeling, frustration, problem, or experience between two named people. Also use when initial search for abstract relational phrase returns no direct evidence.",
+        "content": [
+          "Decompose abstract relational questions into concrete per-person searches. For 'What is a shared frustration regarding X for A and B?', search separately for events about A and about B that relate to X, such as 'A searching for X', 'B unable to find X', 'A has not found X'.",
+          "Include the concrete domain/object from the question in the query and keywords (e.g., 'pet-friendly spot', 'dog ownership', 'housing', 'shipping problem'), not just the abstract words like 'frustration' or 'shared'.",
+          "If the initial hybrid search does not return memories that explicitly describe the emotion or outcome (e.g., 'not found', 'cannot find', 'frustrated'), run at least one follow-up search combining one person's name with the concrete object/action (e.g., 'Andrew pet-friendly spot') with a higher top_k, and inspect event memories that only describe the situation without labeling it as a frustration.",
+          "For sufficiency: if one person's event describes a blocked goal (e.g., searching and failing to find) and the other person is involved or concerned with the same topic, treat that as evidence of a shared experience even if the word 'frustration' never appears."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_0bbf52987eaa",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_shared_with_month_window_search",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Shared with + Month Window Search",
+        "description": "When a question uses a sharing verb between two people (share/shared with/tell/told/mention) together with a month or year phrase like 'in January 2024', the expected answer often lives in an event memory about only the sharer, and the time should be treated as a range, not a point. Use this Skill to avoid over-restricting queries to memories containing both people or to a single date.",
+        "content": [
+          "Identify the sharer X and recipient Y in the question; for example, 'John' (sharer) and 'Tim' (recipient) in 'What achievement did John share with Tim in January 2024?'",
+          "Do not require Y or both names in the retrieved memory — 'shared with' may mean X disclosed or told about an event, so the memory can describe an event about X alone. Formulate at least one query without Y, e.g., 'achievement of X' plus the topic/object hint, keeping the sharer X as the subject.",
+          "Parse month/year mentions like 'in January 2024' as a date range (start = first day, end = last day) and use time_mode 'range', not a point at the 1st of the month, because events later in the month would otherwise be filtered out.",
+          "If semantic/BM25/keyword results lack a suitable X-only event, run a structured search over memory fields with subject = X, appropriate memory_kinds (e.g., 'event'), and the month range; do not declare 'No information available' until this strategy has been attempted."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_89b780945447",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_skill_sharing",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Skill-Sharing Query Expansion",
+        "description": "Use when a question asks what skills, recipes, techniques, or knowledge a person taught, shared, or helped others learn. Trigger when initial search returns only the person's own activities.",
+        "content": [
+          "Reformulate query with parallel phrasings not using 'skills': 'shared tips on', 'taught others to', 'showed others how to', 'helped others improve at', 'gave advice on', 'passed on knowledge of', 'mentored'.",
+          "Use structured or semantic search targeting 'helped', 'shared', 'taught', 'advised', and social-interaction events.",
+          "If top results lack explicit sharing/teaching, perform additional search with tip/teaching synonyms.",
+          "Verify each claimed skill has supporting memory clause showing sharing, teaching, or helping."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_15221a27b6b8",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_supplementary_activity",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Supplementary Activity Enumeration",
+        "description": "Use when a question asks what a person does to supplement, enhance, support, or add to their main activity or training routine, or when question requests a list of activities/practices around a recurring topic.",
+        "content": [
+          "Treat 'what does [person] do to supplement/enhance/support [primary activity]' as a list question.",
+          "After initial hybrid search, run additional structured or keyword search using person's name combined with general activity-type terms.",
+          "Only finalize after examining all retrieved activity-type memories; if only one distinct activity found, explicitly search for parallel or synonymous activities.",
+          "Every distinct activity in final answer must be supported by at least one retrieved memory version."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_efab2a0800b9",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_temporal_neighbor",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Temporal-Neighbor Activity Retrieval",
+        "description": "Use when a question asks what someone did after or in response to a specific event, and the initial memory search returns an event memory but no direct activity memory. The desired activity often resides in a memory with the same or adjacent world_start date as the event, without sharing the event's keywords.",
+        "content": [
+          "1. Identify the anchor memory that matches the event named in the question (e.g., the memory describing the person reading the story). Record its world_start timestamp and subject.",
+          "2. If the initial results contain no memory stating the post-event action, run a supplementary structured/time-filtered search for the same subject with world_start equal to the anchor's date (or within ±1 day if time of day unknown). Use a query that names the expected activity type (e.g., 'activity', 'visited', 'plan', 'next') rather than reusing the full natural-language question.",
+          "3. If no direct hit, inspect the anchor memory's version with include_sources=true and examine other memories originating from the same source/turn, as they may describe the immediately following action.",
+          "4. Treat a same-timestamp memory from the same subject as strong candidate evidence for 'after the event'; include it in the answer only if its content describes an action attributable to the person and plausibly follows the event."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_551535c67f8a",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    },
+    {
+      "skill_id": "sk_access_time_purpose_constrained_retrieval",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Time_And_Purpose_Constrained_Retrieval",
+        "description": "Use when a question asks what a specific person shared, posted, photographed, made, or created during an explicit month or period (e.g., 'in November 2022'), especially when the activity is described with a purpose like 'experimentation' or 'trying something new'. Trigger when initial search results are dominated by memories of other times or semantically similar but unrelated topics.",
+        "content": [
+          "If the question specifies a month or year, apply a structured time filter on world_start (treating world_end as unbounded) in the search request; do not rely solely on the date appearing as free-text keywords in the query.",
+          "When the question involves an action like 'shared a photo of', 'posted about', or 'made', and the stated purpose is vague (e.g., 'experimentation'), expand with purpose synonyms and rerun the search using the person's name plus terms such as 'shared', 'photo', 'made', 'cooked', 'created', 'experimented with', 'new recipe', or 'tried'.",
+          "Before answering, verify that the candidate memory explicitly satisfies the full constraint set: subject (the asked-about person), action (shared/posted/photographed/created), time period (world_start falls within the asked window), and purpose/activity (e.g., an experiment or new attempt). A memory that matches only a semantic topic or only a partial timeframe is not sufficient evidence.",
+          "If a particular topic (e.g., the person's pets) keeps dominating results but fails the time or purpose check, suppress that topic in subsequent searches (e.g., exclude its keywords) and deliberately search for other recent activities of the person within the requested time window."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "cand_access_4a0b2166a324",
+      "bank_version_created": 1,
+      "created_at": "2026-08-02T17:21:25Z"
+    }
+  ]
+}

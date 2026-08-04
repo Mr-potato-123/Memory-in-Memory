@@ -1,0 +1,1342 @@
+                                           Memory is Reconstructed, Not Retrieved: Graph Memory for LLM Agents
+
+
+                                                                                       Shuo Ji 1 Yibo Li 1 Bryan Hooi 1
+
+
+                                                                  Abstract
+                                             Despite recent progress, LLM agents still strug-
+                                             gle with reasoning over long interaction histories.
+                                             While current memory-augmented agents rely on
+arXiv:2606.06036v1 [cs.AI] 4 Jun 2026
+
+
+
+
+                                             a static “retrieve-then-reason” paradigm, this rigid
+                                             pipeline design prevents them from dynamically
+                                             adapting memory access to intermediate evidence
+                                             discovered during inference. To bridge this gap,
+                                             we propose MRAgent, a framework that com-
+                                             bines an associative memory graph with an active
+                                             reconstruction mechanism. We represent mem-
+                                             ory as a Cue–Tag–Content graph, where associa-
+                                             tive tags serve as semantic bridges connecting
+                                             fine-grained cues to memory contents. Operat-
+                                             ing on this structure, our active reconstruction                   Figure 1. Comparison between passive retrieval and active memory
+                                             mechanism integrates LLM reasoning directly                        reconstruction in MRAgent.
+                                             into memory access, allowing the agent to iter-
+                                             atively explore and prune retrieval paths based on
+                                             accumulated evidence. This ensures that memory
+                                             retrieval is dynamically adapted to the reason-                    are fundamentally constrained by their limited context win-
+                                             ing context while avoiding combinatorial explo-                    dows, which restrict their ability to retain interaction history
+                                             sion caused by unconstrained expansion. Exper-                     over time (Hatalis et al., 2023).
+                                             iments on the L O C O M O benchmark and L ONG -                    To mitigate these limitations, prior work equips LLM
+                                             M EM E VAL benchmark demonstrate significant                       agents with external memory systems. Early approaches
+                                             improvements over strong baselines (up to 23%),                    adopt Retrieval-Augmented Generation (RAG) (Lewis et al.,
+                                             while substantially reducing token and runtime                     2020), where memory access is realized via similarity-based
+                                             cost, highlighting the effectiveness of active and                 retrieval over unstructured text or embedding stores. Subse-
+                                             associative reconstruction for long-horizon mem-                   quent work introduces more structured memory representa-
+                                             ory reasoning. The code is available at: https:                    tions, including hierarchical stores (Fang et al., 2025; Kang
+                                             //github.com/Ji-shuo/MRAgent.                                      et al., 2025) and knowledge graphs (KGs) (Rasmussen et al.,
+                                                                                                                2025; Xu et al., 2025; Huang et al., 2025), which explicitly
+                                                                                                                encode entities and relations to support more interpretable
+                                        1. Introduction                                                         and relational retrieval. However, retrieval in these systems
+                                                                                                                remains restricted to fixed top-k selection or predefined sub-
+                                        LLMs exhibit a “jagged” cognitive profile (Hendrycks et al.,            graph traversal, failing to infer new retrieval cues or adapt
+                                        2025), excelling at math and reasoning, but deficient in tasks          to intermediate evidence. Under this formulation, existing
+                                        requiring long-term memory, such as interactive assistance              memory systems operate as passive retrieval policies.
+                                        or decision-support systems acting over extended interac-
+                                        tions (Gao et al., 2026). In such long-horizon tasks, LLMs              In contrast, cognitive neuroscience conceptualizes mem-
+                                                                                                                ory retrieval as an active and associative reconstruction
+                                            1
+                                              National University of Singapore, Singapore. Correspondence       process (Rugg & Renoult, 2025), rather than a passive read-
+                                        to: Yibo Li <liyibo@u.nus.edu>.                                         out of stored content. Specifically, retrieval is initiated by
+                                        Proceedings of the 43 rd International Conference on Machine            contextual cues, which propagate through intermediate rep-
+                                        Learning, Seoul, South Korea. PMLR 306, 2026. Copyright 2026            resentations, progressively reconstructing coherent memory
+                                        by the author(s).                                                       experiences (Frankland & Josselyn, 2019).
+
+                                                                                                            1
+                           Memory is Reconstructed, Not Retrieved: Graph Memory for LLM Agents
+
+
+
+
+Figure 2. Illustrative example comparing passive retrieval and active reconstruction: passive retrieval only retrieves memory content
+related to Nate’s video game tournaments based on the query, while active reconstruction infers a critical temporal cue (“July”) through
+LLM reasoning and identifies Caroline’s corresponding activity.
+
+
+This perspective highlights two key challenges for LLM-                2. Problem Setting: Active Memory Access
+based memory systems, as illustrated in Figure 1. (Chal-
+lenge 1: Active Reconstruction) How can memory access                  In this section, we formulate memory retrieval as a sequen-
+be transformed from one-shot retrieval into an active multi-           tial decision process and analyze why the traditional passive
+step reconstruction process that progressively reveals infor-          retrieval paradigm fails on complex, multi-step queries.
+mation across reasoning steps? (Challenge 2: Associative
+Memory Structure) How can memory be organized to cap-                  2.1. Memory Retrieval Definition
+ture semantic and structural dependencies, enabling guided             We consider an external memory M consisting of memory
+exploration across associative items?                                  units V = {v1 , . . . , vN }. Given a query x, memory access
+In this light, we propose the Memory Reasoning Architec-               proceeds by sequentially selecting memory units over T
+ture for LLM Agents (MRAgent), a framework that enables                steps. Let S (t) = {v (1) , . . . , v (t) } denote the accumulated
+LLM agents to perform active and associative memory re-                evidence after step t. We distinguish two classes of memory
+construction by integrating LLM reasoning into memory ac-              access policies.
+cess. MRAgent explores multiple candidate retrieval paths              Passive retrieval. A passive (stateless) retrieval policy πp
+over a memory graph, pruning irrelevant branches based                 selects memory units solely based on the query:
+on intermediate evidence, and iteratively optimizing for the
+next step with the highest information gain. To enable con-                               {v (1) , . . . , v (T ) } = πp (x).          (1)
+trolled memory traversal, we design a Cue–Tag–Content
+memory graph, where tags encode associations between                                                                                    (t)
+                                                                       Active reconstruction. An active (stateful) policy πa
+fine-grained cues and specific memory contents. By ex-                 selects the next unit conditioned on the evolving evidence:
+posing these associations explicitly, tags allow the LLM
+to select retrieval paths before accessing detailed memory               v (t) = πa(t) (x, S (t−1) ),       S (t) = S (t−1) ∪ {v (t) }. (2)
+contents. Our contributions can be summarized as follows:
+                                                                       This formulation enables adaptive, multi-step interaction
+                                                                       with memory.
+   • We propose active memory reconstruction, a new
+     paradigm that integrates memory access into the rea-
+                                                                       2.2. Limits of Passive Retrieval
+     soning process, allowing the agent to dynamically
+     adapt search strategy based on intermediate evidence.             We categorize retrieval strategies of existing memory sys-
+                                                                       tems into two paradigms based on their memory organiza-
+   • We introduce a Cue–Tag–Content memory graph in
+                                                                       tion and adaptation mechanisms, and compare them with
+     which associative tags mediate retrieval between cues
+                                                                       the proposed active reconstruction paradigm in Figure 2.
+     and content, enabling the LLM to identify promising
+     retrieval paths while pruning irrelevant branches.                Similarity-based Retrieval. Many existing memory sys-
+                                                                       tems adopt similarity-based retrieval, such as Memory-
+   • We provide a theoretical analysis proving that active re-         Bank (Zhong et al., 2024) and Mem0 (Chhikara et al., 2025),
+     trieval policies are strictly more expressive than passive        where retrieval is defined by a similarity scoring function:
+     retrieval.
+                                                                                  πsim (x) = TopK({sim(x, v)}v∈V , k) .                (3)
+   • Extensive experiments demonstrate that MRAgent out-
+     performs strong baselines with significantly improved             In this paradigm, memory serves as a static context provider
+     token and runtime efficiency.                                     and the relevance function sim(x, v) is fixed by the query.
+
+                                                                   2
+                           Memory is Reconstructed, Not Retrieved: Graph Memory for LLM Agents
+
+As shown in Figure 2(a), such methods retrieve many events
+related to “video game tournament” based on surface-level
+relevance, thereby introducing substantial noise while fail-
+ing to find the correct evidence.
+Graph-based Memory Retrieval. To exploit structural re-
+lations among memory units, methods such as A-Mem (Xu
+et al., 2025), Zep (Rasmussen et al., 2025) introduce graph-
+structured memory. These approaches extend the retrieval
+mechanism by combining similarity-based seeding with pre-
+defined N -hop neighbor expansion:
+                                                                        Figure 3. Functional correspondence between human memory
+                   sim                                                  reconstruction and the MRAgent architecture.
+               V     = TopK({sim(x, v)}v∈V , k) ,
+                                                             (4)
+          πgraph (x) = V sim ∪ Neighbor V sim .
+                                             
+                                                                        where tags serve as intermediate associative structures that
+where Neighbor(·) returns the predefined N -hop neighbors               encode how cues are linked to memory contents and guide
+of a node set in the memory graph. While this strategy alle-            the memory reconstruction process. Memory content can be
+viates certain multi-hop retrieval challenges, it requires rele-        distinguished into episodic memory for concrete events and
+vant evidence to be connected through explicit graph links.             semantic memory for shared concepts and knowledge, as
+Moreover, the use of fixed neighbor expansion often intro-              supported by cognitive neuroscience (Manns et al., 2003).
+duces substantial noise. Figure 2(b) shows that graph-based
+expansion retrieves additional but irrelevant neighbors, yet            3. Associative Memory System
+still fails to recover information about Caroline, which is
+not directly connected to “video game tournament” events                To enable the active reconstruction paradigm described in
+in the memory graph.                                                    Section 2, we organize the agent’s memory as a heteroge-
+                                                                        neous graph. This section details the core Cue–Tag–Content
+Active Memory Reconstruction. By integrating LLM rea-
+                                                                        architecture and its organization into multi-granular layers.
+soning directly into memory access, active reconstruction
+enables the agent to infer new retrieval cues and adapt traver-
+sal strategies based on accumulated evidence. As illustrated            3.1. Cue–Tag–Content Associative Memory
+in Figure 2(c), intermediate findings can be explicitly trans-          Motivated by the need for active memory reconstruction in
+formed into new retrieval constraints, allowing the agent to            Section 2, we organize memory as a structured associative
+recover evidence that is unreachable under passive policies.            graph rather than a flat collection of retrievable items.
+Summary. The fundamental limitation of passive retrieval                As illustrated in Figure 4 (a), the memory construction
+lies in its inability to perform reasoning concurrently with            pipeline consists of two phases: element generation and
+memory access, leading to three weaknesses: (i) an inability            graph construction. The first phase employs LLM to extract
+to revise strategies based on intermediate state, such as               and generate memory elements from dialogs. Then, these
+identifying ‘July’ as a temporal anchor; (ii) the accumulation          elements are utilized to construct a memory graph.
+of noise due to fixed aggregation ; and (iii) heavy reliance on
+pre-constructed structures, limiting flexibility and scalability.       Unified Memory System. We model the memory system as
+A detailed analysis is included in Appendix A.                          a heterogeneous graph M = (C, V, R). The graph contains
+                                                                        two primary categories of nodes: (1) Cues c ∈ C are fine-
+                                                                        grained keywords such as entities or attributes. (2) Contents
+2.3. Motivation from Cognitive Memory Systems
+                                                                        v ∈ V store specific memory items.
+These limitations highlight the necessity of moving beyond
+                                                                        Associations between cues and contents are encoded as
+static retrieval toward an active memory reconstruction
+                                                                        typed relations: R ⊆ C×G×V, where each triple (c, g, v) ∈
+paradigm, which is strongly supported by cognitive neu-
+                                                                        R connects a cue c to a content node v through a relation
+roscience research (Rugg & Renoult, 2025). As illustrated
+                                                                        attribute g, referred to as a Tag.
+in Figure 3, studies in human memory suggest that recall
+unfolds sequentially: contextual cues trigger the reactiva-             Associative Tags. Tags are utilized to summarize associa-
+tion of engrams, compact internal memory states formed                  tive relations between fine-grained cues and content units.
+from past experiences, whose activation in turn biases and              Based on these associations, the LLM performs a two-stage
+constrains subsequent recall, progressively reconstructing              retrieval process, where it first selects a small set of rel-
+a coherent memory (Rashid et al., 2016). Motivated by                   evant tags and then retrieves content conditioned on the
+this perspective, we adopt a Cue–Tag–Content architecture,              selected tags. In large and complex memory graphs, naively
+
+                                                                    3
+                           Memory is Reconstructed, Not Retrieved: Graph Memory for LLM Agents
+
+
+
+
+Figure 4. MRAgent: An Associative Memory System with LLM-Driven Active Memory Reconstruction. (a) MRAgent constructs
+an associative memory system from dialogues, organizing episodic and semantic memories through Cue–Tag–Content structures that
+explicitly encode semantic and relational associations through tags. (b) Upon a query, the agent performs active memory reconstruction,
+where an LLM iteratively reasons over cues and tags to traverse the memory graph and selectively reconstruct task-relevant memory.
+
+
+expanding n-hop neighbors from content nodes often leads               different forms of reasoning and retrieval.
+to combinatorial explosion and the inclusion of substantial
+                                                                       Episodic Layer (Cue–Tag–Episode). The episodic layer
+irrelevant memories. By introducing tags as explicit asso-
+                                                                       stores event-specific memory units ei ∈ V e , each corre-
+ciative intermediates, MRAgent enables guided and flexible
+                                                                       sponding to a concrete experience occurring at a particular
+reasoning over the memory graph. Tags provide semantic
+                                                                       time. Episodes are retrievable through a set of fine-grained
+guidance, allowing the agent to evaluate and prune traver-
+                                                                       cues Ci ⊆ C such as entities, actions, or contextual key-
+sal branches to avoid incurring the computational cost of
+                                                                       words and are routed by tags gi that summarize associative
+processing full episodic content.
+                                                                       relations between cues and episodic content. To support tem-
+To realize this two-stage retrieval process, we define two             poral reasoning, episodic memories are further organized
+induced mapping operators over the memory relation R.                  along a unified timeline, allowing temporal constraints to
+Specifically, ϕc→g activates candidate associative tags from           be imposed during reconstruction.
+a given cue, while ϕ(c,g)→v retrieves content conditioned
+                                                                       Semantic Layer (Cue–Tag–Semantic). The semantic layer
+on both the cue and a selected tag:
+                                                                       captures relatively stable knowledge si ∈ V s , such as per-
+                  ϕc→g (c) ≜ {g | (c, g, ·) ∈ R},                      sonal attributes, preferences, and general facts extracted
+                                                             (5)       from raw dialogue content. Each semantic node is anchored
+            ϕ(c,g)→v (c, g) ≜ {v | (c, g, v) ∈ R}.                     to a cue ci , while the tag encode aspect-level associations
+                                                                       of that cue, such as personality traits, long-term preferences,
+Together, these operators decouple associative reasoning
+                                                                       or factual attributes. This design enables direct access to
+from content-level retrieval, making selective and recon-
+                                                                       targeted semantic information without requiring retrieval
+structive memory access tractable in large-scale graphs.
+                                                                       over potentially long episodic histories.
+3.2. Multi-Granular Memory Layers                                      Abstraction Layer (Topics). The abstraction layer stores
+                                                                       topic nodes τ ∈ V τ , each summarizing recurring patterns
+Inspired by human memory, we organize memory contents                  shared across a coherent set of episodes. Topics are con-
+into complementary types spanning concrete events, stable              nected to their constituent episodes and serve as a computa-
+knowledge, and higher-level abstractions. Episodic memory              tional abstraction that supports efficient top-down transitions
+preserves event-specific information grounded in particular            ϕτ →e , allowing the agent to first localize a relevant topic
+contexts, semantic memory captures abstract and relatively             and then descend to the associated episodes.
+stable knowledge distilled across events, and topic-level
+abstractions summarize recurring patterns shared across                Together, these multi-granular memory layers allow MRA-
+episodes. Based on this distinction, we organize the mem-              gent to flexibly combine event-level evidence from episodic
+ory graph into multiple functional layers, each supporting             memory, abstract knowledge from semantic memory, and
+
+                                                                   4
+                          Memory is Reconstructed, Not Retrieved: Graph Memory for LLM Agents
+
+higher-level structure from topic abstractions, supporting            where Z (t) denotes the active set of memory elements
+both contextualized and conceptual reasoning.                         (including cues, tags and contents), serving as the candi-
+                                                                      dates for the next traversal step, and H(t) denotes the re-
+3.3. Memory Population via LLM Distillation                           constructed context consisting of evidence accumulated in
+                                                                      previous steps, which conditions subsequent traversal direc-
+The memory system is populated through an automated dis-              tions.
+tillation pipeline applied to the input stream T . The stream
+is first segmented into episodic units ei , each corresponding
+to a coherent event grounded in a specific context. For every         Traversal Actions. We define a finite set of traversal
+episodic unit, tags and cues are extracted using LLM-based            actions A = {Π1 , . . . , Πm } to specify how the LLM
+components:                                                           explores the structured memory graph during reconstruc-
+                                                                      tion. Each traversal action is induced by a predefined map-
+                 tag                    cue
+           gi = FLLM (ei ),       Ci = FLLM (ei ),         (6)        ping operator ϕ introduced in Eq. (5), including Cue→Tag,
+         tag                                                          (Cue,Tag)→Content, and Content→(Cue,Tag).
+where FLLM    produces a short associative tag gi that summa-
+                                                  cue
+rizes the relational pattern of the episode, and FLLM  extracts       Forward traversal actions expands the active set along Cue–
+a set of fine-grained cues Ci such as entities, attributes, and       Tag–Content relations, enabling the agent to retrieve new
+salient descriptors. Each cue in Ci is then linked to the             memory contents conditioned on the current cues and tags.
+episodic unit ei through the tag gi , forming the Cue–Tag–            Specifically, Πc→g activates associative tags from a given
+Episode relations that constitute the episodic layer of the           set of cues C (t) , and Π(c,g)→v retrieves memory content
+memory graph. Semantic units are extracted in a similar
+                                                                                                                                 
+                                                                      jointly conditioned on selected cues and tags C (t) , G (t) :
+manner, yielding stable, abstract knowledge that persists
+across individual episodes and is anchored to entity-level                                      [
+                                                                                   Πc→g C (t) ≜   ϕc→g (c′ ),
+                                                                                             
+cues through aspect-level tags.
+                                                                                                               c′ ∈C (t)
+To support reasoning at a coarser granularity, topic nodes
+                                                                                                                 [          [
+                                                                                      (t)        (t)
+                                                                                                                                      ϕ(c,g)→v (c′ , g ′ ).
+                                                                                                       
+                                                                        Π(c,g)→v C          ,G             ≜
+are generated by summarizing the shared themes of related
+                                                                                                               c′ ∈C (t) g ′ ∈G (t)
+episodes, and each topic node is connected to its constituent                                                                      (8)
+episodes. This layered distillation organizes the input stream        Reverse traversal actions allows retrieved content to activate
+into a multi-granular associative structure, allowing the             new cues and tags for subsequent exploration, enabling the
+agent to access memory at the level of concrete events,               agent to refine or redirect its reconstruction trajectory based
+stable facts, or higher-level topics as required during recon-        on intermediate evidence. Formally, Πv→(c,g) identifies
+struction. Additional details are provided in Appendix B.1.           cues and tags associated with the retrieved content:
+
+                                                                      Πv→(c,g) V (t) ≜ {(c′ , g ′ ) | ∃v ′ ∈ V (t) , (c′ , g ′ , v ′ ) ∈ R},
+                                                                                    
+4. MRAgent: Reconstructive Memory Agent
+                                                                                                                                          (9)
+In this section, we present MRAgent, which formulates                 Together, these forward and reverse traversal actions define
+memory access as an active reconstruction process. We                 a compositional action space that allows the LLM to expand
+first define the reconstruction state and traversal actions           and refine memory traversal during reconstruction.
+(Section 4.1), and then describe the memory reconstruc-
+tion process in detail (Section 4.2). Finally, we provide a           4.2. Memory Reconstruction Process
+theoretical analysis of its expressivity (Section 4.3).
+                                                                      With the reconstruction state and traversal actions defined,
+4.1. Reconstructive Memory Framework                                  we detail the memory reconstruction process, which iter-
+                                                                      atively explores relevant memory contents through state
+Rather than executing a predefined retrieval pipeline, MRA-           updates and traversal actions. Given a query, MRAgent first
+gent performs active reconstruction within a structured mem-          extracts a set of fine-grained cues and matches them against
+ory system. This process is formalized through an explicit            the stored cue set, obtaining the initial active set Z (0) and the
+reconstruction state and a set of traversal actions, which col-       initial reconstruction state S (0) = (Z (0) , ∅). Starting from
+lectively characterize possible reconstruction trajectories.          this state, MRAgent starts an iterative reconstruction loop
+                                                                      consisting of LLM reasoning, controlled memory traversal,
+Reconstruction State. MRAgent maintains an explicit                   and LLM-guided routing.
+reconstruction state that guides the selection of subsequent
+traversal directions during memory reconstruction. At step
+                                                                      LLM Reasoning and Action Selection. Conditioned on
+t, the reconstruction state is defined as
+                                                                      reconstruction state, the LLM reasons over the query x, the
+                    S (t) = (Z (t) , H(t) ),               (7)        accumulated context H(t) to select a set of traversal actions
+
+                                                                  5
+                          Memory is Reconstructed, Not Retrieved: Graph Memory for LLM Agents
+
+A(t) ⊆ A based on current active set Z (t) :                          Given retrieval budget T , recall that active reconstruction
+                                                                      adaptively chooses the next node to retrieve based on what it
+             A(t) = fselect x, H(t) , Z (t) ,
+                                           
+                                                          (10)        has already retrieved, while a passive retriever must commit
+                                                                      to all T retrievals upfront as a function of the query alone.
+where fselect denotes the LLM-based action-selection func-
+tion that selects promising directions for expansion, thereby         These retrieval strategies induce different hypothesis classes
+                                                                                                                           LM
+reducing noise. Furthermore, conditioning on the accumu-              (sets of input–output mappings). Specifically, let Hactive (T )
+lated evidence H(t) enables the agent to discover new cues            contain all predictors implementable by an LM that can
+and dynamically adjust its reasoning trajectory.                      make T adaptive retrieval calls to the graph, and let
+                                                                         LM
+                                                                      Hpassive  (T ) contain those implementable when the T re-
+Controlled Memory Traversal. For each selected traver-                trieval calls are fixed in advance (non-adaptive). Then our
+sal action Πa ∈ A(t) , the memory system executes the cor-            main result is:
+responding traversal operator to generate candidate nodes:            Theorem 4.1 (Active retrieval is strictly more powerful
+                            [                                         than passive retrieval). For any retrieval budget T ≥ 2, the
+               Ze(t+1) =         Πa Z (t) ,
+                                         
+                                                      (11)            passive hypothesis class is strictly contained in the active
+                           a∈A(t)
+                                                                      hypothesis class:
+where Ze(t+1) is the new candidate set. This step expands                              LM
+                                                                                      Hpassive         LM
+                                                                                               (T ) ⊊ Hactive (T ).
+the traversal trajectories, guided by LLM-selected actions
+rather than exhaustive graph expansion.
+                                                                      Intuitively, LMs with active retrieval can learn any function
+                                                                      that LMs with passive retrieval can, but not vice versa. The
+LLM Routing and State Update. Based on the generated
+                                                                      full statement and proofs are given in Appendix C.
+candidates, the LLM selects the most relevant content and
+prunes irrelevant branches to ensure the accumulated context
+remains concise and focused. Formally, the next active set            5. Experiments
+and reconstruction state are updated as follows:
+                                                                      In this section, we conduct comprehensive experiments to
+              Z (t+1) = froute x, H(t) , Ze(t+1) ,
+                                                                     evaluate MRAgent and answer the following research ques-
+                                                        (12)          tions: (RQ1) How does MRAgent perform compared to
+              H(t+1) = H(t) ∪ Z (t+1) ,                               existing memory systems? (RQ2) How does MRAgent com-
+                                                                      pare to baselines in terms of computational cost? (RQ3)
+where froute is the LLM-based routing function that eval-
+                                                                      How do different components of MRAgent contribute to
+uates semantic associations between the query, the recon-
+                                                                      overall performance? (RQ4) How does multi-turn reasoning
+structed context, and newly retrieved memory contents. Un-
+                                                                      progressively improve memory reconstruction? (RQ5) How
+like surface-level matching or predefined traversal, this rout-
+                                                                      does MRAgent behave in real conversational scenarios?
+ing step incorporates semantic associations and structural
+relations exposed by the memory graph. Following the
+state update, the accumulated context H(t+1) is evaluated             5.1. Experiment Setup
+by CLLM to determine if the evidence is sufficient to answer          Benchmarks. We evaluate MRAgent on two widely
+the query or if further exploration is required.                      used benchmarks for long-context memory evaluation:
+Through this process, MRAgent integrates LLM reasoning                (1) LoCoMo (Maharana et al., 2024), which focuses on
+directly into the multi-turn memory reconstruction. Selec-            long conversational memory understanding, and (2) Long-
+tive evidence expansion reduces noise and improves effi-              MemEval (Wu et al., 2025), which is designed to assess
+ciency, while conditioning on intermediate evidence enables           long-term memory system across multiple sessions with
+flexible adjustment of the reasoning trajectory. Implementa-          longer interaction histories per query.
+tion details and algorithms are provided in Appendix B.2.             Baselines. We evaluate MRAgent against representative
+                                                                      memory-augmented baselines: Retrieval-augmented genera-
+4.3. Theoretical Analysis: Active vs. Passive Retrieval               tion (RAG), LangMem (LangChain, 2025), A-Mem (Xu
+                                                                      et al., 2025), MemoryOS (Kang et al., 2025), and
+MRAgent is designed as an active retrieval approach over
+                                                                      Mem0 (Chhikara et al., 2025).
+a graph-based memory. In this section, we formalize the
+advantage of such active retrieval over passive retrieval,            Implementation. We evaluate all methods using two LLM
+from an approximation-theoretic view. For generality and              backbones: Gemini-2.5-Flash and Claude-Sonnet-4.5. Fol-
+notational simplicity, our theory generalizes from the (cue,          lowing prior work, we report F1 and LLM-Judge (J) scores
+tag, episode) formulation in MRAgent to arbitrary heteroge-           using GPT-4o-mini, and additionally report evidence recall
+neous graphs with textual information on each node.                   (Recall) for analysis.
+
+                                                                  6
+                           Memory is Reconstructed, Not Retrieved: Graph Memory for LLM Agents
+
+Table 1. Performance across different question types on L O C O M O. Evaluation metrics include F1 score (F1), and LLM-Judge score (J).
+All values are reported as percentages. Bold indicates the best result, and underline indicates the second best.
+
+   Model      Method              Multi-hop                  Temporal            Open Domain              Single hop         Overall
+                              F1 ↑       J↑           F1 ↑         J↑          F1 ↑      J↑           F1 ↑        J↑          J↑
+              RAG            34.89     58.16±0.45    43.52     49.22±0.15     25.68     41.67±0.47    53.69    69.20±0.05     61.30
+              A-Mem          33.81     53.54±0.33    40.22     49.53±0.44     12.49     33.33±0.49    46.39    61.83±0.10     55.97
+              MemoryOS       41.42     63.82±0.44    35.91     47.04±0.53     23.43     41.66±0.85    54.82    71.90±0.22     63.35
+   Gemini
+              LangMem        40.67     61.34±0.79    44.70     53.58±0.25     20.49     38.54±0.33    48.20    69.68±0.12     62.86
+              Mem0           45.17     68.79±1.21    58.19     61.68±0.29     26.24     41.66±1.63    54.37    73.72±0.10     68.31
+              MRAgent        43.69     75.17±0.33    67.66     80.37±0.15     32.51     68.75±0.98    64.08    90.48±0.10     84.21
+              RAG            34.53     57.45±0.59    43.39     48.29±0.15     26.56     43.75±0.34    53.66    69.20±0.06     61.10
+              A-Mem          42.45     71.67±0.22    47.73     55.48±0.28     22.02     47.57±0.46    55.19    74.71±0.05     68.45
+   Claude     MemoryOS       32.94     60.99±0.44    39.14     51.09±0.29     18.29     48.95±0.15    45.46    66.49±0.21     61.18
+              LangMem        44.37     70.92±0.25    56.64     80.68±0.36     22.66     54.71±0.55    54.36    83.12±0.15     78.61
+              Mem0           48.66     75.88±0.67    49.50     53.58±0.44     28.58     56.25±0.49    54.43    74.07±0.06     69.02
+              MRAgent        56.72     90.19±0.29    69.82     85.34±0.25     34.67     71.57±0.10    68.62    91.10±0.15     88.32
+
+
+Table 2.    Performance on L ONG M EM E VAL evaluated by                Table 3. Per-sample token consumption and runtime on long-
+LLM-Judge ↑. Best and second-best results among Gemini-                 term L ONG M EM E VAL across different memory systems using the
+backbone methods are marked in bold and underline, respec-              Gemini backbone. Results include both memory construction and
+tively. Mul.: multi-session; Sgl.: single-session-user; Tmp.:           retrieval. Bold indicates the best result, and underline indicates
+temporal-reasoning; Pref.: single-session-preference. MRAgent∗          the second best.
+uses Claude for retrieval while memories are constructed by Gem-
+ini. The complete table is provided in Appendix D.5.                           Method         Token Consumption        Runtime(s)
+                                                                               A-Mem                  632k              1,122.23
+    Method         Mul.     Sgl.     Tmp.    Pref.   Overall
+                                                                               MemoryOS               273k              3,135.54
+    RAG           54.89    85.71     42.86   33.33   54.65                     LangMem               3,268k             1,209.57
+    A-Mem         42.85    90.00     45.11   46.43   52.98                     Mem0                   245k               533.29
+    MemoryOS      56.39    87.14     38.35   46.67   54.92                     MRAgent                118k               586.11
+    LangMem       52.63    78.57     45.71   36.67   53.77
+    Mem0          50.38    78.57     45.11   40.00   53.01
+    MRAgent       68.42    92.85     68.42   66.67   72.95
+    MRAgent∗      86.46    92.85     85.71   78.57   86.76
+                                                                        reasoning chains. This adaptive reconstruction process en-
+                                                                        ables the agent to focus on relevant evidence and follow
+                                                                        evidence-guided retrieval paths, leading to superior perfor-
+                                                                        mance over passive retrieval baselines.
+Additional details are reported in the Appendix D.
+                                                                        Table 2 further shows consistent improvements on L ONG -
+5.2. Main Results (RQ1)                                                 M EM E VAL, achieving a relative improvement of 32% over
+                                                                        the strongest baseline.
+MRAgent consistently outperforms all baselines across
+question types and backbones. As shown in Table 1, MRA-
+                                                                        5.3. Cost Analysis (RQ2)
+gent improves the overall J score from 68.31 to 84.21 under
+the Gemini backbone (an 23.3% relative gain), and achieves              Table 3 reports the total token consumption and runtime per
+a 12.4% improvement under the Claude backbone.                          sample on L ONG M EM E VAL, which is designed for long-
+                                                                        term memory assess across multiple dialogue sessions.
+These gains can be attributed to two key factors. First, the
+Cue–Tag–Content (CTC) memory design explicitly encodes                  MRAgent improves information efficiency through se-
+associative relations via tags, integrating semantic infor-             lective, on-demand memory access. MRAgent reduces
+mation into the memory graph structure. Compared with                   prompt tokens to 118k, a significant decrease from baselines
+graph-based retrieval methods that expand purely along pre-             like A-Mem (632k). Unlike existing methods that repeat-
+defined structural links, the CTC memory allows MRAgent                 edly summarize history and analyze intricate dependencies
+to select retrieval directions based on semantic relevance,             during construction, MRAgent maintains a lightweight con-
+thereby improving its ability to locate supporting evidence.            struction phase and defers complex relation-building to the
+Second, MRAgent integrates LLM reasoning into multi-turn                retrieval stage, where it is performed in a query-specific
+memory access, allowing retrieval directions to adapt to                manner. Moreover, by leveraging associative tags to se-
+accumulated evidence and to progressively form coherent                 mantically guide retrieval directions, the agent can prune
+
+                                                                   7
+                           Memory is Reconstructed, Not Retrieved: Graph Memory for LLM Agents
+
+
+
+
+Figure 5. Ablation results on L O C O M O for multi-hop queries,
+evaluated using Recall and LLM-Judge (J) under Claude backbone.
+
+
+                                                                       Figure 6. Analysis of multi-turn reasoning on L O C O M O under the
+irrelevant paths before accessing expensive episodic content.          Claude backbone.
+This “on-demand” approach ensures that computational re-
+sources are focused strictly on query-relevant evidence.
+                                                                       to convergence (Average Turns) and the maximum number
+5.4. Ablation Study (RQ3)                                              of turns that retrieve valid information (Max Valid Turns).
+Figure 5 presents ablation results on multi-hop questions in           Multi-turn reasoning progressively recovers missing ev-
+L O C O M O, isolating the contributions of memory structure           idence. As shown in Figure 6 (a), single-hop (blue line)
+and reasoning mechanisms. We consider three structural                 and temporal (yellow line) queries reach near-perfect recall
+variants: CE (Cue→Episode) with direct indexing, CTE                   within approximately three turns, whereas multi-hop queries
+(Cue–Tag–Episode) with mediated episodic retrieval, and                benefit substantially from iterative exploration, with recall
+CTC (Cue–Tag–Content) with the full memory structure.                  improving by over 30% across successive steps (red line).
+The CTE and CTC variant is evaluated both without reason-              This highlights the necessity of multi-step reconstruction
+ing (green bars) and with reasoning (blue bars).                       for resolving compositional and long-range dependencies.
+Active multi-step reasoning is a primary factor underly-               The agent autonomously evaluates accumulated context
+ing the observed performance gains. Across all memory                  to guide search and termination. As shown in Figure 6
+structures, variants with reasoning (blue bars) consistently           (b), Max Valid Turns closely matches Average Turns, sug-
+outperform their structure-only counterparts (green bars).             gesting that the LLM effectively determines when to con-
+This indicates that multi-step reasoning and traversal are             tinue searching and when to stop. This behavior minimizes
+crucial for accumulating evidence and supporting multi-                redundant exploration. Furthermore, experiments in Ap-
+hop inference, whereas one-shot retrieval is insufficient to           pendix D.6 show that increasing the parallel retrieval budget
+resolve complex multi-hop queries.                                     cannot substitute for deeper reconstruction depth.
+Associative tags provide effective semantic guidance for
+retrieval. Within the no-reasoning setting (green bars),               5.6. Case Study (RQ5)
+performance improves monotonically from CE to CTE to                   We include a qualitative case study in Figure 7 demonstrat-
+CTC, demonstrating that richer associative structures en-              ing MRAgent’s ability to actively reconstruct multi-session
+able more reliable retrieval. In particular, tags help guide           evidence over a structured memory graph for complex, tem-
+retrieval toward semantically relevant directions and reduce           porally grounded queries, with detailed analysis provided in
+the inclusion of fragmented or irrelevant memory units.                the Appendix D.8.
+Episodic and semantic memory layers are complemen-
+tary. Removing the semantic memory component leads to a                6. Related Work
+clear performance degradation (blue bars). While episodic
+memory preserves event-specific details, semantic mem-                 Retrieval-Augmented Generation. RAG (Lewis et al.,
+ory captures stable, abstract knowledge that is essential for          2020) augments LLMs by injecting external documents into
+multi-hop reasoning.                                                   prompts via similarity search, where memory is an unstruc-
+                                                                       tured vector store and retrieval reduces to a one-shot query-
+                                                                       time top-k selection. Two variants extend this paradigm.
+5.5. Multi-turn Reasoning Analysis (RQ4)
+                                                                       GraphRAG (Han et al., 2025) organizes the retrieval cor-
+As shown in Figure 6 (a), we evaluate cumulative evidence              pus into graph structures and retrieves through community
+recall across reasoning turns on the L O C O M O dataset. Fig-         summaries and neighborhood expansion, improving global
+ure 6 (b) summarizes the average number of reasoning turns             and multi-hop reasoning over flat similarity search. Agen-
+
+                                                                   8
+                            Memory is Reconstructed, Not Retrieved: Graph Memory for LLM Agents
+
+                                                                           chical memory systems maintain long-lived memory that is
+                                                                           continually updated across interactions. MemoryOS (Kang
+                                                                           et al., 2025) organizes memory into a short, mid, and long-
+                                                                           term hierarchy for structured access. Mem0 (Chhikara et al.,
+                                                                           2025) maintains a compact set of salient facts through LLM-
+                                                                           driven add, update, and delete operations. SeCom (Pan et al.,
+                                                                           2025) constructs the memory bank at the level of topically
+                                                                           coherent segments for more accurate retrieval. These sys-
+                                                                           tems advance how memory is stored and updated over time,
+                                                                           but their retrieval procedures remain passive, selecting mem-
+                                                                           ory units as a fixed function of the query without reasoning
+                                                                           over intermediate evidence.
+
+                                                                           7. Conclusion and Discussion
+                                                                           We proposed MRAgent, a reconstructive memory agent
+Figure 7. Reasoning trajectory of MRAgent over the memory                  that formulates memory access as an active, multi-step re-
+graph for a multi-session query. Starting from the cue “Jonna”, the        construction process over a structured memory graph. A
+agent traverses multiple associative tags to retrieve both episodic        key design choice of MRAgent is to shift the modeling
+memories (e.g., screenplay submissions) and semantic information           of complex relational dependencies to the retrieval stage,
+(e.g., background about the screenplay). It then reasons over
+higher-level topics to recover rejection events and aligns them with
+                                                                           enabling the agent to resolve more complex queries with
+previously retrieved submissions, enabling a coherent answer to            fewer computational cost through targeted, state-dependent
+the query. Here, Dx : x denotes concrete event instances.                  exploration. As a result, our current implementation adopts
+                                                                           a relatively simple memory construction strategy, without
+                                                                           introducing additional complexity in memory updating or
+tic RAG instead moves retrieval inside the reasoning loop.                 forgetting mechanisms. This design choice also exposes
+Search-o1 (Li et al., 2025) couples large reasoning models                 several limitations that suggest directions for future work.
+with an agentic mechanism that issues search queries on                    First, because relational reasoning is deferred to retrieval,
+demand whenever a knowledge gap is detected and refines                    the cost of reconstruction grows with the depth of explo-
+retrieved documents before integrating them into the rea-                  ration, and queries that require many traversal steps incur
+soning chain, and Search-R1 (Jin et al., 2025) trains this                 higher latency than single-shot retrieval. Second, our static
+behavior through reinforcement learning over multi-turn                    construction does not update or consolidate memory over
+query generation. These methods retrieve from open or ex-                  time, so the memory graph grows monotonically as inter-
+ternal corpora to fill factual knowledge gaps within a single              actions accumulate, raising storage overhead in long-lived
+reasoning task, rather than reconstructing over an agent’s                 deployments. Addressing these limitations through adaptive
+own persistent interaction history.                                        construction, lightweight memory maintenance, and more
+                                                                           robust traversal policies is a promising avenue for extending
+Graph-based Memory. Graph-based memory systems                             active reconstruction to broader long-horizon settings.
+organize agent memory as a graph to capture structural
+dependencies among memory units. A-Mem (Xu et al.,
+2025) constructs structured memory notes linked through
+                                                                           Acknowledgements
+LLM-assisted relation extraction and retrieves via seed se-                This research is supported by the Ministry of Education, Sin-
+lection followed by neighborhood expansion. Zep (Ras-                      gapore, under the Academic Research Fund Tier 2 (FY2025)
+mussen et al., 2025) maintains a bi-temporal knowledge                     (Grant T2EP20124-0038).
+graph that tracks when facts hold and invalidates outdated
+edges, supporting retrieval over evolving knowledge. Li-
+CoMemory (Huang et al., 2025) organizes memory as a
+                                                                           Impact Statement
+lightweight hierarchical graph that uses entities and relations            This work aims to advance the design of memory systems
+as a semantic indexing layer, with temporal and hierarchy-                 for large language model (LLM) agents by introducing an
+aware search for efficient retrieval. While these represen-                active, reconstructive paradigm for long-horizon memory
+tations improve relational and multi-hop access, traversal                 reasoning. Potential positive impacts include more reliable
+is governed by predefined operators and does not adapt to                  and context-aware AI assistants for applications such as
+evidence accumulated during retrieval.                                     personal assistants, decision support systems, and long-term
+Hierarchical and Persistent Memory Systems. Hierar-                        human–AI interaction, where accurate recall and reasoning
+
+                                                                       9
+                         Memory is Reconstructed, Not Retrieved: Graph Memory for LLM Agents
+
+over past information are essential. At the same time, as              Fu, J., Liu, Z., Shin, J., Lee, K., Mazeika, M., Phan, L.,
+with other memory-augmented AI systems, the ability to                 Ingebretsen, G., Khoja, A., Xie, C., Salaudeen, O., Hein,
+store and reason over long-term interaction data raises con-           M., Zhao, K., Pan, A., Duvenaud, D., Li, B., Omohundro,
+siderations around privacy, data governance, and responsible           S., Alfour, G., Tegmark, M., McGrew, K., Marcus, G.,
+deployment. These concerns are not specific to our method              Tallinn, J., Schmidt, E., and Bengio, Y. A definition
+but apply broadly to persistent memory in AI agents.                   of AGI. CoRR, abs/2510.18212, 2025. doi: 10.48550/
+                                                                       ARXIV.2510.18212. URL https://doi.org/10.
+References                                                             48550/arXiv.2510.18212.
+
+Anokhin, P., Semenov, N., Sorokin, A., Evseev, D.,                   Hu, Y., Liu, S., Yue, Y., Zhang, G., Liu, B., Zhu, F., Lin, J.,
+  Kravchenko, A., Burtsev, M., and Burnaev, E. Arigraph:               Guo, H., Dou, S., Xi, Z., et al. Memory in the age of ai
+  Learning knowledge graph world models with episodic                  agents. arXiv preprint arXiv:2512.13564, 2025.
+  memory for llm agents. arXiv preprint arXiv:2407.04363,
+  2024.                                                              Huang, Z., Tian, Z., Guo, Q., Zhang, F., Zhou, Y., Jiang,
+                                                                       D., and Zhou, X. Licomemory: Lightweight and cog-
+Chhikara, P., Khant, D., Aryan, S., Singh, T., and Ya-                 nitive agentic memory for efficient long-term reasoning.
+  dav, D. Mem0: Building production-ready AI agents                   CoRR, abs/2511.01448, 2025. doi: 10.48550/ARXIV.
+  with scalable long-term memory. CoRR, abs/2504.19413,                2511.01448. URL https://doi.org/10.48550/
+  2025. doi: 10.48550/ARXIV.2504.19413. URL https:                     arXiv.2511.01448.
+  //doi.org/10.48550/arXiv.2504.19413.
+                                                                     Jin, B., Zeng, H., Yue, Z., Wang, D., Zamani, H.,
+Fang, J., Deng, X., Xu, H., Jiang, Z., Tang, Y., Xu, Z.,                and Han, J. Search-r1: Training llms to reason and
+  Deng, S., Yao, Y., Wang, M., Qiao, S., Chen, H., and                  leverage search engines with reinforcement learning.
+  Zhang, N. Lightmem: Lightweight and efficient memory-                 CoRR, abs/2503.09516, 2025. doi: 10.48550/ARXIV.
+  augmented generation. CoRR, abs/2510.18866, 2025.                     2503.09516. URL https://doi.org/10.48550/
+  doi: 10.48550/ARXIV.2510.18866. URL https://                          arXiv.2503.09516.
+  doi.org/10.48550/arXiv.2510.18866.
+                                                                     Kang, J., Ji, M., Zhao, Z., and Bai, T. Memory OS of AI
+Frankland, P. W. and Josselyn, S. A. The neurobiological               agent. CoRR, abs/2506.06326, 2025. doi: 10.48550/
+  foundation of memory retrieval. Nature Neuroscience, 22              ARXIV.2506.06326. URL https://doi.org/10.
+  (10):1576–1585, 2019.                                                48550/arXiv.2506.06326.
+Gao, H., Geng, J., Hua, W., Hu, M., Juan, X., Liu, H., Liu,          LangChain.  Langmem sdk for agent long-term
+  S., Qiu, J., Qi, X., Ren, Q., Wu, Y., Wang, H., Xiao,                memory.    https://blog.langchain.com/
+  H., Zhou, Y., Zhang, S., Zhang, J., Xiang, J., Fang, Y.,             langmem-sdk-launch/, 2025. Accessed: 2025-01.
+  Zhao, Q., Liu, D., Qian, C., Wang, Z., Hu, M., Wang, H.,
+ Wu, Q., Ji, H., and Wang, M. A survey of self-evolving              Lewis, P., Perez, E., Piktus, A., Petroni, F., Karpukhin, V.,
+  agents: What, when, how, and where to evolve on the                  Goyal, N., Küttler, H., Lewis, M., Yih, W., Rocktäschel,
+  path to artificial super intelligence. Trans. Mach. Learn.           T., Riedel, S., and Kiela, D. Retrieval-augmented genera-
+  Res., 2026, 2026.                                                    tion for knowledge-intensive NLP tasks. In Larochelle,
+                                                                       H., Ranzato, M., Hadsell, R., Balcan, M., and Lin, H.
+Han, H., Wang, Y., Shomer, H., Guo, K., Ding, J., Lei, Y.,
+                                                                       (eds.), Advances in Neural Information Processing Sys-
+  Halappanavar, M., Rossi, R. A., Mukherjee, S., Tang, X.,
+                                                                       tems 33: Annual Conference on Neural Information Pro-
+  He, Q., Hua, Z., Long, B., Zhao, T., Shah, N., Javari,
+                                                                       cessing Systems 2020, NeurIPS 2020, December 6-12,
+  A., Xia, Y., and Tang, J. Retrieval-augmented generation
+                                                                       2020, virtual, 2020.
+  with graphs (graphrag). CoRR, abs/2501.00309, 2025.
+  doi: 10.48550/ARXIV.2501.00309. URL https://                       Li, X., Dong, G., Jin, J., Zhang, Y., Zhou, Y., Zhu, Y.,
+  doi.org/10.48550/arXiv.2501.00309.                                   Zhang, P., and Dou, Z. Search-o1: Agentic search-
+Hatalis, K., Christou, D., Myers, J., Jones, S., Lambert, K.,          enhanced large reasoning models. In Christodoulopoulos,
+  Amos-Binks, A., Dannenhauer, Z., and Dannenhauer, D.                 C., Chakraborty, T., Rose, C., and Peng, V. (eds.), Pro-
+  Memory matters: The need to improve long-term memory                 ceedings of the 2025 Conference on Empirical Methods
+  in llm-agents. In Proceedings of the AAAI Symposium                  in Natural Language Processing, EMNLP 2025, Suzhou,
+  Series, volume 2, pp. 277–280, 2023.                                 China, November 4-9, 2025, pp. 5420–5438. Association
+                                                                       for Computational Linguistics, 2025. doi: 10.18653/V1/
+Hendrycks, D., Song, D., Szegedy, C., Lee, H., Gal, Y.,                2025.EMNLP-MAIN.276. URL https://doi.org/
+  Brynjolfsson, E., Li, S., Zou, A., Levine, L., Han, B.,              10.18653/v1/2025.emnlp-main.276.
+
+                                                                10
+                          Memory is Reconstructed, Not Retrieved: Graph Memory for LLM Agents
+
+Maharana, A., Lee, D., Tulyakov, S., Bansal, M., Barbieri,            Zhong, W., Guo, L., Gao, Q., Ye, H., and Wang, Y. Memo-
+ F., and Fang, Y. Evaluating very long-term conversa-                   rybank: Enhancing large language models with long-term
+ tional memory of LLM agents. In Ku, L., Martins, A.,                   memory. In Wooldridge, M. J., Dy, J. G., and Natara-
+ and Srikumar, V. (eds.), Proceedings of the 62nd Annual                jan, S. (eds.), Thirty-Eighth AAAI Conference on Artifi-
+ Meeting of the Association for Computational Linguistics               cial Intelligence, AAAI 2024, Thirty-Sixth Conference on
+ (Volume 1: Long Papers), ACL 2024, Bangkok, Thai-                      Innovative Applications of Artificial Intelligence, IAAI
+ land, August 11-16, 2024, pp. 13851–13870. Associa-                    2024, Fourteenth Symposium on Educational Advances
+ tion for Computational Linguistics, 2024. doi: 10.18653/               in Artificial Intelligence, EAAI 2014, February 20-27,
+ V1/2024.ACL-LONG.747. URL https://doi.org/                             2024, Vancouver, Canada, pp. 19724–19731. AAAI Press,
+ 10.18653/v1/2024.acl-long.747.                                         2024. doi: 10.1609/AAAI.V38I17.29946. URL https:
+                                                                        //doi.org/10.1609/aaai.v38i17.29946.
+Manns, J. R., Hopkins, R. O., and Squire, L. R. Semantic
+ memory and the human hippocampus. Neuron, 38(1):
+ 127–133, 2003.
+Pan, Z., Wu, Q., Jiang, H., Luo, X., Cheng, H., Li, D.,
+  Yang, Y., Lin, C.-Y., Zhao, H. V., Qiu, L., et al. Secom:
+  On memory construction and retrieval for personalized
+  conversational agents. In The Thirteenth International
+  Conference on Learning Representations, 2025.
+Rashid, A. J., Yan, C., Mercaldo, V., Hsiang, H.-L., Park, S.,
+  Cole, C. J., De Cristofaro, A., Yu, J., Ramakrishnan, C.,
+  Lee, S. Y., et al. Competition between engrams influences
+  fear memory formation and recall. Science, 353(6297):
+  383–387, 2016.
+Rasmussen, P., Paliychuk, P., Beauvais, T., Ryan, J., and
+  Chalef, D. Zep: A temporal knowledge graph architecture
+  for agent memory. CoRR, abs/2501.13956, 2025. doi:
+  10.48550/ARXIV.2501.13956. URL https://doi.
+  org/10.48550/arXiv.2501.13956.
+Rugg, M. D. and Renoult, L. The cognitive neuroscience of
+  memory representation. Neuroscience & Biobehavioral
+  Reviews, 155:105450, 2025.
+Tan, Z., Yan, J., Hsu, I.-H., Han, R., Wang, Z., Le, L., Song,
+  Y., Chen, Y., Palangi, H., Lee, G., et al. In prospect and
+  retrospect: Reflective memory management for long-term
+  personalized dialogue agents. In Proceedings of the 63rd
+  Annual Meeting of the Association for Computational
+  Linguistics (Volume 1: Long Papers), pp. 8416–8439,
+  2025.
+Wu, D., Wang, H., Yu, W., Zhang, Y., Chang, K., and
+ Yu, D. Longmemeval: Benchmarking chat assistants on
+ long-term interactive memory. In The Thirteenth Inter-
+ national Conference on Learning Representations, ICLR
+ 2025, Singapore, April 24-28, 2025. OpenReview.net,
+ 2025. URL https://openreview.net/forum?
+ id=pZiyCaVuti.
+Xu, W., Liang, Z., Mei, K., Gao, H., Tan, J., and
+  Zhang, Y. A-MEM: agentic memory for LLM agents.
+ CoRR, abs/2502.12110, 2025. doi: 10.48550/ARXIV.
+  2502.12110. URL https://doi.org/10.48550/
+  arXiv.2502.12110.
+
+                                                                 11
+                           Memory is Reconstructed, Not Retrieved: Graph Memory for LLM Agents
+
+A. Detailed Analysis of Passive Retrieval
+This appendix provides a unified analysis of the retrieval mechanisms in representative memory systems for LLM agents,
+aligning all methods with the formulation in Section 2. Recall that memory access operates over an external memory M
+with units V = {v1 , . . . , vN }. Given a query x, passive retrieval returns a fixed set πp (x), while active reconstruction selects
+                                                    (t)
+units sequentially via a stateful policy v (t) = πa (x, S (t−1) ).
+
+Retrieval-Augmented Generation. Retrieval-augmented generation (RAG) adopts a classic similarity-based retrieval
+paradigm, where an external memory is organized as a vector store and queried in a single shot. Given a query x, RAG
+computes a relevance score between x and each memory unit v ∈ V, and retrieves the top-k most similar items:
+
+                                            πpRAG (x) = TopK({sim(x, v)}v∈V , k) .                                              (13)
+
+A-Mem (Xu et al., 2025). A-Mem introduces a graph structure over memory units, where nodes correspond to structured
+memory notes and edges encode semantic relations constructed during memory construction. Given a query x, A-Mem
+performs retrieval by first selecting a seed memory item via similarity, and then expanding its predefined neighborhood
+along the memory graph:
+                                                   V ∗ = TopK({sim(x, v)}v∈V , k) ,
+                                                                                                                    (14)
+                                         πpA-M EM (x) = V ∗ ∪ Neighbor(V ∗ ).
+where Neighbor(V ∗ ) = v∈V ∗ Neighbor(v) returns the nodes directly connected to the seed set in the memory graph.
+                         S
+
+MemoryOS (Kang et al., 2025). MemoryOS organizes agent memory into a three-tier hierarchy with short-term memory
+(STM), mid-term memory (MTM), and long-term personal memories (LPM). Given a query x, it performs hierarchical
+retrieval by incorporating recent short-term context, relevant mid-term topic memories, and long-term persona information:
+                                                                                                           
+                                                                   fact
+               RMTM (x) = TopK({Fscore (x, v)}v∈VMTM ) , RLPM            (x) = TopK {Fscore (x, v)}v∈VLPM
+                                                                                                       fact   ,
+                                                                                                                     (15)
+                M EM OS                                 profile     fact
+              πp        (x) = VSTM ∪ RMTM (x) ∪ VLPM ∪ RLPM (x),
+
+       profile                                      fact
+where VLPM     represents persona information, and VLPM  denotes query-conditioned long-term factual memory.
+LangMem (LangChain, 2025). LangMem maintains conversational memory by compressing dialogue history into a set of
+memory summaries, which are stored in a vector-based memory store and injected into the model context during inference.
+Each memory unit corresponds to a summarized dialogue message represented by an embedding vector. Given a query x,
+LangMem retrieves relevant memories via similarity-based search:
+
+                                    πpL ANG M EM (x) = SLLM (TopK({sim(x, v)}v∈V , k) , x) .                                    (16)
+
+where SummarizeLLM (·) denotes an LLM-based summarization function that compresses retrieved memory entries into a
+concise context representation.
+Mem0 (Chhikara et al., 2025). Mem0 maintains a persistent memory store composed of natural-language facts extracted
+incrementally from conversations via an LLM-driven memory construction and update process. Each memory item
+corresponds to a salient factual statement, and memory evolution is governed by LLM-selected operations (ADD, UPDATE,
+DELETE, NOOP) to ensure consistency over time. Given a query x, Mem0 performs retrieval by selecting the most relevant
+memory items via similarity search:
+
+                                           πpM EM 0 (x) = TopK({sim(x, v)}v∈V , k) .                                            (17)
+
+Conclusion. From the above analysis, existing memory systems primarily focus on the design of memory representations,
+with retrieval procedures tightly coupled to the underlying structure. These approaches can be broadly categorized as
+similarity-based retrieval and graph-based retrieval. Although some methods employ structured memory representations,
+their retrieval processes remain passive: traversal operators are predefined and fixed, and do not adapt based on intermediate
+evidence during retrieval.
+
+                                                                12
+                           Memory is Reconstructed, Not Retrieved: Graph Memory for LLM Agents
+
+                           Table 4. Memory toolkit providing operations for controlled memory traversal.
+
+ Tool                                        Mapping Function                Description
+ query tag events                               ϕ(c,g)→e (c, g)              Retrieve episodic events associated with a cue–tag pair.
+ query conversation time                           ϕe→t (v e e)              Return the conversation timestamp of an episodic event.
+ query event keywords                             ϕe→(c,g) (e)               Extract associated cues and tags from an episodic event.
+ query event context                               ϕe→ctx (e)                Retrieve contextual text surrounding the episodic event.
+ query personal information                       ϕcs →gs (cs )              Return semantic aspects associated with a person entity.
+ query personal aspect                        ϕ(cs ,gs )→vs (cs , g s )      Retrieve semantic content for a (person, aspect) pair.
+ query topic events                                 ϕτ →e (τ )               Retrieve episodic events associated with a topic node.
+
+
+B. Implementation and Execution Details
+B.1. Memory Construction Pipeline
+Cue–Tag–Episode. To instantiate elements of the memory graph and explicitly model their associative relations, we employ
+an LLM to extract the components required to construct Cue–Tag–Episode triplets. Given the raw dialogue text T , we first
+rewrite and refine it to resolve contextual dependencies and make cues explicit, and then segment the processed text into
+coherent episodic units:
+
+                                                         {ei } ← RLLM (T ),                                                      (18)
+
+where RLLM performs raw text processing, including pronoun resolution, temporal normalization, and episodic segmentation.
+For each episodic segment ei , we generate an associative tag and a set of fine-grained cues using LLM-based extractors:
+
+                                              gi ← TLLM (xi ),            Ci ← KLLM (xi ),                                       (19)
+
+where TLLM produces a short and precise phrase summarizing the core semantic or relational pattern of the episode, and
+KLLM extracts a set of cues Ci , including entities, attributes, and other salient descriptors. We then add nodes for xi and
+each c ∈ Ci , and associate them with the tag gi to form the Cue–Tag–Episode relations.
+Cue–Tag–Semantic. Semantic memory complements episodic reconstruction by providing relatively stable abstractions
+beyond individual episodes (Anokhin et al., 2024; Hu et al., 2025). Each semantic unit is represented as (csi , gis , si ), where
+si denotes the semantic content, csi is an entity-level cue, and gis is an aspect-level tag. We extract such semantic units from
+the input text T via an LLM-based semantic extraction function:
+
+                                                    {(csi , gis , si )} ← SLLM (T ),                                             (20)
+
+where SLLM identifies stable facts and attributes expressed in T , summarizes them into semantic content si , and assigns an
+entity-level cue csi together with an aspect-level tag gis . The extracted (csi , gis , si ) units are inserted into the same memory
+graph and linked by Cue–Tag–Semantic associations.
+High-level Topic Memory. While Tag captures episode-level semantic patterns, Topic summarizes recurrent patterns across
+episodes and provides a higher-level organization for multi-granular reasoning. This design is consistent with the view that
+higher-order structures can be abstracted from repeated episodic experiences (Pan et al., 2025; Tan et al., 2025). Concretely,
+we obtain topic nodes by applying an LLM-based abstraction function to the set of episodic segments:
+
+                                                       {τj } ← ALLM ({ei }),                                                     (21)
+
+where each topic node τj summarizes a coherent set of episodes that share recurring semantic patterns. We then add
+topic–episode links to connect each τj with its associated episodes, enabling the agent to reason at a higher level when
+fine-grained episodic traversal is unnecessary.
+
+B.2. Executable Memory Reconstruction
+Figure 8 presents a detailed illustration of the memory reconstruction process, accompanied by an example diagram and
+pseudocode. To realize multi-step reasoning trajectories, we design a specialized toolkit that executes the traversal actions
+determined by the LLM and returns newly retrieved evidence from the memory graph.
+
+                                                                    13
+                         Memory is Reconstructed, Not Retrieved: Graph Memory for LLM Agents
+
+
+                                                                  Algorithm 1 Active Memory Reconstruction
+                                                                  Require: Query x, memory graph G, traversal actions A =
+                                                                      {Π1 , . . . , Πm }, max steps T
+                                                                  Ensure: Answer ŷ
+                                                                   1: C ← E XTRACT C UES(x)
+                                                                   2: Z (0) ← ACTIVE S ET I NIT(C, G)
+                                                                   3: H(0) ← ∅
+                                                                   4: S (0) ← (Z (0) , H(0) )
+                                                                   5: for t = 0 to T − 1 do
+                                                                   6: // Action selection
+                                                                   7: A(t) ← fselect (x, H(t) , Z (t) ) // A(t) ⊆ A
+                                                                   8: // Controlled traversal
+                                                                   9: Ze(t+1) ← ∅
+                                                                  10: for all a ∈ A(t) do
+                                                                  11:       Ze(t+1) ← Ze(t+1) ∪ Πa (Z (t) )
+                                                                  12:    end for
+                                                                  13:    // Routing and state update
+                                                                  14:    Z (t+1) ← froute (x, H(t) , Ze(t+1) )
+                                                                  15: H(t+1) ← H(t) ∪ Z (t+1)
+                                                                  16:    if S TOP(x, H(t+1) ) then
+                                                                  17:       break
+                                                                  18:    end if
+                                                                  19: end for
+                                                                  20: ŷ ← A NSWER LLM(x, H(t+1) )
+                                                                  21: return ŷ
+
+
+
+
+Figure 8. Left: An illustrative example of memory reconstruction given a query. Right: Pseudocode of the memory reconstruction
+algorithm.
+
+
+
+
+MRAgent operates under two execution modes, Ψ ∈ {Navigate, Answer}. In the Navigate mode, the agent invokes the
+toolkit to progressively explore the memory graph and accumulate evidence. Once sufficient evidence has been collected,
+the agent transitions into the Answer mode to generate the final response conditioned on the reconstructed context.
+Table 4 summarizes the toolkit used for memory traversal and evidence acquisition. Each tool corresponds to a typed
+mapping between memory components, enabling the LLM to explicitly control the direction and granularity of memory
+access. Rather than retrieving a fixed set of memories, the agent composes these tools into sequential or parallel invocations
+to progressively reconstruct relevant context. At each navigation step, the LLM selects and invokes one or more tools based
+on the current reconstruction state. The returned results are treated as candidate evidence and are evaluated by the LLM to
+decide whether to expand, refine, or terminate a traversal path. This explicit tool-based interface ensures that memory access
+remains interpretable and controllable, while allowing the agent to adapt its retrieval strategy to intermediate evidence.
+
+C. Theoretical Analysis: Active vs. Passive Retrieval over a Heterogeneous KG Memory
+MRAgent is designed as an active retrieval approach over a graph-based memory. This section formalizes an approximation-
+theoretic advantage of such active (adaptive) retrieval over passive (non-adaptive) retrieval.
+
+C.1. Setup
+We consider tasks involving queries x ∈ X , with answers y from a label space Y.
+Our MRAgent method uses a heterogeneous knowledge graph (KG) memory with cues, tags and episodes. However, for
+generality and notational simplicity, our theory generalizes this to arbitrary heterogeneous KGs with textual information on
+each node.
+
+                                                             14
+                             Memory is Reconstructed, Not Retrieved: Graph Memory for LLM Agents
+
+Heterogeneous KG memory.             For each problem size n, a memory M ∈ Mn is a heterogeneous KG with node set
+
+                                                        V(M ) = {v1 , v2 , . . . , vn }.
+
+Each node v ∈ V(M ) has a type τ (v) in some type set, and a textual payload p(v) ∈ P. The KG also has a finite set of
+relation labels R (e.g., tag types).
+
+Node-retrieval operator. Our LM interacts with the KG via a retrieval operator that, given a node, returns both (i) the
+node payload and (ii) a bounded list of outgoing neighbors.
+Formally, fix a branching bound B ≥ 1. For each memory M , define
+
+                                           RetrieveM : V(M ) → P × (R × V(M ))≤B .
+
+Given a node v, the operator returns
+                                                   RetrieveM (v) = p(v), Out(v) ,
+                                                                               
+
+where p(v) ∈ P is the payload and Out(v) is a list of at most B outgoing edges (r, v ′ ), where r is the edge’s relation and v ′
+is its target node. This abstraction matches common KG implementations where a “node fetch” returns attributes/text plus a
+bounded set of neighbor references.
+
+C.2. Population risk and approximation error
+Definition C.1 (Population risk). For a predictor π and distribution D, define the population risk under 0–1 loss:
+                                                                                 
+                                       L(π; D) := E(M,x,y)∼D 1[π(x, M ) ̸= y] .
+
+Definition C.2 (Approximation error). For a hypothesis class H and distribution D, define
+
+                                                       opt(H; D) := inf L(π; D).
+                                                                           π∈H
+
+
+A policy that learns nothing about y can still guess using the prior. To capture this baseline under 0–1 loss, define
+
+                                                          εY := 1 − sup PY (y).
+                                                                           y∈Y
+
+Intuitively, εY is the minimum error achievable when you only know the prior PY and have no additional information about
+y.
+
+C.3. Active vs. passive retrieval
+We now define active and passive policies, given an LM with parameter θ ∈ Θ and a retrieval budget of T steps. The LM
+induces functions Qθ,t for t ≤ T which decide which node to retrieve in step t, and a final answer head Hθ which outputs
+an answer given the retrieval history.
+Under the active policy, Qθ,t is conditioned on the entire history seen so far, but under the passive policy, it is conditioned
+only on the query. Let v (t) denote the node the LM chooses to retrieve in step t. Formally:
+Definition C.3 (Active LM+retrieval policy class). An active policy with parameters θ proceeds as:
+
+                                           v (1) = Qθ,1 (x),           z (1) = RetrieveM (v (1) ),
+
+and for t = 2, . . . , T ,
+                                 v (t) = Qθ,t (x, z (1) , . . . , z (t−1) ),     z (t) = RetrieveM (v (t) ).
+The prediction is
+                                                 πθact (x, M ) = Hθ (x, z (1) , . . . , z (T ) ).
+Define the hypothesis class
+                                                      LM
+                                                     Hactive (T ) := {πθact : θ ∈ Θ}.
+
+                                                                        15
+                           Memory is Reconstructed, Not Retrieved: Graph Memory for LLM Agents
+
+Definition C.4 (Passive LM+retrieval policy class). A passive policy with parameters θ proceeds as:
+                                                v (t) = Qpass
+                                                         θ,t (x),            t = 1, . . . , T,
+then retrieves z (t) = RetrieveM (v (t) ) for all t, and outputs
+                                               πθpass (x, M ) = Hθ (x, z (1) , . . . , z (T ) ).
+Define
+                                                   LM
+                                                  Hpassive (T ) := {πθpass : θ ∈ Θ}.
+
+C.4. Main theorem: active retrieval is strictly more powerful than passive
+We show that allowing the retriever to adapt its queries to previously retrieved content yields a strictly larger class of
+predictors than any non-adaptive (query-only) retriever.
+Theorem C.5 (Active retrieval is strictly more powerful than passive). For any retrieval budget T ≥ 2, the passive
+hypothesis class is strictly contained in the active hypothesis class:
+                                                      LM              LM
+                                                     Hpassive (T ) ⊊ Hactive (T ).
+
+
+To start, we first observe that passive policies are a subset of active policies, making the active hypothesis class at least as
+strong as the passive class.
+Lemma C.6. For any retrieval budget T , we have
+                                                      LM              LM
+                                                     Hpassive (T ) ⊆ Hactive (T ).
+
+Proof. Fix T and any passive policy πθpass ∈ Hpassive
+                                              LM
+                                                      (T ). By definition, its retrieval queries take the form v (t) = Qpass
+                                                                                                                        θ,t (x),
+depending only on the query x. Define an active policy π̃θact with queries
+                              ṽ (t) = Q̃θ,t (x, z (1) , . . . , z (t−1) ) := Qpass
+                                                                               θ,t (x),            t = 1, . . . , T,
+i.e., the active policy ignores the retrieval history and issues the same sequence of nodes as the passive one. Using the same
+answer head Hθ , the resulting prediction function satisfies π̃θact (x, M ) = πθpass (x, M ) for all (x, M ).
+
+What remains to be shown. To prove strictness in Theorem 1 for any T ≥ 2, it now suffices to construct a distribution D
+(depending on T ) such that active retrieval can achieve zero error with budget T , while any passive policy with the same
+budget has error bounded away from zero, which we will show in the next subsection.
+
+C.5. A separating task family: Binary-Tree Needle-in-a-Haystack
+We now construct a task with the required property. Intuitively, the query identifies a root node. Retrieval from the root
+reveals two candidate children; the root payload contains a single bit telling which child to follow. Repeating for d hops
+yields a unique target leaf, whose payload contains the answer label. Active retrieval can follow the revealed bits in order to
+achieve zero error, but passive retrieval must guess the leaf, incurring irreducible error.
+
+Binary tree. We form a complete binary tree of depth d = T − 1. The root is denoted v∅ . Each internal node vu is indexed
+by a binary string u representing the path from the root to this node: starting from the root, each bit indicates whether to
+take the left (0) or right (1) child. As such, each internal node vu has two children, labeled vu0 and vu1 .
+
+Ground-truth leaf. Sample a target leaf index u⋆ ∈ {0, 1}d uniformly at random, and let the target node be the
+corresponding leaf vu⋆ . We interpret the bits of u⋆ = (u⋆1 , . . . , u⋆d ) as the ground-truth path from the root: starting at v∅ , at
+depth t we follow the child indexed by u⋆t ∈ {0, 1}, so the unique root-to-leaf path is
+                                      v∅ → vu⋆1 → vu⋆1 u⋆2 → · · · → vu⋆1 ···u⋆d = vu⋆ .
+To make this path discoverable by active retrieval, we encode the next bit along the target path in the payloads of nodes on
+the path: for each prefix u = u⋆1 · · · u⋆t with |u| = t < d,
+                                                  p(vu ) encodes the next bit u⋆t+1 .
+
+                                                                     16
+                           Memory is Reconstructed, Not Retrieved: Graph Memory for LLM Agents
+
+Answer label.     Sample y ∼ PY . The answer label is encoded only in the target leaf payload:
+
+                                                        p(vu⋆ ) encodes y.
+
+All other returned information (payloads of non-target nodes and outgoing lists) is independent of y. In particular, unless a
+policy retrieves vu⋆ , it obtains no information about y beyond the prior.
+
+Query.     The query x identifies the root node v∅ and asks for the label y.
+Definition C.7 (Binary-Tree Needle-in-a-Haystack distribution Dn,d ). Fix d ≥ 1 and set n as:
+
+                                             n = 1 + 2 + · · · + 2d = 2d+1 − 1.
+
+The distribution Dn,d over triples (M, x, y) ∈ Mn × Xn × Y is defined as follows:
+
+  1. Sample a target leaf index u⋆ ∼ Unif({0, 1}d ).
+
+  2. Sample y ∼ PY .
+
+  3. Construct a heterogeneous KG memory M ∈ Mn as the binary tree above:
+         • for each prefix u = u⋆1 · · · u⋆t with t < d, the payload p(vu ) encodes the next bit u⋆t+1 ;
+         • the payload p(vu⋆ ) encodes y;
+         • all other node payloads are independent of y.
+
+  4. Output a query x that identifies v∅ and asks for the label stored at vu⋆ .
+
+C.6. Active retrieval achieves zero error
+Lemma C.8. For the distribution Dn,d , there exists a parameter setting θ and a budget T = d + 1 such that
+
+                                                  L πθact ; Dn,d = 0.
+                                                                
+
+
+Consequently,
+                                                     LM
+                                                                         
+                                                opt Hactive (d + 1); Dn,d = 0.
+
+Proof. Consider the following active strategy. The query x identifies the root node v∅ . Initialize u := ∅. For t =
+0, 1, . . . , d − 1:
+
+  1. Retrieve the current node vu to obtain RetrieveM (vu ) = (p(vu ), Out(vu )). From p(vu ), read the next-bit value
+     b ∈ {0, 1} (which equals u⋆t+1 when u is the length-t prefix of u⋆ ).
+
+  2. Move to the corresponding child: set u ← ub, i.e., go to vu0 if b = 0 and to vu1 if b = 1.
+
+After d steps we have reached the target leaf vu⋆ . Finally retrieve vu⋆ to read its payload, and output y. This uses at most
+d + 1 retrievals and is correct for every sample (M, x, y) ∼ Dn,d .
+
+C.7. Passive retrieval has irreducible error unless the budget is exponential
+Lemma C.9. For any passive policy with budget T , uniformly over all parameters θ,
+                                                    
+                                                   T
+                    L(πθpass ; Dn,d ) ≥ εY 1 − d ,           where      εY := 1 − sup PY (y).
+                                                  2                                y∈Y
+
+
+Proof. Fix θ. A passive policy chooses all nodes v (1) , . . . , v (T ) to retrieve as functions of x alone, before observing any
+retrieved values.
+
+                                                                17
+                          Memory is Reconstructed, Not Retrieved: Graph Memory for LLM Agents
+
+Under Dn,d , the target leaf index u⋆ ∈ {0, 1}d is uniform and is not revealed by x. Let S := {v (1) , . . . , v (T ) } be the
+(multi)set of retrieved nodes, and let Ld := {vu : u ∈ {0, 1}d } be the set of leaves. Since only leaves can equal the target
+vu ⋆ ,
+                                                                          |S ∩ Ld |      T
+                                 Pr[vu⋆ ∈ S] = Pr[vu⋆ ∈ S ∩ Ld ] =             d
+                                                                                     ≤ d.
+                                                                             2           2
+
+The label y is encoded only in the target payload p(vu⋆ ). Therefore, the policy can obtain information about y only if it
+retrieves vu⋆ . Otherwise, the entire retrieval transcript is independent of y. In that case, the best possible prediction depends
+only on the prior PY , and must incur error at least εY . Therefore,
+                                                                                           
+                                      pass                                               T
+                                 L(πθ ; Dn,d ) ≥ Pr[miss target] · εY ≥ 1 − d εY .
+                                                                                         2
+
+
+
+C.8. Strictness and approximation-theoretic separation
+                                                                          LM              LM
+Proof of Theorem C.5. Fix any T ≥ 2 and set d := T − 1. The inclusion Hpassive  (T ) ⊆ Hactive (T ) follows by taking
+any passive policy and viewing it as an active policy whose query functions ignore the history and depend only on x
+(Lemma C.6).
+                                                                                                  LM
+For strictness, consider the separating distribution Dn,d from Definition C.7. By Lemma C.8, opt(Hactive (T ); Dn,d ) = 0
+(since T = d + 1). By Lemma C.9,
+                                                                                     
+                                     LM                            T                  T
+                              opt(Hpassive (T ); Dn,d ) ≥ εY 1 − d = εY 1 − T −1 .
+                                                                   2                2
+
+If the two hypothesis classes were equal, they would have equal opt(·; D) for every distribution D, contradicting the strict
+gap above. Hence the inclusion is strict for every T ≥ 2.
+
+D. Experiments
+D.1. Datasets
+LoCoMo (Maharana et al., 2024). LoCoMo is a benchmark designed to evaluate long-term conversational memory
+in extended dialogue settings. The dataset consists of 50 conversations generated via a human–LLM pipeline. Each
+conversation spans up to 35 sessions, with an average length of approximately 300 turns, and is accompanied by roughly
+200 question–answer pairs. LoCoMo includes multiple question categories, covering single-hop, multi-hop, temporal, and
+open-domain queries, which require retrieving and integrating information from distant parts of the conversation history.
+In our experiments, we exclude adversarial questions, as most baseline methods do not support this setting and the task
+primarily evaluates the ability to detect unanswerable queries rather than memory reconstruction or multi-hop reasoning.
+LongMemEval (Wu et al., 2025). LongMemEval is a benchmark designed to evaluate very long-term memory capabilities
+of chat assistants under sustained user–assistant interactions. Each evaluation instance consists of a sequence of timestamped
+chat sessions, followed by a question that requires recalling and reasoning over the interaction history. We adopt the
+LongMemEval-S setting, which contains approximately 500 questions, each paired with a chat history of around 115K
+tokens. This setting provides a challenging evaluation of long-term memory. In our experiments, we primarily focus on the
+single-session-user multi-session, temporal-reasoning and single-session-preference question types.
+
+D.2. Baselines
+Retrieval-Augmented Generation. Retrieval-augmented generation(RAG) stores dialogue histories as text chunks in a
+vector database. For each query, the system retrieves the top-k most similar memory entries based on embedding similarity
+and concatenates them with the query to form the input context.
+A-Mem (Xu et al., 2025). A-Mem constructs structured memory notes for each conversational episode, where new memory
+notes are linked to existing ones using LLM-assisted analysis, resulting in a directed graph structure. For retrieval, A-MEM
+embeds the query to retrieve relevant memory notes and then expands to their neighboring nodes.
+
+                                                               18
+                          Memory is Reconstructed, Not Retrieved: Graph Memory for LLM Agents
+
+MemoryOS (Kang et al., 2025). MemoryOS organizes agent memory into a three-tier hierarchy, including short-term
+memory for recent dialogue context, mid-term memory for topic-based interaction history, and long-term persona memory
+for stable user and agent characteristics. For retrieval, it performs hierarchical memory access across all layers and the
+retrieved memories are concatenated with persona information to form the input context.
+LangMem (LangChain, 2025). LangMem stores conversational memories by embedding each dialogue turn and maintaining
+them in a vector database via a memory management tool. At inference time, it retrieves the top-k most relevant memories
+based on embedding similarity and summarizes them using the LLM to support response generation.
+Mem0 (Chhikara et al., 2025). Mem0 incrementally extracts salient natural-language facts from conversations and maintains
+a compact long-term memory through LLM-driven update operations. For retrieval, it performs similarity-based search over
+stored memories and incorporates the retrieved facts into the input context for answer generation.
+
+D.3. Evaluation Metric
+LLM-Judge. We adopt an LLM-based judge to evaluate the semantic correctness of generated answers. Given a model-
+generated answer ŷ and a reference answer y, the judge determines whether ŷ is semantically equivalent to y, allowing for
+paraphrasing and differences in surface form. The judge outputs a binary decision indicating correctness.
+F1 Score. In addition to Recall, we report the F1 score computed from the judge decisions. For each question, the generated
+answer is treated as a positive prediction, and the judge decision determines whether it is a true positive or a false positive.
+Aggregating over the dataset, precision and recall are computed as:
+                                                P                            P
+                                                   i J(ŷi , yi )               J(ŷi , yi )
+                                  Precision = P                   , Recall = i               ,                             (22)
+                                                   i I[ŷi ̸
+                                                           =  ∅]                 N
+
+and the F1 score is defined as:
+                                                  2 · Precision · Recall
+                                                F1 =                     .                                       (23)
+                                                   Precision + Recall
+This formulation penalizes both incorrect answers and failures to produce an answer, and is particularly suitable for
+open-ended question answering settings.
+Evidence Recall (Recall). Evidence Recall measures the fraction of ground-truth supporting evidence that is successfully
+retrieved during memory reconstruction. For each question i, let Ei∗ denote the set of annotated ground-truth evidence items,
+and let Êi denote the set of evidence items retrieved by the agent. Evidence Recall is computed as:
+                                                                N
+                                                            1 X |Êi ∩ Ei∗ |
+                                                 Recall =                    ,                                             (24)
+                                                            N i=1 |Ei∗ |
+
+where N is the total number of evaluation questions. This metric reflects the effectiveness of the retrieval process in
+recovering relevant supporting evidence, independent of final answer generation.
+
+D.4. Implementation
+We use GPT-4o-mini as the LLM judge with temperature set to 0.0. Each method is evaluated three independent times, and
+we report the mean and standard deviation of the judge scores across runs. To ensure comparable compute budgets across
+methods, we cap the agent’s reasoning to at most 8 turns per query, and allow up to 10 tool invocations per turn. Agents may
+terminate early if a stopping condition is met before exhausting the budget.
+
+D.5. Detailed Results on L ONG M EM E VAL
+Table 5 presents detailed results on L ONG M EM E VAL under different evaluation settings, evaluated by F1 and LLM-Judge.
+
+D.6. Budget Sensitivity Analysis of Multi-step Reconstruction
+Figure 9 analyzes the trade-off between the number of reasoning turns and per-turn parallel retrieval on multi-hop questions
+in L O C O M O. We vary the per-turn retrieval budget (K), corresponding to the maximum number of parallel tool calls
+allowed within a single reasoning turn, and the maximum number of reasoning turns (T ), while keeping other settings fixed.
+
+                                                              19
+                            Memory is Reconstructed, Not Retrieved: Graph Memory for LLM Agents
+
+Table 5. Performance on L ONG M EM E VAL evaluated by F1 and LLM-Judge ↑. Best and second-best results among Gemini-backbone
+methods are marked in bold and underline, respectively. MRAgent∗ uses Claude for retrieval while memories are constructed by Gemini.
+
+                Method          multi-session      single-user      temporal-reasoning     single-preference    Overall
+                                F1 ↑      J↑      F1 ↑     J↑        F1 ↑       J↑          F1 ↑       J↑        J↑
+                RAG            45.00    54.89     77.94    85.71    43.88      42.86        5.42     33.33       54.65
+                A-Mem          28.26    42.85     75.30    90.00    34.18      45.11        9.09     46.43       52.98
+                MemoryOS       45.02    56.39     79.50    87.14    35.67      38.35        9.53     46.67       54.92
+                LangMem        41.14    52.63     72.43    78.57    36.80      45.71        6.32     36.67       53.77
+                Mem0           37.53    50.38     72.43    78.57    35.64      45.11        5.89     40.00       53.01
+                MRAgent        49.92    68.42     80.99    92.85    50.16      68.42       23.96     66.67       72.95
+                MRAgent∗       66.31    86.46     82.41    92.85    60.10      85.71       15.58     78.57       86.76
+
+
+
+
+Figure 9. Performance on multi-hop queries in L O C O M O as a function of the number of reasoning turns (T ) and the per-round retrieval
+budget (K), evaluated under the Claude backbone using LLM-Judge (J).
+
+
+
+Reconstruction depth cannot be substituted by increased parallel exploration. As the number of reasoning turns
+T increases, accuracy improves steadily and monotonically across all values of K, with deeper reconstruction yielding
+substantially higher performance. In contrast, increasing the per-turn retrieval budget K leads to only limited gains that
+quickly saturate. These results indicate that while parallel exploration increases retrieval breadth within a single reasoning
+turn, it cannot replace the sequential composition of evidence enabled by multi-turn reconstruction.
+
+D.7. Evidence Coverage by Retrieval Operators
+To analyze how different retrieval operators contribute to memory reconstruction, we examine the evidence coverage of each
+tool on L O C O M O, aggregated by question category. Table 6 reports the coverage rates of individual operators, reflecting
+their functional roles during reconstruction.
+Different retrieval operators specialize in distinct query structures. Temporal questions are predominantly resolved
+through query conversation time, which accounts for the majority of temporally grounded evidence. Multi-
+hop questions rely heavily on query tag events and query topic events, indicating that associative expansion
+over tags and topics is essential for recovering evidence distributed across multiple episodes. In contrast, open-domain
+questions exhibit more balanced coverage across multiple operators, reflecting the need to integrate episodic, semantic,
+and contextual information. Overall, these results demonstrate that MRAgent performs structured, operator-dependent
+memory reconstruction. Rather than relying on uniform or similarity-driven retrieval, the agent selectively activates different
+operators based on query structure, resulting in differentiated evidence acquisition patterns.
+
+D.8. Case Studies
+As shown in Figure 7, we present a case study illustrating how MRAgent performs multi-turn memory reconstruction over a
+structured memory graph. The query, “Which of Joanna’s screenplays were rejected by production companies?”, requires
+linking screenplay submission events with subsequent rejection events that are distributed across multiple dialogue sessions.
+MRAgent incrementally reconstructs relevant evidence through iterative graph exploration and multi-turn reasoning.
+In the first reasoning turn, the agent retrieves screenplay submission and rejection events by traversing tag-based associations,
+
+                                                                   20
+                          Memory is Reconstructed, Not Retrieved: Graph Memory for LLM Agents
+
+            Table 6. Evidence coverage of different tools across question types on L O C O M O under the Claude backbone.
+
+                   Tool                                 Multi-hop      Temporal    Open domain       Single-hop
+                   query tag events                       66.33         81.08           41.18           74.76
+                   query conversation time                 4.08         86.49           17.65            3.88
+                   query event context                    18.37         32.43           35.29           33.01
+                   query personal aspect                  21.43         2.70            29.41            5.83
+                   query topic events                     33.67         45.95           35.29           27.18
+
+
+
+identifying candidate events that are directly related to the query. In the second turn, it expands these candidates by querying
+event-level context and keywords to obtain detailed information about each rejection. In the third and fourth turns, the agent
+queries semantic information about Joanna to recover properties of her screenplays, enabling a clearer characterization of
+each submission. Finally, in the fifth turn, the agent queries temporal information to align screenplay submissions with
+corresponding rejection events and verify their ordering.
+After five reasoning steps, MRAgent correctly infers that Joanna’s first and third screenplays were rejected. This example
+demonstrates that answering complex, multi-session queries benefits from active, multi-step memory reconstruction that
+integrates associative expansion with semantic and temporal verification.
+
+E. Prompt
+
+    MRAgent QA and Tool-Use Prompt
+
+   You are a question-answering agent with access to event-based memory. Answer the question if sufficient evidence
+   exists; otherwise, query memory tools to gather more information.
+   Answer Rules:
+    • Yes/No questions: output Yes, No, Likely yes, or Likely no.
+    • Location questions: answer with a specific place name.
+    • Counting questions: answer with the number of relevant items.
+    • Other questions: output the minimal concrete entity or phrase.
+   Choose ONE mode:
+   (1) "answer" — if evidence is sufficient, output:
+   {
+       "mode": "answer",
+       "answer": "...",
+       "supports": ["D1:1","D1:2"],
+       "confidence": 0.0-1.0
+   }
+   (2) "navigate" — if evidence is insufficient, call all relevant memory tools directly (no explanations).
+
+
+    Keyword Extraction Prompt
+
+   You are an information extraction system. Only output valid JSON.
+   Task: For each input sentence, extract 2–30 keywords directly from the original text.
+    • Do not invent, paraphrase, or generalize keywords.
+    • Only include words or phrases that explicitly appear in the text.
+    • Do not include inferred or implicit concepts.
+    • Extract all explicit keywords of the following types if present: entity, topic, verb, time, location,
+      task, event, people.
+
+
+
+                                                                  21
+                     Memory is Reconstructed, Not Retrieved: Graph Memory for LLM Agents
+
+
+ID Rule: sentence id must exactly match the id field in TEXT. Do not create or modify IDs.
+Output Schema (single-line JSON):
+{
+    "sentence": [
+      {
+        "sentence_id": "D1:1-1",
+        "keyword": ["Coraline", "park"]
+      }
+    ]
+}
+
+
+
+ Dialogue Processing Prompt
+
+You are a dialogue processor. Only output valid JSON.
+Task: For each sentence in the dialogue:
+ • Preserve every original sentence.
+ • Replace all pronouns with explicit entities or noun phrases from context.
+ • Do not modify verbs, adjectives, or other words.
+ • Assign a short concrete tag (at most two words).
+ • Normalize time to YYYY-MM-DD using conversation time.
+ • If a question is answered by the next sentence, merge them.
+Topics: Derive at least ten concrete topics overall. Assign topic IDs (t1..tn); each sentence lists applicable topics
+or [].
+Personal Information: Extract person-related facts into personal sentences. If a fact appears in a sentence,
+also add a concise normalized version.
+ID Rules: id must be origin:number, where origin exactly matches dia id. Do not invent new IDs.
+Output Schema (single-line JSON):
+{
+    "conversation_time": "YYYY-MM-DD",
+    "sentence": [
+      {
+        "id": "D1:1-1",
+        "text": "sentence.",
+        "tag": "short tag",
+        "origin": "D1:1",
+        "topic": ["t1","t3"],
+        "time": "YYYY-MM-DD"
+      }
+    ],
+    "topics": {
+      "t1": "Topic description",
+      "t2": "Topic description"
+    },
+    "personal_sentences": [
+      {
+        "id": "p1",
+        "text": "Normalized personal fact.",
+        "tag": "preference",
+        "origin": "D1:1",
+        "person": "Name"
+      }
+    ]
+}
+
+
+
+                                                         22
+

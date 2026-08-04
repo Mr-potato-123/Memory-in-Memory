@@ -1,0 +1,3512 @@
+{
+  "batch": {
+    "batch_id": "access_bank2_from_v1_new_skill_0003",
+    "side": "access",
+    "base_bank_version": "v000",
+    "candidates": [
+      {
+        "candidate_id": "cand_access_bacfa19b9ac5",
+        "skill_id": "sk_access_22f8f62566",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "UseWritingMemoriesForWritingQuestions",
+          "description": "When a question asks what kind of fiction or stories a person writes, use only event memories where that person is the writer/creator; do not treat reading, discussing, or fan activities as evidence of their writing.",
+          "content": [
+            "When a question asks what kind of fiction, stories, or creative work a person writes or creates, memories about that person reading, recommending, discussing, or being a fan of a genre are consumption evidence and do not answer the question.",
+            "Run at least one supplementary event-memory search combining the person's name with production-focused phrases such as 'writing', 'working on', 'developing', 'struggling with', or 'challenge' (e.g., '<person> writing', '<person> working on novel'), and inspect results where the person is the subject of the writing or creating action.",
+            "Judge evidence sufficiency for creative-output questions only against memories where the person is the producer; do not include consuming or fan-activity memories in the answer even if they are the only retrieved results."
+          ]
+        },
+        "solves": "The agent answered what a person writes using memories of what they read, discussed, or were fans of, conflating consumption with production. This skill enforces that creative-output questions be answered only from producer-side event memories (writing, working on, struggling with a feature), and applies to any future question asking what someone writes, creates, or produces.",
+        "related_existing_skill_ids": [
+          "sk_access_ongoing_creative"
+        ],
+        "source_diagnosis_id": "access_conv-43_conv-43_qa_0041",
+        "source_failure_id": "access_conv-43_conv-43_qa_0041",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T14:05:02Z"
+      },
+      {
+        "candidate_id": "cand_access_cfe5f74da9a4",
+        "skill_id": "sk_access_875d80a0e1",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Include profile/state memories for action questions",
+          "description": "When a question asks what someone did during a period to achieve a goal, do not restrict memory_kinds to event only; include profile and state because ongoing memberships or practices may be stored there.",
+          "content": [
+            "If a question asks what a person did or what actions they took during a specific time to achieve an outcome, do not set memory_kinds to only 'event'; include 'profile' and 'state' (or omit the filter), because ongoing memberships, habits, and care practices are often stored as profile/state memories.",
+            "Before answering, run at least one retrieval without an 'event'-only filter, especially when event-kinded results yield only related context and no direct statement of the action.",
+            "Treat memories stating an ongoing participation or practice (e.g., 'participates in X to learn Y') as direct evidence for 'what did <person> do to <goal>', even if the memory's world_start predates the asked period."
+          ]
+        },
+        "solves": "The agent restricted retrieval to 'event' memories for a question asking what a user did in a specific month to achieve a goal, but the supporting memory was a profile memory describing an ongoing membership/practice. This failure occurs whenever an action/activity question is answered from event-only retrieval, because durable habits, group memberships, or care practices may be stored as profile or state. The rule broadens memory_kinds for such questions and prevents premature answers from context-only event memories.",
+        "related_existing_skill_ids": [
+          "sk_access_future_plan_kinds",
+          "sk_access_current_activity_kinds"
+        ],
+        "source_diagnosis_id": "access_conv-44_conv-44_qa_0117",
+        "source_failure_id": "access_conv-44_conv-44_qa_0117",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T14:05:23Z"
+      },
+      {
+        "candidate_id": "cand_access_d5e0a2d7ea62",
+        "skill_id": "sk_access_13e5f0b273",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Include event/plan kinds for commonality queries",
+          "description": "When a query asks what two or more entities have in common or share, include event and plan memory kinds so shared experiences are not missed.",
+          "content": [
+            "For multi-entity intersection queries (what do X and Y have in common/share), do not restrict memory_kinds to 'profile' and 'preference'; include 'event' and 'plan' (or omit the filter), because shared experiences such as job changes, business starts, or mutual plans are typically stored as events/plans.",
+            "After retrieving per-entity results, compare concrete attributes and life events across entities; if initial results show no overlap, issue follow-up searches for each entity with broader memory_kinds before concluding 'no information'."
+          ]
+        },
+        "solves": "The diagnosed cause is that intersection/commonality questions (what do X and Y have in common) were answered using only profile and preference memories, missing shared life events and plans stored as event/plan memories. The proposed rule generalizes to any multi-entity commonality query: broaden memory_kinds to cover events and plans when searching for shared attributes or experiences. It applies whenever a question asks what multiple entities share, have in common, or both experienced/planned.",
+        "related_existing_skill_ids": [
+          "sk_access_per_entity_intersection"
+        ],
+        "source_diagnosis_id": "access_conv-30_conv-30_qa_0003",
+        "source_failure_id": "access_conv-30_conv-30_qa_0003",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T14:03:52Z"
+      },
+      {
+        "candidate_id": "cand_access_f58a1db96a31",
+        "skill_id": "sk_access_a1c1f99776",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Photo-subject retrieval via creation/activity synonyms",
+          "description": "When a question asks what someone shared or posted a photo of, do not require 'photo' or 'shared' in memory; search creation/experimentation terms and keep nearby event memories.",
+          "content": [
+            "When a question asks what <person> shared or posted a photo of (or what subject appeared in the photo), do not require the words 'photo', 'shared', or 'posted' to appear in the supporting memory; the memory may describe the person making, creating, cooking, or experimenting with the subject.",
+            "Run additional searches using <person> plus action synonyms such as made, created, cooked, baked, built, experimented, and treat event memories describing such an activity as candidates even if they do not mention sharing or a photo.",
+            "If the question includes a month or date, do not discard memories whose world_start differs or is unspecified; first check memories describing the same activity for that person, and do not finalize an answer from a topically salient but unrelated memory (e.g., a competition win) that merely matches the person and date."
+          ]
+        },
+        "solves": "Photo-subject questions frequently fail because the evidential memory describes the person making or experimenting with the item and contains no literal 'photo' or 'shared' text, while the date in the question pulls retrieval toward unrelated memorable events. The rule generalizes the diagnosed mechanism: before answering, retrieval must use action/creation synonyms and compare nearby event memories rather than relying on literal terms or exact dates. It applies to any 'what did X share a photo of' query, but not to milestone-after or enumeration questions covered by existing skills.",
+        "related_existing_skill_ids": [
+          "sk_access_sequence_retrieval",
+          "sk_access_avoid_anchor"
+        ],
+        "source_diagnosis_id": "access_conv-42_conv-42_qa_0198",
+        "source_failure_id": "access_conv-42_conv-42_qa_0198",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T14:04:29Z"
+      },
+      {
+        "candidate_id": "cand_access_f7026570e118",
+        "skill_id": "sk_access_a134a63a49",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Count events with synonym and generic-object expansion",
+          "description": "Use when a question asks how many times a person experienced an event and exact-term searches may miss memories phrased with synonyms or generic objects.",
+          "content": [
+            "When a question asks how many times a person experienced an event, after searching with the question wording, run at least one additional search using synonymous verbs/nouns (e.g., rejected, turned down, denied, setback; work, submission, project).",
+            "Do not require the exact object noun from the question; search with the subject plus the event synonym alone so memories using a broader object (e.g., 'creative work') can surface.",
+            "Before answering with a count, treat memories describing distinct occurrences separately when they mention 'another' occurrence, different dates, or different contexts, even if they do not repeat the same object noun."
+          ]
+        },
+        "solves": "Counting repeated events can miss memories that use synonyms or a generic object noun instead of the question's exact wording. The diagnosed cause was retrieving only one of two rejection events because the second was phrased as 'another rejection ... creative work'. Applies to future count-of-occurrences questions where memories may paraphrase; not when only exact named instances count.",
+        "related_existing_skill_ids": [
+          "sk_access_count_inflection_expansion",
+          "sk_access_merged_expansion"
+        ],
+        "source_diagnosis_id": "access_conv-42_conv-42_qa_0049",
+        "source_failure_id": "access_conv-42_conv-42_qa_0049",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T14:04:07Z"
+      },
+      {
+        "candidate_id": "cand_access_3df1a4630590",
+        "skill_id": "sk_access_dac666fd2c",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Enumerate specific favorite items from event memories",
+          "description": "When a question asks for a person's favorite foods or items, do not stop at general categories or flavors; search for concrete named items and include event memories of making, trying, or recommending them as favorites.",
+          "content": [
+            "When asked for a list of a person's favorite items (e.g., foods, desserts, books), run follow-up searches for concrete named items derived from any category or flavor terms found (e.g., 'coconut milk ice cream', 'chocolate cake') and inspect event memories for the person's involvement.",
+            "Treat an event memory as evidence of a favorite when it shows the person made, repeatedly enjoyed, recommended, or expressed pride in a specifically named item, even if the word 'favorite' is absent; do not reduce the answer to flavor categories."
+          ]
+        },
+        "solves": "Applies when a question enumerates a person's favorite foods or items but initial retrieval returns only general flavor/category preferences. It does not apply when an explicit, complete favorite-item list already exists in a single preference memory.",
+        "related_existing_skill_ids": [
+          "sk_access_include_preference_enumeration",
+          "sk_access_which_activity",
+          "sk_access_preference_evidence"
+        ],
+        "source_diagnosis_id": "access_conv-42_conv-42_qa_0075",
+        "source_failure_id": "access_conv-42_conv-42_qa_0075",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T14:04:21Z"
+      },
+      {
+        "candidate_id": "cand_access_6a968df7578f",
+        "skill_id": "sk_access_45ee78b8e0",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Retrieve explicit recommendation memories for recommended-item queries",
+          "description": "Use when a question asks what item (game, book, movie, place, etc.) a person recommended for a quality; do not confuse the person's own preferences/activities with recommendations.",
+          "content": [
+            "If the question asks what a person recommended/suggested for a subjective quality (e.g., calming, cute, fun, rewarding), do not treat memories about that person's own favorite activities, hobbies, or calming pastimes as recommendation evidence unless the memory explicitly says the person recommends or suggested the item.",
+            "Run an additional keyword or structured search using the person's name combined with recommendation verbs and list nouns (e.g., 'recommends games', 'suggested titles', 'plays with partner', 'likes titles like') even when the queried quality adjective does not appear in the target memory.",
+            "Before answering, verify that the selected memory explicitly connects the person to the recommended item; choose the memory that states the recommendation rather than the first semantically similar activity memory."
+          ]
+        },
+        "solves": "This addresses future questions that ask for a specific item a person recommended for a subjective quality (e.g., calming, cute, fun); retrieval often returns the person's own favorite activities or calming hobbies, which are not recommendation evidence. The rule applies to any named person and any recommended item category, but not to questions asking what the person themselves enjoys, where preference/activity memories are sufficient.",
+        "related_existing_skill_ids": [
+          "sk_access_abstract_positive_expansion",
+          "sk_access_advice_from_experience",
+          "sk_access_supplement_item_lists"
+        ],
+        "source_diagnosis_id": "access_conv-48_conv-48_qa_0149",
+        "source_failure_id": "access_conv-48_conv-48_qa_0149",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T14:06:04Z"
+      },
+      {
+        "candidate_id": "cand_access_7a518765dc63",
+        "skill_id": "sk_access_628de1b1c3",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Include preference memories for recommendation queries",
+          "description": "When a question asks what one person recommended/suggested to another (often on a specific date), use this to avoid restricting searches to event memories and to include preference/state memories of the recommender.",
+          "content": [
+            "When a question asks what X recommended, suggested, or endorsed to Y (e.g., a book, movie, restaurant), do not set memory_kinds to 'event' only; include 'preference' and 'state' memories, because recommendations are often stored as the recommender's preference rather than a shared event.",
+            "If the question includes a specific date, run at least one search without a memory_kinds filter (or with preference/state included) using the recommender's name and intent terms like 'recommend', 'suggest', 'good', or 'favorite'.",
+            "Before answering, verify that the evidence memory's time range covers the target date; if the first event-only search returns no date-matching evidence, retry with broader memory kinds rather than accepting an unrelated earlier recommendation."
+          ]
+        },
+        "solves": "When a question asks what one person recommended or suggested to another on a specific date, the supporting memory is often stored as the recommender's preference/state memory rather than a joint event memory. Restricting retrieval to 'event' memories causes the correct memory to be missed, leading to answers based on unrelated earlier events. This skill instructs to include preference and state memories and to retry with broader memory kinds when event-only results are date-mismatched. It applies to future recommendation queries about books, movies, restaurants, or similar items.",
+        "related_existing_skill_ids": [
+          "sk_access_date_discussion",
+          "sk_access_current_activity_kinds",
+          "sk_access_include_preference_enumeration"
+        ],
+        "source_diagnosis_id": "access_conv-43_conv-43_qa_0150",
+        "source_failure_id": "access_conv-43_conv-43_qa_0150",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T14:04:58Z"
+      },
+      {
+        "candidate_id": "cand_access_a6b8fe90cceb",
+        "skill_id": "sk_access_772956c3dd",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Search current engagement for favorite-item queries",
+          "description": "When a question asks for a person's favorite or preferred item (game, book, movie, food), supplement favorite/preference searches with queries for what they are currently playing, reading, watching, or recommending.",
+          "content": [
+            "If a question asks for a person's favorite or preferred item (e.g., favorite video game, book, movie, food), do not limit retrieval to queries that contain the word 'favorite' or to preference memories. Add supplementary searches using current-engagement or recommendation phrases, such as '<person> currently playing', '<person> is reading', '<person> recommends', '<person> enjoys', because ongoing activities and recommendations are often stored as event memories and can name the specific favorite item.",
+            "When initial searches return only generic descriptions of the person's interest (e.g., 'plays video games') and no concrete item, repeat retrieval with queries combining the person's name and terms likely to appear in event memories that name the item (e.g., 'playing', 'playing <item type>', 'recommends'), and inspect event memories returned before concluding no information is available."
+          ]
+        },
+        "solves": "When a question asks for a favorite or preferred item, agents often miss event memories recording what the person is currently playing, reading, or recommending because those memories do not contain the word 'favorite'. Adding current-engagement and recommendation query expansions surfaces this evidence for any item type (games, books, movies); not needed when the question asks for historical lists or already explicit preference records.",
+        "related_existing_skill_ids": [
+          "sk_access_include_preference_enumeration",
+          "sk_access_current_activity_kinds",
+          "sk_access_instance_list"
+        ],
+        "source_diagnosis_id": "access_conv-42_conv-42_qa_0095",
+        "source_failure_id": "access_conv-42_conv-42_qa_0095",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T14:04:33Z"
+      },
+      {
+        "candidate_id": "cand_access_bb41dff88632",
+        "skill_id": "sk_access_85914528cf",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Include profile and preference memories for suggested alternatives",
+          "description": "When a question asks what someone suggests, recommends, or offers as an alternative or substitute for an item, search profile and preference memories too, not only event memories.",
+          "content": [
+            "When a question asks what someone suggests, recommends, or offers as an alternative/substitute for a named item (e.g., a type of water instead of soda), do not restrict memory_kinds to 'event'; include 'profile' and 'preference' kinds, because such recommendations are often stored as enduring profile attributes.",
+            "If the first search returns only event memories about the people involved, run at least one additional search without a memory_kind filter or with memory_kinds including 'profile' and 'preference' before answering 'no information'.",
+            "When judging evidence sufficiency, accept a profile or preference memory that states the recommendation even if it does not name the recipient."
+          ]
+        },
+        "solves": "Retrieval was restricted to event-kind memories for a question about a recommended alternative, so the profile memory holding the recommendation was missed. Recommendations are often stored as enduring profile/preference attributes. The rule applies to any future question asking what one person suggests, recommends, or advises as an alternative: include profile and preference kinds and rerun without the event-only filter before concluding no evidence.",
+        "related_existing_skill_ids": [
+          "sk_access_preference_attribute_search",
+          "sk_access_include_preference_enumeration"
+        ],
+        "source_diagnosis_id": "access_conv-49_conv-49_qa_0094",
+        "source_failure_id": "access_conv-49_conv-49_qa_0094",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T14:06:47Z"
+      },
+      {
+        "candidate_id": "cand_access_e08cea52d7c8",
+        "skill_id": "sk_access_6d5f562597",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Recommendation-evidence expansions for shared-experience intersections",
+          "description": "Use when a question asks what movies, books, games, or other items two people have both seen/read/played; include recommendation-oriented searches and treat recommendations as evidence both experienced the item.",
+          "content": [
+            "When resolving an intersection query about shared experiences (movies watched, books read, games played), do not rely only on per-entity 'seen/read/played' searches; also run hybrid searches combining each person with 'recommended' and the item category, because shared items are often stored only as recommendation events.",
+            "Treat a memory that one person consumed an item on the other's recommendation as supporting that both have experienced it, even if the other person's own consumption is not recorded separately.",
+            "Before finalizing the intersection, search for each named item from any retrieved recommendation event combined with the other person, and do not conclude an item is shared solely because it appears in one entity's top-k list."
+          ]
+        },
+        "solves": "Intersection queries about shared experiences (movies, books, games) can miss items that are recorded only as recommendation events, where one person consumed an item on the other's recommendation. The agent stopped after per-entity top-k lists and never searched with recommendation terms, so the Lord of the Rings memory was never retrieved. A reusable rule is to include recommendation-oriented expansions and to treat a recommended-and-consumed item as evidence that both people experienced it. This applies to any future shared-experience intersection question for two entities.",
+        "related_existing_skill_ids": [
+          "sk_access_per_entity_intersection",
+          "sk_access_broaden_recommendation",
+          "sk_access_instance_list"
+        ],
+        "source_diagnosis_id": "access_conv-42_conv-42_qa_0042",
+        "source_failure_id": "access_conv-42_conv-42_qa_0042",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T14:04:06Z"
+      },
+      {
+        "candidate_id": "cand_access_f53127a7c45d",
+        "skill_id": "sk_access_38b5eb302d",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Expand favorite-person queries with admiration and fandom terms",
+          "description": "When a question asks who someone's favorite person, player, or celebrity is, expand retrieval with admiration/fandom phrasing and inspect preference memories.",
+          "content": [
+            "When a question asks for a person's favorite athlete, player, celebrity, or public figure, do not rely only on the literal term 'favorite'; include query expansions and keywords using admiration/fandom vocabulary such as 'admires', 'is a fan of', 'idolizes', 'looks up to', and 'fan of'.",
+            "Search or inspect preference memories broadly for statements of admiration or fandom, since the target may be recorded as 'X admires Y' or 'X is a fan of Y' rather than 'X's favorite is Y'.",
+            "Before answering 'No information available' for such a question, re-query with these expansions and inspect all retrieved preference memories for admiration/fandom patterns."
+          ]
+        },
+        "solves": "The failure occurred because retrieval queries used only the literal term 'favorite', while the supporting preference memories expressed the relationship through admiration/fandom phrasing such as 'admires' or 'is a fan of'. This mechanism applies to any future question asking who someone's favorite person, player, or celebrity is, where the stored preference may use admiration vocabulary instead of the exact word 'favorite'. Expanding queries with admiration/fandom terms and inspecting preference memories prevents false 'No information available' answers.",
+        "related_existing_skill_ids": [
+          "sk_access_include_preference_enumeration",
+          "sk_access_which_activity"
+        ],
+        "source_diagnosis_id": "access_conv-43_conv-43_qa_0036",
+        "source_failure_id": "access_conv-43_conv-43_qa_0036",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T14:04:40Z"
+      },
+      {
+        "candidate_id": "cand_access_feb7d1ecd29b",
+        "skill_id": "sk_access_7ce1aa794b",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Expand category-specific recommendation queries with general interests",
+          "description": "When a question asks what someone suggested/recommended/picked in a specific category or for a specific context, avoid over-anchoring on the category/context terms.",
+          "content": [
+            "If a question asks what a person recommended/suggested for a category (e.g., open-world game, good book) or context (e.g., for Nintendo Switch, for a trip), do not search only with the category/context terms. Also run searches for the person's general recommendations, favorite items, hobbies, or preferences (e.g., 'recommends', 'favorite', 'enjoys', 'likes') with the person's name.",
+            "If the initial results contain items matching the category/context but none are explicitly stated as recommended/suggested by that person, re-search using generic recommendation vocabulary before answering.",
+            "Prefer a memory that explicitly says the person recommended/suggested the item, even if it lacks the category/context qualifiers from the question."
+          ]
+        },
+        "solves": "Diagnosed cause: retrieval over-anchored on category/context words ('open-world', 'Nintendo Switch') and missed a general recommendation memory. This failure pattern applies to any question asking what a person recommended/suggested in a specific category/context; the supporting memory may be a general preference/hobby list lacking those qualifiers. Boundary: not for questions about objective attributes or facts that do not involve a person's recommendation.",
+        "related_existing_skill_ids": [
+          "sk_access_preference_based_recommendation"
+        ],
+        "source_diagnosis_id": "access_conv-48_conv-48_qa_0150",
+        "source_failure_id": "access_conv-48_conv-48_qa_0150",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T14:06:11Z"
+      }
+    ],
+    "retrieved_skill_ids": [
+      "sk_access_abstract_positive_expansion",
+      "sk_access_activity_period",
+      "sk_access_advice_from_experience",
+      "sk_access_avoid_anchor",
+      "sk_access_broaden_recommendation",
+      "sk_access_count_inflection_expansion",
+      "sk_access_current_activity_kinds",
+      "sk_access_date_discussion",
+      "sk_access_enjoyment_genre",
+      "sk_access_exhaustive_list_retrieval",
+      "sk_access_future_plan_kinds",
+      "sk_access_include_preference_enumeration",
+      "sk_access_instance_list",
+      "sk_access_merged_expansion",
+      "sk_access_ongoing_creative",
+      "sk_access_per_entity_intersection",
+      "sk_access_preference_attribute_search",
+      "sk_access_preference_based_recommendation",
+      "sk_access_preference_evidence",
+      "sk_access_project_plan_event_kinds",
+      "sk_access_relative_time",
+      "sk_access_sequence_retrieval",
+      "sk_access_shared_interests",
+      "sk_access_supplement_item_lists",
+      "sk_access_which_activity"
+    ],
+    "relations": [
+      {
+        "candidate_id": "cand_access_bacfa19b9ac5",
+        "skill_id": "sk_access_ongoing_creative",
+        "description_similarity": 0.6169382929801941,
+        "content_similarity": 0.6206012964248657,
+        "lexical_similarity": 1.0,
+        "combined_score": 0.6946495175361633,
+        "forced_by_candidate": true
+      },
+      {
+        "candidate_id": "cand_access_bacfa19b9ac5",
+        "skill_id": "sk_access_enjoyment_genre",
+        "description_similarity": 0.6384323239326477,
+        "content_similarity": 0.7212738990783691,
+        "lexical_similarity": 0.4601217806339264,
+        "combined_score": 0.6276227235794067,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_bacfa19b9ac5",
+        "skill_id": "sk_access_include_preference_enumeration",
+        "description_similarity": 0.6701613664627075,
+        "content_similarity": 0.5467525720596313,
+        "lexical_similarity": 0.2785390317440033,
+        "combined_score": 0.5548142790794373,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_bacfa19b9ac5",
+        "skill_id": "sk_access_avoid_anchor",
+        "description_similarity": 0.5007733106613159,
+        "content_similarity": 0.6267862915992737,
+        "lexical_similarity": 0.33723539113998413,
+        "combined_score": 0.5058696269989014,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_bacfa19b9ac5",
+        "skill_id": "sk_access_ownership_duration_kinds",
+        "description_similarity": 0.5967553853988647,
+        "content_similarity": 0.4737851023674011,
+        "lexical_similarity": 0.23267371952533722,
+        "combined_score": 0.4870479702949524,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_bacfa19b9ac5",
+        "skill_id": "sk_access_future_plan_kinds",
+        "description_similarity": 0.5478635430335999,
+        "content_similarity": 0.48156455159187317,
+        "lexical_similarity": 0.291106641292572,
+        "combined_score": 0.47662246227264404,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_bacfa19b9ac5",
+        "skill_id": "sk_access_activity_period",
+        "description_similarity": 0.5630193948745728,
+        "content_similarity": 0.382683128118515,
+        "lexical_similarity": 0.3912319242954254,
+        "combined_score": 0.47456103563308716,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_bacfa19b9ac5",
+        "skill_id": "sk_access_advice_from_experience",
+        "description_similarity": 0.4698413014411926,
+        "content_similarity": 0.5620120763778687,
+        "lexical_similarity": 0.3200549781322479,
+        "combined_score": 0.4675352871417999,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_bacfa19b9ac5",
+        "skill_id": "sk_access_current_activity_kinds",
+        "description_similarity": 0.47983139753341675,
+        "content_similarity": 0.5054702162742615,
+        "lexical_similarity": 0.37036991119384766,
+        "combined_score": 0.46563076972961426,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_bacfa19b9ac5",
+        "skill_id": "sk_access_project_plan_event_kinds",
+        "description_similarity": 0.5507163405418396,
+        "content_similarity": 0.3929640054702759,
+        "lexical_similarity": 0.32271790504455566,
+        "combined_score": 0.45779094099998474,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_bacfa19b9ac5",
+        "skill_id": "sk_access_shared_interests",
+        "description_similarity": 0.46539074182510376,
+        "content_similarity": 0.5217666029930115,
+        "lexical_similarity": 0.26569864153862,
+        "combined_score": 0.4423650801181793,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_bacfa19b9ac5",
+        "skill_id": "sk_access_which_activity",
+        "description_similarity": 0.3995896577835083,
+        "content_similarity": 0.5904464721679688,
+        "lexical_similarity": 0.22614848613739014,
+        "combined_score": 0.42215847969055176,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_bacfa19b9ac5",
+        "skill_id": "sk_access_relative_time",
+        "description_similarity": 0.4158923029899597,
+        "content_similarity": 0.42393070459365845,
+        "lexical_similarity": 0.28528258204460144,
+        "combined_score": 0.3921819031238556,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_bacfa19b9ac5",
+        "skill_id": "sk_access_date_discussion",
+        "description_similarity": 0.3823351562023163,
+        "content_similarity": 0.47219955921173096,
+        "lexical_similarity": 0.2961794435977936,
+        "combined_score": 0.39206334948539734,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_bacfa19b9ac5",
+        "skill_id": "sk_access_preference_based_recommendation",
+        "description_similarity": 0.28775766491889954,
+        "content_similarity": 0.5483255386352539,
+        "lexical_similarity": 0.3135528266429901,
+        "combined_score": 0.37108707427978516,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_bacfa19b9ac5",
+        "skill_id": "sk_access_preference_attribute_search",
+        "description_similarity": 0.32366976141929626,
+        "content_similarity": 0.4801141023635864,
+        "lexical_similarity": 0.28630530834198,
+        "combined_score": 0.3631301522254944,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_bacfa19b9ac5",
+        "skill_id": "sk_access_exhaustive_list_retrieval",
+        "description_similarity": 0.3465850353240967,
+        "content_similarity": 0.4379751980304718,
+        "lexical_similarity": 0.27421486377716064,
+        "combined_score": 0.3595280647277832,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_bacfa19b9ac5",
+        "skill_id": "sk_access_instance_list",
+        "description_similarity": 0.3320346474647522,
+        "content_similarity": 0.44765108823776245,
+        "lexical_similarity": 0.2594350278377533,
+        "combined_score": 0.35219964385032654,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_bacfa19b9ac5",
+        "skill_id": "sk_access_abstract_positive_expansion",
+        "description_similarity": 0.33657506108283997,
+        "content_similarity": 0.48063868284225464,
+        "lexical_similarity": 0.18778981268405914,
+        "combined_score": 0.3500370979309082,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_bacfa19b9ac5",
+        "skill_id": "sk_access_merged_expansion",
+        "description_similarity": 0.35600602626800537,
+        "content_similarity": 0.39890992641448975,
+        "lexical_similarity": 0.19115415215492249,
+        "combined_score": 0.33590683341026306,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_bacfa19b9ac5",
+        "skill_id": "sk_access_count_inflection_expansion",
+        "description_similarity": 0.3486073613166809,
+        "content_similarity": 0.4133734107017517,
+        "lexical_similarity": 0.16133691370487213,
+        "combined_score": 0.3305830955505371,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_bacfa19b9ac5",
+        "skill_id": "sk_access_sequence_retrieval",
+        "description_similarity": 0.3092327415943146,
+        "content_similarity": 0.3940703868865967,
+        "lexical_similarity": 0.2621951103210449,
+        "combined_score": 0.32527652382850647,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_bacfa19b9ac5",
+        "skill_id": "sk_access_preference_evidence",
+        "description_similarity": 0.24108770489692688,
+        "content_similarity": 0.541651725769043,
+        "lexical_similarity": 0.19273266196250916,
+        "combined_score": 0.32158592343330383,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_bacfa19b9ac5",
+        "skill_id": "sk_access_supplement_item_lists",
+        "description_similarity": 0.27377453446388245,
+        "content_similarity": 0.3396405577659607,
+        "lexical_similarity": 0.25145718455314636,
+        "combined_score": 0.28907087445259094,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_bacfa19b9ac5",
+        "skill_id": "sk_access_broaden_recommendation",
+        "description_similarity": 0.19505757093429565,
+        "content_similarity": 0.33550310134887695,
+        "lexical_similarity": 0.27149125933647156,
+        "combined_score": 0.2524779736995697,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_bacfa19b9ac5",
+        "skill_id": "sk_access_per_entity_intersection",
+        "description_similarity": 0.2509710490703583,
+        "content_similarity": 0.2998808026313782,
+        "lexical_similarity": 0.16767790913581848,
+        "combined_score": 0.24898535013198853,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_cfe5f74da9a4",
+        "skill_id": "sk_access_current_activity_kinds",
+        "description_similarity": 0.6953897476196289,
+        "content_similarity": 0.7658765316009521,
+        "lexical_similarity": 1.0,
+        "combined_score": 0.7774578332901001,
+        "forced_by_candidate": true
+      },
+      {
+        "candidate_id": "cand_access_cfe5f74da9a4",
+        "skill_id": "sk_access_future_plan_kinds",
+        "description_similarity": 0.7331598401069641,
+        "content_similarity": 0.7540541887283325,
+        "lexical_similarity": 0.781505286693573,
+        "combined_score": 0.7490972876548767,
+        "forced_by_candidate": true
+      },
+      {
+        "candidate_id": "cand_access_cfe5f74da9a4",
+        "skill_id": "sk_access_activity_period",
+        "description_similarity": 0.585114598274231,
+        "content_similarity": 0.6863217353820801,
+        "lexical_similarity": 0.8951478004455566,
+        "combined_score": 0.6774833798408508,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_cfe5f74da9a4",
+        "skill_id": "sk_access_ownership_duration_kinds",
+        "description_similarity": 0.7312067747116089,
+        "content_similarity": 0.6272786855697632,
+        "lexical_similarity": 0.6034401059150696,
+        "combined_score": 0.6744750142097473,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_cfe5f74da9a4",
+        "skill_id": "sk_access_project_plan_event_kinds",
+        "description_similarity": 0.6810144782066345,
+        "content_similarity": 0.6773885488510132,
+        "lexical_similarity": 0.5945356488227844,
+        "combined_score": 0.6626309752464294,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_cfe5f74da9a4",
+        "skill_id": "sk_access_relative_time",
+        "description_similarity": 0.5268851518630981,
+        "content_similarity": 0.6612865328788757,
+        "lexical_similarity": 0.7430471181869507,
+        "combined_score": 0.6104379892349243,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_cfe5f74da9a4",
+        "skill_id": "sk_access_avoid_anchor",
+        "description_similarity": 0.4762996435165405,
+        "content_similarity": 0.7353454828262329,
+        "lexical_similarity": 0.6825703382492065,
+        "combined_score": 0.5952675342559814,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_cfe5f74da9a4",
+        "skill_id": "sk_access_include_preference_enumeration",
+        "description_similarity": 0.6147032976150513,
+        "content_similarity": 0.6482060551643372,
+        "lexical_similarity": 0.4589477777481079,
+        "combined_score": 0.5936030149459839,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_cfe5f74da9a4",
+        "skill_id": "sk_access_which_activity",
+        "description_similarity": 0.5279861688613892,
+        "content_similarity": 0.6210978031158447,
+        "lexical_similarity": 0.410657674074173,
+        "combined_score": 0.5324540138244629,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_cfe5f74da9a4",
+        "skill_id": "sk_access_shared_interests",
+        "description_similarity": 0.5672403573989868,
+        "content_similarity": 0.5205525755882263,
+        "lexical_similarity": 0.3993200957775116,
+        "combined_score": 0.5196499824523926,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_cfe5f74da9a4",
+        "skill_id": "sk_access_sequence_retrieval",
+        "description_similarity": 0.38319194316864014,
+        "content_similarity": 0.6280146241188049,
+        "lexical_similarity": 0.5579549670219421,
+        "combined_score": 0.49159133434295654,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_cfe5f74da9a4",
+        "skill_id": "sk_access_date_discussion",
+        "description_similarity": 0.40316611528396606,
+        "content_similarity": 0.5887408256530762,
+        "lexical_similarity": 0.5588948726654053,
+        "combined_score": 0.48998427391052246,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_cfe5f74da9a4",
+        "skill_id": "sk_access_abstract_positive_expansion",
+        "description_similarity": 0.4485747218132019,
+        "content_similarity": 0.5655837059020996,
+        "lexical_similarity": 0.4561038613319397,
+        "combined_score": 0.4851832389831543,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_cfe5f74da9a4",
+        "skill_id": "sk_access_advice_from_experience",
+        "description_similarity": 0.5033329129219055,
+        "content_similarity": 0.5773473978042603,
+        "lexical_similarity": 0.2578185796737671,
+        "combined_score": 0.4764343798160553,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_cfe5f74da9a4",
+        "skill_id": "sk_access_exhaustive_list_retrieval",
+        "description_similarity": 0.45949995517730713,
+        "content_similarity": 0.5414153337478638,
+        "lexical_similarity": 0.3385709822177887,
+        "combined_score": 0.4598888158798218,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_cfe5f74da9a4",
+        "skill_id": "sk_access_preference_attribute_search",
+        "description_similarity": 0.3908301293849945,
+        "content_similarity": 0.561356782913208,
+        "lexical_similarity": 0.46079859137535095,
+        "combined_score": 0.4559818208217621,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_cfe5f74da9a4",
+        "skill_id": "sk_access_merged_expansion",
+        "description_similarity": 0.49822941422462463,
+        "content_similarity": 0.45198380947113037,
+        "lexical_similarity": 0.34257322549819946,
+        "combined_score": 0.4532244801521301,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_cfe5f74da9a4",
+        "skill_id": "sk_access_ongoing_creative",
+        "description_similarity": 0.37082967162132263,
+        "content_similarity": 0.608188271522522,
+        "lexical_similarity": 0.40470924973487854,
+        "combined_score": 0.44881319999694824,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_cfe5f74da9a4",
+        "skill_id": "sk_access_supplement_item_lists",
+        "description_similarity": 0.42043769359588623,
+        "content_similarity": 0.3738958239555359,
+        "lexical_similarity": 0.571871280670166,
+        "combined_score": 0.43676185607910156,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_cfe5f74da9a4",
+        "skill_id": "sk_access_count_inflection_expansion",
+        "description_similarity": 0.4130387306213379,
+        "content_similarity": 0.5440965890884399,
+        "lexical_similarity": 0.2931167483329773,
+        "combined_score": 0.42837169766426086,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_cfe5f74da9a4",
+        "skill_id": "sk_access_preference_evidence",
+        "description_similarity": 0.3356372117996216,
+        "content_similarity": 0.5963584184646606,
+        "lexical_similarity": 0.39255571365356445,
+        "combined_score": 0.4252372682094574,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_cfe5f74da9a4",
+        "skill_id": "sk_access_enjoyment_genre",
+        "description_similarity": 0.44470831751823425,
+        "content_similarity": 0.4275544285774231,
+        "lexical_similarity": 0.3418707251548767,
+        "combined_score": 0.418994665145874,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_cfe5f74da9a4",
+        "skill_id": "sk_access_instance_list",
+        "description_similarity": 0.35035020112991333,
+        "content_similarity": 0.4587876796722412,
+        "lexical_similarity": 0.4248438775539398,
+        "combined_score": 0.397780179977417,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_cfe5f74da9a4",
+        "skill_id": "sk_access_broaden_recommendation",
+        "description_similarity": 0.2871801555156708,
+        "content_similarity": 0.44515323638916016,
+        "lexical_similarity": 0.3844664990901947,
+        "combined_score": 0.3540293574333191,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_cfe5f74da9a4",
+        "skill_id": "sk_access_preference_based_recommendation",
+        "description_similarity": 0.2516624629497528,
+        "content_similarity": 0.49233728647232056,
+        "lexical_similarity": 0.3827126920223236,
+        "combined_score": 0.3500749468803406,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_cfe5f74da9a4",
+        "skill_id": "sk_access_per_entity_intersection",
+        "description_similarity": 0.3004298806190491,
+        "content_similarity": 0.4285636246204376,
+        "lexical_similarity": 0.2410285621881485,
+        "combined_score": 0.3269897401332855,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_d5e0a2d7ea62",
+        "skill_id": "sk_access_per_entity_intersection",
+        "description_similarity": 0.5070940852165222,
+        "content_similarity": 0.7880489826202393,
+        "lexical_similarity": 1.0,
+        "combined_score": 0.6899617314338684,
+        "forced_by_candidate": true
+      },
+      {
+        "candidate_id": "cand_access_d5e0a2d7ea62",
+        "skill_id": "sk_access_future_plan_kinds",
+        "description_similarity": 0.6737964153289795,
+        "content_similarity": 0.6440656781196594,
+        "lexical_similarity": 0.5545269846916199,
+        "combined_score": 0.6410233378410339,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_d5e0a2d7ea62",
+        "skill_id": "sk_access_current_activity_kinds",
+        "description_similarity": 0.6233785152435303,
+        "content_similarity": 0.5704388618469238,
+        "lexical_similarity": 0.6243185997009277,
+        "combined_score": 0.6076846718788147,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_d5e0a2d7ea62",
+        "skill_id": "sk_access_project_plan_event_kinds",
+        "description_similarity": 0.5761432647705078,
+        "content_similarity": 0.5862176418304443,
+        "lexical_similarity": 0.5275170207023621,
+        "combined_score": 0.5694403052330017,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_d5e0a2d7ea62",
+        "skill_id": "sk_access_ownership_duration_kinds",
+        "description_similarity": 0.5856531262397766,
+        "content_similarity": 0.5707306861877441,
+        "lexical_similarity": 0.4640614986419678,
+        "combined_score": 0.5568580627441406,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_d5e0a2d7ea62",
+        "skill_id": "sk_access_shared_interests",
+        "description_similarity": 0.4755465090274811,
+        "content_similarity": 0.5317865610122681,
+        "lexical_similarity": 0.6191295385360718,
+        "combined_score": 0.521135151386261,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_d5e0a2d7ea62",
+        "skill_id": "sk_access_include_preference_enumeration",
+        "description_similarity": 0.5822994709014893,
+        "content_similarity": 0.5431171655654907,
+        "lexical_similarity": 0.3184916377067566,
+        "combined_score": 0.5177832245826721,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_d5e0a2d7ea62",
+        "skill_id": "sk_access_activity_period",
+        "description_similarity": 0.5004342794418335,
+        "content_similarity": 0.5253282189369202,
+        "lexical_similarity": 0.42317813634872437,
+        "combined_score": 0.4924512505531311,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_d5e0a2d7ea62",
+        "skill_id": "sk_access_exhaustive_list_retrieval",
+        "description_similarity": 0.5283039212226868,
+        "content_similarity": 0.4195277988910675,
+        "lexical_similarity": 0.30456674098968506,
+        "combined_score": 0.4509236514568329,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_d5e0a2d7ea62",
+        "skill_id": "sk_access_merged_expansion",
+        "description_similarity": 0.3944396674633026,
+        "content_similarity": 0.4866495132446289,
+        "lexical_similarity": 0.5153239965438843,
+        "combined_score": 0.44627949595451355,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_d5e0a2d7ea62",
+        "skill_id": "sk_access_sequence_retrieval",
+        "description_similarity": 0.4682464599609375,
+        "content_similarity": 0.3852536082267761,
+        "lexical_similarity": 0.4127870798110962,
+        "combined_score": 0.4322567284107208,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_d5e0a2d7ea62",
+        "skill_id": "sk_access_preference_attribute_search",
+        "description_similarity": 0.38150477409362793,
+        "content_similarity": 0.5788254141807556,
+        "lexical_similarity": 0.3383016586303711,
+        "combined_score": 0.4320603609085083,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_d5e0a2d7ea62",
+        "skill_id": "sk_access_avoid_anchor",
+        "description_similarity": 0.4613218903541565,
+        "content_similarity": 0.4451504349708557,
+        "lexical_similarity": 0.33103305101394653,
+        "combined_score": 0.4304126799106598,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_d5e0a2d7ea62",
+        "skill_id": "sk_access_relative_time",
+        "description_similarity": 0.4653276205062866,
+        "content_similarity": 0.4184279143810272,
+        "lexical_similarity": 0.3124297261238098,
+        "combined_score": 0.42067813873291016,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_d5e0a2d7ea62",
+        "skill_id": "sk_access_preference_evidence",
+        "description_similarity": 0.3535391688346863,
+        "content_similarity": 0.48447906970977783,
+        "lexical_similarity": 0.39654892683029175,
+        "combined_score": 0.4014230966567993,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_d5e0a2d7ea62",
+        "skill_id": "sk_access_date_discussion",
+        "description_similarity": 0.3964134752750397,
+        "content_similarity": 0.3867226839065552,
+        "lexical_similarity": 0.3859206736087799,
+        "combined_score": 0.39140769839286804,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_d5e0a2d7ea62",
+        "skill_id": "sk_access_which_activity",
+        "description_similarity": 0.3993350863456726,
+        "content_similarity": 0.4465751647949219,
+        "lexical_similarity": 0.26510995626449585,
+        "combined_score": 0.386662095785141,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_d5e0a2d7ea62",
+        "skill_id": "sk_access_ongoing_creative",
+        "description_similarity": 0.40971386432647705,
+        "content_similarity": 0.44215184450149536,
+        "lexical_similarity": 0.19408577680587769,
+        "combined_score": 0.37631964683532715,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_d5e0a2d7ea62",
+        "skill_id": "sk_access_broaden_recommendation",
+        "description_similarity": 0.32802361249923706,
+        "content_similarity": 0.45320090651512146,
+        "lexical_similarity": 0.2729712724685669,
+        "combined_score": 0.3545663356781006,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_d5e0a2d7ea62",
+        "skill_id": "sk_access_instance_list",
+        "description_similarity": 0.32938772439956665,
+        "content_similarity": 0.4498494267463684,
+        "lexical_similarity": 0.25083738565444946,
+        "combined_score": 0.3498161733150482,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_d5e0a2d7ea62",
+        "skill_id": "sk_access_supplement_item_lists",
+        "description_similarity": 0.29375192523002625,
+        "content_similarity": 0.3877618908882141,
+        "lexical_similarity": 0.3131706714630127,
+        "combined_score": 0.32583868503570557,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_d5e0a2d7ea62",
+        "skill_id": "sk_access_abstract_positive_expansion",
+        "description_similarity": 0.2699040174484253,
+        "content_similarity": 0.3754742741584778,
+        "lexical_similarity": 0.38333967328071594,
+        "combined_score": 0.32426223158836365,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_d5e0a2d7ea62",
+        "skill_id": "sk_access_count_inflection_expansion",
+        "description_similarity": 0.3252858817577362,
+        "content_similarity": 0.3772431015968323,
+        "lexical_similarity": 0.1603245884180069,
+        "combined_score": 0.30788078904151917,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_d5e0a2d7ea62",
+        "skill_id": "sk_access_enjoyment_genre",
+        "description_similarity": 0.3367730975151062,
+        "content_similarity": 0.312328040599823,
+        "lexical_similarity": 0.16400861740112305,
+        "combined_score": 0.29488667845726013,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_d5e0a2d7ea62",
+        "skill_id": "sk_access_advice_from_experience",
+        "description_similarity": 0.3137575387954712,
+        "content_similarity": 0.2859750986099243,
+        "lexical_similarity": 0.22411102056503296,
+        "combined_score": 0.2874935269355774,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_d5e0a2d7ea62",
+        "skill_id": "sk_access_preference_based_recommendation",
+        "description_similarity": 0.25524160265922546,
+        "content_similarity": 0.29399925470352173,
+        "lexical_similarity": 0.27737292647361755,
+        "combined_score": 0.2712951600551605,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f58a1db96a31",
+        "skill_id": "sk_access_avoid_anchor",
+        "description_similarity": 0.6149592399597168,
+        "content_similarity": 0.6465111970901489,
+        "lexical_similarity": 0.8163424730300903,
+        "combined_score": 0.664701521396637,
+        "forced_by_candidate": true
+      },
+      {
+        "candidate_id": "cand_access_f58a1db96a31",
+        "skill_id": "sk_access_shared_interests",
+        "description_similarity": 0.5687271356582642,
+        "content_similarity": 0.6269000768661499,
+        "lexical_similarity": 0.5560809969902039,
+        "combined_score": 0.5836498141288757,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f58a1db96a31",
+        "skill_id": "sk_access_relative_time",
+        "description_similarity": 0.45821613073349,
+        "content_similarity": 0.5669751167297363,
+        "lexical_similarity": 0.8109930157661438,
+        "combined_score": 0.5613992214202881,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f58a1db96a31",
+        "skill_id": "sk_access_sequence_retrieval",
+        "description_similarity": 0.3718509078025818,
+        "content_similarity": 0.5736002922058105,
+        "lexical_similarity": 1.0,
+        "combined_score": 0.5580055713653564,
+        "forced_by_candidate": true
+      },
+      {
+        "candidate_id": "cand_access_f58a1db96a31",
+        "skill_id": "sk_access_corroborate_list_items",
+        "description_similarity": 0.5367379784584045,
+        "content_similarity": 0.620471715927124,
+        "lexical_similarity": 0.4808063805103302,
+        "combined_score": 0.5506718158721924,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f58a1db96a31",
+        "skill_id": "sk_access_which_activity",
+        "description_similarity": 0.49619385600090027,
+        "content_similarity": 0.6342819333076477,
+        "lexical_similarity": 0.5119819641113281,
+        "combined_score": 0.5407779216766357,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f58a1db96a31",
+        "skill_id": "sk_access_merged_expansion",
+        "description_similarity": 0.44725289940834045,
+        "content_similarity": 0.4857481122016907,
+        "lexical_similarity": 0.7347413301467896,
+        "combined_score": 0.5162991881370544,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f58a1db96a31",
+        "skill_id": "sk_access_preference_evidence",
+        "description_similarity": 0.4370447099208832,
+        "content_similarity": 0.5767629146575928,
+        "lexical_similarity": 0.5854077339172363,
+        "combined_score": 0.5086327791213989,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f58a1db96a31",
+        "skill_id": "sk_access_include_preference_enumeration",
+        "description_similarity": 0.5455383658409119,
+        "content_similarity": 0.5949566960334778,
+        "lexical_similarity": 0.2827700972557068,
+        "combined_score": 0.5078102350234985,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f58a1db96a31",
+        "skill_id": "sk_access_future_plan_kinds",
+        "description_similarity": 0.5132908225059509,
+        "content_similarity": 0.5692574977874756,
+        "lexical_similarity": 0.3518902659416199,
+        "combined_score": 0.4978007376194,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f58a1db96a31",
+        "skill_id": "sk_access_activity_period",
+        "description_similarity": 0.47649022936820984,
+        "content_similarity": 0.4829907715320587,
+        "lexical_similarity": 0.5614895224571228,
+        "combined_score": 0.4954402446746826,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f58a1db96a31",
+        "skill_id": "sk_access_current_activity_kinds",
+        "description_similarity": 0.46490687131881714,
+        "content_similarity": 0.564729630947113,
+        "lexical_similarity": 0.4278745949268341,
+        "combined_score": 0.48744726181030273,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f58a1db96a31",
+        "skill_id": "sk_access_project_plan_event_kinds",
+        "description_similarity": 0.5099211931228638,
+        "content_similarity": 0.45497214794158936,
+        "lexical_similarity": 0.39345329999923706,
+        "combined_score": 0.4701429009437561,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f58a1db96a31",
+        "skill_id": "sk_access_preference_attribute_search",
+        "description_similarity": 0.4206971526145935,
+        "content_similarity": 0.5531882643699646,
+        "lexical_similarity": 0.42737916111946106,
+        "combined_score": 0.4617808759212494,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f58a1db96a31",
+        "skill_id": "sk_access_exhaustive_list_retrieval",
+        "description_similarity": 0.40641337633132935,
+        "content_similarity": 0.42659151554107666,
+        "lexical_similarity": 0.6475427746772766,
+        "combined_score": 0.46069270372390747,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f58a1db96a31",
+        "skill_id": "sk_access_ongoing_creative",
+        "description_similarity": 0.38678789138793945,
+        "content_similarity": 0.5378919243812561,
+        "lexical_similarity": 0.5093590021133423,
+        "combined_score": 0.4566333293914795,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f58a1db96a31",
+        "skill_id": "sk_access_broaden_recommendation",
+        "description_similarity": 0.3767833709716797,
+        "content_similarity": 0.4757266640663147,
+        "lexical_similarity": 0.6065935492515564,
+        "combined_score": 0.45242840051651,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f58a1db96a31",
+        "skill_id": "sk_access_enjoyment_genre",
+        "description_similarity": 0.4509037137031555,
+        "content_similarity": 0.5296218395233154,
+        "lexical_similarity": 0.3005639314651489,
+        "combined_score": 0.4444511830806732,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f58a1db96a31",
+        "skill_id": "sk_access_date_discussion",
+        "description_similarity": 0.36523377895355225,
+        "content_similarity": 0.511613130569458,
+        "lexical_similarity": 0.5372662544250488,
+        "combined_score": 0.4435540735721588,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f58a1db96a31",
+        "skill_id": "sk_access_advice_from_experience",
+        "description_similarity": 0.40012937784194946,
+        "content_similarity": 0.5718163847923279,
+        "lexical_similarity": 0.35094109177589417,
+        "combined_score": 0.4417978525161743,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f58a1db96a31",
+        "skill_id": "sk_access_abstract_positive_expansion",
+        "description_similarity": 0.3469400405883789,
+        "content_similarity": 0.4957588315010071,
+        "lexical_similarity": 0.5881494283676147,
+        "combined_score": 0.439827561378479,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f58a1db96a31",
+        "skill_id": "sk_access_supplement_item_lists",
+        "description_similarity": 0.3914840519428253,
+        "content_similarity": 0.4271470904350281,
+        "lexical_similarity": 0.539984405040741,
+        "combined_score": 0.4318830370903015,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f58a1db96a31",
+        "skill_id": "sk_access_preference_based_recommendation",
+        "description_similarity": 0.3435191810131073,
+        "content_similarity": 0.5168104767799377,
+        "lexical_similarity": 0.3722090423107147,
+        "combined_score": 0.40124455094337463,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f58a1db96a31",
+        "skill_id": "sk_access_per_entity_intersection",
+        "description_similarity": 0.4138581156730652,
+        "content_similarity": 0.42568984627723694,
+        "lexical_similarity": 0.32947757840156555,
+        "combined_score": 0.4005315601825714,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f58a1db96a31",
+        "skill_id": "sk_access_instance_list",
+        "description_similarity": 0.34238916635513306,
+        "content_similarity": 0.39510026574134827,
+        "lexical_similarity": 0.48079776763916016,
+        "combined_score": 0.38588422536849976,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f58a1db96a31",
+        "skill_id": "sk_access_count_inflection_expansion",
+        "description_similarity": 0.28301361203193665,
+        "content_similarity": 0.4899444282054901,
+        "lexical_similarity": 0.37388744950294495,
+        "combined_score": 0.3632676303386688,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f7026570e118",
+        "skill_id": "sk_access_merged_expansion",
+        "description_similarity": 0.6629379987716675,
+        "content_similarity": 0.5669727921485901,
+        "lexical_similarity": 0.7815417647361755,
+        "combined_score": 0.6578691601753235,
+        "forced_by_candidate": true
+      },
+      {
+        "candidate_id": "cand_access_f7026570e118",
+        "skill_id": "sk_access_count_inflection_expansion",
+        "description_similarity": 0.5615195035934448,
+        "content_similarity": 0.6513729095458984,
+        "lexical_similarity": 0.8646359443664551,
+        "combined_score": 0.649098813533783,
+        "forced_by_candidate": true
+      },
+      {
+        "candidate_id": "cand_access_f7026570e118",
+        "skill_id": "sk_access_exhaustive_list_retrieval",
+        "description_similarity": 0.6397255063056946,
+        "content_similarity": 0.6528339385986328,
+        "lexical_similarity": 0.6425072550773621,
+        "combined_score": 0.6442144513130188,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f7026570e118",
+        "skill_id": "sk_access_relative_time",
+        "description_similarity": 0.5939509868621826,
+        "content_similarity": 0.6261097192764282,
+        "lexical_similarity": 0.6749634146690369,
+        "combined_score": 0.6198011040687561,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f7026570e118",
+        "skill_id": "sk_access_enumeration_synonym_search",
+        "description_similarity": 0.47169768810272217,
+        "content_similarity": 0.6954381465911865,
+        "lexical_similarity": 0.8586937189102173,
+        "combined_score": 0.6162190437316895,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f7026570e118",
+        "skill_id": "sk_access_avoid_anchor",
+        "description_similarity": 0.5477172136306763,
+        "content_similarity": 0.7081996202468872,
+        "lexical_similarity": 0.6388393640518188,
+        "combined_score": 0.614086389541626,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f7026570e118",
+        "skill_id": "sk_access_project_plan_event_kinds",
+        "description_similarity": 0.5980073809623718,
+        "content_similarity": 0.5801512002944946,
+        "lexical_similarity": 0.6250630617141724,
+        "combined_score": 0.5980616807937622,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f7026570e118",
+        "skill_id": "sk_access_future_plan_kinds",
+        "description_similarity": 0.6336231231689453,
+        "content_similarity": 0.6161367893218994,
+        "lexical_similarity": 0.37749364972114563,
+        "combined_score": 0.5771512985229492,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f7026570e118",
+        "skill_id": "sk_access_include_preference_enumeration",
+        "description_similarity": 0.6595261693000793,
+        "content_similarity": 0.5900378227233887,
+        "lexical_similarity": 0.292147159576416,
+        "combined_score": 0.565203845500946,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f7026570e118",
+        "skill_id": "sk_access_preference_evidence",
+        "description_similarity": 0.5294426083564758,
+        "content_similarity": 0.6116591095924377,
+        "lexical_similarity": 0.4920072555541992,
+        "combined_score": 0.5466204881668091,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f7026570e118",
+        "skill_id": "sk_access_instance_list",
+        "description_similarity": 0.49865931272506714,
+        "content_similarity": 0.472764253616333,
+        "lexical_similarity": 0.7377808094024658,
+        "combined_score": 0.538715124130249,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f7026570e118",
+        "skill_id": "sk_access_ongoing_creative",
+        "description_similarity": 0.4441859722137451,
+        "content_similarity": 0.6867399215698242,
+        "lexical_similarity": 0.5158829689025879,
+        "combined_score": 0.5312915444374084,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f7026570e118",
+        "skill_id": "sk_access_shared_interests",
+        "description_similarity": 0.5382888913154602,
+        "content_similarity": 0.4753497838973999,
+        "lexical_similarity": 0.5842626094818115,
+        "combined_score": 0.528601884841919,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f7026570e118",
+        "skill_id": "sk_access_abstract_positive_expansion",
+        "description_similarity": 0.43515288829803467,
+        "content_similarity": 0.6514292359352112,
+        "lexical_similarity": 0.5740053653717041,
+        "combined_score": 0.527806282043457,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f7026570e118",
+        "skill_id": "sk_access_current_activity_kinds",
+        "description_similarity": 0.5744704008102417,
+        "content_similarity": 0.568522572517395,
+        "lexical_similarity": 0.32768338918685913,
+        "combined_score": 0.5233286619186401,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f7026570e118",
+        "skill_id": "sk_access_activity_period",
+        "description_similarity": 0.570306122303009,
+        "content_similarity": 0.487115740776062,
+        "lexical_similarity": 0.4534359276294708,
+        "combined_score": 0.5219749808311462,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f7026570e118",
+        "skill_id": "sk_access_enjoyment_genre",
+        "description_similarity": 0.5489874482154846,
+        "content_similarity": 0.3825037479400635,
+        "lexical_similarity": 0.6516287326812744,
+        "combined_score": 0.5195705890655518,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f7026570e118",
+        "skill_id": "sk_access_which_activity",
+        "description_similarity": 0.5142548084259033,
+        "content_similarity": 0.6231993436813354,
+        "lexical_similarity": 0.3688212037086487,
+        "combined_score": 0.5178514719009399,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f7026570e118",
+        "skill_id": "sk_access_date_discussion",
+        "description_similarity": 0.4973399341106415,
+        "content_similarity": 0.5685827732086182,
+        "lexical_similarity": 0.3828943371772766,
+        "combined_score": 0.4958236813545227,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f7026570e118",
+        "skill_id": "sk_access_supplement_item_lists",
+        "description_similarity": 0.45448192954063416,
+        "content_similarity": 0.4729791581630707,
+        "lexical_similarity": 0.6075433492660522,
+        "combined_score": 0.49064338207244873,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f7026570e118",
+        "skill_id": "sk_access_preference_attribute_search",
+        "description_similarity": 0.47024965286254883,
+        "content_similarity": 0.5490608215332031,
+        "lexical_similarity": 0.3635784089565277,
+        "combined_score": 0.47255879640579224,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f7026570e118",
+        "skill_id": "sk_access_sequence_retrieval",
+        "description_similarity": 0.4479466378688812,
+        "content_similarity": 0.5624212622642517,
+        "lexical_similarity": 0.38503021001815796,
+        "combined_score": 0.4697057604789734,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f7026570e118",
+        "skill_id": "sk_access_broaden_recommendation",
+        "description_similarity": 0.4729531407356262,
+        "content_similarity": 0.43204036355018616,
+        "lexical_similarity": 0.5131672620773315,
+        "combined_score": 0.4687221348285675,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f7026570e118",
+        "skill_id": "sk_access_advice_from_experience",
+        "description_similarity": 0.4600110650062561,
+        "content_similarity": 0.4840589463710785,
+        "lexical_similarity": 0.262862890958786,
+        "combined_score": 0.42779579758644104,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f7026570e118",
+        "skill_id": "sk_access_preference_based_recommendation",
+        "description_similarity": 0.4002360701560974,
+        "content_similarity": 0.49898573756217957,
+        "lexical_similarity": 0.38537314534187317,
+        "combined_score": 0.4268884062767029,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f7026570e118",
+        "skill_id": "sk_access_per_entity_intersection",
+        "description_similarity": 0.42118924856185913,
+        "content_similarity": 0.4736347496509552,
+        "lexical_similarity": 0.31339380145072937,
+        "combined_score": 0.41536378860473633,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_3df1a4630590",
+        "skill_id": "sk_access_preference_evidence",
+        "description_similarity": 0.6414525508880615,
+        "content_similarity": 0.7525491714477539,
+        "lexical_similarity": 1.0,
+        "combined_score": 0.746491014957428,
+        "forced_by_candidate": true
+      },
+      {
+        "candidate_id": "cand_access_3df1a4630590",
+        "skill_id": "sk_access_include_preference_enumeration",
+        "description_similarity": 0.5910773277282715,
+        "content_similarity": 0.6569257974624634,
+        "lexical_similarity": 0.9779496788978577,
+        "combined_score": 0.6882063746452332,
+        "forced_by_candidate": true
+      },
+      {
+        "candidate_id": "cand_access_3df1a4630590",
+        "skill_id": "sk_access_instance_list",
+        "description_similarity": 0.6184359788894653,
+        "content_similarity": 0.6136046648025513,
+        "lexical_similarity": 0.8592996597290039,
+        "combined_score": 0.6651593446731567,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_3df1a4630590",
+        "skill_id": "sk_access_enumeration_category_search",
+        "description_similarity": 0.5001057982444763,
+        "content_similarity": 0.6302624940872192,
+        "lexical_similarity": 0.8837341070175171,
+        "combined_score": 0.6158785223960876,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_3df1a4630590",
+        "skill_id": "sk_access_corroborate_list_items",
+        "description_similarity": 0.5418417453765869,
+        "content_similarity": 0.711492657661438,
+        "lexical_similarity": 0.585235595703125,
+        "combined_score": 0.6014158129692078,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_3df1a4630590",
+        "skill_id": "sk_access_supplement_item_lists",
+        "description_similarity": 0.5594924688339233,
+        "content_similarity": 0.5289879441261292,
+        "lexical_similarity": 0.7749924659729004,
+        "combined_score": 0.5934411287307739,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_3df1a4630590",
+        "skill_id": "sk_access_which_activity",
+        "description_similarity": 0.6197500228881836,
+        "content_similarity": 0.5884609222412109,
+        "lexical_similarity": 0.5220134854316711,
+        "combined_score": 0.5908160209655762,
+        "forced_by_candidate": true
+      },
+      {
+        "candidate_id": "cand_access_3df1a4630590",
+        "skill_id": "sk_access_shared_interests",
+        "description_similarity": 0.5985192060470581,
+        "content_similarity": 0.5050644278526306,
+        "lexical_similarity": 0.4729160666465759,
+        "combined_score": 0.545362114906311,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_3df1a4630590",
+        "skill_id": "sk_access_preference_attribute_search",
+        "description_similarity": 0.5308576226234436,
+        "content_similarity": 0.5275454521179199,
+        "lexical_similarity": 0.527125358581543,
+        "combined_score": 0.5291175246238708,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_3df1a4630590",
+        "skill_id": "sk_access_enjoyment_genre",
+        "description_similarity": 0.4957790970802307,
+        "content_similarity": 0.4401772618293762,
+        "lexical_similarity": 0.5848278403282166,
+        "combined_score": 0.4969082772731781,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_3df1a4630590",
+        "skill_id": "sk_access_merged_expansion",
+        "description_similarity": 0.45982861518859863,
+        "content_similarity": 0.40873998403549194,
+        "lexical_similarity": 0.6441885232925415,
+        "combined_score": 0.48137402534484863,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_3df1a4630590",
+        "skill_id": "sk_access_ongoing_creative",
+        "description_similarity": 0.47348731756210327,
+        "content_similarity": 0.49608492851257324,
+        "lexical_similarity": 0.45556876063346863,
+        "combined_score": 0.4766829013824463,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_3df1a4630590",
+        "skill_id": "sk_access_advice_from_experience",
+        "description_similarity": 0.5134769678115845,
+        "content_similarity": 0.5083994269371033,
+        "lexical_similarity": 0.321963369846344,
+        "combined_score": 0.4736509919166565,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_3df1a4630590",
+        "skill_id": "sk_access_preference_based_recommendation",
+        "description_similarity": 0.3434094786643982,
+        "content_similarity": 0.6012098789215088,
+        "lexical_similarity": 0.5674266219139099,
+        "combined_score": 0.46555304527282715,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_3df1a4630590",
+        "skill_id": "sk_access_exhaustive_list_retrieval",
+        "description_similarity": 0.409270703792572,
+        "content_similarity": 0.3944088816642761,
+        "lexical_similarity": 0.5928912162780762,
+        "combined_score": 0.4415362775325775,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_3df1a4630590",
+        "skill_id": "sk_access_avoid_anchor",
+        "description_similarity": 0.40045440196990967,
+        "content_similarity": 0.4667677879333496,
+        "lexical_similarity": 0.49255841970443726,
+        "combined_score": 0.43876922130584717,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_3df1a4630590",
+        "skill_id": "sk_access_broaden_recommendation",
+        "description_similarity": 0.36875098943710327,
+        "content_similarity": 0.43261513113975525,
+        "lexical_similarity": 0.618435800075531,
+        "combined_score": 0.43784719705581665,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_3df1a4630590",
+        "skill_id": "sk_access_activity_period",
+        "description_similarity": 0.49411189556121826,
+        "content_similarity": 0.33678746223449707,
+        "lexical_similarity": 0.380835622549057,
+        "combined_score": 0.42425933480262756,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_3df1a4630590",
+        "skill_id": "sk_access_project_plan_event_kinds",
+        "description_similarity": 0.49622777104377747,
+        "content_similarity": 0.4174734354019165,
+        "lexical_similarity": 0.2486780732870102,
+        "combined_score": 0.4230915307998657,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_3df1a4630590",
+        "skill_id": "sk_access_future_plan_kinds",
+        "description_similarity": 0.4800412058830261,
+        "content_similarity": 0.4246235489845276,
+        "lexical_similarity": 0.27023419737815857,
+        "combined_score": 0.421454519033432,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_3df1a4630590",
+        "skill_id": "sk_access_sequence_retrieval",
+        "description_similarity": 0.36943256855010986,
+        "content_similarity": 0.44821861386299133,
+        "lexical_similarity": 0.5034300684928894,
+        "combined_score": 0.4198678731918335,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_3df1a4630590",
+        "skill_id": "sk_access_relative_time",
+        "description_similarity": 0.37837302684783936,
+        "content_similarity": 0.40527141094207764,
+        "lexical_similarity": 0.4842824339866638,
+        "combined_score": 0.40762442350387573,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_3df1a4630590",
+        "skill_id": "sk_access_current_activity_kinds",
+        "description_similarity": 0.41904008388519287,
+        "content_similarity": 0.39948326349258423,
+        "lexical_similarity": 0.27393022179603577,
+        "combined_score": 0.38415107131004333,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_3df1a4630590",
+        "skill_id": "sk_access_abstract_positive_expansion",
+        "description_similarity": 0.3587600588798523,
+        "content_similarity": 0.37603747844696045,
+        "lexical_similarity": 0.3700608015060425,
+        "combined_score": 0.3662034273147583,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_3df1a4630590",
+        "skill_id": "sk_access_date_discussion",
+        "description_similarity": 0.34968215227127075,
+        "content_similarity": 0.3468332886695862,
+        "lexical_similarity": 0.28688400983810425,
+        "combined_score": 0.3362678587436676,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_3df1a4630590",
+        "skill_id": "sk_access_count_inflection_expansion",
+        "description_similarity": 0.2828543484210968,
+        "content_similarity": 0.4318111836910248,
+        "lexical_similarity": 0.24266844987869263,
+        "combined_score": 0.3195042014122009,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_3df1a4630590",
+        "skill_id": "sk_access_per_entity_intersection",
+        "description_similarity": 0.2863655388355255,
+        "content_similarity": 0.2661775052547455,
+        "lexical_similarity": 0.3850232660770416,
+        "combined_score": 0.30004066228866577,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_6a968df7578f",
+        "skill_id": "sk_access_supplement_item_lists",
+        "description_similarity": 0.6777065992355347,
+        "content_similarity": 0.6222448348999023,
+        "lexical_similarity": 0.9466075897216797,
+        "combined_score": 0.7148482799530029,
+        "forced_by_candidate": true
+      },
+      {
+        "candidate_id": "cand_access_6a968df7578f",
+        "skill_id": "sk_access_preference_based_recommendation",
+        "description_similarity": 0.5178356766700745,
+        "content_similarity": 0.8230196237564087,
+        "lexical_similarity": 0.9783933162689209,
+        "combined_score": 0.7015023827552795,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_6a968df7578f",
+        "skill_id": "sk_access_preference_evidence",
+        "description_similarity": 0.5866056084632874,
+        "content_similarity": 0.688407838344574,
+        "lexical_similarity": 0.8954297304153442,
+        "combined_score": 0.6789111495018005,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_6a968df7578f",
+        "skill_id": "sk_access_instance_list",
+        "description_similarity": 0.6200472116470337,
+        "content_similarity": 0.5493534207344055,
+        "lexical_similarity": 1.0,
+        "combined_score": 0.6748296618461609,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_6a968df7578f",
+        "skill_id": "sk_access_corroborate_list_items",
+        "description_similarity": 0.5746780037879944,
+        "content_similarity": 0.7096141576766968,
+        "lexical_similarity": 0.6865371465682983,
+        "combined_score": 0.6375306844711304,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_6a968df7578f",
+        "skill_id": "sk_access_which_activity",
+        "description_similarity": 0.5154176354408264,
+        "content_similarity": 0.7182822823524475,
+        "lexical_similarity": 0.6064984202384949,
+        "combined_score": 0.5944932103157043,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_6a968df7578f",
+        "skill_id": "sk_access_advice_from_experience",
+        "description_similarity": 0.5406497120857239,
+        "content_similarity": 0.6782361268997192,
+        "lexical_similarity": 0.5392727851867676,
+        "combined_score": 0.5816502571105957,
+        "forced_by_candidate": true
+      },
+      {
+        "candidate_id": "cand_access_6a968df7578f",
+        "skill_id": "sk_access_enjoyment_genre",
+        "description_similarity": 0.5621103048324585,
+        "content_similarity": 0.5578688383102417,
+        "lexical_similarity": 0.6295726299285889,
+        "combined_score": 0.5743303298950195,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_6a968df7578f",
+        "skill_id": "sk_access_preference_attribute_search",
+        "description_similarity": 0.5122767090797424,
+        "content_similarity": 0.6310378313064575,
+        "lexical_similarity": 0.6123120188713074,
+        "combined_score": 0.5679121017456055,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_6a968df7578f",
+        "skill_id": "sk_access_shared_interests",
+        "description_similarity": 0.5137729048728943,
+        "content_similarity": 0.5778787136077881,
+        "lexical_similarity": 0.6066627502441406,
+        "combined_score": 0.5515826344490051,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_6a968df7578f",
+        "skill_id": "sk_access_include_preference_enumeration",
+        "description_similarity": 0.43969017267227173,
+        "content_similarity": 0.6493887901306152,
+        "lexical_similarity": 0.6300849318504333,
+        "combined_score": 0.5406787395477295,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_6a968df7578f",
+        "skill_id": "sk_access_broaden_recommendation",
+        "description_similarity": 0.4401208460330963,
+        "content_similarity": 0.5854254961013794,
+        "lexical_similarity": 0.6876240968704224,
+        "combined_score": 0.5332129001617432,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_6a968df7578f",
+        "skill_id": "sk_access_abstract_positive_expansion",
+        "description_similarity": 0.4179471731185913,
+        "content_similarity": 0.5116420388221741,
+        "lexical_similarity": 0.709517240524292,
+        "combined_score": 0.5043696761131287,
+        "forced_by_candidate": true
+      },
+      {
+        "candidate_id": "cand_access_6a968df7578f",
+        "skill_id": "sk_access_merged_expansion",
+        "description_similarity": 0.42891356348991394,
+        "content_similarity": 0.4663265347480774,
+        "lexical_similarity": 0.6981407403945923,
+        "combined_score": 0.4939829111099243,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_6a968df7578f",
+        "skill_id": "sk_access_count_inflection_expansion",
+        "description_similarity": 0.4415561556816101,
+        "content_similarity": 0.4804984927177429,
+        "lexical_similarity": 0.6052071452140808,
+        "combined_score": 0.48596906661987305,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_6a968df7578f",
+        "skill_id": "sk_access_activity_period",
+        "description_similarity": 0.4758317470550537,
+        "content_similarity": 0.3129318356513977,
+        "lexical_similarity": 0.6246458292007446,
+        "combined_score": 0.4567245841026306,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_6a968df7578f",
+        "skill_id": "sk_access_exhaustive_list_retrieval",
+        "description_similarity": 0.4060584306716919,
+        "content_similarity": 0.4136497378349304,
+        "lexical_similarity": 0.49464765191078186,
+        "combined_score": 0.4260536730289459,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_6a968df7578f",
+        "skill_id": "sk_access_avoid_anchor",
+        "description_similarity": 0.3750922679901123,
+        "content_similarity": 0.5069180727005005,
+        "lexical_similarity": 0.4210711121559143,
+        "combined_score": 0.42383575439453125,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_6a968df7578f",
+        "skill_id": "sk_access_date_discussion",
+        "description_similarity": 0.2924404442310333,
+        "content_similarity": 0.42055732011795044,
+        "lexical_similarity": 0.6192674040794373,
+        "combined_score": 0.3962409198284149,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_6a968df7578f",
+        "skill_id": "sk_access_ongoing_creative",
+        "description_similarity": 0.36502134799957275,
+        "content_similarity": 0.4304829239845276,
+        "lexical_similarity": 0.4057666063308716,
+        "combined_score": 0.3928088843822479,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_6a968df7578f",
+        "skill_id": "sk_access_future_plan_kinds",
+        "description_similarity": 0.2994741201400757,
+        "content_similarity": 0.4729388952255249,
+        "lexical_similarity": 0.4836075007915497,
+        "combined_score": 0.3883402347564697,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_6a968df7578f",
+        "skill_id": "sk_access_project_plan_event_kinds",
+        "description_similarity": 0.35774698853492737,
+        "content_similarity": 0.39929068088531494,
+        "lexical_similarity": 0.38050535321235657,
+        "combined_score": 0.37476176023483276,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_6a968df7578f",
+        "skill_id": "sk_access_relative_time",
+        "description_similarity": 0.2614292800426483,
+        "content_similarity": 0.45091527700424194,
+        "lexical_similarity": 0.5231033563613892,
+        "combined_score": 0.37060990929603577,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_6a968df7578f",
+        "skill_id": "sk_access_per_entity_intersection",
+        "description_similarity": 0.381847620010376,
+        "content_similarity": 0.30407726764678955,
+        "lexical_similarity": 0.24926333129405975,
+        "combined_score": 0.33199965953826904,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_6a968df7578f",
+        "skill_id": "sk_access_current_activity_kinds",
+        "description_similarity": 0.2327454835176468,
+        "content_similarity": 0.46027955412864685,
+        "lexical_similarity": 0.3868671655654907,
+        "combined_score": 0.33183005452156067,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_6a968df7578f",
+        "skill_id": "sk_access_sequence_retrieval",
+        "description_similarity": 0.20700028538703918,
+        "content_similarity": 0.3981664776802063,
+        "lexical_similarity": 0.40543892979621887,
+        "combined_score": 0.3040378987789154,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_7a518765dc63",
+        "skill_id": "sk_access_include_preference_enumeration",
+        "description_similarity": 0.7296375036239624,
+        "content_similarity": 0.7780022025108337,
+        "lexical_similarity": 0.725024938583374,
+        "combined_score": 0.7432243824005127,
+        "forced_by_candidate": true
+      },
+      {
+        "candidate_id": "cand_access_7a518765dc63",
+        "skill_id": "sk_access_date_discussion",
+        "description_similarity": 0.6087309718132019,
+        "content_similarity": 0.6177464723587036,
+        "lexical_similarity": 1.0,
+        "combined_score": 0.6896894574165344,
+        "forced_by_candidate": true
+      },
+      {
+        "candidate_id": "cand_access_7a518765dc63",
+        "skill_id": "sk_access_activity_period",
+        "description_similarity": 0.6548652648925781,
+        "content_similarity": 0.6680881977081299,
+        "lexical_similarity": 0.6726667881011963,
+        "combined_score": 0.6623924374580383,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_7a518765dc63",
+        "skill_id": "sk_access_current_activity_kinds",
+        "description_similarity": 0.5537394881248474,
+        "content_similarity": 0.7011058330535889,
+        "lexical_similarity": 0.8124128580093384,
+        "combined_score": 0.6496840715408325,
+        "forced_by_candidate": true
+      },
+      {
+        "candidate_id": "cand_access_7a518765dc63",
+        "skill_id": "sk_access_broaden_recommendation",
+        "description_similarity": 0.6271708011627197,
+        "content_similarity": 0.7606233954429626,
+        "lexical_similarity": 0.5378230214118958,
+        "combined_score": 0.6493370532989502,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_7a518765dc63",
+        "skill_id": "sk_access_relative_time",
+        "description_similarity": 0.6407464146614075,
+        "content_similarity": 0.7112396955490112,
+        "lexical_similarity": 0.5254930853843689,
+        "combined_score": 0.6388437151908875,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_7a518765dc63",
+        "skill_id": "sk_access_future_plan_kinds",
+        "description_similarity": 0.6061787605285645,
+        "content_similarity": 0.6931638121604919,
+        "lexical_similarity": 0.6120465993881226,
+        "combined_score": 0.6334478855133057,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_7a518765dc63",
+        "skill_id": "sk_access_preference_based_recommendation",
+        "description_similarity": 0.49812841415405273,
+        "content_similarity": 0.727264404296875,
+        "lexical_similarity": 0.7854700088500977,
+        "combined_score": 0.6243375539779663,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_7a518765dc63",
+        "skill_id": "sk_access_preference_attribute_search",
+        "description_similarity": 0.570789635181427,
+        "content_similarity": 0.6792082786560059,
+        "lexical_similarity": 0.6126800775527954,
+        "combined_score": 0.6116933226585388,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_7a518765dc63",
+        "skill_id": "sk_access_project_plan_event_kinds",
+        "description_similarity": 0.5823116302490234,
+        "content_similarity": 0.5963083505630493,
+        "lexical_similarity": 0.6426905989646912,
+        "combined_score": 0.5985864400863647,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_7a518765dc63",
+        "skill_id": "sk_access_avoid_anchor",
+        "description_similarity": 0.5442484617233276,
+        "content_similarity": 0.6933060884475708,
+        "lexical_similarity": 0.5620550513267517,
+        "combined_score": 0.5925270915031433,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_7a518765dc63",
+        "skill_id": "sk_access_preference_evidence",
+        "description_similarity": 0.5109936594963074,
+        "content_similarity": 0.7494124174118042,
+        "lexical_similarity": 0.5415183305740356,
+        "combined_score": 0.5886242389678955,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_7a518765dc63",
+        "skill_id": "sk_access_shared_interests",
+        "description_similarity": 0.6026209592819214,
+        "content_similarity": 0.5128291249275208,
+        "lexical_similarity": 0.5042308568954468,
+        "combined_score": 0.5560053586959839,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_7a518765dc63",
+        "skill_id": "sk_access_advice_from_experience",
+        "description_similarity": 0.5693881511688232,
+        "content_similarity": 0.6048941612243652,
+        "lexical_similarity": 0.4239380359649658,
+        "combined_score": 0.5509499311447144,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_7a518765dc63",
+        "skill_id": "sk_access_which_activity",
+        "description_similarity": 0.5837458968162537,
+        "content_similarity": 0.5830816030502319,
+        "lexical_similarity": 0.25909149646759033,
+        "combined_score": 0.51861572265625,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_7a518765dc63",
+        "skill_id": "sk_access_instance_list",
+        "description_similarity": 0.4297585189342499,
+        "content_similarity": 0.5819367170333862,
+        "lexical_similarity": 0.6391266584396362,
+        "combined_score": 0.5172855854034424,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_7a518765dc63",
+        "skill_id": "sk_access_supplement_item_lists",
+        "description_similarity": 0.5104127526283264,
+        "content_similarity": 0.5212347507476807,
+        "lexical_similarity": 0.5258142948150635,
+        "combined_score": 0.5167396664619446,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_7a518765dc63",
+        "skill_id": "sk_access_sequence_retrieval",
+        "description_similarity": 0.5250722169876099,
+        "content_similarity": 0.5499405860900879,
+        "lexical_similarity": 0.41324582695961,
+        "combined_score": 0.5101674795150757,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_7a518765dc63",
+        "skill_id": "sk_access_ongoing_creative",
+        "description_similarity": 0.5132328271865845,
+        "content_similarity": 0.5546298027038574,
+        "lexical_similarity": 0.39915192127227783,
+        "combined_score": 0.502835750579834,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_7a518765dc63",
+        "skill_id": "sk_access_enjoyment_genre",
+        "description_similarity": 0.4772603213787079,
+        "content_similarity": 0.5214848518371582,
+        "lexical_similarity": 0.39804595708847046,
+        "combined_score": 0.47468480467796326,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_7a518765dc63",
+        "skill_id": "sk_access_exhaustive_list_retrieval",
+        "description_similarity": 0.436138391494751,
+        "content_similarity": 0.5360990762710571,
+        "lexical_similarity": 0.3780575096607208,
+        "combined_score": 0.4545104205608368,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_7a518765dc63",
+        "skill_id": "sk_access_merged_expansion",
+        "description_similarity": 0.4247531294822693,
+        "content_similarity": 0.43452709913253784,
+        "lexical_similarity": 0.4369412362575531,
+        "combined_score": 0.4301229417324066,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_7a518765dc63",
+        "skill_id": "sk_access_abstract_positive_expansion",
+        "description_similarity": 0.37862908840179443,
+        "content_similarity": 0.469005286693573,
+        "lexical_similarity": 0.36380764842033386,
+        "combined_score": 0.40277767181396484,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_7a518765dc63",
+        "skill_id": "sk_access_count_inflection_expansion",
+        "description_similarity": 0.3782695531845093,
+        "content_similarity": 0.48096561431884766,
+        "lexical_similarity": 0.14130884408950806,
+        "combined_score": 0.36168622970581055,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_7a518765dc63",
+        "skill_id": "sk_access_per_entity_intersection",
+        "description_similarity": 0.33442461490631104,
+        "content_similarity": 0.4277781844139099,
+        "lexical_similarity": 0.24311679601669312,
+        "combined_score": 0.34416911005973816,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_a6b8fe90cceb",
+        "skill_id": "sk_access_instance_list",
+        "description_similarity": 0.6269443035125732,
+        "content_similarity": 0.6916387677192688,
+        "lexical_similarity": 1.0,
+        "combined_score": 0.7209637761116028,
+        "forced_by_candidate": true
+      },
+      {
+        "candidate_id": "cand_access_a6b8fe90cceb",
+        "skill_id": "sk_access_preference_evidence",
+        "description_similarity": 0.7078003883361816,
+        "content_similarity": 0.7852980494499207,
+        "lexical_similarity": 0.5291582345962524,
+        "combined_score": 0.695321261882782,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_a6b8fe90cceb",
+        "skill_id": "sk_access_include_preference_enumeration",
+        "description_similarity": 0.5576040744781494,
+        "content_similarity": 0.8088284134864807,
+        "lexical_similarity": 0.7193764448165894,
+        "combined_score": 0.6653258800506592,
+        "forced_by_candidate": true
+      },
+      {
+        "candidate_id": "cand_access_a6b8fe90cceb",
+        "skill_id": "sk_access_which_activity",
+        "description_similarity": 0.6847580671310425,
+        "content_similarity": 0.7730326652526855,
+        "lexical_similarity": 0.40824103355407715,
+        "combined_score": 0.6559370756149292,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_a6b8fe90cceb",
+        "skill_id": "sk_access_preference_attribute_search",
+        "description_similarity": 0.5826881527900696,
+        "content_similarity": 0.679410457611084,
+        "lexical_similarity": 0.5067251324653625,
+        "combined_score": 0.5965122580528259,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_a6b8fe90cceb",
+        "skill_id": "sk_access_shared_interests",
+        "description_similarity": 0.6473281383514404,
+        "content_similarity": 0.6593594551086426,
+        "lexical_similarity": 0.33953726291656494,
+        "combined_score": 0.5893793702125549,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_a6b8fe90cceb",
+        "skill_id": "sk_access_preference_based_recommendation",
+        "description_similarity": 0.36103543639183044,
+        "content_similarity": 0.7430607080459595,
+        "lexical_similarity": 0.7643141746520996,
+        "combined_score": 0.5562987923622131,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_a6b8fe90cceb",
+        "skill_id": "sk_access_supplement_item_lists",
+        "description_similarity": 0.5902028679847717,
+        "content_similarity": 0.6238893270492554,
+        "lexical_similarity": 0.3697021007537842,
+        "combined_score": 0.5562086701393127,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_a6b8fe90cceb",
+        "skill_id": "sk_access_activity_period",
+        "description_similarity": 0.5902296304702759,
+        "content_similarity": 0.5018852949142456,
+        "lexical_similarity": 0.5168607831001282,
+        "combined_score": 0.5490525960922241,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_a6b8fe90cceb",
+        "skill_id": "sk_access_current_activity_kinds",
+        "description_similarity": 0.4386167824268341,
+        "content_similarity": 0.5777344703674316,
+        "lexical_similarity": 0.723834753036499,
+        "combined_score": 0.537395715713501,
+        "forced_by_candidate": true
+      },
+      {
+        "candidate_id": "cand_access_a6b8fe90cceb",
+        "skill_id": "sk_access_advice_from_experience",
+        "description_similarity": 0.5313555002212524,
+        "content_similarity": 0.6019138097763062,
+        "lexical_similarity": 0.3087397813796997,
+        "combined_score": 0.507999837398529,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_a6b8fe90cceb",
+        "skill_id": "sk_access_ongoing_creative",
+        "description_similarity": 0.529769778251648,
+        "content_similarity": 0.5944149494171143,
+        "lexical_similarity": 0.31289592385292053,
+        "combined_score": 0.5057885646820068,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_a6b8fe90cceb",
+        "skill_id": "sk_access_broaden_recommendation",
+        "description_similarity": 0.47734585404396057,
+        "content_similarity": 0.6071902513504028,
+        "lexical_similarity": 0.424447238445282,
+        "combined_score": 0.5057194828987122,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_a6b8fe90cceb",
+        "skill_id": "sk_access_enjoyment_genre",
+        "description_similarity": 0.4236178994178772,
+        "content_similarity": 0.5351687073707581,
+        "lexical_similarity": 0.5313189625740051,
+        "combined_score": 0.4786233603954315,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_a6b8fe90cceb",
+        "skill_id": "sk_access_relative_time",
+        "description_similarity": 0.4361172318458557,
+        "content_similarity": 0.5871045589447021,
+        "lexical_similarity": 0.3639039099216461,
+        "combined_score": 0.4669707715511322,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_a6b8fe90cceb",
+        "skill_id": "sk_access_merged_expansion",
+        "description_similarity": 0.40722036361694336,
+        "content_similarity": 0.5274097919464111,
+        "lexical_similarity": 0.40509065985679626,
+        "combined_score": 0.4428512454032898,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_a6b8fe90cceb",
+        "skill_id": "sk_access_count_inflection_expansion",
+        "description_similarity": 0.4173583388328552,
+        "content_similarity": 0.5982955694198608,
+        "lexical_similarity": 0.22688981890678406,
+        "combined_score": 0.4335458278656006,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_a6b8fe90cceb",
+        "skill_id": "sk_access_future_plan_kinds",
+        "description_similarity": 0.3867841362953186,
+        "content_similarity": 0.5813686847686768,
+        "lexical_similarity": 0.3015866279602051,
+        "combined_score": 0.4281200170516968,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_a6b8fe90cceb",
+        "skill_id": "sk_access_exhaustive_list_retrieval",
+        "description_similarity": 0.43954330682754517,
+        "content_similarity": 0.523123562335968,
+        "lexical_similarity": 0.25459614396095276,
+        "combined_score": 0.4276279807090759,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_a6b8fe90cceb",
+        "skill_id": "sk_access_avoid_anchor",
+        "description_similarity": 0.3868710994720459,
+        "content_similarity": 0.5601897835731506,
+        "lexical_similarity": 0.3000260889530182,
+        "combined_score": 0.4214977025985718,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_a6b8fe90cceb",
+        "skill_id": "sk_access_sequence_retrieval",
+        "description_similarity": 0.43134284019470215,
+        "content_similarity": 0.5225582122802734,
+        "lexical_similarity": 0.24287672340869904,
+        "combined_score": 0.4210142493247986,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_a6b8fe90cceb",
+        "skill_id": "sk_access_abstract_positive_expansion",
+        "description_similarity": 0.3986020088195801,
+        "content_similarity": 0.5478295087814331,
+        "lexical_similarity": 0.28657200932502747,
+        "combined_score": 0.42096424102783203,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_a6b8fe90cceb",
+        "skill_id": "sk_access_project_plan_event_kinds",
+        "description_similarity": 0.41104787588119507,
+        "content_similarity": 0.5540518164634705,
+        "lexical_similarity": 0.24375544488430023,
+        "combined_score": 0.4204905927181244,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_a6b8fe90cceb",
+        "skill_id": "sk_access_per_entity_intersection",
+        "description_similarity": 0.3320614695549011,
+        "content_similarity": 0.4616660475730896,
+        "lexical_similarity": 0.47488322854042053,
+        "combined_score": 0.39950722455978394,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_a6b8fe90cceb",
+        "skill_id": "sk_access_date_discussion",
+        "description_similarity": 0.3665725588798523,
+        "content_similarity": 0.4444793462753296,
+        "lexical_similarity": 0.3034931421279907,
+        "combined_score": 0.3773287236690521,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_bb41dff88632",
+        "skill_id": "sk_access_include_preference_enumeration",
+        "description_similarity": 0.7933694124221802,
+        "content_similarity": 0.7576603889465332,
+        "lexical_similarity": 0.8691074848175049,
+        "combined_score": 0.7978043556213379,
+        "forced_by_candidate": true
+      },
+      {
+        "candidate_id": "cand_access_bb41dff88632",
+        "skill_id": "sk_access_future_plan_kinds",
+        "description_similarity": 0.6774619817733765,
+        "content_similarity": 0.6121952533721924,
+        "lexical_similarity": 0.8616495132446289,
+        "combined_score": 0.6947194933891296,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_bb41dff88632",
+        "skill_id": "sk_access_project_plan_event_kinds",
+        "description_similarity": 0.6720396280288696,
+        "content_similarity": 0.5596640110015869,
+        "lexical_similarity": 0.9264084696769714,
+        "combined_score": 0.6892006993293762,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_bb41dff88632",
+        "skill_id": "sk_access_preference_attribute_search",
+        "description_similarity": 0.6727142930030823,
+        "content_similarity": 0.6355221271514893,
+        "lexical_similarity": 0.7531098127365112,
+        "combined_score": 0.6776357293128967,
+        "forced_by_candidate": true
+      },
+      {
+        "candidate_id": "cand_access_bb41dff88632",
+        "skill_id": "sk_access_ownership_duration_kinds",
+        "description_similarity": 0.6469115018844604,
+        "content_similarity": 0.5576940774917603,
+        "lexical_similarity": 0.917180061340332,
+        "combined_score": 0.6741999983787537,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_bb41dff88632",
+        "skill_id": "sk_access_current_activity_kinds",
+        "description_similarity": 0.559768557548523,
+        "content_similarity": 0.6237417459487915,
+        "lexical_similarity": 0.9514855146408081,
+        "combined_score": 0.6573039293289185,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_bb41dff88632",
+        "skill_id": "sk_access_activity_period",
+        "description_similarity": 0.6480638980865479,
+        "content_similarity": 0.45614093542099,
+        "lexical_similarity": 0.9300116300582886,
+        "combined_score": 0.6468765735626221,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_bb41dff88632",
+        "skill_id": "sk_access_shared_interests",
+        "description_similarity": 0.6632528305053711,
+        "content_similarity": 0.6005070209503174,
+        "lexical_similarity": 0.6699444055557251,
+        "combined_score": 0.6457674503326416,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_bb41dff88632",
+        "skill_id": "sk_access_preference_based_recommendation",
+        "description_similarity": 0.5421169996261597,
+        "content_similarity": 0.6795321106910706,
+        "lexical_similarity": 0.7976980805397034,
+        "combined_score": 0.6344577670097351,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_bb41dff88632",
+        "skill_id": "sk_access_which_activity",
+        "description_similarity": 0.6732046604156494,
+        "content_similarity": 0.6043823957443237,
+        "lexical_similarity": 0.425868421792984,
+        "combined_score": 0.6030907034873962,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_bb41dff88632",
+        "skill_id": "sk_access_preference_evidence",
+        "description_similarity": 0.5608600378036499,
+        "content_similarity": 0.6794220209121704,
+        "lexical_similarity": 0.5876687169075012,
+        "combined_score": 0.6017903685569763,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_bb41dff88632",
+        "skill_id": "sk_access_instance_list",
+        "description_similarity": 0.49840307235717773,
+        "content_similarity": 0.6017226576805115,
+        "lexical_similarity": 0.7831730246543884,
+        "combined_score": 0.5863529443740845,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_bb41dff88632",
+        "skill_id": "sk_access_broaden_recommendation",
+        "description_similarity": 0.47700783610343933,
+        "content_similarity": 0.6116085648536682,
+        "lexical_similarity": 0.8193598985671997,
+        "combined_score": 0.5858584642410278,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_bb41dff88632",
+        "skill_id": "sk_access_advice_from_experience",
+        "description_similarity": 0.6752222776412964,
+        "content_similarity": 0.5274214148521423,
+        "lexical_similarity": 0.4241183400154114,
+        "combined_score": 0.5806612372398376,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_bb41dff88632",
+        "skill_id": "sk_access_supplement_item_lists",
+        "description_similarity": 0.5622996091842651,
+        "content_similarity": 0.5507156848907471,
+        "lexical_similarity": 0.6507584452629089,
+        "combined_score": 0.5765162110328674,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_bb41dff88632",
+        "skill_id": "sk_access_enjoyment_genre",
+        "description_similarity": 0.5711073875427246,
+        "content_similarity": 0.5632781982421875,
+        "lexical_similarity": 0.5204413533210754,
+        "combined_score": 0.5586254000663757,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_bb41dff88632",
+        "skill_id": "sk_access_avoid_anchor",
+        "description_similarity": 0.49706390500068665,
+        "content_similarity": 0.574173092842102,
+        "lexical_similarity": 0.546142041683197,
+        "combined_score": 0.530012309551239,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_bb41dff88632",
+        "skill_id": "sk_access_ongoing_creative",
+        "description_similarity": 0.5339359641075134,
+        "content_similarity": 0.4364239275455475,
+        "lexical_similarity": 0.6408625245094299,
+        "combined_score": 0.5260676741600037,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_bb41dff88632",
+        "skill_id": "sk_access_relative_time",
+        "description_similarity": 0.5832474231719971,
+        "content_similarity": 0.4750880002975464,
+        "lexical_similarity": 0.4434022903442383,
+        "combined_score": 0.5228305459022522,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_bb41dff88632",
+        "skill_id": "sk_access_merged_expansion",
+        "description_similarity": 0.5275485515594482,
+        "content_similarity": 0.4858236014842987,
+        "lexical_similarity": 0.39568451046943665,
+        "combined_score": 0.48865824937820435,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_bb41dff88632",
+        "skill_id": "sk_access_date_discussion",
+        "description_similarity": 0.4732261896133423,
+        "content_similarity": 0.41545283794403076,
+        "lexical_similarity": 0.531582236289978,
+        "combined_score": 0.4675653874874115,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_bb41dff88632",
+        "skill_id": "sk_access_abstract_positive_expansion",
+        "description_similarity": 0.44496098160743713,
+        "content_similarity": 0.44726455211639404,
+        "lexical_similarity": 0.5210285782814026,
+        "combined_score": 0.4608655869960785,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_bb41dff88632",
+        "skill_id": "sk_access_exhaustive_list_retrieval",
+        "description_similarity": 0.4578677713871002,
+        "content_similarity": 0.4456460177898407,
+        "lexical_similarity": 0.4696977436542511,
+        "combined_score": 0.4565672278404236,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_bb41dff88632",
+        "skill_id": "sk_access_sequence_retrieval",
+        "description_similarity": 0.44348034262657166,
+        "content_similarity": 0.3813793361186981,
+        "lexical_similarity": 0.43184906244277954,
+        "combined_score": 0.4225237965583801,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_bb41dff88632",
+        "skill_id": "sk_access_count_inflection_expansion",
+        "description_similarity": 0.3555634021759033,
+        "content_similarity": 0.37616437673568726,
+        "lexical_similarity": 0.22307905554771423,
+        "combined_score": 0.33524683117866516,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_bb41dff88632",
+        "skill_id": "sk_access_per_entity_intersection",
+        "description_similarity": 0.317327618598938,
+        "content_similarity": 0.4231918454170227,
+        "lexical_similarity": 0.24472901225090027,
+        "combined_score": 0.33456718921661377,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_e08cea52d7c8",
+        "skill_id": "sk_access_instance_list",
+        "description_similarity": 0.6680498123168945,
+        "content_similarity": 0.507011890411377,
+        "lexical_similarity": 0.9427382946014404,
+        "combined_score": 0.6746761202812195,
+        "forced_by_candidate": true
+      },
+      {
+        "candidate_id": "cand_access_e08cea52d7c8",
+        "skill_id": "sk_access_shared_interests",
+        "description_similarity": 0.6111693382263184,
+        "content_similarity": 0.6149283051490784,
+        "lexical_similarity": 0.7175542116165161,
+        "combined_score": 0.6335740089416504,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_e08cea52d7c8",
+        "skill_id": "sk_access_broaden_recommendation",
+        "description_similarity": 0.5527102947235107,
+        "content_similarity": 0.5755019783973694,
+        "lexical_similarity": 0.8639283180236816,
+        "combined_score": 0.621791422367096,
+        "forced_by_candidate": true
+      },
+      {
+        "candidate_id": "cand_access_e08cea52d7c8",
+        "skill_id": "sk_access_per_entity_intersection",
+        "description_similarity": 0.45029205083847046,
+        "content_similarity": 0.6553094387054443,
+        "lexical_similarity": 1.0,
+        "combined_score": 0.621738851070404,
+        "forced_by_candidate": true
+      },
+      {
+        "candidate_id": "cand_access_e08cea52d7c8",
+        "skill_id": "sk_access_corroborate_list_items",
+        "description_similarity": 0.6287741661071777,
+        "content_similarity": 0.5457051396369934,
+        "lexical_similarity": 0.6359061598777771,
+        "combined_score": 0.6052798628807068,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_e08cea52d7c8",
+        "skill_id": "sk_access_include_preference_enumeration",
+        "description_similarity": 0.5563721656799316,
+        "content_similarity": 0.5605309009552002,
+        "lexical_similarity": 0.7759936451911926,
+        "combined_score": 0.6015440821647644,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_e08cea52d7c8",
+        "skill_id": "sk_access_supplement_item_lists",
+        "description_similarity": 0.5899761915206909,
+        "content_similarity": 0.5355194807052612,
+        "lexical_similarity": 0.701205849647522,
+        "combined_score": 0.595885157585144,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_e08cea52d7c8",
+        "skill_id": "sk_access_preference_evidence",
+        "description_similarity": 0.6303913593292236,
+        "content_similarity": 0.5214126706123352,
+        "lexical_similarity": 0.5905067324638367,
+        "combined_score": 0.5897208452224731,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_e08cea52d7c8",
+        "skill_id": "sk_access_preference_based_recommendation",
+        "description_similarity": 0.5622847080230713,
+        "content_similarity": 0.46882686018943787,
+        "lexical_similarity": 0.6072153449058533,
+        "combined_score": 0.5432335138320923,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_e08cea52d7c8",
+        "skill_id": "sk_access_merged_expansion",
+        "description_similarity": 0.4668511748313904,
+        "content_similarity": 0.45879048109054565,
+        "lexical_similarity": 0.8596789240837097,
+        "combined_score": 0.5429985523223877,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_e08cea52d7c8",
+        "skill_id": "sk_access_activity_period",
+        "description_similarity": 0.5662213563919067,
+        "content_similarity": 0.394464373588562,
+        "lexical_similarity": 0.6122224926948547,
+        "combined_score": 0.5238944888114929,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_e08cea52d7c8",
+        "skill_id": "sk_access_preference_attribute_search",
+        "description_similarity": 0.48934608697891235,
+        "content_similarity": 0.520470917224884,
+        "lexical_similarity": 0.5662804841995239,
+        "combined_score": 0.5140703916549683,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_e08cea52d7c8",
+        "skill_id": "sk_access_exhaustive_list_retrieval",
+        "description_similarity": 0.45942598581314087,
+        "content_similarity": 0.4408744275569916,
+        "lexical_similarity": 0.6297195553779602,
+        "combined_score": 0.4879192113876343,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_e08cea52d7c8",
+        "skill_id": "sk_access_advice_from_experience",
+        "description_similarity": 0.5603086948394775,
+        "content_similarity": 0.3036806285381317,
+        "lexical_similarity": 0.5826246738433838,
+        "combined_score": 0.4877834916114807,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_e08cea52d7c8",
+        "skill_id": "sk_access_which_activity",
+        "description_similarity": 0.589457094669342,
+        "content_similarity": 0.4590860903263092,
+        "lexical_similarity": 0.26005953550338745,
+        "combined_score": 0.4844662845134735,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_e08cea52d7c8",
+        "skill_id": "sk_access_date_discussion",
+        "description_similarity": 0.46208664774894714,
+        "content_similarity": 0.39144349098205566,
+        "lexical_similarity": 0.5985843539237976,
+        "combined_score": 0.46819326281547546,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_e08cea52d7c8",
+        "skill_id": "sk_access_avoid_anchor",
+        "description_similarity": 0.5349507331848145,
+        "content_similarity": 0.3685978651046753,
+        "lexical_similarity": 0.42494991421699524,
+        "combined_score": 0.4630447328090668,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_e08cea52d7c8",
+        "skill_id": "sk_access_enjoyment_genre",
+        "description_similarity": 0.5245718955993652,
+        "content_similarity": 0.33326759934425354,
+        "lexical_similarity": 0.4511817693710327,
+        "combined_score": 0.45250260829925537,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_e08cea52d7c8",
+        "skill_id": "sk_access_ongoing_creative",
+        "description_similarity": 0.5287108421325684,
+        "content_similarity": 0.39238443970680237,
+        "lexical_similarity": 0.3345499038696289,
+        "combined_score": 0.44898074865341187,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_e08cea52d7c8",
+        "skill_id": "sk_access_count_inflection_expansion",
+        "description_similarity": 0.49057167768478394,
+        "content_similarity": 0.3392072021961212,
+        "lexical_similarity": 0.4552728533744812,
+        "combined_score": 0.4381026029586792,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_e08cea52d7c8",
+        "skill_id": "sk_access_current_activity_kinds",
+        "description_similarity": 0.39873170852661133,
+        "content_similarity": 0.36746370792388916,
+        "lexical_similarity": 0.5783896446228027,
+        "combined_score": 0.42528289556503296,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_e08cea52d7c8",
+        "skill_id": "sk_access_relative_time",
+        "description_similarity": 0.4384557604789734,
+        "content_similarity": 0.35379600524902344,
+        "lexical_similarity": 0.48904940485954285,
+        "combined_score": 0.4231765568256378,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_e08cea52d7c8",
+        "skill_id": "sk_access_project_plan_event_kinds",
+        "description_similarity": 0.4309845268726349,
+        "content_similarity": 0.3348150849342346,
+        "lexical_similarity": 0.4591335952281952,
+        "combined_score": 0.4077635407447815,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_e08cea52d7c8",
+        "skill_id": "sk_access_future_plan_kinds",
+        "description_similarity": 0.39480096101760864,
+        "content_similarity": 0.38597947359085083,
+        "lexical_similarity": 0.4718914031982422,
+        "combined_score": 0.4075726270675659,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_e08cea52d7c8",
+        "skill_id": "sk_access_abstract_positive_expansion",
+        "description_similarity": 0.41600561141967773,
+        "content_similarity": 0.32405972480773926,
+        "lexical_similarity": 0.37414658069610596,
+        "combined_score": 0.38005003333091736,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_e08cea52d7c8",
+        "skill_id": "sk_access_sequence_retrieval",
+        "description_similarity": 0.3916850686073303,
+        "content_similarity": 0.3407847285270691,
+        "lexical_similarity": 0.2992265224456787,
+        "combined_score": 0.3579232394695282,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f53127a7c45d",
+        "skill_id": "sk_access_which_activity",
+        "description_similarity": 0.6663072109222412,
+        "content_similarity": 0.6679896116256714,
+        "lexical_similarity": 0.4019663631916046,
+        "combined_score": 0.6139437556266785,
+        "forced_by_candidate": true
+      },
+      {
+        "candidate_id": "cand_access_f53127a7c45d",
+        "skill_id": "sk_access_include_preference_enumeration",
+        "description_similarity": 0.649584174156189,
+        "content_similarity": 0.6233397722244263,
+        "lexical_similarity": 0.4985009431838989,
+        "combined_score": 0.611494243144989,
+        "forced_by_candidate": true
+      },
+      {
+        "candidate_id": "cand_access_f53127a7c45d",
+        "skill_id": "sk_access_preference_evidence",
+        "description_similarity": 0.5123815536499023,
+        "content_similarity": 0.6472741365432739,
+        "lexical_similarity": 0.7725929021835327,
+        "combined_score": 0.6048915982246399,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f53127a7c45d",
+        "skill_id": "sk_access_preference_attribute_search",
+        "description_similarity": 0.5249096155166626,
+        "content_similarity": 0.6340005397796631,
+        "lexical_similarity": 0.7350956797599792,
+        "combined_score": 0.5996741056442261,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f53127a7c45d",
+        "skill_id": "sk_access_enjoyment_genre",
+        "description_similarity": 0.5980933904647827,
+        "content_similarity": 0.5548427104949951,
+        "lexical_similarity": 0.5723698139190674,
+        "combined_score": 0.5799734592437744,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f53127a7c45d",
+        "skill_id": "sk_access_shared_interests",
+        "description_similarity": 0.69938725233078,
+        "content_similarity": 0.5508896112442017,
+        "lexical_similarity": 0.2509787380695343,
+        "combined_score": 0.5651562809944153,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f53127a7c45d",
+        "skill_id": "sk_access_activity_period",
+        "description_similarity": 0.5280345678329468,
+        "content_similarity": 0.32111677527427673,
+        "lexical_similarity": 0.7393551468849182,
+        "combined_score": 0.5082233548164368,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f53127a7c45d",
+        "skill_id": "sk_access_supplement_item_lists",
+        "description_similarity": 0.44502726197242737,
+        "content_similarity": 0.42740297317504883,
+        "lexical_similarity": 0.6678433418273926,
+        "combined_score": 0.48430320620536804,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f53127a7c45d",
+        "skill_id": "sk_access_advice_from_experience",
+        "description_similarity": 0.5097957253456116,
+        "content_similarity": 0.432639479637146,
+        "lexical_similarity": 0.4729277789592743,
+        "combined_score": 0.47927528619766235,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f53127a7c45d",
+        "skill_id": "sk_access_ongoing_creative",
+        "description_similarity": 0.4570774435997009,
+        "content_similarity": 0.42760270833969116,
+        "lexical_similarity": 0.520290195941925,
+        "combined_score": 0.46087759733200073,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f53127a7c45d",
+        "skill_id": "sk_access_abstract_positive_expansion",
+        "description_similarity": 0.38527533411979675,
+        "content_similarity": 0.4258348345756531,
+        "lexical_similarity": 0.6799182295799255,
+        "combined_score": 0.4563717842102051,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f53127a7c45d",
+        "skill_id": "sk_access_current_activity_kinds",
+        "description_similarity": 0.35983967781066895,
+        "content_similarity": 0.39144575595855713,
+        "lexical_similarity": 0.7733769416809082,
+        "combined_score": 0.45202895998954773,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f53127a7c45d",
+        "skill_id": "sk_access_relative_time",
+        "description_similarity": 0.38939499855041504,
+        "content_similarity": 0.41389697790145874,
+        "lexical_similarity": 0.6395472884178162,
+        "combined_score": 0.4467760920524597,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f53127a7c45d",
+        "skill_id": "sk_access_instance_list",
+        "description_similarity": 0.3854460120201111,
+        "content_similarity": 0.4911477565765381,
+        "lexical_similarity": 0.5307517647743225,
+        "combined_score": 0.44621768593788147,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f53127a7c45d",
+        "skill_id": "sk_access_avoid_anchor",
+        "description_similarity": 0.434009850025177,
+        "content_similarity": 0.45094043016433716,
+        "lexical_similarity": 0.4277172386646271,
+        "combined_score": 0.43783050775527954,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f53127a7c45d",
+        "skill_id": "sk_access_project_plan_event_kinds",
+        "description_similarity": 0.43181684613227844,
+        "content_similarity": 0.41827526688575745,
+        "lexical_similarity": 0.4639512002468109,
+        "combined_score": 0.434181272983551,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f53127a7c45d",
+        "skill_id": "sk_access_merged_expansion",
+        "description_similarity": 0.3510616421699524,
+        "content_similarity": 0.4471297264099121,
+        "lexical_similarity": 0.6094273328781128,
+        "combined_score": 0.43155521154403687,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f53127a7c45d",
+        "skill_id": "sk_access_preference_based_recommendation",
+        "description_similarity": 0.250133216381073,
+        "content_similarity": 0.5696486234664917,
+        "lexical_similarity": 0.6462322473526001,
+        "combined_score": 0.4252076745033264,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f53127a7c45d",
+        "skill_id": "sk_access_future_plan_kinds",
+        "description_similarity": 0.4041293263435364,
+        "content_similarity": 0.4308589696884155,
+        "lexical_similarity": 0.43838047981262207,
+        "combined_score": 0.41899847984313965,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f53127a7c45d",
+        "skill_id": "sk_access_date_discussion",
+        "description_similarity": 0.33651795983314514,
+        "content_similarity": 0.3028797507286072,
+        "lexical_similarity": 0.7645753622055054,
+        "combined_score": 0.4120379686355591,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f53127a7c45d",
+        "skill_id": "sk_access_exhaustive_list_retrieval",
+        "description_similarity": 0.3132382035255432,
+        "content_similarity": 0.42698246240615845,
+        "lexical_similarity": 0.5737538933753967,
+        "combined_score": 0.3994646370410919,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f53127a7c45d",
+        "skill_id": "sk_access_broaden_recommendation",
+        "description_similarity": 0.3326493799686432,
+        "content_similarity": 0.39859914779663086,
+        "lexical_similarity": 0.5313305854797363,
+        "combined_score": 0.3921705484390259,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f53127a7c45d",
+        "skill_id": "sk_access_sequence_retrieval",
+        "description_similarity": 0.3400304615497589,
+        "content_similarity": 0.3893096148967743,
+        "lexical_similarity": 0.4553714394569397,
+        "combined_score": 0.3778824210166931,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f53127a7c45d",
+        "skill_id": "sk_access_per_entity_intersection",
+        "description_similarity": 0.3234611749649048,
+        "content_similarity": 0.3637475073337555,
+        "lexical_similarity": 0.5334291458129883,
+        "combined_score": 0.377540647983551,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_f53127a7c45d",
+        "skill_id": "sk_access_count_inflection_expansion",
+        "description_similarity": 0.3942704200744629,
+        "content_similarity": 0.4419128894805908,
+        "lexical_similarity": 0.21239955723285675,
+        "combined_score": 0.3721889853477478,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_feb7d1ecd29b",
+        "skill_id": "sk_access_preference_based_recommendation",
+        "description_similarity": 0.4769424796104431,
+        "content_similarity": 0.7352126836776733,
+        "lexical_similarity": 0.9312516450881958,
+        "combined_score": 0.6452853679656982,
+        "forced_by_candidate": true
+      },
+      {
+        "candidate_id": "cand_access_feb7d1ecd29b",
+        "skill_id": "sk_access_instance_list",
+        "description_similarity": 0.47000765800476074,
+        "content_similarity": 0.6906349062919617,
+        "lexical_similarity": 0.9079258441925049,
+        "combined_score": 0.6237794756889343,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_feb7d1ecd29b",
+        "skill_id": "sk_access_preference_evidence",
+        "description_similarity": 0.4034583568572998,
+        "content_similarity": 0.6222081184387207,
+        "lexical_similarity": 1.0,
+        "combined_score": 0.5883916020393372,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_feb7d1ecd29b",
+        "skill_id": "sk_access_supplement_item_lists",
+        "description_similarity": 0.4206852614879608,
+        "content_similarity": 0.5894961953163147,
+        "lexical_similarity": 0.7756170034408569,
+        "combined_score": 0.542314887046814,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_feb7d1ecd29b",
+        "skill_id": "sk_access_structured_speaker_statements",
+        "description_similarity": 0.5857340693473816,
+        "content_similarity": 0.5681467056274414,
+        "lexical_similarity": 0.3514196276664734,
+        "combined_score": 0.5335949659347534,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_feb7d1ecd29b",
+        "skill_id": "sk_access_broaden_recommendation",
+        "description_similarity": 0.39093053340911865,
+        "content_similarity": 0.5755894184112549,
+        "lexical_similarity": 0.7928147912025452,
+        "combined_score": 0.5267050266265869,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_feb7d1ecd29b",
+        "skill_id": "sk_access_preference_attribute_search",
+        "description_similarity": 0.4116900861263275,
+        "content_similarity": 0.582735538482666,
+        "lexical_similarity": 0.699952244758606,
+        "combined_score": 0.520656168460846,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_feb7d1ecd29b",
+        "skill_id": "sk_access_which_activity",
+        "description_similarity": 0.381343275308609,
+        "content_similarity": 0.5804446935653687,
+        "lexical_similarity": 0.6871653199195862,
+        "combined_score": 0.5022380948066711,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_feb7d1ecd29b",
+        "skill_id": "sk_access_merged_expansion",
+        "description_similarity": 0.42929527163505554,
+        "content_similarity": 0.5259191989898682,
+        "lexical_similarity": 0.6198586225509644,
+        "combined_score": 0.49639514088630676,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_feb7d1ecd29b",
+        "skill_id": "sk_access_include_preference_enumeration",
+        "description_similarity": 0.34086596965789795,
+        "content_similarity": 0.6085315346717834,
+        "lexical_similarity": 0.5595263242721558,
+        "combined_score": 0.4648977220058441,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_feb7d1ecd29b",
+        "skill_id": "sk_access_avoid_anchor",
+        "description_similarity": 0.4012250304222107,
+        "content_similarity": 0.45241454243659973,
+        "lexical_similarity": 0.5988847017288208,
+        "combined_score": 0.4561138153076172,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_feb7d1ecd29b",
+        "skill_id": "sk_access_shared_interests",
+        "description_similarity": 0.381128191947937,
+        "content_similarity": 0.5285287499427795,
+        "lexical_similarity": 0.5050207376480103,
+        "combined_score": 0.45012688636779785,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_feb7d1ecd29b",
+        "skill_id": "sk_access_advice_from_experience",
+        "description_similarity": 0.40729087591171265,
+        "content_similarity": 0.5322946310043335,
+        "lexical_similarity": 0.4268072247505188,
+        "combined_score": 0.44869527220726013,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_feb7d1ecd29b",
+        "skill_id": "sk_access_enjoyment_genre",
+        "description_similarity": 0.3435666561126709,
+        "content_similarity": 0.4938894510269165,
+        "lexical_similarity": 0.6074565649032593,
+        "combined_score": 0.44144147634506226,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_feb7d1ecd29b",
+        "skill_id": "sk_access_abstract_positive_expansion",
+        "description_similarity": 0.3528449535369873,
+        "content_similarity": 0.44052571058273315,
+        "lexical_similarity": 0.3499915599822998,
+        "combined_score": 0.3785785138607025,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_feb7d1ecd29b",
+        "skill_id": "sk_access_exhaustive_list_retrieval",
+        "description_similarity": 0.3065169155597687,
+        "content_similarity": 0.38850873708724976,
+        "lexical_similarity": 0.44704732298851013,
+        "combined_score": 0.35922056436538696,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_feb7d1ecd29b",
+        "skill_id": "sk_access_sequence_retrieval",
+        "description_similarity": 0.2728101313114166,
+        "content_similarity": 0.33904439210891724,
+        "lexical_similarity": 0.5278009176254272,
+        "combined_score": 0.3436785638332367,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_feb7d1ecd29b",
+        "skill_id": "sk_access_activity_period",
+        "description_similarity": 0.3327885866165161,
+        "content_similarity": 0.28027814626693726,
+        "lexical_similarity": 0.4596101641654968,
+        "combined_score": 0.3423997759819031,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_feb7d1ecd29b",
+        "skill_id": "sk_access_ongoing_creative",
+        "description_similarity": 0.3083343207836151,
+        "content_similarity": 0.35630375146865845,
+        "lexical_similarity": 0.3801213800907135,
+        "combined_score": 0.33708256483078003,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_feb7d1ecd29b",
+        "skill_id": "sk_access_relative_time",
+        "description_similarity": 0.2734469473361969,
+        "content_similarity": 0.39740848541259766,
+        "lexical_similarity": 0.39648863673210144,
+        "combined_score": 0.33524376153945923,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_feb7d1ecd29b",
+        "skill_id": "sk_access_future_plan_kinds",
+        "description_similarity": 0.2201109379529953,
+        "content_similarity": 0.39641073346138,
+        "lexical_similarity": 0.4963028132915497,
+        "combined_score": 0.3282392621040344,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_feb7d1ecd29b",
+        "skill_id": "sk_access_per_entity_intersection",
+        "description_similarity": 0.3189623951911926,
+        "content_similarity": 0.315022736787796,
+        "lexical_similarity": 0.35617873072624207,
+        "combined_score": 0.32522377371788025,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_feb7d1ecd29b",
+        "skill_id": "sk_access_date_discussion",
+        "description_similarity": 0.30436503887176514,
+        "content_similarity": 0.28998619318008423,
+        "lexical_similarity": 0.42047256231307983,
+        "combined_score": 0.3232729136943817,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_feb7d1ecd29b",
+        "skill_id": "sk_access_project_plan_event_kinds",
+        "description_similarity": 0.2730814218521118,
+        "content_similarity": 0.38668885827064514,
+        "lexical_similarity": 0.3454784154891968,
+        "combined_score": 0.32164305448532104,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_feb7d1ecd29b",
+        "skill_id": "sk_access_current_activity_kinds",
+        "description_similarity": 0.17608942091464996,
+        "content_similarity": 0.3997913599014282,
+        "lexical_similarity": 0.32924556732177734,
+        "combined_score": 0.27383124828338623,
+        "forced_by_candidate": false
+      },
+      {
+        "candidate_id": "cand_access_feb7d1ecd29b",
+        "skill_id": "sk_access_count_inflection_expansion",
+        "description_similarity": 0.21555180847644806,
+        "content_similarity": 0.35730069875717163,
+        "lexical_similarity": 0.2837907373905182,
+        "combined_score": 0.27172425389289856,
+        "forced_by_candidate": false
+      }
+    ]
+  },
+  "plan": {
+    "transaction_id": "tx_access_bank2_from_v1_new_skill_0003",
+    "side": "access",
+    "base_bank_version": "v000",
+    "candidate_resolutions": [
+      {
+        "candidate_id": "cand_access_bacfa19b9ac5",
+        "resolution": "MERGED_INTO_EXISTING",
+        "target_skill_ids": [
+          "sk_access_ongoing_creative"
+        ],
+        "reason": "Existing skill sk_access_ongoing_creative already covers searching for producer-side event memories for creative-output questions."
+      },
+      {
+        "candidate_id": "cand_access_cfe5f74da9a4",
+        "resolution": "MERGED_INTO_EXISTING",
+        "target_skill_ids": [
+          "sk_access_current_activity_kinds"
+        ],
+        "reason": "Existing skill sk_access_current_activity_kinds already instructs including event memories for activity questions; this candidate's memory-kind broadening is covered."
+      },
+      {
+        "candidate_id": "cand_access_d5e0a2d7ea62",
+        "resolution": "MERGED_INTO_EXISTING",
+        "target_skill_ids": [
+          "sk_access_per_entity_intersection"
+        ],
+        "reason": "Existing skill sk_access_per_entity_intersection already covers per-entity expansion for intersection queries; this candidate adds memory-kind broadening but is subsumed by the existing skill's general guidance."
+      },
+      {
+        "candidate_id": "cand_access_f58a1db96a31",
+        "resolution": "MERGED_INTO_EXISTING",
+        "target_skill_ids": [
+          "sk_access_avoid_anchor"
+        ],
+        "reason": "Existing skill sk_access_avoid_anchor already covers avoiding anchoring on first topic and requiring direct evidence for specific event questions."
+      },
+      {
+        "candidate_id": "cand_access_f7026570e118",
+        "resolution": "MERGED_INTO_EXISTING",
+        "target_skill_ids": [
+          "sk_access_count_inflection_expansion"
+        ],
+        "reason": "Existing skill sk_access_count_inflection_expansion already covers synonym and inflection expansion for counting questions."
+      },
+      {
+        "candidate_id": "cand_access_3df1a4630590",
+        "resolution": "MERGED_INTO_EXISTING",
+        "target_skill_ids": [
+          "sk_access_preference_evidence"
+        ],
+        "reason": "Existing skill sk_access_preference_evidence already covers requiring explicit preference evidence and multi-query retrieval for favorite-item questions."
+      },
+      {
+        "candidate_id": "cand_access_6a968df7578f",
+        "resolution": "MERGED_INTO_EXISTING",
+        "target_skill_ids": [
+          "sk_access_preference_based_recommendation"
+        ],
+        "reason": "Existing skill sk_access_preference_based_recommendation already covers expanding recommendation queries to preference memories and distinguishing recommendations from personal preferences."
+      },
+      {
+        "candidate_id": "cand_access_7a518765dc63",
+        "resolution": "MERGED_INTO_EXISTING",
+        "target_skill_ids": [
+          "sk_access_include_preference_enumeration"
+        ],
+        "reason": "Existing skill sk_access_include_preference_enumeration already covers including preference memories for enumeration and recommendation queries."
+      },
+      {
+        "candidate_id": "cand_access_a6b8fe90cceb",
+        "resolution": "MERGED_INTO_EXISTING",
+        "target_skill_ids": [
+          "sk_access_instance_list"
+        ],
+        "reason": "Existing skill sk_access_instance_list already covers searching for specific named items using activity terms and inspecting event memories for favorite-item queries."
+      },
+      {
+        "candidate_id": "cand_access_bb41dff88632",
+        "resolution": "MERGED_INTO_EXISTING",
+        "target_skill_ids": [
+          "sk_access_include_preference_enumeration"
+        ],
+        "reason": "Existing skill sk_access_include_preference_enumeration already covers including preference memories for recommendation queries."
+      },
+      {
+        "candidate_id": "cand_access_e08cea52d7c8",
+        "resolution": "MERGED_INTO_EXISTING",
+        "target_skill_ids": [
+          "sk_access_per_entity_intersection"
+        ],
+        "reason": "Existing skill sk_access_per_entity_intersection already covers per-entity expansion for intersection queries; this candidate's recommendation-specific expansion is subsumed by the existing skill's general guidance."
+      },
+      {
+        "candidate_id": "cand_access_f53127a7c45d",
+        "resolution": "MERGED_INTO_EXISTING",
+        "target_skill_ids": [
+          "sk_access_include_preference_enumeration"
+        ],
+        "reason": "Existing skill sk_access_include_preference_enumeration already covers including preference memories for favorite-person queries."
+      },
+      {
+        "candidate_id": "cand_access_feb7d1ecd29b",
+        "resolution": "MERGED_INTO_EXISTING",
+        "target_skill_ids": [
+          "sk_access_preference_based_recommendation"
+        ],
+        "reason": "Existing skill sk_access_preference_based_recommendation already covers expanding recommendation queries to preference memories and avoiding over-anchoring on category terms."
+      }
+    ],
+    "operations": []
+  },
+  "status": "planned"
+}

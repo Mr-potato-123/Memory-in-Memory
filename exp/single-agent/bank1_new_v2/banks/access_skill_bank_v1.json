@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "bank": "bank1",
+  "side": "access",
+  "created_at": "2026-08-03T06:37:31Z",
+  "source_snapshot": "selected.json",
+  "skills": [
+    {
+      "skill_id": "sk_access_1052132525",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Verify temporal, ordinal, and explicit-claim evidence",
+        "description": "Retrieve when a question includes a specific date/period, relative time, ordinal (e.g., 'third screenplay'), or a claim/help/suggestion whose exact topic/predicate may be missing from initial evidence; use when candidates are temporally mismatched, or a future-plan/interest memory is the only 'evidence'.",
+        "content": [
+          "Check each candidate memory's world_start/world_end: for a named date, require world_start <= target <= world_end (or null end); reject memories from other dates and keep searching if needed.",
+          "For approximate-date questions, relax or widen the time filter (e.g., ±3 months) when the subject/action match is strong; apply strict filtering only for explicit interval questions.",
+          "For after-event/next-action questions, search memories of the same subject with the same or adjacent world_start timestamps, or inspect other versions from the same source/turn.",
+          "For completion-date questions, use completion/creation synonyms and relative-time qualifiers ('completed a few days ago'); do not substitute a publication/exhibit date, and compute the date from the memory's reference time.",
+          "For ordinals, do not pick the most similar title; search completion/achievement phrasing ('completed', 'finished', 'wrote', 'achievement') and require the memory to link the work to the ordinal or be the only possible match.",
+          "For vague help/suggestion/claim evidence, never answer with a guessed topic/predicate absent from retrieved text; run a follow-up targeted search (e.g., '<name> struggling with', '<name> suggested <item>') and require explicit verbatim or clear-paraphrase support."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "draft_access_3667e4fb6951",
+      "bank_version_created": 1,
+      "created_at": "2026-08-03T06:34:11Z"
+    },
+    {
+      "skill_id": "sk_access_36f330696f",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Decompose multi-facet questions and enumerate all expected entities",
+        "description": "Retrieve when a question asks about multiple named people/entities, multiple constraints/facets, or an exhaustive list (e.g., 'What does X do besides Y?', 'What games does X play?', 'Who in X's family...?'), especially when the first search covers only one facet/person/item.",
+        "content": [
+          "Identify every named subject, constraint, and expected list item; the final answer must include at least one supporting memory for each facet and entity.",
+          "After the combined search, check coverage per facet/entity. If any is missing, run targeted searches pairing that name with the property/activity keywords (e.g., 'Deborah time management', 'Evan son injury'), trying multiple phrasings.",
+          "For 'besides/other than' questions, run a broad search with only the person's name and activity/hobby terms, and enumerate via structured predicates 'activity', 'hobby', 'interest', 'routine' across event/profile/state memories.",
+          "For enumeration/list questions, use activity verbs ('playing', 'won', 'recommended', 'watched') and category keywords; probe with named-entity templates like '[person] played [game]' and tolerate spelling variants.",
+          "For 'who' questions about groups, enumerate possible members via relationship terms (son, spouse, parent, sibling) and search each member with the event/attribute; increase top_k or use structured filters until all supported persons are found.",
+          "Do not finalize an enumeration or multi-subject answer until every expected facet/entity has support; if one genuinely has none, say that part is unavailable rather than substituting another subject's information."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "draft_access_5a0ad6f6d39b",
+      "bank_version_created": 1,
+      "created_at": "2026-08-03T06:34:11Z"
+    },
+    {
+      "skill_id": "sk_access_97182d2a5e",
+      "version": 1,
+      "side": "access",
+      "status": "active",
+      "payload": {
+        "name": "Lexical and memory-kind expansion for under-retrieved queries",
+        "description": "Retrieve when initial search returns no or weak results for a question about preferences, current activities, plans, counts, mottoes, locations, or attribute lists, or when results are dominated by off-topic/topical memories and miss an explicit statement with different wording, memory kind, or predicate.",
+        "content": [
+          "If the first hybrid/keyword search misses a relevant memory, do not answer 'No information available.' Rerun with at least one semantic/hybrid query using the full question and one keyword query expanded with synonyms, inflections, and associated terms (e.g., 'rejected'->'rejection', 'script'->'screenplay', 'motto'->'saying/sign/symbol', 'snow'->'winter/sunny/prefer', 'location'->'spot/nearby/area').",
+          "Do not restrict memory_kind to a single type: for current-activity questions include 'event' and 'state'; for plans include 'event', 'plan', and 'goal'; for lists/favorites include 'preference'; otherwise omit the filter.",
+          "Add predicate-targeted queries such as '<subject> misses <object>', '<subject> enjoys <category>', '<subject> has active project', or '<subject> completed <work>', and inspect returned memories for paraphrase language even if the exact query word is absent.",
+          "For 'where' questions, expand with location-synonym keywords combined with the subject and activity verb, and prefer a location-bearing memory over a future-plan or activity-only memory.",
+          "Prefer explicit preference/state memories over events/plans that only imply the answer, and continue searching until you have a memory that names the requested entity or answers the question."
+        ]
+      },
+      "parent_version_id": null,
+      "created_from_failure_id": "draft_access_590542a5c109",
+      "bank_version_created": 1,
+      "created_at": "2026-08-03T06:34:11Z"
+    }
+  ]
+}

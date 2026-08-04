@@ -1,0 +1,759 @@
+{
+  "schema_version": "access_diagnosis_v3",
+  "diagnosis_id": "access_conv-43_conv-43_qa_0059",
+  "diagnosis_type": "ACCESS_FAILURE",
+  "status": "completed",
+  "judge_run_id": "bank2_from_v1_new_train_judge",
+  "diagnosis_run_id": "bank2_from_v1_new_diag",
+  "source_runtime_run": "bank2_v1new_train_seq_conv-43",
+  "conversation_id": "conv-43",
+  "qa_id": "conv-43_qa_0059",
+  "snapshot_commit_id": 29,
+  "question": "Which career-high performances did John achieve in 2023?",
+  "reference_answer": "highest point score, highest assist",
+  "problem_found": true,
+  "reason": "The reference answer mentions two career-high performances: highest point score and highest assist. The current memory mem_conv-43_0011_v1 states John scored 40 points, which was his highest ever score, supporting the points claim. The current memory mem_conv-43_0130_v1 states John achieved a career-high in assists, supporting the assists claim. Other current memories do not provide relevant information for these claims.",
+  "confidence": 1.0,
+  "review_required": false,
+  "skill_trace": {
+    "trace_id": "skilltrace_access_bank2_v1new_train_seq_conv-43_conv-43_conv-43_qa_0059",
+    "side": "access",
+    "bank_version": "bank1",
+    "query": "Which career-high performances did John achieve in 2023?",
+    "top_k": 2,
+    "disclose_k": 5,
+    "min_score": 0.2,
+    "scored_fields": [
+      "name",
+      "description"
+    ],
+    "scoring_weights": {
+      "semantic": 0.7,
+      "bm25": 0.3
+    },
+    "retrieval_method": "bank1_hybrid_router",
+    "candidate_k": 10,
+    "reranker": "bank1_applicability_router",
+    "reranker_error": "",
+    "selected": [],
+    "nearby_not_selected": [
+      {
+        "skill_id": "sk_access_alt_paths",
+        "version_id": "sk_access_alt_paths_v1",
+        "rank": 1,
+        "score": 0.33790960907936096,
+        "semantic_score": 0.09030883759260178,
+        "lexical_score": 0.9156447052955627,
+        "name": "Broaden retrieval for alternative path questions",
+        "description": "When a question asks what alternative career or path someone might consider after a known role or domain, also search for the person's broader interests, values, and activities outside that domain.",
+        "content": [
+          "If the question asks what alternative career or path someone might consider after a named activity/domain, do not limit retrieval to that domain. Run at least one additional search using the person's other hobbies, interests, knowledge, routines, and activities (e.g., pet care, volunteering, creative work) as query terms.",
+          "Before answering, check whether any retrieved evidence outside the named domain shows relevant skill or enjoyment; if present, ground the answer in that evidence rather than only in memories from the named domain."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_which_activity",
+        "version_id": "sk_access_which_activity_v1",
+        "rank": 2,
+        "score": 0.2930474877357483,
+        "semantic_score": -0.009932169690728188,
+        "lexical_score": 1.0,
+        "name": "Retrieve interests for which-activity questions",
+        "description": "When a question asks which activity or hobby gives a person a benefit (e.g., escape, relaxation, imagination), retrieve the person's known interests from profile or preference memories and use them as candidate search terms.",
+        "content": [
+          "When a question asks which activity or hobby gives a person a benefit, do not limit retrieval to memories that explicitly contain the benefit words. Retrieve the person's known hobbies/interests from profile or preference memories and treat them as candidate activities.",
+          "Before answering, run an additional memory search for each known interest/hobby term, and consider those results even if the benefit words are absent from the returned memory text.",
+          "If several interest memories compete, compare them using direct preference statements, frequency, and recency before selecting the answer."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_enumeration_synonym_search",
+        "version_id": "sk_access_enumeration_synonym_search_v1",
+        "rank": 3,
+        "score": 0.2824818789958954,
+        "semantic_score": 0.04633037745952606,
+        "lexical_score": 0.8335019946098328,
+        "name": "Enumeration-Question Synonym-Expanded Searches",
+        "description": "Use when a question asks how a person did something and expects a list of actions.",
+        "content": [
+          "When a question asks 'How did <entity> <outcome>?' or 'What actions did <entity> take?', treat it as an enumeration request whose answer may span multiple distinct activities stored in separate memories.",
+          "Before answering, if the initial retrieval returns only some action memories, run additional searches using action-oriented synonyms and paraphrases of the target verb/outcome (e.g., for 'promote': marketing, advertising, partner, collaboration, launch, campaign, showcase, content, video) to surface memories that describe the same activity category with different wording.",
+          "Check sufficiency after each search: if the question asks for 'how' and new searches keep finding different actions, continue until no new distinct actions appear; do not finalize an answer after a single top-k retrieval when the question is enumerative."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_sequence_retrieval",
+        "version_id": "sk_access_sequence_retrieval_v1",
+        "rank": 4,
+        "score": 0.26511651277542114,
+        "semantic_score": 0.09160232543945312,
+        "lexical_score": 0.66998291015625,
+        "name": "Temporal-anchor post-milestone retrieval",
+        "description": "When a question asks what someone did or planned after a dated milestone event (e.g., after a wedding) and the first search results appear unrelated or pre-date the event.",
+        "content": [
+          "When a question asks what someone did or plans to do after a dated milestone event, use the milestone date as a temporal anchor; run searches with typical follow-up activity terms (honeymoon, celebration, get-together, trip, activity) and filter or rank memories with world_start on or after that date.",
+          "If the first retrieval returns only memories dated before the milestone, do not answer from them; re-search with additional related terms and compare time windows.",
+          "Treat pre-milestone memories as non-evidence for post-milestone questions even when they share location or activity vocabulary."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_abstract_positive_expansion",
+        "version_id": "sk_access_abstract_positive_expansion_v1",
+        "rank": 5,
+        "score": 0.261298269033432,
+        "semantic_score": 0.03789633885025978,
+        "lexical_score": 0.7825693488121033,
+        "name": "Expand abstract positive-evaluative queries with concrete vocabulary",
+        "description": "Use when a question asks what someone recently did that was rewarding, fulfilling, or a main stressor.",
+        "content": [
+          "If the question uses abstract positive descriptors like 'rewarding experience', 'fulfilling', or 'sense of accomplishment' and the initial retrieval does not return an event memory that explicitly describes an achievement or positive outcome, run an additional keyword or structured search using concrete achievement verbs and nouns (e.g., 'presented', 'conference', 'received positive feedback', 'award', 'recognized').",
+          "Before answering a question about a person's main stressor, source of stress, or biggest difficulty, issue searches that go beyond the literal question wording: include stress-related synonyms (stressful, tough, difficult, hard, pressure, overwhelmed) and common life domains (work, family, school, health, finances, relationships).",
+          "If the question explicitly excludes a topic ('besides X', 'other than X', 'apart from X'), do not let that excluded topic dominate the query; run an additional search replacing the excluded topic with likely alternative domains.",
+          "Do not answer from an indirect memory that only implies the stressor through an overlap or trade-off; keep searching until a memory explicitly states what is stressful, tough, or difficult."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      }
+    ]
+  },
+  "repair_package": {
+    "question": "Which career-high performances did John achieve in 2023?",
+    "reference_answer": "highest point score, highest assist",
+    "missing_useful_current_memories": [
+      {
+        "version_id": "mem_conv-43_0011_v1",
+        "memory_id": "mem_conv-43_0011",
+        "version_no": 1,
+        "content": "John scored 40 points in a basketball game last week, which was his highest ever score and marked a significant achievement in his career.",
+        "memory_kind": "event",
+        "subject": "John",
+        "predicate": "achievement",
+        "object_text": "scoring 40 points",
+        "world_start": "2023-07-15",
+        "world_end": null,
+        "update_type": "add"
+      }
+    ],
+    "retrieved_current_version_ids": [
+      "mem_conv-43_0002_v1",
+      "mem_conv-43_0003_v1",
+      "mem_conv-43_0022_v2",
+      "mem_conv-43_0027_v2",
+      "mem_conv-43_0031_v1",
+      "mem_conv-43_0096_v1",
+      "mem_conv-43_0130_v1",
+      "mem_conv-43_0142_v1"
+    ],
+    "search_steps": [
+      {
+        "action_id": "access_bank2_v1new_train_seq_conv-43_conv-43_conv-43_qa_0059_a000",
+        "step_index": 0,
+        "action_type": "search_memory",
+        "request": {
+          "action": "search_memory",
+          "arguments": {
+            "strategy": "hybrid",
+            "query": "career-high performances of John in 2023",
+            "query_expansions": [
+              "John's best performances in 2023",
+              "John's highest achievements in 2023",
+              "John's notable career moments in 2023"
+            ],
+            "keywords": [
+              "John",
+              "2023",
+              "career-high",
+              "performance"
+            ],
+            "depth": "standard",
+            "top_k": 8
+          },
+          "reason": "To find John's career-high performances in 2023"
+        },
+        "returned_memories": [
+          {
+            "version_id": "mem_conv-43_0130_v1",
+            "memory_id": "mem_conv-43_0130",
+            "content": "John achieved a career-high in assists during a big game against their rival on Friday, December 8, 2023, which he described as a memorable night.",
+            "memory_kind": "event",
+            "subject": "John",
+            "world_start": "2023-12-08",
+            "world_end": null,
+            "score": 0.0164,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-43_0031_v1",
+            "memory_id": "mem_conv-43_0031",
+            "content": "John reunited with his basketball team on August 15, 2023, and felt a strong sense of belonging and welcome upon his return.",
+            "memory_kind": "event",
+            "subject": "John",
+            "world_start": "2023-08-15",
+            "world_end": null,
+            "score": 0.0152,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-43_0142_v1",
+            "memory_id": "mem_conv-43_0142",
+            "content": "John's team has seen significant growth in communication and bonding, which has improved their performance.",
+            "memory_kind": "event",
+            "subject": "John",
+            "world_start": "2023-12-12",
+            "world_end": null,
+            "score": 0.0152,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-43_0027_v2",
+            "memory_id": "mem_conv-43_0027",
+            "content": "John has been playing basketball since childhood, earning a college scholarship and being drafted by a team, and his journey is symbolized by his lucky basketball shoes. He joined a new gym to improve his basketball performance, developed a balanced workout plan combining basketball drills and strength training, and emphasized the importance of rest and listening to his body.",
+            "memory_kind": "event",
+            "subject": "John",
+            "world_start": "2023-08-11",
+            "world_end": null,
+            "score": 0.0141,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-43_0003_v1",
+            "memory_id": "mem_conv-43_0003",
+            "content": "John faced challenges fitting into the new team's style of play during pre-season training.",
+            "memory_kind": "event",
+            "subject": "John",
+            "world_start": "2023-05-21",
+            "world_end": null,
+            "score": 0.0135,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-43_0022_v2",
+            "memory_id": "mem_conv-43_0022",
+            "content": "John played in a close basketball game against another team last week, which they won on the final buzzer. He described the experience as amazing and exhilarating.",
+            "memory_kind": "event",
+            "subject": "John",
+            "world_start": "2023-12-15",
+            "world_end": null,
+            "score": 0.0125,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-43_0002_v1",
+            "memory_id": "mem_conv-43_0002",
+            "content": "John aims to improve his shooting percentage through hard practice and dedication.",
+            "memory_kind": "event",
+            "subject": "John",
+            "world_start": "2023-05-21",
+            "world_end": null,
+            "score": 0.0121,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-43_0096_v1",
+            "memory_id": "mem_conv-43_0096",
+            "content": "John emphasized the importance of finding the right balance in life to stay sharp, focused, and energized.",
+            "memory_kind": "event",
+            "subject": "John",
+            "world_start": "2023-11-11",
+            "world_end": null,
+            "score": 0.0121,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          }
+        ],
+        "returned_version_ids": [
+          "mem_conv-43_0130_v1",
+          "mem_conv-43_0031_v1",
+          "mem_conv-43_0142_v1",
+          "mem_conv-43_0027_v2",
+          "mem_conv-43_0003_v1",
+          "mem_conv-43_0022_v2",
+          "mem_conv-43_0002_v1",
+          "mem_conv-43_0096_v1"
+        ]
+      },
+      {
+        "action_id": "access_bank2_v1new_train_seq_conv-43_conv-43_conv-43_qa_0059_a001",
+        "step_index": 1,
+        "action_type": "inspect_memory",
+        "request": {
+          "action": "inspect_memory",
+          "arguments": {
+            "memory_id": "mem_conv-43_0130",
+            "include_versions": true,
+            "include_sources": true
+          },
+          "reason": "To verify the details of John's career-high performance in 2023"
+        },
+        "returned_memories": [
+          {
+            "version_id": "mem_conv-43_0130_v1",
+            "version_no": 1,
+            "content": "John achieved a career-high in assists during a big game against their rival on Friday, December 8, 2023, which he described as a memorable night.",
+            "world_start": "2023-12-08",
+            "world_end": null
+          }
+        ],
+        "returned_version_ids": [
+          "mem_conv-43_0130_v1"
+        ]
+      },
+      {
+        "action_id": "access_bank2_v1new_train_seq_conv-43_conv-43_conv-43_qa_0059_a002",
+        "step_index": 2,
+        "action_type": "answer",
+        "request": {
+          "action": "answer",
+          "arguments": {
+            "answer": "assists",
+            "evidence_version_ids": [
+              "mem_conv-43_0130_v1"
+            ],
+            "confidence": 0.95
+          },
+          "reason": "John achieved a career-high in assists during a big game against their rival on Friday, December 8, 2023."
+        },
+        "returned_memories": [],
+        "returned_version_ids": []
+      }
+    ],
+    "reason": "The reference answer mentions two career-high performances: highest point score and highest assist. The current memory mem_conv-43_0011_v1 states John scored 40 points, which was his highest ever score, supporting the points claim. The current memory mem_conv-43_0130_v1 states John achieved a career-high in assists, supporting the assists claim. Other current memories do not provide relevant information for these claims.",
+    "skill_trace": {
+      "trace_id": "skilltrace_access_bank2_v1new_train_seq_conv-43_conv-43_conv-43_qa_0059",
+      "side": "access",
+      "bank_version": "bank1",
+      "query": "Which career-high performances did John achieve in 2023?",
+      "top_k": 2,
+      "disclose_k": 5,
+      "min_score": 0.2,
+      "scored_fields": [
+        "name",
+        "description"
+      ],
+      "scoring_weights": {
+        "semantic": 0.7,
+        "bm25": 0.3
+      },
+      "retrieval_method": "bank1_hybrid_router",
+      "candidate_k": 10,
+      "reranker": "bank1_applicability_router",
+      "reranker_error": "",
+      "selected": [],
+      "nearby_not_selected": [
+        {
+          "skill_id": "sk_access_alt_paths",
+          "version_id": "sk_access_alt_paths_v1",
+          "rank": 1,
+          "score": 0.33790960907936096,
+          "semantic_score": 0.09030883759260178,
+          "lexical_score": 0.9156447052955627,
+          "name": "Broaden retrieval for alternative path questions",
+          "description": "When a question asks what alternative career or path someone might consider after a known role or domain, also search for the person's broader interests, values, and activities outside that domain.",
+          "content": [
+            "If the question asks what alternative career or path someone might consider after a named activity/domain, do not limit retrieval to that domain. Run at least one additional search using the person's other hobbies, interests, knowledge, routines, and activities (e.g., pet care, volunteering, creative work) as query terms.",
+            "Before answering, check whether any retrieved evidence outside the named domain shows relevant skill or enjoyment; if present, ground the answer in that evidence rather than only in memories from the named domain."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_which_activity",
+          "version_id": "sk_access_which_activity_v1",
+          "rank": 2,
+          "score": 0.2930474877357483,
+          "semantic_score": -0.009932169690728188,
+          "lexical_score": 1.0,
+          "name": "Retrieve interests for which-activity questions",
+          "description": "When a question asks which activity or hobby gives a person a benefit (e.g., escape, relaxation, imagination), retrieve the person's known interests from profile or preference memories and use them as candidate search terms.",
+          "content": [
+            "When a question asks which activity or hobby gives a person a benefit, do not limit retrieval to memories that explicitly contain the benefit words. Retrieve the person's known hobbies/interests from profile or preference memories and treat them as candidate activities.",
+            "Before answering, run an additional memory search for each known interest/hobby term, and consider those results even if the benefit words are absent from the returned memory text.",
+            "If several interest memories compete, compare them using direct preference statements, frequency, and recency before selecting the answer."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_enumeration_synonym_search",
+          "version_id": "sk_access_enumeration_synonym_search_v1",
+          "rank": 3,
+          "score": 0.2824818789958954,
+          "semantic_score": 0.04633037745952606,
+          "lexical_score": 0.8335019946098328,
+          "name": "Enumeration-Question Synonym-Expanded Searches",
+          "description": "Use when a question asks how a person did something and expects a list of actions.",
+          "content": [
+            "When a question asks 'How did <entity> <outcome>?' or 'What actions did <entity> take?', treat it as an enumeration request whose answer may span multiple distinct activities stored in separate memories.",
+            "Before answering, if the initial retrieval returns only some action memories, run additional searches using action-oriented synonyms and paraphrases of the target verb/outcome (e.g., for 'promote': marketing, advertising, partner, collaboration, launch, campaign, showcase, content, video) to surface memories that describe the same activity category with different wording.",
+            "Check sufficiency after each search: if the question asks for 'how' and new searches keep finding different actions, continue until no new distinct actions appear; do not finalize an answer after a single top-k retrieval when the question is enumerative."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_sequence_retrieval",
+          "version_id": "sk_access_sequence_retrieval_v1",
+          "rank": 4,
+          "score": 0.26511651277542114,
+          "semantic_score": 0.09160232543945312,
+          "lexical_score": 0.66998291015625,
+          "name": "Temporal-anchor post-milestone retrieval",
+          "description": "When a question asks what someone did or planned after a dated milestone event (e.g., after a wedding) and the first search results appear unrelated or pre-date the event.",
+          "content": [
+            "When a question asks what someone did or plans to do after a dated milestone event, use the milestone date as a temporal anchor; run searches with typical follow-up activity terms (honeymoon, celebration, get-together, trip, activity) and filter or rank memories with world_start on or after that date.",
+            "If the first retrieval returns only memories dated before the milestone, do not answer from them; re-search with additional related terms and compare time windows.",
+            "Treat pre-milestone memories as non-evidence for post-milestone questions even when they share location or activity vocabulary."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_abstract_positive_expansion",
+          "version_id": "sk_access_abstract_positive_expansion_v1",
+          "rank": 5,
+          "score": 0.261298269033432,
+          "semantic_score": 0.03789633885025978,
+          "lexical_score": 0.7825693488121033,
+          "name": "Expand abstract positive-evaluative queries with concrete vocabulary",
+          "description": "Use when a question asks what someone recently did that was rewarding, fulfilling, or a main stressor.",
+          "content": [
+            "If the question uses abstract positive descriptors like 'rewarding experience', 'fulfilling', or 'sense of accomplishment' and the initial retrieval does not return an event memory that explicitly describes an achievement or positive outcome, run an additional keyword or structured search using concrete achievement verbs and nouns (e.g., 'presented', 'conference', 'received positive feedback', 'award', 'recognized').",
+            "Before answering a question about a person's main stressor, source of stress, or biggest difficulty, issue searches that go beyond the literal question wording: include stress-related synonyms (stressful, tough, difficult, hard, pressure, overwhelmed) and common life domains (work, family, school, health, finances, relationships).",
+            "If the question explicitly excludes a topic ('besides X', 'other than X', 'apart from X'), do not let that excluded topic dominate the query; run an additional search replacing the excluded topic with likely alternative domains.",
+            "Do not answer from an indirect memory that only implies the stressor through an overlap or trade-off; keep searching until a memory explicitly states what is stressful, tough, or difficult."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        }
+      ]
+    }
+  },
+  "access_run_id": "access_bank2_v1new_train_seq_conv-43_conv-43_conv-43_qa_0059",
+  "claims": [
+    {
+      "claim": "John achieved a career-high in points in 2023.",
+      "supporting_version_ids": [
+        "mem_conv-43_0011_v1"
+      ],
+      "coverage": null
+    },
+    {
+      "claim": "John achieved a career-high in assists in 2023.",
+      "supporting_version_ids": [],
+      "coverage": null
+    }
+  ],
+  "current_related_memories": [
+    {
+      "version_id": "mem_conv-43_0011_v1",
+      "memory_id": "mem_conv-43_0011",
+      "version_no": 1,
+      "content": "John scored 40 points in a basketball game last week, which was his highest ever score and marked a significant achievement in his career.",
+      "memory_kind": "event",
+      "subject": "John",
+      "predicate": "achievement",
+      "object_text": "scoring 40 points",
+      "world_start": "2023-07-15",
+      "world_end": null,
+      "update_type": "add"
+    },
+    {
+      "version_id": "mem_conv-43_0129_v1",
+      "memory_id": "mem_conv-43_0129",
+      "version_no": 1,
+      "content": "Tim struggled with his English lit class and did an analysis on a series, expressing that he thought it went ok.",
+      "memory_kind": "event",
+      "subject": "Tim",
+      "predicate": "academic_challenge",
+      "object_text": "English lit class",
+      "world_start": "2023-12-11",
+      "world_end": null,
+      "update_type": "add"
+    }
+  ],
+  "useful_current_version_ids": [
+    "mem_conv-43_0011_v1"
+  ],
+  "retrieved_current_version_ids": [
+    "mem_conv-43_0002_v1",
+    "mem_conv-43_0003_v1",
+    "mem_conv-43_0022_v2",
+    "mem_conv-43_0027_v2",
+    "mem_conv-43_0031_v1",
+    "mem_conv-43_0096_v1",
+    "mem_conv-43_0130_v1",
+    "mem_conv-43_0142_v1"
+  ],
+  "missing_useful_current_version_ids": [
+    "mem_conv-43_0011_v1"
+  ],
+  "search_steps": [
+    {
+      "action_id": "access_bank2_v1new_train_seq_conv-43_conv-43_conv-43_qa_0059_a000",
+      "step_index": 0,
+      "action_type": "search_memory",
+      "request": {
+        "action": "search_memory",
+        "arguments": {
+          "strategy": "hybrid",
+          "query": "career-high performances of John in 2023",
+          "query_expansions": [
+            "John's best performances in 2023",
+            "John's highest achievements in 2023",
+            "John's notable career moments in 2023"
+          ],
+          "keywords": [
+            "John",
+            "2023",
+            "career-high",
+            "performance"
+          ],
+          "depth": "standard",
+          "top_k": 8
+        },
+        "reason": "To find John's career-high performances in 2023"
+      },
+      "returned_memories": [
+        {
+          "version_id": "mem_conv-43_0130_v1",
+          "memory_id": "mem_conv-43_0130",
+          "content": "John achieved a career-high in assists during a big game against their rival on Friday, December 8, 2023, which he described as a memorable night.",
+          "memory_kind": "event",
+          "subject": "John",
+          "world_start": "2023-12-08",
+          "world_end": null,
+          "score": 0.0164,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-43_0031_v1",
+          "memory_id": "mem_conv-43_0031",
+          "content": "John reunited with his basketball team on August 15, 2023, and felt a strong sense of belonging and welcome upon his return.",
+          "memory_kind": "event",
+          "subject": "John",
+          "world_start": "2023-08-15",
+          "world_end": null,
+          "score": 0.0152,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-43_0142_v1",
+          "memory_id": "mem_conv-43_0142",
+          "content": "John's team has seen significant growth in communication and bonding, which has improved their performance.",
+          "memory_kind": "event",
+          "subject": "John",
+          "world_start": "2023-12-12",
+          "world_end": null,
+          "score": 0.0152,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-43_0027_v2",
+          "memory_id": "mem_conv-43_0027",
+          "content": "John has been playing basketball since childhood, earning a college scholarship and being drafted by a team, and his journey is symbolized by his lucky basketball shoes. He joined a new gym to improve his basketball performance, developed a balanced workout plan combining basketball drills and strength training, and emphasized the importance of rest and listening to his body.",
+          "memory_kind": "event",
+          "subject": "John",
+          "world_start": "2023-08-11",
+          "world_end": null,
+          "score": 0.0141,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-43_0003_v1",
+          "memory_id": "mem_conv-43_0003",
+          "content": "John faced challenges fitting into the new team's style of play during pre-season training.",
+          "memory_kind": "event",
+          "subject": "John",
+          "world_start": "2023-05-21",
+          "world_end": null,
+          "score": 0.0135,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-43_0022_v2",
+          "memory_id": "mem_conv-43_0022",
+          "content": "John played in a close basketball game against another team last week, which they won on the final buzzer. He described the experience as amazing and exhilarating.",
+          "memory_kind": "event",
+          "subject": "John",
+          "world_start": "2023-12-15",
+          "world_end": null,
+          "score": 0.0125,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-43_0002_v1",
+          "memory_id": "mem_conv-43_0002",
+          "content": "John aims to improve his shooting percentage through hard practice and dedication.",
+          "memory_kind": "event",
+          "subject": "John",
+          "world_start": "2023-05-21",
+          "world_end": null,
+          "score": 0.0121,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-43_0096_v1",
+          "memory_id": "mem_conv-43_0096",
+          "content": "John emphasized the importance of finding the right balance in life to stay sharp, focused, and energized.",
+          "memory_kind": "event",
+          "subject": "John",
+          "world_start": "2023-11-11",
+          "world_end": null,
+          "score": 0.0121,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        }
+      ],
+      "returned_version_ids": [
+        "mem_conv-43_0130_v1",
+        "mem_conv-43_0031_v1",
+        "mem_conv-43_0142_v1",
+        "mem_conv-43_0027_v2",
+        "mem_conv-43_0003_v1",
+        "mem_conv-43_0022_v2",
+        "mem_conv-43_0002_v1",
+        "mem_conv-43_0096_v1"
+      ]
+    },
+    {
+      "action_id": "access_bank2_v1new_train_seq_conv-43_conv-43_conv-43_qa_0059_a001",
+      "step_index": 1,
+      "action_type": "inspect_memory",
+      "request": {
+        "action": "inspect_memory",
+        "arguments": {
+          "memory_id": "mem_conv-43_0130",
+          "include_versions": true,
+          "include_sources": true
+        },
+        "reason": "To verify the details of John's career-high performance in 2023"
+      },
+      "returned_memories": [
+        {
+          "version_id": "mem_conv-43_0130_v1",
+          "version_no": 1,
+          "content": "John achieved a career-high in assists during a big game against their rival on Friday, December 8, 2023, which he described as a memorable night.",
+          "world_start": "2023-12-08",
+          "world_end": null
+        }
+      ],
+      "returned_version_ids": [
+        "mem_conv-43_0130_v1"
+      ]
+    },
+    {
+      "action_id": "access_bank2_v1new_train_seq_conv-43_conv-43_conv-43_qa_0059_a002",
+      "step_index": 2,
+      "action_type": "answer",
+      "request": {
+        "action": "answer",
+        "arguments": {
+          "answer": "assists",
+          "evidence_version_ids": [
+            "mem_conv-43_0130_v1"
+          ],
+          "confidence": 0.95
+        },
+        "reason": "John achieved a career-high in assists during a big game against their rival on Friday, December 8, 2023."
+      },
+      "returned_memories": [],
+      "returned_version_ids": []
+    }
+  ]
+}

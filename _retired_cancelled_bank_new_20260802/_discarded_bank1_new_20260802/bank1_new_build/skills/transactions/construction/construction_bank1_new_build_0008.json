@@ -1,0 +1,155 @@
+{
+  "batch": {
+    "batch_id": "construction_bank1_new_build_0008",
+    "side": "construction",
+    "base_bank_version": "v001",
+    "candidates": [
+      {
+        "candidate_id": "cand_construction_32e3b00813f7",
+        "skill_id": "sk_construction_827419fae5",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Preserve ordinal qualifiers in extracted memories",
+          "description": "During construction extraction, when the source message explicitly identifies an entity by an ordinal or sequential qualifier (first/second/third/last/next), include that qualifier in the extracted memory content so later questions referencing the same ordinal remain answerable.",
+          "content": [
+            "During extraction, if a message states an ordinal or sequential qualifier for an entity (e.g., 'third screenplay', 'second apartment', 'first day'), copy that qualifier into the candidate content rather than paraphrasing the entity generically.",
+            "Apply this when the qualifier distinguishes the entity among multiple instances of the same type; if the qualifier is incidental, contextual, or already represented in the memory's subject/relationship, skip it to keep memories compact.",
+            "Do not exhaustively list all qualifiers of an entity; only preserve those explicitly needed to answer future ordinal-based identification."
+          ]
+        },
+        "solves": "The general failure is that extraction paraphrases an explicitly numbered entity into a generic noun phrase, so later ordinal-based questions (e.g., 'third screenplay') cannot be answered from memory. This Skill applies when a construction session sees a message naming an entity with an ordinal or sequential qualifier that future queries may reference. It must not apply to incidental descriptors, entities already uniquely identified without the qualifier, or demands for exhaustive qualifier enumeration.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-42_conv-42_qa_0094",
+        "source_failure_id": "cons_conv-42_conv-42_qa_0094",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:37:23Z"
+      },
+      {
+        "candidate_id": "cand_construction_3d72352f6058",
+        "skill_id": "sk_construction_1d2446b131",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Maintain cumulative counts from ordinal milestones",
+          "description": "When a speaker reports a recurring personal achievement using an ordinal milestone (e.g., 'my fourth tournament win'), extract or update a state memory with the cumulative count and add the new occurrence as a separate event, not an overwrite.",
+          "content": [
+            "Extraction: When a message contains an explicit ordinal milestone (first/second/third/fourth, etc.) for a recurring personal achievement already present in memory, create or update a state memory tracking the cumulative count for that subject and event type (e.g., '<subject> has won N <event type>'), in addition to the individual event candidate.",
+            "CRUD: When the new milestone is a distinct occurrence, ADD a new event memory; do not UPDATE or MERGE an earlier event memory to replace its content with the new event, even if the topic matches.",
+            "Stop: Maintain the cumulative count only when the ordinal is explicitly stated; do not infer or chain counts from generic mentions such as 'another win' or 'won again'."
+          ]
+        },
+        "solves": "Recurring personal achievements reported with explicit ordinals (first, second, fourth...) are stored only as isolated events and later milestones overwrite earlier ones, so total-count questions fail. Applies when a speaker repeatedly gives ordinal milestones for the same achievement type and a cumulative total may later be queried. Does not apply when the ordinal is not the speaker's own running count or a correct count memory already exists.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-42_conv-42_qa_0080",
+        "source_failure_id": "cons_conv-42_conv-42_qa_0080",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:37:30Z"
+      },
+      {
+        "candidate_id": "cand_construction_883822c01f2d",
+        "skill_id": "sk_construction_27e2d926fe",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Preserve-Ordinal-Artifact-Type-in-Event-Extraction",
+          "description": "When extracting a completion event where the speaker confirms a numbered instance (e.g., 'third one') of a category already established earlier in the session, include the concrete category name and ordinal in the memory instead of a generic label like 'creative project'.",
+          "content": [
+            "During candidate extraction for a completion/achievement event, if the speaker confirms a numbered instance (first/second/third...) of a category that was named earlier in the session, record that concrete category and ordinal in the memory content (e.g., 'completed her third screenplay') rather than a generic label such as 'creative project'. Stop after capturing the confirmed fact; do not add speculation about other works."
+          ]
+        },
+        "solves": "Construction extraction sometimes loses the concrete category and ordinal of a newly completed item (e.g., recording 'completed a creative project' when the user confirmed it was the third screenplay), so later count/aggregation queries fail. This Skill applies when a future session contains a confirmation of a numbered instance of a previously mentioned artifact type (e.g., 'Is that your third one?' / 'Yep!'). It does not apply when no ordinal or previously established category is present; there the base extraction policy suffices.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-42_conv-42_qa_0079",
+        "source_failure_id": "cons_conv-42_conv-42_qa_0079",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:37:14Z"
+      }
+    ],
+    "retrieved_skill_ids": [],
+    "relations": []
+  },
+  "plan": {
+    "transaction_id": "construction_bank1_new_build_0008",
+    "side": "construction",
+    "base_bank_version": "v001",
+    "candidate_resolutions": [
+      {
+        "candidate_id": "cand_construction_32e3b00813f7",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_ordinal_preservation"
+        ],
+        "reason": "Merged with cand_construction_883822c01f2d because both repair the same failure mechanism: preserving explicit ordinal qualifiers during extraction."
+      },
+      {
+        "candidate_id": "cand_construction_3d72352f6058",
+        "resolution": "CREATED",
+        "target_skill_ids": [],
+        "reason": "No existing Skill covers maintaining cumulative counts from ordinal milestones; this is a distinct mechanism from simple ordinal preservation."
+      },
+      {
+        "candidate_id": "cand_construction_883822c01f2d",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_construction_ordinal_preservation"
+        ],
+        "reason": "Absorbing cand_construction_32e3b00813f7 into this merged Skill."
+      }
+    ],
+    "operations": [
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_ordinal_preservation",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Preserve Ordinal Qualifiers in Extracted Memories",
+        "description": "Use when extracting memories from messages that explicitly identify an entity by an ordinal or sequential qualifier.",
+        "content": [
+          "During extraction, if a message states an ordinal or sequential qualifier for an entity (e.g., 'third screenplay', 'second apartment', 'first day'), copy that qualifier into the candidate content rather than paraphrasing the entity generically.",
+          "Apply this when the qualifier distinguishes the entity among multiple instances of the same type; if the qualifier is incidental, contextual, or already represented in the memory's subject/relationship, skip it to keep memories compact.",
+          "Do not exhaustively list all qualifiers of an entity; only preserve those explicitly needed to answer future ordinal-based identification."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_32e3b00813f7",
+          "cand_construction_883822c01f2d"
+        ],
+        "reason": "Creating merged Skill from two candidates that both preserve ordinal qualifiers during extraction.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_cumulative_counts",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Maintain Cumulative Counts from Ordinal Milestones",
+        "description": "Use when a speaker reports a recurring personal achievement using an explicit ordinal milestone.",
+        "content": [
+          "Extraction: When a message contains an explicit ordinal milestone (first/second/third/fourth, etc.) for a recurring personal achievement already present in memory, create or update a state memory tracking the cumulative count for that subject and event type (e.g., '<subject> has won N <event type>'), in addition to the individual event candidate.",
+          "CRUD: When the new milestone is a distinct occurrence, ADD a new event memory; do not UPDATE or MERGE an earlier event memory to replace its content with the new event, even if the topic matches.",
+          "Stop: Maintain the cumulative count only when the ordinal is explicitly stated; do not infer or chain counts from generic mentions such as 'another win' or 'won again'."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_3d72352f6058"
+        ],
+        "reason": "Creating Skill for maintaining cumulative counts from ordinal milestones.",
+        "hard_delete": false
+      }
+    ]
+  },
+  "status": "planned"
+}

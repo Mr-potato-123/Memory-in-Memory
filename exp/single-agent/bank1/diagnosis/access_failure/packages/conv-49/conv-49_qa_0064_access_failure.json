@@ -1,0 +1,783 @@
+{
+  "schema_version": "access_diagnosis_v3",
+  "diagnosis_id": "access_conv-49_conv-49_qa_0064",
+  "diagnosis_type": "ACCESS_FAILURE",
+  "status": "completed",
+  "judge_run_id": "judge",
+  "diagnosis_run_id": "bank1_train_flash",
+  "source_runtime_run": "conv-49",
+  "conversation_id": "conv-49",
+  "qa_id": "conv-49_qa_0064",
+  "snapshot_commit_id": 25,
+  "question": "Which ailment does Sam have to face due to his weight?",
+  "reference_answer": "gastritis",
+  "problem_found": true,
+  "reason": "The reference answer states that Sam has gastritis. The current memory version mem_conv-49_0077_v1 explicitly mentions that Sam experienced gastritis, which directly supports the claim. Other current memories do not mention gastritis or any specific ailment.",
+  "confidence": 1.0,
+  "review_required": false,
+  "skill_trace": {
+    "trace_id": "skilltrace_access_conv-49_conv-49_conv-49_qa_0064",
+    "side": "access",
+    "bank_version": "bank1",
+    "query": "Which ailment does Sam have to face due to his weight?",
+    "top_k": 2,
+    "disclose_k": 5,
+    "min_score": 0.2,
+    "scored_fields": [
+      "name",
+      "description"
+    ],
+    "scoring_weights": {
+      "semantic": 0.7,
+      "bm25": 0.3
+    },
+    "retrieval_method": "bank1_hybrid_router",
+    "candidate_k": 10,
+    "reranker": "bank1_applicability_router",
+    "reranker_error": "",
+    "selected": [
+      {
+        "skill_id": "sk_access_appearance_change",
+        "version_id": "sk_access_appearance_change_v1",
+        "rank": 2,
+        "score": 0.31519174575805664,
+        "semantic_score": 0.14295710623264313,
+        "lexical_score": 0.7170724868774414,
+        "name": "Appearance-change retrieval with concrete terms",
+        "description": "When a question asks about a physical or appearance change (hair, weight, tattoos, piercings, etc.) for a specific person or time, before answering 'no information available'.",
+        "content": [
+          "If the question asks about a physical or appearance change, search with concrete appearance-change verbs (dyed, shaved, cut, colored, tattooed, pierced, gained, lost, grew) in addition to abstract phrases like 'physical transformation'.",
+          "If the memory schema supports date or subject filters, run a structured search combining the person's name, the appearance-change keyword, and the relevant time range (e.g., 'April 2022' or a relative date like 'last week') to locate event memories by their world_start date.",
+          "Stop once a search returns a memory describing the person's appearance change; if no concrete-term or filtered search yields a result, stop after the second search and answer from available evidence without further expansion."
+        ],
+        "selected": true,
+        "rerank_rank": 1,
+        "rerank_reason": "The question asks about an ailment related to weight, which is a physical change. The skill specifically addresses appearance changes, including weight gain or loss, making it directly applicable for retrieving information about Sam's weight-related ailment."
+      }
+    ],
+    "nearby_not_selected": [
+      {
+        "skill_id": "sk_access_hobby_activity_retrieval",
+        "version_id": "sk_access_hobby_activity_retrieval_v1",
+        "rank": 1,
+        "score": 0.35532844066619873,
+        "semantic_score": 0.07904060184955597,
+        "lexical_score": 1.0,
+        "name": "Hobby and Activity Retrieval",
+        "description": "Use when a question asks about hobbies, activities, or what someone does to keep busy, relax, or as a hobby, especially during recovery or when the memory uses indirect phrasing.",
+        "content": [
+          "When asked about hobbies or activities, run multiple searches using varied phrasings: 'hobby', 'interested in', 'enjoys', 'wants to try', 'started taking', 'attending class', 'recreation', 'activity', 'keep busy', 'pass the time'.",
+          "Include memory kinds preference, event, and plan; activities are often stored as enjoyed routines, planned sessions, or class attendance rather than as a hobby list.",
+          "If the question involves a recovery or illness period, run a separate hobby-focused search without requiring injury/treatment terms, and do not treat therapy or exercise as leisure unless explicitly asked.",
+          "Merge results across searches; stop once a clear leisure activity is found or no new distinct activities appear."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_enumeration_retrieval",
+        "version_id": "sk_access_enumeration_retrieval_v1",
+        "rank": 3,
+        "score": 0.2580196261405945,
+        "semantic_score": -0.04279331490397453,
+        "lexical_score": 0.9599164724349976,
+        "name": "Enumeration and Synonym-Expanded Retrieval",
+        "description": "Use when a question asks for a list, count, or set of items in a category (hobbies, activities, items, forms, causes, etc.) or when initial retrieval misses memories due to synonym mismatch.",
+        "content": [
+          "Detect enumerative or attribute-specific intent: questions asking for lists, counts, kinds, types, forms, or specific attributes (e.g., hobbies, items, causes, ailments) that require gathering multiple distinct instances.",
+          "Do not answer from a single generic search. Run multiple targeted searches using concrete category terms, synonyms, and related verbs (e.g., for hobbies: painting, hiking, reading; for acquisition: bought, purchased, made; for states: broke down, accident, damage).",
+          "Use structured searches on relevant memory kinds (preference, event, plan) and predicates when available; combine results across searches into a distinct set.",
+          "Stop when two consecutive searches return no new distinct items or after a bounded number of searches (3-5); then answer only from retrieved evidence, ensuring each listed item has explicit support."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_benefit_questions",
+        "version_id": "sk_access_benefit_questions_v1",
+        "rank": 4,
+        "score": 0.20535199344158173,
+        "semantic_score": -0.004488419741392136,
+        "lexical_score": 0.6949796080589294,
+        "name": "Search Interest Profile for Benefit Questions",
+        "description": "Use when a question asks which of a person's activities provides a benefit (escape, imagination, relaxation, creativity).",
+        "content": [
+          "When a question asks which activity gives a person a described benefit, search for the person's profile/hobbies/interests using their name plus terms like 'enjoys', 'hobby', 'interest', 'favorite' in addition to the benefit keywords.",
+          "Before finalizing an answer, if retrieved evidence points to one activity, check whether any interest profile memory lists another activity for the person; if it does, treat that explicit interest as a candidate and compare it with the current evidence.",
+          "Stop after the person's known interests are retrieved and the best-supported candidate is identified; do not exhaustively expand searches."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_commonality_life_events",
+        "version_id": "sk_access_commonality_life_events_v1",
+        "rank": 5,
+        "score": 0.17606081068515778,
+        "semantic_score": 0.0086469491943717,
+        "lexical_score": 0.566693127155304,
+        "name": "Per-Subject Life-Event Search for Commonality Questions",
+        "description": "When a question asks what two named people have in common and the initial search returns mostly relationship or interaction memories, retrieve each person's individual life events for comparison.",
+        "content": [
+          "When a question asks what two named people have in common, if the first combined search returns mostly relationship or interaction memories, run separate searches for each person using life-event terms (lost job, started business, career change, achievement) and also try a structured search on event predicates such as employment_status, career_transition, and achievement.",
+          "Compare the returned individual events to find matching predicates or facts across the two people; prefer that evidence for the commonality over relationship-only memories.",
+          "Stop once an overlapping event directly answers the question, or after two targeted per-person searches per subject yield no new relevant events."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_retry_event_queries_synonyms_time",
+        "version_id": "sk_access_retry_event_queries_synonyms_time_v1",
+        "rank": 6,
+        "score": 0.16677100956439972,
+        "semantic_score": -0.029319001361727715,
+        "lexical_score": 0.6243143081665039,
+        "name": "Retry Event Queries with Synonyms and Time Filters",
+        "description": "Use when a question asks which holiday season or calendar period coincides with a person's event and the first search is inconclusive.",
+        "content": [
+          "If the first memory search returns no clear match, retry with synonyms and related forms (e.g., wedding → married, marriage, got married; trip → vacation, travel).",
+          "If the question or any retrieved memory mentions relative time, run a structured search filtering world_start to the corresponding recent window.",
+          "After finding an event memory, determine its world_start and identify which major holiday season contains that date.",
+          "Stop after at most two retry attempts without a match; do not keep expanding indefinitely."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      }
+    ]
+  },
+  "repair_package": {
+    "question": "Which ailment does Sam have to face due to his weight?",
+    "reference_answer": "gastritis",
+    "missing_useful_current_memories": [
+      {
+        "version_id": "mem_conv-49_0077_v1",
+        "memory_id": "mem_conv-49_0077",
+        "version_no": 1,
+        "content": "Sam experienced gastritis on the weekend of October 15-16, 2023, leading to an ER visit and a realization about the importance of health prioritization.",
+        "memory_kind": "event",
+        "subject": "Sam",
+        "predicate": "health_issue",
+        "object_text": "gastritis",
+        "world_start": "2023-10-15",
+        "world_end": null,
+        "update_type": "add"
+      }
+    ],
+    "retrieved_current_version_ids": [
+      "mem_conv-49_0008_v3",
+      "mem_conv-49_0017_v3",
+      "mem_conv-49_0018_v1",
+      "mem_conv-49_0038_v2",
+      "mem_conv-49_0065_v1",
+      "mem_conv-49_0082_v1",
+      "mem_conv-49_0088_v1",
+      "mem_conv-49_0098_v1"
+    ],
+    "search_steps": [
+      {
+        "action_id": "access_conv-49_conv-49_conv-49_qa_0064_a000",
+        "step_index": 0,
+        "action_type": "search_memory",
+        "request": {
+          "action": "search_memory",
+          "arguments": {
+            "strategy": "hybrid",
+            "query": "ailment related to weight that Sam has",
+            "query_expansions": [
+              "health issue caused by weight in Sam",
+              "medical condition due to Sam's weight"
+            ],
+            "keywords": [
+              "Sam",
+              "weight",
+              "ailment",
+              "health issue"
+            ],
+            "depth": "standard",
+            "top_k": 8
+          },
+          "reason": "To find the ailment Sam has related to his weight"
+        },
+        "returned_memories": [
+          {
+            "version_id": "mem_conv-49_0065_v1",
+            "memory_id": "mem_conv-49_0065",
+            "content": "Sam received a health warning from his doctor on Monday, indicating that his weight poses a serious health risk and could worsen if changes are not made soon.",
+            "memory_kind": "event",
+            "subject": "Sam",
+            "world_start": "2023-10-09",
+            "world_end": null,
+            "score": 0.0161,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-49_0008_v3",
+            "memory_id": "mem_conv-49_0008",
+            "content": "Sam is struggling with weight and health issues, which are affecting their ability to fully live. They are trying to stay positive despite the challenges. Sam is currently facing health challenges and has been struggling to maintain a positive outlook. He shared a motivational quote that emphasizes progress over perfection, which has been helping him stay motivated during his health journey.",
+            "memory_kind": "state",
+            "subject": "Sam",
+            "world_start": "2023-08-13",
+            "world_end": null,
+            "score": 0.0157,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-49_0018_v1",
+            "memory_id": "mem_conv-49_0018",
+            "content": "Sam decided to make changes to his weight after being mocked by friends on Friday, July 27, 2023. He is reducing soda and candy intake and plans to start going to the gym regularly starting the next day.",
+            "memory_kind": "event",
+            "subject": "Sam",
+            "world_start": "2023-07-27",
+            "world_end": null,
+            "score": 0.0154,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-49_0088_v1",
+            "memory_id": "mem_conv-49_0088",
+            "content": "Sam became a Weight Watchers coach in her group, which she considers a significant accomplishment and a step toward better health.",
+            "memory_kind": "event",
+            "subject": "Sam",
+            "world_start": "2023-11-09",
+            "world_end": null,
+            "score": 0.0152,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-49_0038_v2",
+            "memory_id": "mem_conv-49_0038",
+            "content": "Sam is struggling with weight issues and feels it affects his confidence and motivation. He is taking things one step at a time.",
+            "memory_kind": "state",
+            "subject": "Sam",
+            "world_start": "2023-08-15",
+            "world_end": null,
+            "score": 0.0149,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-49_0098_v1",
+            "memory_id": "mem_conv-49_0098",
+            "content": "Sam attended a Weight Watchers meeting yesterday and learned some great tips. He mentioned a smoothie bowl that was a hit.",
+            "memory_kind": "event",
+            "subject": "Sam",
+            "world_start": "2023-12-04",
+            "world_end": null,
+            "score": 0.0146,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-49_0017_v3",
+            "memory_id": "mem_conv-49_0017",
+            "content": "Evan and Sam have a supportive relationship where they discuss health, motivation, and personal growth. Evan supports Sam in his health journey and encourages him to take it slow and treat himself.",
+            "memory_kind": "event",
+            "subject": "Evan",
+            "world_start": "2023-06-06",
+            "world_end": null,
+            "score": 0.0144,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-49_0082_v1",
+            "memory_id": "mem_conv-49_0082",
+            "content": "Sam is struggling to maintain a new health routine and feels pressured by his family.",
+            "memory_kind": "event",
+            "subject": "Sam",
+            "world_start": "2023-10-25",
+            "world_end": null,
+            "score": 0.0142,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          }
+        ],
+        "returned_version_ids": [
+          "mem_conv-49_0065_v1",
+          "mem_conv-49_0008_v3",
+          "mem_conv-49_0018_v1",
+          "mem_conv-49_0088_v1",
+          "mem_conv-49_0038_v2",
+          "mem_conv-49_0098_v1",
+          "mem_conv-49_0017_v3",
+          "mem_conv-49_0082_v1"
+        ]
+      },
+      {
+        "action_id": "access_conv-49_conv-49_conv-49_qa_0064_a001",
+        "step_index": 1,
+        "action_type": "answer",
+        "request": {
+          "action": "answer",
+          "arguments": {
+            "answer": "health risk",
+            "evidence_version_ids": [
+              "mem_conv-49_0065_v1"
+            ],
+            "confidence": 0.95
+          },
+          "reason": "The evidence indicates that Sam's weight poses a serious health risk according to his doctor's warning."
+        },
+        "returned_memories": [],
+        "returned_version_ids": []
+      }
+    ],
+    "reason": "The reference answer states that Sam has gastritis. The current memory version mem_conv-49_0077_v1 explicitly mentions that Sam experienced gastritis, which directly supports the claim. Other current memories do not mention gastritis or any specific ailment.",
+    "skill_trace": {
+      "trace_id": "skilltrace_access_conv-49_conv-49_conv-49_qa_0064",
+      "side": "access",
+      "bank_version": "bank1",
+      "query": "Which ailment does Sam have to face due to his weight?",
+      "top_k": 2,
+      "disclose_k": 5,
+      "min_score": 0.2,
+      "scored_fields": [
+        "name",
+        "description"
+      ],
+      "scoring_weights": {
+        "semantic": 0.7,
+        "bm25": 0.3
+      },
+      "retrieval_method": "bank1_hybrid_router",
+      "candidate_k": 10,
+      "reranker": "bank1_applicability_router",
+      "reranker_error": "",
+      "selected": [
+        {
+          "skill_id": "sk_access_appearance_change",
+          "version_id": "sk_access_appearance_change_v1",
+          "rank": 2,
+          "score": 0.31519174575805664,
+          "semantic_score": 0.14295710623264313,
+          "lexical_score": 0.7170724868774414,
+          "name": "Appearance-change retrieval with concrete terms",
+          "description": "When a question asks about a physical or appearance change (hair, weight, tattoos, piercings, etc.) for a specific person or time, before answering 'no information available'.",
+          "content": [
+            "If the question asks about a physical or appearance change, search with concrete appearance-change verbs (dyed, shaved, cut, colored, tattooed, pierced, gained, lost, grew) in addition to abstract phrases like 'physical transformation'.",
+            "If the memory schema supports date or subject filters, run a structured search combining the person's name, the appearance-change keyword, and the relevant time range (e.g., 'April 2022' or a relative date like 'last week') to locate event memories by their world_start date.",
+            "Stop once a search returns a memory describing the person's appearance change; if no concrete-term or filtered search yields a result, stop after the second search and answer from available evidence without further expansion."
+          ],
+          "selected": true,
+          "rerank_rank": 1,
+          "rerank_reason": "The question asks about an ailment related to weight, which is a physical change. The skill specifically addresses appearance changes, including weight gain or loss, making it directly applicable for retrieving information about Sam's weight-related ailment."
+        }
+      ],
+      "nearby_not_selected": [
+        {
+          "skill_id": "sk_access_hobby_activity_retrieval",
+          "version_id": "sk_access_hobby_activity_retrieval_v1",
+          "rank": 1,
+          "score": 0.35532844066619873,
+          "semantic_score": 0.07904060184955597,
+          "lexical_score": 1.0,
+          "name": "Hobby and Activity Retrieval",
+          "description": "Use when a question asks about hobbies, activities, or what someone does to keep busy, relax, or as a hobby, especially during recovery or when the memory uses indirect phrasing.",
+          "content": [
+            "When asked about hobbies or activities, run multiple searches using varied phrasings: 'hobby', 'interested in', 'enjoys', 'wants to try', 'started taking', 'attending class', 'recreation', 'activity', 'keep busy', 'pass the time'.",
+            "Include memory kinds preference, event, and plan; activities are often stored as enjoyed routines, planned sessions, or class attendance rather than as a hobby list.",
+            "If the question involves a recovery or illness period, run a separate hobby-focused search without requiring injury/treatment terms, and do not treat therapy or exercise as leisure unless explicitly asked.",
+            "Merge results across searches; stop once a clear leisure activity is found or no new distinct activities appear."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_enumeration_retrieval",
+          "version_id": "sk_access_enumeration_retrieval_v1",
+          "rank": 3,
+          "score": 0.2580196261405945,
+          "semantic_score": -0.04279331490397453,
+          "lexical_score": 0.9599164724349976,
+          "name": "Enumeration and Synonym-Expanded Retrieval",
+          "description": "Use when a question asks for a list, count, or set of items in a category (hobbies, activities, items, forms, causes, etc.) or when initial retrieval misses memories due to synonym mismatch.",
+          "content": [
+            "Detect enumerative or attribute-specific intent: questions asking for lists, counts, kinds, types, forms, or specific attributes (e.g., hobbies, items, causes, ailments) that require gathering multiple distinct instances.",
+            "Do not answer from a single generic search. Run multiple targeted searches using concrete category terms, synonyms, and related verbs (e.g., for hobbies: painting, hiking, reading; for acquisition: bought, purchased, made; for states: broke down, accident, damage).",
+            "Use structured searches on relevant memory kinds (preference, event, plan) and predicates when available; combine results across searches into a distinct set.",
+            "Stop when two consecutive searches return no new distinct items or after a bounded number of searches (3-5); then answer only from retrieved evidence, ensuring each listed item has explicit support."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_benefit_questions",
+          "version_id": "sk_access_benefit_questions_v1",
+          "rank": 4,
+          "score": 0.20535199344158173,
+          "semantic_score": -0.004488419741392136,
+          "lexical_score": 0.6949796080589294,
+          "name": "Search Interest Profile for Benefit Questions",
+          "description": "Use when a question asks which of a person's activities provides a benefit (escape, imagination, relaxation, creativity).",
+          "content": [
+            "When a question asks which activity gives a person a described benefit, search for the person's profile/hobbies/interests using their name plus terms like 'enjoys', 'hobby', 'interest', 'favorite' in addition to the benefit keywords.",
+            "Before finalizing an answer, if retrieved evidence points to one activity, check whether any interest profile memory lists another activity for the person; if it does, treat that explicit interest as a candidate and compare it with the current evidence.",
+            "Stop after the person's known interests are retrieved and the best-supported candidate is identified; do not exhaustively expand searches."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_commonality_life_events",
+          "version_id": "sk_access_commonality_life_events_v1",
+          "rank": 5,
+          "score": 0.17606081068515778,
+          "semantic_score": 0.0086469491943717,
+          "lexical_score": 0.566693127155304,
+          "name": "Per-Subject Life-Event Search for Commonality Questions",
+          "description": "When a question asks what two named people have in common and the initial search returns mostly relationship or interaction memories, retrieve each person's individual life events for comparison.",
+          "content": [
+            "When a question asks what two named people have in common, if the first combined search returns mostly relationship or interaction memories, run separate searches for each person using life-event terms (lost job, started business, career change, achievement) and also try a structured search on event predicates such as employment_status, career_transition, and achievement.",
+            "Compare the returned individual events to find matching predicates or facts across the two people; prefer that evidence for the commonality over relationship-only memories.",
+            "Stop once an overlapping event directly answers the question, or after two targeted per-person searches per subject yield no new relevant events."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_retry_event_queries_synonyms_time",
+          "version_id": "sk_access_retry_event_queries_synonyms_time_v1",
+          "rank": 6,
+          "score": 0.16677100956439972,
+          "semantic_score": -0.029319001361727715,
+          "lexical_score": 0.6243143081665039,
+          "name": "Retry Event Queries with Synonyms and Time Filters",
+          "description": "Use when a question asks which holiday season or calendar period coincides with a person's event and the first search is inconclusive.",
+          "content": [
+            "If the first memory search returns no clear match, retry with synonyms and related forms (e.g., wedding → married, marriage, got married; trip → vacation, travel).",
+            "If the question or any retrieved memory mentions relative time, run a structured search filtering world_start to the corresponding recent window.",
+            "After finding an event memory, determine its world_start and identify which major holiday season contains that date.",
+            "Stop after at most two retry attempts without a match; do not keep expanding indefinitely."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        }
+      ]
+    }
+  },
+  "access_run_id": "access_conv-49_conv-49_conv-49_qa_0064",
+  "claims": [
+    {
+      "claim": "Sam has gastritis.",
+      "supporting_version_ids": [
+        "mem_conv-49_0077_v1"
+      ],
+      "coverage": null
+    }
+  ],
+  "current_related_memories": [
+    {
+      "version_id": "mem_conv-49_0008_v3",
+      "memory_id": "mem_conv-49_0008",
+      "version_no": 3,
+      "content": "Sam is struggling with weight and health issues, which are affecting their ability to fully live. They are trying to stay positive despite the challenges. Sam is currently facing health challenges and has been struggling to maintain a positive outlook. He shared a motivational quote that emphasizes progress over perfection, which has been helping him stay motivated during his health journey.",
+      "memory_kind": "state",
+      "subject": "Sam",
+      "predicate": "health",
+      "object_text": "struggling with weight and health issues",
+      "world_start": "2023-08-13",
+      "world_end": null,
+      "update_type": "enrichment"
+    },
+    {
+      "version_id": "mem_conv-49_0035_v1",
+      "memory_id": "mem_conv-49_0035",
+      "version_no": 1,
+      "content": "Sam had a tough week and a doctor's appointment, which served as a wake-up call to take better care of himself. He is currently taking a cooking class to learn how to make healthier meals.",
+      "memory_kind": "event",
+      "subject": "Sam",
+      "predicate": "health",
+      "object_text": "health issues",
+      "world_start": "2023-08-15",
+      "world_end": null,
+      "update_type": "add"
+    },
+    {
+      "version_id": "mem_conv-49_0036_v3",
+      "memory_id": "mem_conv-49_0036",
+      "version_no": 3,
+      "content": "Sam finds car rides helpful for relaxation and enjoying the view, especially in the countryside. Sam finds being in nature calming and rejuvenating, and plans to spend more time outdoors. Sam finds being outdoors rejuvenating and plans to spend more time in nature.",
+      "memory_kind": "preference",
+      "subject": "Sam",
+      "predicate": "recreation",
+      "object_text": "car rides",
+      "world_start": "2023-12-26",
+      "world_end": null,
+      "update_type": "merge"
+    },
+    {
+      "version_id": "mem_conv-49_0065_v1",
+      "memory_id": "mem_conv-49_0065",
+      "version_no": 1,
+      "content": "Sam received a health warning from his doctor on Monday, indicating that his weight poses a serious health risk and could worsen if changes are not made soon.",
+      "memory_kind": "event",
+      "subject": "Sam",
+      "predicate": "health_issue",
+      "object_text": "weight-related health risk",
+      "world_start": "2023-10-09",
+      "world_end": null,
+      "update_type": "add"
+    },
+    {
+      "version_id": "mem_conv-49_0077_v1",
+      "memory_id": "mem_conv-49_0077",
+      "version_no": 1,
+      "content": "Sam experienced gastritis on the weekend of October 15-16, 2023, leading to an ER visit and a realization about the importance of health prioritization.",
+      "memory_kind": "event",
+      "subject": "Sam",
+      "predicate": "health_issue",
+      "object_text": "gastritis",
+      "world_start": "2023-10-15",
+      "world_end": null,
+      "update_type": "add"
+    }
+  ],
+  "useful_current_version_ids": [
+    "mem_conv-49_0077_v1"
+  ],
+  "retrieved_current_version_ids": [
+    "mem_conv-49_0008_v3",
+    "mem_conv-49_0017_v3",
+    "mem_conv-49_0018_v1",
+    "mem_conv-49_0038_v2",
+    "mem_conv-49_0065_v1",
+    "mem_conv-49_0082_v1",
+    "mem_conv-49_0088_v1",
+    "mem_conv-49_0098_v1"
+  ],
+  "missing_useful_current_version_ids": [
+    "mem_conv-49_0077_v1"
+  ],
+  "search_steps": [
+    {
+      "action_id": "access_conv-49_conv-49_conv-49_qa_0064_a000",
+      "step_index": 0,
+      "action_type": "search_memory",
+      "request": {
+        "action": "search_memory",
+        "arguments": {
+          "strategy": "hybrid",
+          "query": "ailment related to weight that Sam has",
+          "query_expansions": [
+            "health issue caused by weight in Sam",
+            "medical condition due to Sam's weight"
+          ],
+          "keywords": [
+            "Sam",
+            "weight",
+            "ailment",
+            "health issue"
+          ],
+          "depth": "standard",
+          "top_k": 8
+        },
+        "reason": "To find the ailment Sam has related to his weight"
+      },
+      "returned_memories": [
+        {
+          "version_id": "mem_conv-49_0065_v1",
+          "memory_id": "mem_conv-49_0065",
+          "content": "Sam received a health warning from his doctor on Monday, indicating that his weight poses a serious health risk and could worsen if changes are not made soon.",
+          "memory_kind": "event",
+          "subject": "Sam",
+          "world_start": "2023-10-09",
+          "world_end": null,
+          "score": 0.0161,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-49_0008_v3",
+          "memory_id": "mem_conv-49_0008",
+          "content": "Sam is struggling with weight and health issues, which are affecting their ability to fully live. They are trying to stay positive despite the challenges. Sam is currently facing health challenges and has been struggling to maintain a positive outlook. He shared a motivational quote that emphasizes progress over perfection, which has been helping him stay motivated during his health journey.",
+          "memory_kind": "state",
+          "subject": "Sam",
+          "world_start": "2023-08-13",
+          "world_end": null,
+          "score": 0.0157,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-49_0018_v1",
+          "memory_id": "mem_conv-49_0018",
+          "content": "Sam decided to make changes to his weight after being mocked by friends on Friday, July 27, 2023. He is reducing soda and candy intake and plans to start going to the gym regularly starting the next day.",
+          "memory_kind": "event",
+          "subject": "Sam",
+          "world_start": "2023-07-27",
+          "world_end": null,
+          "score": 0.0154,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-49_0088_v1",
+          "memory_id": "mem_conv-49_0088",
+          "content": "Sam became a Weight Watchers coach in her group, which she considers a significant accomplishment and a step toward better health.",
+          "memory_kind": "event",
+          "subject": "Sam",
+          "world_start": "2023-11-09",
+          "world_end": null,
+          "score": 0.0152,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-49_0038_v2",
+          "memory_id": "mem_conv-49_0038",
+          "content": "Sam is struggling with weight issues and feels it affects his confidence and motivation. He is taking things one step at a time.",
+          "memory_kind": "state",
+          "subject": "Sam",
+          "world_start": "2023-08-15",
+          "world_end": null,
+          "score": 0.0149,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-49_0098_v1",
+          "memory_id": "mem_conv-49_0098",
+          "content": "Sam attended a Weight Watchers meeting yesterday and learned some great tips. He mentioned a smoothie bowl that was a hit.",
+          "memory_kind": "event",
+          "subject": "Sam",
+          "world_start": "2023-12-04",
+          "world_end": null,
+          "score": 0.0146,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-49_0017_v3",
+          "memory_id": "mem_conv-49_0017",
+          "content": "Evan and Sam have a supportive relationship where they discuss health, motivation, and personal growth. Evan supports Sam in his health journey and encourages him to take it slow and treat himself.",
+          "memory_kind": "event",
+          "subject": "Evan",
+          "world_start": "2023-06-06",
+          "world_end": null,
+          "score": 0.0144,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-49_0082_v1",
+          "memory_id": "mem_conv-49_0082",
+          "content": "Sam is struggling to maintain a new health routine and feels pressured by his family.",
+          "memory_kind": "event",
+          "subject": "Sam",
+          "world_start": "2023-10-25",
+          "world_end": null,
+          "score": 0.0142,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        }
+      ],
+      "returned_version_ids": [
+        "mem_conv-49_0065_v1",
+        "mem_conv-49_0008_v3",
+        "mem_conv-49_0018_v1",
+        "mem_conv-49_0088_v1",
+        "mem_conv-49_0038_v2",
+        "mem_conv-49_0098_v1",
+        "mem_conv-49_0017_v3",
+        "mem_conv-49_0082_v1"
+      ]
+    },
+    {
+      "action_id": "access_conv-49_conv-49_conv-49_qa_0064_a001",
+      "step_index": 1,
+      "action_type": "answer",
+      "request": {
+        "action": "answer",
+        "arguments": {
+          "answer": "health risk",
+          "evidence_version_ids": [
+            "mem_conv-49_0065_v1"
+          ],
+          "confidence": 0.95
+        },
+        "reason": "The evidence indicates that Sam's weight poses a serious health risk according to his doctor's warning."
+      },
+      "returned_memories": [],
+      "returned_version_ids": []
+    }
+  ]
+}

@@ -1,0 +1,491 @@
+{
+  "batch": {
+    "batch_id": "access_bank1_new_build_0009",
+    "side": "access",
+    "base_bank_version": "v000",
+    "candidates": [
+      {
+        "candidate_id": "cand_access_069770a0e916",
+        "skill_id": "sk_access_1dadac8f21",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "BroadenKindsForFuturePlansAndProjects",
+          "description": "When a question asks about a person's upcoming plans, projects, or goals, do not restrict memory_kind to 'plan' only; include event and state kinds or structured predicate search.",
+          "content": [
+            "When a question asks about a person's future plans, projects, or goals (e.g., 'what is X planning for next year?', 'what projects does X have upcoming?'), do not limit the first search to memory_kind 'plan'. Plans and projects are often stored as 'event' or 'state' memories with predicates like 'project', 'plan', or 'goal'.",
+            "Run at least one retrieval that includes memory_kinds ['event', 'state', 'plan'] or omits the kind filter, or perform a structured search by predicate 'project'/'plan' with the same person and relevant time window, before concluding evidence is insufficient.",
+            "Stop as soon as sufficient supporting evidence is found; do not add extra topic-specific searches or expand the time window further."
+          ]
+        },
+        "solves": "When a question asks about a person's upcoming plans, projects, or goals, the retrieval can over-narrow by filtering memory_kind to 'plan' based on the question's surface wording, causing relevant memories stored as 'event' or 'state' (e.g., predicate 'project') to be missed. This Skill applies to future questions like 'What is X planning/projecting for next year/period?' where the memory store may use multiple kinds for planning-related content. It does not apply when the schema guarantees all plans use kind 'plan' or when the question explicitly targets a stored plan object.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-48_conv-48_qa_0093",
+        "source_failure_id": "access_conv-48_conv-48_qa_0093",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:34:18Z"
+      },
+      {
+        "candidate_id": "cand_access_0d7c14cf593a",
+        "skill_id": "sk_access_a2cf2e0f70",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Rephrase and Retry Before No-Answer",
+          "description": "Use when a search for a named fact, motto, phrase, or quote returns no memory that directly answers the question; before answering 'No information available,' retry with rephrased and semantically equivalent wording.",
+          "content": [
+            "Before answering 'No information available' after a search, run at least one additional search with a rephrased query when the question asks for a specific named fact, motto, phrase, or attribute value. Include possessive forms, synonyms, and related descriptive terms (e.g., 'family's motto' in addition to 'family motto').",
+            "Prefer a hybrid or semantic search strategy for the rephrased query. Stop after one additional search unless the new results suggest a clearly promising additional variation; do not keep expanding queries indefinitely.",
+            "If the rephrased search also yields no relevant evidence, answer 'No information available' with the evidence explicitly listed."
+          ]
+        },
+        "solves": "This addresses premature 'no information' answers when the only matching memory uses different wording than the query. It applies when a question asks for a specific named fact, motto, phrase, or attribute value and the initial keyword search misses a semantically equivalent memory. It does not apply when the first search already returns sufficient evidence, or when no plausible rephrasing exists.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-49_conv-49_qa_0135",
+        "source_failure_id": "access_conv-49_conv-49_qa_0135",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:44:58Z"
+      },
+      {
+        "candidate_id": "cand_access_4ce2a00bf9aa",
+        "skill_id": "sk_access_41abacaab6",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Follow-up location search for activity events",
+          "description": "When answering a 'where did [person] [discover/do] [thing]?' question and the most relevant memory names the activity but not its location.",
+          "content": [
+            "Before answering a location question, inspect the evidence memory for an explicit location. If the directly relevant memory (e.g., discovering a dive spot) has no place, run one additional search combining the person, a time window around that memory's date, and location terms such as trip, traveled, visited, retreat, city, or country.",
+            "Prefer the memory that explicitly mentions the activity asked about; do not answer with a thematically similar memory (like a waterfall or beach) unless it also mentions that activity. Stop once a location-bearing memory from the same time window is found."
+          ]
+        },
+        "solves": "When the best activity memory lacks its location, the agent answers from a thematically similar but unrelated memory instead of searching for a second memory that places the person at a place in the same time window. Applies to 'Where did [person] find/do [thing]?' when the activity memory omits location. Not for memories that already state a location or for general preference questions.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-48_conv-48_qa_0077",
+        "source_failure_id": "access_conv-48_conv-48_qa_0077",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:34:06Z"
+      },
+      {
+        "candidate_id": "cand_access_5a83b31aed28",
+        "skill_id": "sk_access_88ce014c05",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "PreciseObjectForMissingPreferenceAnswers",
+          "description": "When a question asks what a person misses, longs for, or finds lacking in a place, use the exact object named in a directly relevant retrieved memory rather than a broader synonym.",
+          "content": [
+            "When a user asks what X misses/longs for/lacks in a location, first check whether any retrieved memory states the missed object explicitly (e.g., 'X misses nature').",
+            "If such an explicit statement exists, answer with that specific object (or a close paraphrase of it) instead of a broader category that the same evidence might also imply.",
+            "If no retrieved memory names the object explicitly, proceed with the usual synthesis from multiple memories; do not force an unstated object."
+          ]
+        },
+        "solves": "When answering what someone misses, longs for, or finds lacking in a place, the model may answer with a broader synonym even though a retrieved memory directly states the exact missed object, causing a mismatch with the expected precise answer. This Skill applies to user questions explicitly asking what a person misses/wants/lacks in a setting, whenever a retrieved memory contains a direct statement of the missed object. It does not apply when no such direct statement exists and the answer must be synthesized from multiple indirect memories.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-44_conv-44_qa_0014",
+        "source_failure_id": "access_conv-44_conv-44_qa_0014",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:34:00Z"
+      },
+      {
+        "candidate_id": "cand_access_6e83f53f9b20",
+        "skill_id": "sk_access_5d7d3ff8ca",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "BroadenMemoryKindsForVisitedPlaces",
+          "description": "When a question asks which cities or places a person has visited or been to, and a memory search restricts memory_kinds to a single kind, broaden or remove the filter before searching.",
+          "content": [
+            "When a question asks to enumerate the cities or places a person has visited or been to, do not set memory_kinds to only 'event'. Include 'plan' and 'state' kinds, or omit the memory_kinds filter entirely, because travel history can be recorded under any memory kind.",
+            "Run at least one search with the broadened or removed filter and merge the results before forming the answer, so relevant memories of different kinds are not missed.",
+            "Stop once the evidence is sufficient to list the places; do not run further searches for every possible location."
+          ]
+        },
+        "solves": "The general failure is that a memory_kind filter (e.g., only 'event') can exclude relevant travel-history memories stored under 'plan' or 'state', causing an incomplete answer when a question enumerates a person's visited cities. This Skill applies to future questions asking which cities or places a person has visited or been to, when the first search restricts memory_kinds to a single kind. It must not apply to questions about a person's opinions/recommendations of cities or purely future planned destinations, which are not evidence of past visits.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-43_conv-43_qa_0030",
+        "source_failure_id": "access_conv-43_conv-43_qa_0030",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:32:27Z"
+      },
+      {
+        "candidate_id": "cand_access_7cbd2c0c1124",
+        "skill_id": "sk_access_acf56a0b81",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Supplementary Activity Retrieval",
+          "description": "When a question asks what a person does to supplement, complement, or do in addition to a primary activity, use this before answering to retrieve all distinct supplementary activities rather than stopping after the first supporting memory.",
+          "content": [
+            "When a question asks what a person does to supplement, complement, or add to a primary activity (e.g., 'to supplement his training'), do not stop after the first search returns one supporting memory; the question often expects a set of distinct supplementary activities.",
+            "Run at least one additional search with the primary activity name removed; use complementary-activity descriptors (e.g., flexibility, stretching, conditioning, recovery, cross-training) and generic terms like 'workout' or 'exercise routine', because the supplementary activity memory may not mention the primary activity.",
+            "Before answering, compare the distinct activities found across all retrieved memories; if only one distinct supplementary activity is found but the question implies multiple (e.g., 'and', 'supplement', plural intent), run one more broader search before concluding sufficiency.",
+            "Stop adding searches once an additional search returns no new distinct supplementary activity; do not exhaustively list every possible activity."
+          ]
+        },
+        "solves": "Failure: 'supplement'/'in addition to' questions are answered after one search anchored on the primary activity, missing activities whose memories omit that term. Applies to future questions asking what a person does extra for a main activity; requires a second search without the main activity and checking for multiple distinct activities. Not for plain 'what does X do?' or when the first search already returns multiple distinct activities.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-43_conv-43_qa_0052",
+        "source_failure_id": "access_conv-43_conv-43_qa_0052",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:33:04Z"
+      },
+      {
+        "candidate_id": "cand_access_b3a76acb92bc",
+        "skill_id": "sk_access_eacdf1dd32",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Category-question concrete-instance search",
+          "description": "When a question asks for activities or items in a broad category (e.g., outdoor activities, hobbies, foods) and initial retrieval returns no concrete instances, run additional searches using common concrete examples of that category with the subject's name.",
+          "content": [
+            "When a question asks for a list in a broad category (e.g., outdoor activities, hobbies, foods) and the initial search returns no memories naming concrete items, run 1-2 additional hybrid or keyword searches pairing the subject's name with common concrete examples of that category (e.g., for outdoor: surfing, hiking, running, cycling). Stop once relevant concrete-item memories are found; do not enumerate exhaustively."
+          ]
+        },
+        "solves": "Category-label questions (e.g., 'What outdoor activities does John enjoy?') can fail when memories store concrete instances (e.g., surfing) without the category label, so a search using only the category phrase misses them. This Skill applies when a question asks for a list of items in a broad category and the first retrieval returns no concrete items; it instructs running additional searches using common concrete examples of that category with the subject's name. It does not apply when the initial search already surfaces concrete items, or when the question targets a single named activity.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-43_conv-43_qa_0035",
+        "source_failure_id": "access_conv-43_conv-43_qa_0035",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:33:00Z"
+      },
+      {
+        "candidate_id": "cand_access_cbde365b5b83",
+        "skill_id": "sk_access_27bf28fb55",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Include plan memories when searching planned events",
+          "description": "When a question asks about a planned or upcoming event/activity (e.g., 'planning', 'plans to', 'next summer'), search memory with memory_kinds including both 'event' and 'plan' instead of only 'event'.",
+          "content": [
+            "Before answering a question about what someone plans to do or an upcoming event, include both 'event' and 'plan' as memory_kinds in the first search.",
+            "If the initial hybrid search with event+plan returns no relevant plan memory, run one follow-up structured search with memory_kinds=['plan'] and keywords from the question before concluding the answer is not in memory."
+          ]
+        },
+        "solves": "Search failures occur when a question about future plans is answered while the agent restricts retrieval to memory_kind 'event', which excludes stored plan memories that directly state the planned activity. Future questions phrased with 'planning', 'plans to', or 'upcoming' should retrieve both 'event' and 'plan' kinds. Do not apply this when the question concerns only completed past events or current states, where 'event' kind is sufficient.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-49_conv-49_qa_0134",
+        "source_failure_id": "access_conv-49_conv-49_qa_0134",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:35:36Z"
+      },
+      {
+        "candidate_id": "cand_access_d573911eda41",
+        "skill_id": "sk_access_cbbe647adb",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Morphological-Expansion-For-Event-Counts",
+          "description": "When a question asks to count or enumerate all memories of an action or event, expand the action verb to its morphological variants and synonyms (e.g., win/won/wins/winning) and continue searching until a search returns no new relevant memories.",
+          "content": [
+            "If the question asks for a count or full enumeration of events involving an action verb (e.g., 'how many games has John mentioned winning'), do not rely only on the exact keyword form. Search with morphological variants and synonyms of the verb (win, won, winning, wins, beat, victory) using keyword and semantic/hybrid strategies.",
+            "Before answering, verify recall: run one more expanded search if the latest search returned previously unseen memories that match the action; stop when a search returns no new relevant memories, then compute the count from all uniquely retrieved matching memories."
+          ]
+        },
+        "solves": "The general failure is that exact-keyword search misses morphological variants of the action verb, causing undercounting when a question requires enumerating all matching event memories. This Skill applies when a future question asks how many or enumerate all instances of an action/event, where all relevant memories must be collected. It must not apply to single-fact lookup questions that are answered by one explicit match, where variant expansion is unnecessary.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-43_conv-43_qa_0017",
+        "source_failure_id": "access_conv-43_conv-43_qa_0017",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:32:13Z"
+      }
+    ],
+    "retrieved_skill_ids": [],
+    "relations": []
+  },
+  "plan": {
+    "transaction_id": "tx_access_bank1_new_build_0009",
+    "side": "access",
+    "base_bank_version": "v000",
+    "candidate_resolutions": [
+      {
+        "candidate_id": "cand_access_069770a0e916",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_broaden_kinds_future_plans"
+        ],
+        "reason": "No existing Skill covers broadening memory kinds for future plans/projects."
+      },
+      {
+        "candidate_id": "cand_access_0d7c14cf593a",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_rephrase_retry"
+        ],
+        "reason": "No existing Skill covers rephrasing before no-answer."
+      },
+      {
+        "candidate_id": "cand_access_4ce2a00bf9aa",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_followup_location_search"
+        ],
+        "reason": "No existing Skill covers follow-up location search for activity events."
+      },
+      {
+        "candidate_id": "cand_access_5a83b31aed28",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_precise_object_missing"
+        ],
+        "reason": "No existing Skill covers using precise object for missing preference answers."
+      },
+      {
+        "candidate_id": "cand_access_6e83f53f9b20",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_broaden_kinds_visited_places"
+        ],
+        "reason": "No existing Skill covers broadening memory kinds for visited places."
+      },
+      {
+        "candidate_id": "cand_access_7cbd2c0c1124",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_supplementary_activity_retrieval"
+        ],
+        "reason": "No existing Skill covers supplementary activity retrieval."
+      },
+      {
+        "candidate_id": "cand_access_b3a76acb92bc",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_category_concrete_search"
+        ],
+        "reason": "No existing Skill covers category-question concrete-instance search."
+      },
+      {
+        "candidate_id": "cand_access_cbde365b5b83",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_include_plan_memories"
+        ],
+        "reason": "No existing Skill covers including plan memories for planned events."
+      },
+      {
+        "candidate_id": "cand_access_d573911eda41",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_morphological_expansion_counts"
+        ],
+        "reason": "No existing Skill covers morphological expansion for event counts."
+      }
+    ],
+    "operations": [
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_broaden_kinds_future_plans",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Broaden Memory Kinds for Future Plans",
+        "description": "Use when a question asks about upcoming plans, projects, or goals.",
+        "content": [
+          "When a question asks about a person's future plans, projects, or goals, do not restrict memory_kind to 'plan' only; include 'event' and 'state' kinds or omit the kind filter.",
+          "Run at least one retrieval that includes memory_kinds ['event', 'state', 'plan'] or performs a structured search by predicate 'project'/'plan' with the same person and relevant time window before concluding evidence is insufficient.",
+          "Stop as soon as sufficient supporting evidence is found; do not add extra topic-specific searches or expand the time window further."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_069770a0e916"
+        ],
+        "reason": "Creating Skill for broadening memory kinds in future plans retrieval.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_rephrase_retry",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Rephrase and Retry Before No-Answer",
+        "description": "Use when a search for a named fact, motto, phrase, or quote returns no direct match.",
+        "content": [
+          "Before answering 'No information available' after a search, run at least one additional search with a rephrased query when the question asks for a specific named fact, motto, phrase, or attribute value. Include possessive forms, synonyms, and related descriptive terms.",
+          "Prefer a hybrid or semantic search strategy for the rephrased query. Stop after one additional search unless the new results suggest a clearly promising additional variation.",
+          "If the rephrased search also yields no relevant evidence, answer 'No information available' with the evidence explicitly listed."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_0d7c14cf593a"
+        ],
+        "reason": "Creating Skill for rephrasing before concluding no information.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_followup_location_search",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Follow-up Location Search for Activity Events",
+        "description": "Use when answering 'where did [person] [discover/do] [thing]?' and the activity memory lacks a location.",
+        "content": [
+          "Before answering a location question, inspect the evidence memory for an explicit location. If the directly relevant memory has no place, run one additional search combining the person, a time window around that memory's date, and location terms such as trip, traveled, visited, retreat, city, or country.",
+          "Prefer the memory that explicitly mentions the activity asked about; do not answer with a thematically similar memory unless it also mentions that activity. Stop once a location-bearing memory from the same time window is found."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_4ce2a00bf9aa"
+        ],
+        "reason": "Creating Skill for follow-up location search.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_precise_object_missing",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Precise Object for Missing Preference Answers",
+        "description": "Use when a question asks what a person misses, longs for, or finds lacking in a place.",
+        "content": [
+          "When a user asks what X misses/longs for/lacks in a location, first check whether any retrieved memory states the missed object explicitly.",
+          "If such an explicit statement exists, answer with that specific object (or a close paraphrase) instead of a broader category that the same evidence might also imply.",
+          "If no retrieved memory names the object explicitly, proceed with the usual synthesis from multiple memories; do not force an unstated object."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_5a83b31aed28"
+        ],
+        "reason": "Creating Skill for precise object in missing preference answers.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_broaden_kinds_visited_places",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Broaden Memory Kinds for Visited Places",
+        "description": "Use when a question asks which cities or places a person has visited or been to.",
+        "content": [
+          "When a question asks to enumerate the cities or places a person has visited or been to, do not set memory_kinds to only 'event'. Include 'plan' and 'state' kinds, or omit the memory_kinds filter entirely.",
+          "Run at least one search with the broadened or removed filter and merge the results before forming the answer.",
+          "Stop once the evidence is sufficient to list the places; do not run further searches for every possible location."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_6e83f53f9b20"
+        ],
+        "reason": "Creating Skill for broadening memory kinds for visited places.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_supplementary_activity_retrieval",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Supplementary Activity Retrieval",
+        "description": "Use when a question asks what a person does to supplement, complement, or add to a primary activity.",
+        "content": [
+          "When a question asks what a person does to supplement, complement, or add to a primary activity, do not stop after the first search returns one supporting memory; the question often expects a set of distinct supplementary activities.",
+          "Run at least one additional search with the primary activity name removed; use complementary-activity descriptors and generic terms like 'workout' or 'exercise routine'.",
+          "Before answering, compare the distinct activities found across all retrieved memories; if only one distinct supplementary activity is found but the question implies multiple, run one more broader search before concluding sufficiency.",
+          "Stop adding searches once an additional search returns no new distinct supplementary activity."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_7cbd2c0c1124"
+        ],
+        "reason": "Creating Skill for supplementary activity retrieval.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_category_concrete_search",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Category-question Concrete-instance Search",
+        "description": "Use when a question asks for activities or items in a broad category and initial retrieval returns no concrete instances.",
+        "content": [
+          "When a question asks for a list in a broad category and the initial search returns no memories naming concrete items, run 1-2 additional hybrid or keyword searches pairing the subject's name with common concrete examples of that category.",
+          "Stop once relevant concrete-item memories are found; do not enumerate exhaustively."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_b3a76acb92bc"
+        ],
+        "reason": "Creating Skill for category-question concrete-instance search.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_include_plan_memories",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Include Plan Memories for Planned Events",
+        "description": "Use when a question asks about a planned or upcoming event/activity.",
+        "content": [
+          "Before answering a question about what someone plans to do or an upcoming event, include both 'event' and 'plan' as memory_kinds in the first search.",
+          "If the initial hybrid search with event+plan returns no relevant plan memory, run one follow-up structured search with memory_kinds=['plan'] and keywords from the question before concluding the answer is not in memory."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_cbde365b5b83"
+        ],
+        "reason": "Creating Skill for including plan memories in planned events retrieval.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_morphological_expansion_counts",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Morphological Expansion for Event Counts",
+        "description": "Use when a question asks to count or enumerate all memories of an action or event.",
+        "content": [
+          "If the question asks for a count or full enumeration of events involving an action verb, do not rely only on the exact keyword form. Search with morphological variants and synonyms of the verb using keyword and semantic/hybrid strategies.",
+          "Before answering, verify recall: run one more expanded search if the latest search returned previously unseen memories that match the action; stop when a search returns no new relevant memories, then compute the count from all uniquely retrieved matching memories."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_d573911eda41"
+        ],
+        "reason": "Creating Skill for morphological expansion in event counts.",
+        "hard_delete": false
+      }
+    ]
+  },
+  "status": "planned"
+}

@@ -1,0 +1,725 @@
+{
+  "schema_version": "access_diagnosis_v3",
+  "diagnosis_id": "access_conv-48_conv-48_qa_0106",
+  "diagnosis_type": "ACCESS_FAILURE",
+  "status": "completed",
+  "judge_run_id": "bank2_from_v1_new_train_judge",
+  "diagnosis_run_id": "bank2_from_v1_new_diag",
+  "source_runtime_run": "bank2_v1new_train_seq_conv-48",
+  "conversation_id": "conv-48",
+  "qa_id": "conv-48_qa_0106",
+  "snapshot_commit_id": 30,
+  "question": "What is Jolene's favorite book which she mentioned on 4 February, 2023?",
+  "reference_answer": "\"Sapiens\"",
+  "problem_found": true,
+  "reason": "The current memory version mem_conv-48_0019_v1 explicitly states that Jolene is currently reading 'Sapiens' by Yuval Noah Harari, with a world_start date of 2023-02-04, which directly supports the reference answer. Other returned memories do not mention 'Sapiens' or the specific date.",
+  "confidence": 1.0,
+  "review_required": false,
+  "skill_trace": {
+    "trace_id": "skilltrace_access_bank2_v1new_train_seq_conv-48_conv-48_conv-48_qa_0106",
+    "side": "access",
+    "bank_version": "bank1",
+    "query": "What is Jolene's favorite book which she mentioned on 4 February, 2023?",
+    "top_k": 2,
+    "disclose_k": 5,
+    "min_score": 0.2,
+    "scored_fields": [
+      "name",
+      "description"
+    ],
+    "scoring_weights": {
+      "semantic": 0.7,
+      "bm25": 0.3
+    },
+    "retrieval_method": "bank1_hybrid_router",
+    "candidate_k": 10,
+    "reranker": "bank1_applicability_router",
+    "reranker_error": "",
+    "selected": [
+      {
+        "skill_id": "sk_access_date_specific_followup",
+        "version_id": "sk_access_date_specific_followup_v1",
+        "rank": 5,
+        "score": 0.28547748923301697,
+        "semantic_score": 0.21841558814048767,
+        "lexical_score": 0.44195523858070374,
+        "name": "Date-specific retrieval follow-up",
+        "description": "When a query asks about an event on a specific date and the first memory search returns no event on that date, run an additional search using the date and subject before answering no information.",
+        "content": [
+          "If a user question contains a concrete date and a subject (person/entity), and your initial retrieval returned no memory whose world_start matches that date, perform at least one additional search that combines the subject with the date as a keyword or structured filter before answering 'no information'.",
+          "Do not rely only on semantic similarity for date-specific questions; use date-filtered or keyword retrieval to catch events whose phrasing differs from the query."
+        ],
+        "selected": true,
+        "rerank_rank": 1,
+        "rerank_reason": "The question specifies a date (4 February, 2023) and asks about a specific mention by Jolene. The skill is designed to handle such date-specific queries by performing additional searches when initial results are missing."
+      }
+    ],
+    "nearby_not_selected": [
+      {
+        "skill_id": "sk_access_creative_work",
+        "version_id": "sk_access_creative_work_v1",
+        "rank": 1,
+        "score": 0.3849254250526428,
+        "semantic_score": 0.12132202088832855,
+        "lexical_score": 1.0,
+        "name": "Retrieve Generic Creative Work Descriptions",
+        "description": "When a question asks what a specific creative work (screenplay, book, film, project) is about, use before hybrid search to also query generic descriptors like 'creative project' and 'completed project' and inspect event/achievement memories.",
+        "content": [
+          "When the user asks about the subject of a specific creative work, do not restrict search to the exact artifact term and ordinal; include query expansions and keywords using generic descriptors such as 'creative project', 'completed project', 'recent work', plus thematic/content words from the question.",
+          "If initial results contain no memory stating the completed work's subject, search or inspect event memories with predicates like achievement or completion rather than only in-progress plans or titles, since completed works may be stored generically.",
+          "Judge evidence sufficiency against all retrieved current related memories, not only those mentioning the exact artifact type; a memory describing a completed creative project with matching themes can satisfy the question."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_subject_centric_retry",
+        "version_id": "sk_access_subject_centric_retry_v1",
+        "rank": 2,
+        "score": 0.37214720249176025,
+        "semantic_score": 0.18746671080589294,
+        "lexical_score": 0.8030682802200317,
+        "name": "Subject-centric retry for theme queries",
+        "description": "Use when a question asks about a theme/pattern emerging in one person's life (especially 'as mentioned by another').",
+        "content": [
+          "When a question asks about a theme, pattern, or trend emerging in a specific person's life, do not rely only on queries containing the abstract theme word or a mentioner's name; those terms may be absent from stored episodic memories.",
+          "If the first hybrid search returns only unrelated general memories, run at least one follow-up search focused on the subject's own recent activities, interactions, and encounters (e.g., subject + 'helping', 'encounters', 'recurring'), and do not include the abstract theme word or the other person's name.",
+          "Before answering, verify the retrieved evidence actually reflects the asked theme; if the evidence contains only generic plans, relationships, or unrelated events, continue searching the subject's discrete episodes until a recurring behavioral pattern is found or exhausted."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_include_preference_enumeration",
+        "version_id": "sk_access_include_preference_enumeration_v1",
+        "rank": 3,
+        "score": 0.32524508237838745,
+        "semantic_score": 0.16082428395748138,
+        "lexical_score": 0.7088935971260071,
+        "name": "Include preference memories when enumerating consumed or favorite items",
+        "description": "When a question asks what a person has read, watched, liked, or consumed, do not restrict the search to event memories; include preference memories too.",
+        "content": [
+          "If the question asks for a list or factual enumeration of a person's read/watched/liked/consumed items (e.g., books, movies, shows, foods, hobbies), run the initial search without a restrictive memory_kind filter, or explicitly include both 'event' and 'preference' memory kinds.",
+          "When the first search only returns vague descriptions or fails to name concrete items, repeat the search with preference memories included and inspect any preference memories returned, since they often hold specific titles and ongoing favorites."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_current_activity_kinds",
+        "version_id": "sk_access_current_activity_kinds_v1",
+        "rank": 4,
+        "score": 0.3185233771800995,
+        "semantic_score": 0.13229656219482422,
+        "lexical_score": 0.7530525922775269,
+        "name": "Include event memories for current-activity queries",
+        "description": "When a query asks what someone is currently reading, doing, working on, or otherwise engaged in, do not restrict memory_kinds to 'state'; search both 'state' and 'event' memories because ongoing activities are often stored as events.",
+        "content": [
+          "If a question asks about a person's current activity (e.g., currently reading, working on, building, studying), set memory_kinds to include both 'state' and 'event', or omit the memory_kinds filter, since ongoing activities are typically stored as event memories.",
+          "If a search restricted to 'state' returns no supporting evidence for an activity question, retry with broader memory_kinds before answering 'no information available'."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_which_activity",
+        "version_id": "sk_access_which_activity_v1",
+        "rank": 6,
+        "score": 0.28244906663894653,
+        "semantic_score": 0.064876988530159,
+        "lexical_score": 0.7901172041893005,
+        "name": "Retrieve interests for which-activity questions",
+        "description": "When a question asks which activity or hobby gives a person a benefit (e.g., escape, relaxation, imagination), retrieve the person's known interests from profile or preference memories and use them as candidate search terms.",
+        "content": [
+          "When a question asks which activity or hobby gives a person a benefit, do not limit retrieval to memories that explicitly contain the benefit words. Retrieve the person's known hobbies/interests from profile or preference memories and treat them as candidate activities.",
+          "Before answering, run an additional memory search for each known interest/hobby term, and consider those results even if the benefit words are absent from the returned memory text.",
+          "If several interest memories compete, compare them using direct preference statements, frequency, and recency before selecting the answer."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      }
+    ]
+  },
+  "repair_package": {
+    "question": "What is Jolene's favorite book which she mentioned on 4 February, 2023?",
+    "reference_answer": "\"Sapiens\"",
+    "missing_useful_current_memories": [
+      {
+        "version_id": "mem_conv-48_0019_v1",
+        "memory_id": "mem_conv-48_0019",
+        "version_no": 1,
+        "content": "Jolene is currently reading 'Sapiens' by Yuval Noah Harari, finding it fascinating for its insights into human history and technology's impact.",
+        "memory_kind": "preference",
+        "subject": "Jolene",
+        "predicate": "reading",
+        "object_text": "Sapiens",
+        "world_start": "2023-02-04",
+        "world_end": null,
+        "update_type": "add"
+      }
+    ],
+    "retrieved_current_version_ids": [
+      "mem_conv-48_0002_v1",
+      "mem_conv-48_0004_v1",
+      "mem_conv-48_0011_v2",
+      "mem_conv-48_0012_v2",
+      "mem_conv-48_0013_v1",
+      "mem_conv-48_0016_v1",
+      "mem_conv-48_0020_v1",
+      "mem_conv-48_0085_v1"
+    ],
+    "search_steps": [
+      {
+        "action_id": "access_bank2_v1new_train_seq_conv-48_conv-48_conv-48_qa_0106_a000",
+        "step_index": 0,
+        "action_type": "search_memory",
+        "request": {
+          "action": "search_memory",
+          "arguments": {
+            "strategy": "hybrid",
+            "query": "Jolene's favorite book mentioned on 4 February 2023",
+            "query_expansions": [
+              "book Jolene mentioned on 4 Feb 2023",
+              "Jolene's favorite book on 2023-02-04",
+              "book mentioned by Jolene on February 4, 2023"
+            ],
+            "keywords": [
+              "Jolene",
+              "book",
+              "2023-02-04"
+            ],
+            "depth": "standard",
+            "memory_kinds": [
+              "event"
+            ],
+            "time_mode": "point",
+            "target_time": "2023-02-04"
+          },
+          "reason": "To find the favorite book Jolene mentioned on 4 February 2023"
+        },
+        "returned_memories": [
+          {
+            "version_id": "mem_conv-48_0020_v1",
+            "memory_id": "mem_conv-48_0020",
+            "content": "Jolene recently read 'Avalanche' by Neal Stephenson in one sitting, highlighting the book's engaging narrative and thought-provoking content.",
+            "memory_kind": "event",
+            "subject": "Jolene",
+            "world_start": "2023-02-04",
+            "world_end": null,
+            "score": 0.018,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-48_0004_v1",
+            "memory_id": "mem_conv-48_0004",
+            "content": "Jolene is motivated to pursue her goals and is reminded of this by a pendant with a symbol representing freedom, which was given to her by her mother in Paris in 2010.",
+            "memory_kind": "event",
+            "subject": "Jolene",
+            "world_start": "2022-01-01",
+            "world_end": null,
+            "score": 0.0147,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-48_0013_v1",
+            "memory_id": "mem_conv-48_0013",
+            "content": "Jolene is working on a robotics project with her engineering professor, feeling excited and nervous at first but now enjoying the creative problem-solving aspect of designing and programming the robot.",
+            "memory_kind": "event",
+            "subject": "Jolene",
+            "world_start": "2023-02-01",
+            "world_end": null,
+            "score": 0.0134,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-48_0011_v2",
+            "memory_id": "mem_conv-48_0011",
+            "content": "Jolene owns a snake that enjoys watching her relax and brings a sense of calm. She previously owned two snakes named Susie and Seraphim, which she acquired in Paris. They brought her comfort and joy, especially during gaming sessions.",
+            "memory_kind": "event",
+            "subject": "Jolene",
+            "world_start": "2023-01-27",
+            "world_end": null,
+            "score": 0.0128,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-48_0002_v1",
+            "memory_id": "mem_conv-48_0002",
+            "content": "Jolene's mother passed away last year. She has many memories in her room in her mother's house and keeps a pendant that was given to her in Paris in 2010, which represents freedom and reminds her to pursue her goals.",
+            "memory_kind": "event",
+            "subject": "Jolene",
+            "world_start": "2022-01-01",
+            "world_end": null,
+            "score": 0.0126,
+            "paths": [
+              "semantic",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-48_0085_v1",
+            "memory_id": "mem_conv-48_0085",
+            "content": "Jolene adopted a pet named Susie two years ago when she was feeling lonely and wanted companionship.",
+            "memory_kind": "event",
+            "subject": "Jolene",
+            "world_start": "2021-08-01",
+            "world_end": null,
+            "score": 0.0125,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-48_0012_v2",
+            "memory_id": "mem_conv-48_0012",
+            "content": "Jolene and her partner enjoy playing video games, including 'Detroit' and planning to play 'Walking Dead' next Saturday. Jolene developed a passion for video games starting at age 10, with her parents supporting her by playing games with her and providing encouragement.",
+            "memory_kind": "event",
+            "subject": "Jolene",
+            "world_start": "2023-01-27",
+            "world_end": null,
+            "score": 0.0116,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-48_0016_v1",
+            "memory_id": "mem_conv-48_0016",
+            "content": "Jolene successfully designed and built a sustainable water purifier for a rural community, marking a major milestone in her engineering career.",
+            "memory_kind": "event",
+            "subject": "Jolene",
+            "world_start": "2023-02-01",
+            "world_end": null,
+            "score": 0.0094,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          }
+        ],
+        "returned_version_ids": [
+          "mem_conv-48_0020_v1",
+          "mem_conv-48_0004_v1",
+          "mem_conv-48_0013_v1",
+          "mem_conv-48_0011_v2",
+          "mem_conv-48_0002_v1",
+          "mem_conv-48_0085_v1",
+          "mem_conv-48_0012_v2",
+          "mem_conv-48_0016_v1"
+        ]
+      },
+      {
+        "action_id": "access_bank2_v1new_train_seq_conv-48_conv-48_conv-48_qa_0106_a001",
+        "step_index": 1,
+        "action_type": "answer",
+        "request": {
+          "action": "answer",
+          "arguments": {
+            "answer": "Avalanche",
+            "evidence_version_ids": [
+              "mem_conv-48_0020_v1"
+            ],
+            "confidence": 0.95
+          },
+          "reason": "The memory indicates that Jolene recently read 'Avalanche' by Neal Stephenson on 4 February 2023, which aligns with the question."
+        },
+        "returned_memories": [],
+        "returned_version_ids": []
+      }
+    ],
+    "reason": "The current memory version mem_conv-48_0019_v1 explicitly states that Jolene is currently reading 'Sapiens' by Yuval Noah Harari, with a world_start date of 2023-02-04, which directly supports the reference answer. Other returned memories do not mention 'Sapiens' or the specific date.",
+    "skill_trace": {
+      "trace_id": "skilltrace_access_bank2_v1new_train_seq_conv-48_conv-48_conv-48_qa_0106",
+      "side": "access",
+      "bank_version": "bank1",
+      "query": "What is Jolene's favorite book which she mentioned on 4 February, 2023?",
+      "top_k": 2,
+      "disclose_k": 5,
+      "min_score": 0.2,
+      "scored_fields": [
+        "name",
+        "description"
+      ],
+      "scoring_weights": {
+        "semantic": 0.7,
+        "bm25": 0.3
+      },
+      "retrieval_method": "bank1_hybrid_router",
+      "candidate_k": 10,
+      "reranker": "bank1_applicability_router",
+      "reranker_error": "",
+      "selected": [
+        {
+          "skill_id": "sk_access_date_specific_followup",
+          "version_id": "sk_access_date_specific_followup_v1",
+          "rank": 5,
+          "score": 0.28547748923301697,
+          "semantic_score": 0.21841558814048767,
+          "lexical_score": 0.44195523858070374,
+          "name": "Date-specific retrieval follow-up",
+          "description": "When a query asks about an event on a specific date and the first memory search returns no event on that date, run an additional search using the date and subject before answering no information.",
+          "content": [
+            "If a user question contains a concrete date and a subject (person/entity), and your initial retrieval returned no memory whose world_start matches that date, perform at least one additional search that combines the subject with the date as a keyword or structured filter before answering 'no information'.",
+            "Do not rely only on semantic similarity for date-specific questions; use date-filtered or keyword retrieval to catch events whose phrasing differs from the query."
+          ],
+          "selected": true,
+          "rerank_rank": 1,
+          "rerank_reason": "The question specifies a date (4 February, 2023) and asks about a specific mention by Jolene. The skill is designed to handle such date-specific queries by performing additional searches when initial results are missing."
+        }
+      ],
+      "nearby_not_selected": [
+        {
+          "skill_id": "sk_access_creative_work",
+          "version_id": "sk_access_creative_work_v1",
+          "rank": 1,
+          "score": 0.3849254250526428,
+          "semantic_score": 0.12132202088832855,
+          "lexical_score": 1.0,
+          "name": "Retrieve Generic Creative Work Descriptions",
+          "description": "When a question asks what a specific creative work (screenplay, book, film, project) is about, use before hybrid search to also query generic descriptors like 'creative project' and 'completed project' and inspect event/achievement memories.",
+          "content": [
+            "When the user asks about the subject of a specific creative work, do not restrict search to the exact artifact term and ordinal; include query expansions and keywords using generic descriptors such as 'creative project', 'completed project', 'recent work', plus thematic/content words from the question.",
+            "If initial results contain no memory stating the completed work's subject, search or inspect event memories with predicates like achievement or completion rather than only in-progress plans or titles, since completed works may be stored generically.",
+            "Judge evidence sufficiency against all retrieved current related memories, not only those mentioning the exact artifact type; a memory describing a completed creative project with matching themes can satisfy the question."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_subject_centric_retry",
+          "version_id": "sk_access_subject_centric_retry_v1",
+          "rank": 2,
+          "score": 0.37214720249176025,
+          "semantic_score": 0.18746671080589294,
+          "lexical_score": 0.8030682802200317,
+          "name": "Subject-centric retry for theme queries",
+          "description": "Use when a question asks about a theme/pattern emerging in one person's life (especially 'as mentioned by another').",
+          "content": [
+            "When a question asks about a theme, pattern, or trend emerging in a specific person's life, do not rely only on queries containing the abstract theme word or a mentioner's name; those terms may be absent from stored episodic memories.",
+            "If the first hybrid search returns only unrelated general memories, run at least one follow-up search focused on the subject's own recent activities, interactions, and encounters (e.g., subject + 'helping', 'encounters', 'recurring'), and do not include the abstract theme word or the other person's name.",
+            "Before answering, verify the retrieved evidence actually reflects the asked theme; if the evidence contains only generic plans, relationships, or unrelated events, continue searching the subject's discrete episodes until a recurring behavioral pattern is found or exhausted."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_include_preference_enumeration",
+          "version_id": "sk_access_include_preference_enumeration_v1",
+          "rank": 3,
+          "score": 0.32524508237838745,
+          "semantic_score": 0.16082428395748138,
+          "lexical_score": 0.7088935971260071,
+          "name": "Include preference memories when enumerating consumed or favorite items",
+          "description": "When a question asks what a person has read, watched, liked, or consumed, do not restrict the search to event memories; include preference memories too.",
+          "content": [
+            "If the question asks for a list or factual enumeration of a person's read/watched/liked/consumed items (e.g., books, movies, shows, foods, hobbies), run the initial search without a restrictive memory_kind filter, or explicitly include both 'event' and 'preference' memory kinds.",
+            "When the first search only returns vague descriptions or fails to name concrete items, repeat the search with preference memories included and inspect any preference memories returned, since they often hold specific titles and ongoing favorites."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_current_activity_kinds",
+          "version_id": "sk_access_current_activity_kinds_v1",
+          "rank": 4,
+          "score": 0.3185233771800995,
+          "semantic_score": 0.13229656219482422,
+          "lexical_score": 0.7530525922775269,
+          "name": "Include event memories for current-activity queries",
+          "description": "When a query asks what someone is currently reading, doing, working on, or otherwise engaged in, do not restrict memory_kinds to 'state'; search both 'state' and 'event' memories because ongoing activities are often stored as events.",
+          "content": [
+            "If a question asks about a person's current activity (e.g., currently reading, working on, building, studying), set memory_kinds to include both 'state' and 'event', or omit the memory_kinds filter, since ongoing activities are typically stored as event memories.",
+            "If a search restricted to 'state' returns no supporting evidence for an activity question, retry with broader memory_kinds before answering 'no information available'."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_which_activity",
+          "version_id": "sk_access_which_activity_v1",
+          "rank": 6,
+          "score": 0.28244906663894653,
+          "semantic_score": 0.064876988530159,
+          "lexical_score": 0.7901172041893005,
+          "name": "Retrieve interests for which-activity questions",
+          "description": "When a question asks which activity or hobby gives a person a benefit (e.g., escape, relaxation, imagination), retrieve the person's known interests from profile or preference memories and use them as candidate search terms.",
+          "content": [
+            "When a question asks which activity or hobby gives a person a benefit, do not limit retrieval to memories that explicitly contain the benefit words. Retrieve the person's known hobbies/interests from profile or preference memories and treat them as candidate activities.",
+            "Before answering, run an additional memory search for each known interest/hobby term, and consider those results even if the benefit words are absent from the returned memory text.",
+            "If several interest memories compete, compare them using direct preference statements, frequency, and recency before selecting the answer."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        }
+      ]
+    }
+  },
+  "access_run_id": "access_bank2_v1new_train_seq_conv-48_conv-48_conv-48_qa_0106",
+  "claims": [
+    {
+      "claim": "Jolene's favorite book mentioned on 4 February 2023 is 'Sapiens'.",
+      "supporting_version_ids": [
+        "mem_conv-48_0019_v1"
+      ],
+      "coverage": null
+    }
+  ],
+  "current_related_memories": [
+    {
+      "version_id": "mem_conv-48_0019_v1",
+      "memory_id": "mem_conv-48_0019",
+      "version_no": 1,
+      "content": "Jolene is currently reading 'Sapiens' by Yuval Noah Harari, finding it fascinating for its insights into human history and technology's impact.",
+      "memory_kind": "preference",
+      "subject": "Jolene",
+      "predicate": "reading",
+      "object_text": "Sapiens",
+      "world_start": "2023-02-04",
+      "world_end": null,
+      "update_type": "add"
+    }
+  ],
+  "useful_current_version_ids": [
+    "mem_conv-48_0019_v1"
+  ],
+  "retrieved_current_version_ids": [
+    "mem_conv-48_0002_v1",
+    "mem_conv-48_0004_v1",
+    "mem_conv-48_0011_v2",
+    "mem_conv-48_0012_v2",
+    "mem_conv-48_0013_v1",
+    "mem_conv-48_0016_v1",
+    "mem_conv-48_0020_v1",
+    "mem_conv-48_0085_v1"
+  ],
+  "missing_useful_current_version_ids": [
+    "mem_conv-48_0019_v1"
+  ],
+  "search_steps": [
+    {
+      "action_id": "access_bank2_v1new_train_seq_conv-48_conv-48_conv-48_qa_0106_a000",
+      "step_index": 0,
+      "action_type": "search_memory",
+      "request": {
+        "action": "search_memory",
+        "arguments": {
+          "strategy": "hybrid",
+          "query": "Jolene's favorite book mentioned on 4 February 2023",
+          "query_expansions": [
+            "book Jolene mentioned on 4 Feb 2023",
+            "Jolene's favorite book on 2023-02-04",
+            "book mentioned by Jolene on February 4, 2023"
+          ],
+          "keywords": [
+            "Jolene",
+            "book",
+            "2023-02-04"
+          ],
+          "depth": "standard",
+          "memory_kinds": [
+            "event"
+          ],
+          "time_mode": "point",
+          "target_time": "2023-02-04"
+        },
+        "reason": "To find the favorite book Jolene mentioned on 4 February 2023"
+      },
+      "returned_memories": [
+        {
+          "version_id": "mem_conv-48_0020_v1",
+          "memory_id": "mem_conv-48_0020",
+          "content": "Jolene recently read 'Avalanche' by Neal Stephenson in one sitting, highlighting the book's engaging narrative and thought-provoking content.",
+          "memory_kind": "event",
+          "subject": "Jolene",
+          "world_start": "2023-02-04",
+          "world_end": null,
+          "score": 0.018,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-48_0004_v1",
+          "memory_id": "mem_conv-48_0004",
+          "content": "Jolene is motivated to pursue her goals and is reminded of this by a pendant with a symbol representing freedom, which was given to her by her mother in Paris in 2010.",
+          "memory_kind": "event",
+          "subject": "Jolene",
+          "world_start": "2022-01-01",
+          "world_end": null,
+          "score": 0.0147,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-48_0013_v1",
+          "memory_id": "mem_conv-48_0013",
+          "content": "Jolene is working on a robotics project with her engineering professor, feeling excited and nervous at first but now enjoying the creative problem-solving aspect of designing and programming the robot.",
+          "memory_kind": "event",
+          "subject": "Jolene",
+          "world_start": "2023-02-01",
+          "world_end": null,
+          "score": 0.0134,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-48_0011_v2",
+          "memory_id": "mem_conv-48_0011",
+          "content": "Jolene owns a snake that enjoys watching her relax and brings a sense of calm. She previously owned two snakes named Susie and Seraphim, which she acquired in Paris. They brought her comfort and joy, especially during gaming sessions.",
+          "memory_kind": "event",
+          "subject": "Jolene",
+          "world_start": "2023-01-27",
+          "world_end": null,
+          "score": 0.0128,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-48_0002_v1",
+          "memory_id": "mem_conv-48_0002",
+          "content": "Jolene's mother passed away last year. She has many memories in her room in her mother's house and keeps a pendant that was given to her in Paris in 2010, which represents freedom and reminds her to pursue her goals.",
+          "memory_kind": "event",
+          "subject": "Jolene",
+          "world_start": "2022-01-01",
+          "world_end": null,
+          "score": 0.0126,
+          "paths": [
+            "semantic",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-48_0085_v1",
+          "memory_id": "mem_conv-48_0085",
+          "content": "Jolene adopted a pet named Susie two years ago when she was feeling lonely and wanted companionship.",
+          "memory_kind": "event",
+          "subject": "Jolene",
+          "world_start": "2021-08-01",
+          "world_end": null,
+          "score": 0.0125,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-48_0012_v2",
+          "memory_id": "mem_conv-48_0012",
+          "content": "Jolene and her partner enjoy playing video games, including 'Detroit' and planning to play 'Walking Dead' next Saturday. Jolene developed a passion for video games starting at age 10, with her parents supporting her by playing games with her and providing encouragement.",
+          "memory_kind": "event",
+          "subject": "Jolene",
+          "world_start": "2023-01-27",
+          "world_end": null,
+          "score": 0.0116,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-48_0016_v1",
+          "memory_id": "mem_conv-48_0016",
+          "content": "Jolene successfully designed and built a sustainable water purifier for a rural community, marking a major milestone in her engineering career.",
+          "memory_kind": "event",
+          "subject": "Jolene",
+          "world_start": "2023-02-01",
+          "world_end": null,
+          "score": 0.0094,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        }
+      ],
+      "returned_version_ids": [
+        "mem_conv-48_0020_v1",
+        "mem_conv-48_0004_v1",
+        "mem_conv-48_0013_v1",
+        "mem_conv-48_0011_v2",
+        "mem_conv-48_0002_v1",
+        "mem_conv-48_0085_v1",
+        "mem_conv-48_0012_v2",
+        "mem_conv-48_0016_v1"
+      ]
+    },
+    {
+      "action_id": "access_bank2_v1new_train_seq_conv-48_conv-48_conv-48_qa_0106_a001",
+      "step_index": 1,
+      "action_type": "answer",
+      "request": {
+        "action": "answer",
+        "arguments": {
+          "answer": "Avalanche",
+          "evidence_version_ids": [
+            "mem_conv-48_0020_v1"
+          ],
+          "confidence": 0.95
+        },
+        "reason": "The memory indicates that Jolene recently read 'Avalanche' by Neal Stephenson on 4 February 2023, which aligns with the question."
+      },
+      "returned_memories": [],
+      "returned_version_ids": []
+    }
+  ]
+}

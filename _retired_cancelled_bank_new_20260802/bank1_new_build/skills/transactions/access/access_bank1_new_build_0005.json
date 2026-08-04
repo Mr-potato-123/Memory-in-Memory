@@ -1,0 +1,659 @@
+{
+  "batch": {
+    "batch_id": "access_bank1_new_build_0005",
+    "side": "access",
+    "base_bank_version": "v000",
+    "candidates": [
+      {
+        "candidate_id": "cand_access_03a27076ef50",
+        "skill_id": "sk_access_de86b4408f",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Relax recipient in recommendation searches",
+          "description": "When a question asks what one person recommended, suggested, or advised another within a time period and the initial search finds no event, the stored memory may omit the recipient's name.",
+          "content": [
+            "When answering 'what did A recommend/suggest/advise to B in period P?', note that the stored event may name only A and the recommended object, not B.",
+            "If the first search returns no matching event, run an additional search using A, action terms (recommend, suggested, must-visit, advised), and the time window P, without B in the query or keywords.",
+            "Also try a structured search on predicate types like recommendation with subject A and object category inferred from the question; verify the event's world_start is within P before using it as evidence."
+          ]
+        },
+        "solves": "Stored recommendation events may name only the recommender and object, not the recipient; a recipient-anchored query misses such memories and the agent stops after one search. The rule abstracts that question participants may be absent from memory content: before concluding no information, re-search by action terms plus recommender and time window, dropping the absent recipient. Applies to future who-recommended-what-to-whom questions, not when no such memory exists.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-43_conv-43_qa_0177",
+        "source_failure_id": "access_conv-43_conv-43_qa_0177",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:06:52Z"
+      },
+      {
+        "candidate_id": "cand_access_1126c34425ea",
+        "skill_id": "sk_access_ade6d9f4fe",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Broaden recommendation retrieval beyond recipient and date",
+          "description": "When a question asks what item one person recommended to another on a specific date and initial searches with both names and the date return no direct match, broaden retrieval before answering.",
+          "content": [
+            "If initial hybrid search for an item recommended by person A to person B on a date returns no memory explicitly naming both A and B or the date, run an additional hybrid search using only A plus the item category (e.g., book, movie, product) with time_mode none, and inspect current versions of top results.",
+            "During evidence checking, treat statements that A read, watched, finished, or highly recommends an item as supporting a recommendation even if B and the exact date are absent; do not require all question entities to match."
+          ]
+        },
+        "solves": "A direct search constrained by both named entities and a point-in-time date can miss a current merged memory with a strong recommendation that lacks the recipient and exact date. Broadening to the recommender plus item category, and accepting recommendation statements without full participant/time overlap, recovers such evidence. Applies to any 'what did A recommend to B on date' question when direct retrieval is inconclusive.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-43_conv-43_qa_0150",
+        "source_failure_id": "access_conv-43_conv-43_qa_0150",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:06:33Z"
+      },
+      {
+        "candidate_id": "cand_access_148023b4dfa9",
+        "skill_id": "sk_access_56b7401947",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Retrieve preference memories for subjective questions",
+          "description": "Use when a question asks what a person misses, likes, loves, values, or wants and initial hybrid results only restate behavior; add preference-kind memory retrieval and prefer the newest versions before answering.",
+          "content": [
+            "When the question asks about subjective feelings or preferences (misses, likes, loves, values, wants), run at least one structured memory search filtered to memory_kind=preference for that person, in addition to the hybrid search.",
+            "If initial results contain only indirect event/state restatements, issue another search with the person's name and terms like 'misses', 'loves', 'finds soothing', 'prefers', using a higher top_k and inspecting the newest version (highest version_no) of each returned memory ID.",
+            "Prefer the content of the newest enriched version of a relevant memory over older versions or indirect paraphrases; answer only from visible evidence."
+          ]
+        },
+        "solves": "Questions about what a person misses, likes, values, or wants can retrieve only indirect event/state memories while newer explicit preference memories are missed. Remedy: include a preference-kind structured search and inspect the newest version of each relevant memory before answering, preferring direct preference evidence over paraphrases. Applies to subjective feeling/preference questions; not to objective factual recalls.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-44_conv-44_qa_0014",
+        "source_failure_id": "access_conv-44_conv-44_qa_0014",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:06:43Z"
+      },
+      {
+        "candidate_id": "cand_access_4120ebf41279",
+        "skill_id": "sk_access_10eb61384d",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Expand recommendation queries to recommender's interest memories",
+          "description": "When a question asks what A recommends/suggests for B and initial search yields no direct evidence, run additional searches using A's hobbies, preferences, or enjoyed items before answering.",
+          "content": [
+            "If the question asks what one person recommends or suggests for another, first search explicitly for recommendation language, but if the top results lack a direct answer, immediately issue follow-up searches centered on the recommender's own interests, hobbies, or preferences (e.g., with terms like enjoy, plays, likes, favorite).",
+            "Before finalizing an answer to a recommendation question, verify you have searched for memories where the recommender is the subject and the predicate is a hobby, preference, or enjoyed activity; such memories often contain the actual recommended items.",
+            "When a search returns only tangential relational or planning memories, do not settle on partial evidence; expand top_k or vary query expansions to include the recommender's interest vocabulary before answering."
+          ]
+        },
+        "solves": "When a question asks for recommendations one person gives another, evidence may be stored as the recommender's own hobbies/likes rather than explicit recommendation. Diagnosed: hybrid search for 'games recommended by Jolene for Deborah' missed Jolene's hobby memory with game titles. Before concluding no evidence, search the recommender's interests. Applies to any future recommendation query where target's preferences are in the recommender's memories.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-48_conv-48_qa_0058",
+        "source_failure_id": "access_conv-48_conv-48_qa_0058",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:07:05Z"
+      },
+      {
+        "candidate_id": "cand_access_4e4d0bcfd168",
+        "skill_id": "sk_access_a586726106",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Corroborate list-answer items with targeted searches",
+          "description": "When a question asks for the ways, methods, or items a person uses for an activity, and a retrieved memory mentions a candidate item, run targeted follow-up searches using the item plus the person's name to find corroborating preference or event memories before answering.",
+          "content": [
+            "When a question asks for the ways, methods, or items a person uses for an activity, gather candidate items from both event memories and preference memories (e.g., what the person prefers, likes, or uses).",
+            "If a candidate item is supported by only one retrieved memory, run a targeted search using the item term combined with the person's name (e.g., '<person> <item>') to find corroborating or contradicting memories.",
+            "Include preference-oriented query variants such as 'prefers', 'likes', 'uses', 'enjoys' alongside action-oriented terms like 'methods', 'ways', 'enhances' when retrieving evidence for such questions."
+          ]
+        },
+        "solves": "Broad action-oriented queries missed a preference memory that supported part of the answer, causing an incomplete list. For list-seeking 'ways/how' questions, each candidate item should be corroborated by a targeted search combining the item with the person's name, since broad queries may miss preference memories. This applies to any future question asking for methods, ways, or items a person uses for an activity.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-48_conv-48_qa_0041",
+        "source_failure_id": "access_conv-48_conv-48_qa_0041",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:07:33Z"
+      },
+      {
+        "candidate_id": "cand_access_5d8e8dcaf6e1",
+        "skill_id": "sk_access_d55a8aedb4",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Expand recommendation queries to preference memories",
+          "description": "When a question asks what games, books, movies, or items one person recommends or would suggest for another, also search for that person's own stated preferences, favorites, likes, hobbies, and enjoyments, not only explicit 'recommend' wording.",
+          "content": [
+            "Before answering a question of the form 'What does X recommend/suggest for Y?', issue at least one search combining X's name with preference vocabulary: 'X enjoys/likes/plays/reads/watches', 'X's favorite', 'X is interested in', or 'X's hobby'. Do not limit expansions to 'recommend' or 'suggest'.",
+            "If no retrieved memory explicitly links X's recommendation to Y or directly states the recommended items, search again using the preference phrasing before concluding that evidence is insufficient or answering with a partial result.",
+            "When a memory records X's own preferred items in the question's category (e.g., games she plays, books he reads), treat it as candidate evidence for what X would recommend to someone else; verify the category matches and then answer from that evidence."
+          ]
+        },
+        "solves": "Question asks what one person recommends for another, but the agent's single search used only 'recommend/suggest' expansions and missed the target memory recording the person's own game preferences/hobbies. The abstract mechanism is that recommendation questions are often answerable from a person's stated likes and activities, not from explicit recommendation records. This rule instructs retrieval to broaden to preference/hobby vocabulary, applies to any topic category (games, books, movies, restaurants), and does not apply when the recommendation is explicitly recorded.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-48_conv-48_qa_0092",
+        "source_failure_id": "access_conv-48_conv-48_qa_0092",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:07:16Z"
+      },
+      {
+        "candidate_id": "cand_access_691e9c28ffb0",
+        "skill_id": "sk_access_9698e960ae",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Require explicit preference evidence and multi-query retrieval",
+          "description": "When a question asks for a list of things a person likes/enjoys and the first search yields few or generic results, run multiple targeted preference searches before answering.",
+          "content": [
+            "Before answering a 'what does X like' type question, do not rely on a single incidental event or plan; search for explicit preference statements using terms like 'favorite', 'loves', 'enjoys', 'prefers' combined with category words (e.g., 'food', 'recipe', 'dish', 'meal').",
+            "If the first retrieval returns off-topic or only weakly related memories, run follow-up searches for each plausible subcategory, and filter by memory_kind 'preference' when available, until you find multiple explicit mentions or exhaust distinct formulations.",
+            "Cite only memories that state or clearly imply the person likes the item; an event alone (e.g., 'plans to order X') is insufficient evidence of a general preference unless corroborated."
+          ]
+        },
+        "solves": "A single generic retrieval returned off-topic memories and the agent answered from one weak incidental event, missing explicit preference records that would have supported a fuller answer. The failure mechanism is stopping retrieval too early and treating an event or plan as if it established a like. This rule applies to any future question asking what a person likes or does not like (foods, activities, books, etc.): retrieve explicit preference evidence via multiple targeted searches before answering.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-44_conv-44_qa_0036",
+        "source_failure_id": "access_conv-44_conv-44_qa_0036",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:06:47Z"
+      },
+      {
+        "candidate_id": "cand_access_73dda0390d98",
+        "skill_id": "sk_access_ce4f07db0f",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Event evidence for preference queries",
+          "description": "When a question asks for a person's favorite or preferred items, search event memories of making, eating, or praising the item (delicious, loved, enjoyed) in addition to preference memories.",
+          "content": [
+            "For favorite/preference questions, run an additional search over `event` memories using positive-evaluation terms (e.g., 'found delicious', 'loved', 'enjoyed') together with the item or category.",
+            "Treat event memories where the person made or consumed something and responded positively as supporting evidence for a preference, even if the memory is not of kind `preference`."
+          ]
+        },
+        "solves": "When a user asks about someone's favorites or preferences, relying only on `preference` memories can miss event memories where the person made or consumed the item and reacted positively. Future favorite/preference questions should expand retrieval to positive-experience events; this does not apply to purely factual queries that ask for actions or states without an implicit liking.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-42_conv-42_qa_0075",
+        "source_failure_id": "access_conv-42_conv-42_qa_0075",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:05:56Z"
+      },
+      {
+        "candidate_id": "cand_access_a38c98ce5275",
+        "skill_id": "sk_access_d2110bcc30",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Direction-sensitive recommendation recall",
+          "description": "Use when a question asks what recommendations, advice, suggestions, or pointers one person received from another, e.g., 'what recommendations has X received from Y?'",
+          "content": [
+            "Before searching, fix the direction: the source is the person who gave; the recipient is the person who received. Build query expansions such as '<source> recommended/advised/suggested to <recipient>' and '<recipient> was recommended/advised by <source>'.",
+            "Filter retrieved memories by direction: exclude memories where the recipient recommended, supported, or gave advice to the source; they answer the reverse question.",
+            "When the top results are all reverse-direction or supportive-only, run extra searches for '<source> advice to <recipient>' and '<source> inspired <recipient>' and include memories where the recipient's plan or action is explicitly attributed to the source's advice or setup.",
+            "Answer only from memories whose evidence assigns the source as the giver and the recipient as the receiver; if none are found, do not substitute reverse-direction memories as evidence."
+          ]
+        },
+        "solves": "When answering what recommendations or advice one person received from another, semantic retrieval often surfaces reverse-direction memories (the recipient recommending to the source) because queries use the shared noun 'recommendation' without directional anchoring. Future questions about directed advice, suggestions, or influence between two people require explicit directional search and evidence filtering so answers include only memories where the named source gave to the named recipient.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-42_conv-42_qa_0074",
+        "source_failure_id": "access_conv-42_conv-42_qa_0074",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:05:13Z"
+      },
+      {
+        "candidate_id": "cand_access_a623585cfd96",
+        "skill_id": "sk_access_0033181dde",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Implicit-suggestion recall via agreement and plan memories",
+          "description": "When a question asks what suggestions, recommendations, or advice one person gave another, and initial retrieval returns only general support or encouragement, also search from the recipient's perspective and for plan/event memories of commitments before concluding no evidence exists.",
+          "content": [
+            "When a question asks what suggestions/recommendations/advice one person gave another and the first retrieval returns only general support or encouragement, run additional searches from the recipient's perspective: '<recipient> agreed to try', '<recipient> plans to switch to', '<recipient> is trying', combined with the question's topic keywords.",
+            "Also issue a structured search for plan or event memories whose subject is the recipient and whose predicate/object indicates a commitment or change (e.g., dietary_change, switching to, trying), because such memories often imply the giver's suggestion.",
+            "Before answering, check that the retrieved evidence actually enumerates the requested items; if it does not, do not answer from general support memories—either search again for the specific items or state the unsupported portion explicitly."
+          ]
+        },
+        "solves": "A question about suggestions or recommendations one person gave another can fail when memories record the recipient's agreement or plan (e.g., 'agreed to try', 'plans to switch to') rather than the giver's explicit wording, so a query for 'A suggested' misses the supporting memory. The reusable rule is to supplement initial retrieval with recipient-perspective queries and structured plan/event searches for commitments, then confirm the evidence enumerates the requested items. This applies to any future advice/suggestion question where the answer may be encoded in plan memories.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-49_conv-49_qa_0018",
+        "source_failure_id": "access_conv-49_conv-49_qa_0018",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:07:41Z"
+      },
+      {
+        "candidate_id": "cand_access_c12b13a00bb4",
+        "skill_id": "sk_access_d732b3eed4",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Structured-search speaker statements",
+          "description": "When a question asks what a specific person said, recommended, or described about a specific place or topic, first run a structured search with subject set to that person and add descriptive query expansions before concluding no information.",
+          "content": [
+            "When the question asks what a specific person said, recommended, or described about a specific place or topic, run a structured search with subject set to that person's name and a query containing the place/topic and its common synonyms or abbreviations.",
+            "Include at least one query expansion using likely descriptive language from stored memories (e.g., adjectives like 'amazing', nouns like 'culture', 'food') in addition to rephrasing the question.",
+            "If the first search yields no directly relevant result, retry with increased top_k (10-15) or a keyword-only search before answering 'No information available'."
+          ]
+        },
+        "solves": "Solves retrieval failures when a question asks what a specific person said about a place/topic, but the memory is stored as an event with the speaker as subject and uses descriptive vocabulary absent from the question. The rule triggers a structured subject filter and descriptive expansions before 'no information'. Applies to attributed-statement questions; not to generic factual queries.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-43_conv-43_qa_0102",
+        "source_failure_id": "access_conv-43_conv-43_qa_0102",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:06:44Z"
+      },
+      {
+        "candidate_id": "cand_access_d102bb00c252",
+        "skill_id": "sk_access_65050d6576",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Supplement searches for item lists across related contexts",
+          "description": "When a question asks for all items a person uses or prefers during an activity, run supplementary searches with related context terms and aggregate distinct items from all retrieved memories before answering.",
+          "content": [
+            "If the question asks for all items (music, books, foods, etc.) tied to an activity, do not answer from one exact-match retrieval. Run at least one additional search using related context terms such as meditation, relaxation, calming, focus, or associated settings.",
+            "When returning an item list, include distinct named items found in preference and event memories even if the memory says recommended, suggested, or calming rather than directly used during the activity.",
+            "Before finalizing, check whether the combined results cover all plausible named items from the related contexts; if a related-context search is still missing, refine keywords and search again."
+          ]
+        },
+        "solves": "A question asks for all items (e.g., music tracks, books, foods) a person associates with an activity. A single exact-match search can return only memories whose wording directly names that activity, while another relevant memory describes the same item through a related context such as meditation, relaxation, or calm. The skill requires supplementary searches using related activity terms and aggregation of distinct named items across preference/event memories before answering.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-48_conv-48_qa_0091",
+        "source_failure_id": "access_conv-48_conv-48_qa_0091",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:07:07Z"
+      },
+      {
+        "candidate_id": "cand_access_df574643cd4b",
+        "skill_id": "sk_access_0733422f02",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Preference-verb retrieval for recommendation questions",
+          "description": "When a question asks what a person suggested/recommended and initial search with recommendation verbs yields no clear evidence, run another search with the person's name plus preference verbs (enjoys, likes, plays, favorite) and context terms.",
+          "content": [
+            "If the question asks about a suggestion/recommendation and the initial retrieval lacks a memory that explicitly names the recommended item, do not answer from a partially matching memory.",
+            "Run an additional search combining the person's name with preference/activity verbs (enjoys, likes, plays, favorite, particularly) plus the question's context words (platform, category) before answering.",
+            "Accept a memory as evidence only if it explicitly associates the named item with the person, even if that association is phrased as a preference rather than a suggestion."
+          ]
+        },
+        "solves": "When a question asks what a person suggested or recommended and the first search with recommendation verbs returns only a partially matching distractor, the correct evidence may be stored as a preference ('enjoys', 'plays') rather than an explicit suggestion. Expanding retrieval with preference verbs surfaces the right memory and prevents premature answers from partial matches; this applies when the fact is about a person's stated likes or activities, not when a direct suggestion event is already in evidence.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-48_conv-48_qa_0150",
+        "source_failure_id": "access_conv-48_conv-48_qa_0150",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:08:20Z"
+      },
+      {
+        "candidate_id": "cand_access_e6276035819b",
+        "skill_id": "sk_access_d710817bf7",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Shared-activity retrieval for multi-person gift questions",
+          "description": "When a question asks for a gift, plan, or recommendation suitable for two or more named people, expand retrieval to their shared activities, hobbies, classes, and interests, not just the abstract topic.",
+          "content": [
+            "When the question asks for a gift, plan, or recommendation suitable for two or more named people, run a retrieval that combines their names with concrete shared-activity terms (cooking, recipes, classes, hobbies, outings) in addition to abstract topic keywords.",
+            "Before answering, check that the proposed gift is supported by evidence for each intended recipient; if evidence supports only one person, search for a shared activity or interest instead of defaulting to one person's individual preference."
+          ]
+        },
+        "solves": "When a question asks for a gift or recommendation suitable for multiple named people, retrieval that uses only abstract topic keywords ('healthy lifestyle gift') can miss concrete shared-activity memories (cooking classes, shared recipes) that support the best answer. Future inputs asking for multi-person gifts, plans, or recommendations should trigger searches over shared activities/hobbies and a per-recipient evidence sufficiency check before answering.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-49_conv-49_qa_0020",
+        "source_failure_id": "access_conv-49_conv-49_qa_0020",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:07:31Z"
+      }
+    ],
+    "retrieved_skill_ids": [],
+    "relations": []
+  },
+  "plan": {
+    "transaction_id": "tx_access_bank1_new_build_0005",
+    "side": "access",
+    "base_bank_version": "v000",
+    "candidate_resolutions": [
+      {
+        "candidate_id": "cand_access_03a27076ef50",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_access_broaden_recommendation"
+        ],
+        "reason": "Merged with cand_access_1126c34425ea because both address broadening recommendation retrieval when recipient/date are absent."
+      },
+      {
+        "candidate_id": "cand_access_1126c34425ea",
+        "resolution": "CREATED",
+        "target_skill_ids": [],
+        "reason": "Creates a Skill for broadening recommendation retrieval beyond recipient and date."
+      },
+      {
+        "candidate_id": "cand_access_148023b4dfa9",
+        "resolution": "CREATED",
+        "target_skill_ids": [],
+        "reason": "Creates a Skill for retrieving preference memories for subjective questions."
+      },
+      {
+        "candidate_id": "cand_access_4120ebf41279",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_access_preference_based_recommendation"
+        ],
+        "reason": "Merged with cand_access_5d8e8dcaf6e1 and cand_access_df574643cd4b because all recommend expanding recommendation queries to preference memories."
+      },
+      {
+        "candidate_id": "cand_access_4e4d0bcfd168",
+        "resolution": "CREATED",
+        "target_skill_ids": [],
+        "reason": "Creates a Skill for corroborating list-answer items with targeted searches."
+      },
+      {
+        "candidate_id": "cand_access_5d8e8dcaf6e1",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_access_preference_based_recommendation"
+        ],
+        "reason": "Merged with cand_access_4120ebf41279 and cand_access_df574643cd4b because all recommend expanding recommendation queries to preference memories."
+      },
+      {
+        "candidate_id": "cand_access_691e9c28ffb0",
+        "resolution": "CREATED",
+        "target_skill_ids": [],
+        "reason": "Creates a Skill for requiring explicit preference evidence and multi-query retrieval."
+      },
+      {
+        "candidate_id": "cand_access_73dda0390d98",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_access_preference_evidence"
+        ],
+        "reason": "Merged with cand_access_691e9c28ffb0 because both address retrieving explicit preference evidence for preference questions."
+      },
+      {
+        "candidate_id": "cand_access_a38c98ce5275",
+        "resolution": "CREATED",
+        "target_skill_ids": [],
+        "reason": "Creates a Skill for direction-sensitive recommendation recall."
+      },
+      {
+        "candidate_id": "cand_access_a623585cfd96",
+        "resolution": "CREATED",
+        "target_skill_ids": [],
+        "reason": "Creates a Skill for implicit-suggestion recall via agreement and plan memories."
+      },
+      {
+        "candidate_id": "cand_access_c12b13a00bb4",
+        "resolution": "CREATED",
+        "target_skill_ids": [],
+        "reason": "Creates a Skill for structured-search speaker statements."
+      },
+      {
+        "candidate_id": "cand_access_d102bb00c252",
+        "resolution": "CREATED",
+        "target_skill_ids": [],
+        "reason": "Creates a Skill for supplementing searches for item lists across related contexts."
+      },
+      {
+        "candidate_id": "cand_access_df574643cd4b",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_access_preference_based_recommendation"
+        ],
+        "reason": "Merged with cand_access_4120ebf41279 and cand_access_5d8e8dcaf6e1 because all recommend expanding recommendation queries to preference memories."
+      },
+      {
+        "candidate_id": "cand_access_e6276035819b",
+        "resolution": "CREATED",
+        "target_skill_ids": [],
+        "reason": "Creates a Skill for shared-activity retrieval for multi-person gift questions."
+      }
+    ],
+    "operations": [
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_broaden_recommendation",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Broaden Recommendation Retrieval Beyond Recipient and Date",
+        "description": "Use when a question asks what one person recommended to another and direct search with both names and date returns no match.",
+        "content": [
+          "If initial search for a recommendation from A to B on a date returns no memory naming both A and B or the date, run an additional hybrid search using only A plus the item category with time_mode none, and inspect current versions of top results.",
+          "Treat statements that A read, watched, finished, or highly recommends an item as supporting a recommendation even if B and the exact date are absent; do not require all question entities to match."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_03a27076ef50",
+          "cand_access_1126c34425ea"
+        ],
+        "reason": "Creating merged Skill from two candidates that both address broadening recommendation retrieval when recipient/date are absent.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_preference_retrieval_subjective",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Retrieve Preference Memories for Subjective Questions",
+        "description": "Use when a question asks what a person misses, likes, loves, values, or wants and initial hybrid results only restate behavior.",
+        "content": [
+          "Run at least one structured memory search filtered to memory_kind=preference for that person, in addition to the hybrid search.",
+          "If initial results contain only indirect event/state restatements, issue another search with the person's name and terms like 'misses', 'loves', 'finds soothing', 'prefers', using a higher top_k and inspecting the newest version of each returned memory ID.",
+          "Prefer the content of the newest enriched version of a relevant memory over older versions or indirect paraphrases; answer only from visible evidence."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_148023b4dfa9"
+        ],
+        "reason": "Creating Skill for retrieving preference memories for subjective questions.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_preference_based_recommendation",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Expand Recommendation Queries to Preference Memories",
+        "description": "Use when a question asks what one person recommends or suggests for another and initial search yields no direct evidence.",
+        "content": [
+          "Before answering a recommendation question, issue at least one search combining the recommender's name with preference vocabulary: 'enjoys', 'likes', 'plays', 'reads', 'watches', 'favorite', 'interested in', or 'hobby'.",
+          "If no retrieved memory explicitly links the recommender to the recommendation, search again using preference phrasing before concluding evidence is insufficient.",
+          "When a memory records the recommender's own preferred items in the question's category, treat it as candidate evidence for what they would recommend; verify the category matches and answer from that evidence."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_4120ebf41279",
+          "cand_access_5d8e8dcaf6e1",
+          "cand_access_df574643cd4b"
+        ],
+        "reason": "Creating merged Skill from three candidates that all recommend expanding recommendation queries to preference memories.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_corroborate_list_items",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Corroborate List-Answer Items with Targeted Searches",
+        "description": "Use when a question asks for the ways, methods, or items a person uses for an activity and a retrieved memory mentions a candidate item.",
+        "content": [
+          "Gather candidate items from both event memories and preference memories (e.g., what the person prefers, likes, or uses).",
+          "If a candidate item is supported by only one retrieved memory, run a targeted search using the item term combined with the person's name to find corroborating or contradicting memories.",
+          "Include preference-oriented query variants such as 'prefers', 'likes', 'uses', 'enjoys' alongside action-oriented terms like 'methods', 'ways', 'enhances' when retrieving evidence."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_4e4d0bcfd168"
+        ],
+        "reason": "Creating Skill for corroborating list-answer items with targeted searches.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_preference_evidence",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Require Explicit Preference Evidence and Multi-Query Retrieval",
+        "description": "Use when a question asks for a list of things a person likes/enjoys and the first search yields few or generic results.",
+        "content": [
+          "Do not rely on a single incidental event or plan; search for explicit preference statements using terms like 'favorite', 'loves', 'enjoys', 'prefers' combined with category words.",
+          "If the first retrieval returns off-topic or only weakly related memories, run follow-up searches for each plausible subcategory, and filter by memory_kind 'preference' when available, until you find multiple explicit mentions or exhaust distinct formulations.",
+          "Cite only memories that state or clearly imply the person likes the item; an event alone is insufficient evidence of a general preference unless corroborated.",
+          "For favorite/preference questions, also run an additional search over event memories using positive-evaluation terms (e.g., 'found delicious', 'loved', 'enjoyed') together with the item or category, and treat such events as supporting evidence."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_691e9c28ffb0",
+          "cand_access_73dda0390d98"
+        ],
+        "reason": "Creating merged Skill from two candidates that both address retrieving explicit preference evidence for preference questions.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_direction_sensitive_recommendation",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Direction-Sensitive Recommendation Recall",
+        "description": "Use when a question asks what recommendations, advice, suggestions, or pointers one person received from another.",
+        "content": [
+          "Fix the direction: the source is the person who gave; the recipient is the person who received. Build query expansions such as '<source> recommended/advised/suggested to <recipient>' and '<recipient> was recommended/advised by <source>'.",
+          "Filter retrieved memories by direction: exclude memories where the recipient recommended, supported, or gave advice to the source.",
+          "When the top results are all reverse-direction or supportive-only, run extra searches for '<source> advice to <recipient>' and '<source> inspired <recipient>' and include memories where the recipient's plan or action is explicitly attributed to the source's advice or setup.",
+          "Answer only from memories whose evidence assigns the source as the giver and the recipient as the receiver; if none are found, do not substitute reverse-direction memories as evidence."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_a38c98ce5275"
+        ],
+        "reason": "Creating Skill for direction-sensitive recommendation recall.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_implicit_suggestion_recall",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Implicit-Suggestion Recall via Agreement and Plan Memories",
+        "description": "Use when a question asks what suggestions, recommendations, or advice one person gave another and initial retrieval returns only general support or encouragement.",
+        "content": [
+          "Run additional searches from the recipient's perspective: '<recipient> agreed to try', '<recipient> plans to switch to', '<recipient> is trying', combined with the question's topic keywords.",
+          "Also issue a structured search for plan or event memories whose subject is the recipient and whose predicate/object indicates a commitment or change, because such memories often imply the giver's suggestion.",
+          "Before answering, check that the retrieved evidence actually enumerates the requested items; if it does not, do not answer from general support memories—either search again for the specific items or state the unsupported portion explicitly."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_a623585cfd96"
+        ],
+        "reason": "Creating Skill for implicit-suggestion recall via agreement and plan memories.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_structured_speaker_statements",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Structured-Search Speaker Statements",
+        "description": "Use when a question asks what a specific person said, recommended, or described about a specific place or topic.",
+        "content": [
+          "Run a structured search with subject set to that person's name and a query containing the place/topic and its common synonyms or abbreviations.",
+          "Include at least one query expansion using likely descriptive language from stored memories (e.g., adjectives like 'amazing', nouns like 'culture', 'food') in addition to rephrasing the question.",
+          "If the first search yields no directly relevant result, retry with increased top_k (10-15) or a keyword-only search before answering 'No information available'."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_c12b13a00bb4"
+        ],
+        "reason": "Creating Skill for structured-search speaker statements.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_supplement_item_lists",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Supplement Searches for Item Lists Across Related Contexts",
+        "description": "Use when a question asks for all items a person uses or prefers during an activity.",
+        "content": [
+          "Do not answer from one exact-match retrieval. Run at least one additional search using related context terms such as meditation, relaxation, calming, focus, or associated settings.",
+          "When returning an item list, include distinct named items found in preference and event memories even if the memory says recommended, suggested, or calming rather than directly used during the activity.",
+          "Before finalizing, check whether the combined results cover all plausible named items from the related contexts; if a related-context search is still missing, refine keywords and search again."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_d102bb00c252"
+        ],
+        "reason": "Creating Skill for supplementing searches for item lists across related contexts.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_shared_activity_gift",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Shared-Activity Retrieval for Multi-Person Gift Questions",
+        "description": "Use when a question asks for a gift, plan, or recommendation suitable for two or more named people.",
+        "content": [
+          "Run a retrieval that combines their names with concrete shared-activity terms (cooking, recipes, classes, hobbies, outings) in addition to abstract topic keywords.",
+          "Before answering, check that the proposed gift is supported by evidence for each intended recipient; if evidence supports only one person, search for a shared activity or interest instead of defaulting to one person's individual preference."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_e6276035819b"
+        ],
+        "reason": "Creating Skill for shared-activity retrieval for multi-person gift questions.",
+        "hard_delete": false
+      }
+    ]
+  },
+  "status": "planned"
+}

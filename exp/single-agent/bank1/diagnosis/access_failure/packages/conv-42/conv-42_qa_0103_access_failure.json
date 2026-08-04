@@ -1,0 +1,804 @@
+{
+  "schema_version": "access_diagnosis_v3",
+  "diagnosis_id": "access_conv-42_conv-42_qa_0103",
+  "diagnosis_type": "ACCESS_FAILURE",
+  "status": "completed",
+  "judge_run_id": "judge",
+  "diagnosis_run_id": "bank1_train_flash",
+  "source_runtime_run": "conv-42",
+  "conversation_id": "conv-42",
+  "qa_id": "conv-42_qa_0103",
+  "snapshot_commit_id": 29,
+  "question": "What did Joanna recently watch and recommend to Nate on February 7, 2022?",
+  "reference_answer": "\"Little Women\"",
+  "problem_found": true,
+  "reason": "The current memory version mem_conv-42_0017_v2 explicitly states that Joanna watched 'Little Women' and recommended it to Nate, which directly supports both essential claims. Other current memories do not mention this movie or recommendation.",
+  "confidence": 1.0,
+  "review_required": false,
+  "skill_trace": {
+    "trace_id": "skilltrace_access_conv-42_conv-42_conv-42_qa_0103",
+    "side": "access",
+    "bank_version": "bank1",
+    "query": "What did Joanna recently watch and recommend to Nate on February 7, 2022?",
+    "top_k": 2,
+    "disclose_k": 5,
+    "min_score": 0.2,
+    "scored_fields": [
+      "name",
+      "description"
+    ],
+    "scoring_weights": {
+      "semantic": 0.7,
+      "bm25": 0.3
+    },
+    "retrieval_method": "bank1_hybrid_router",
+    "candidate_k": 10,
+    "reranker": "bank1_applicability_router",
+    "reranker_error": "",
+    "selected": [
+      {
+        "skill_id": "sk_access_date_filtered_retrieval",
+        "version_id": "sk_access_date_filtered_retrieval_v1",
+        "rank": 3,
+        "score": 0.32679811120033264,
+        "semantic_score": 0.13056552410125732,
+        "lexical_score": 0.7846741080284119,
+        "name": "Date-filtered retrieval for date-specific questions",
+        "description": "When a question asks about an event on a specific date and initial retrieval finds no matching memory, run a structured search filtered to that date before answering 'No information available'.",
+        "content": [
+          "When the user question includes an explicit calendar date and the first search results contain no memory with world_start on that date, issue a structured search filtered to that exact date (or a ±1 day window) using the question's subject and an event-related predicate (e.g., made, did, occurred).",
+          "Do not conclude 'No information available' until this date-filtered search has been attempted; if it returns a matching memory, answer from it.",
+          "If the date-filtered search still returns no relevant memory, stop and answer no information; do not expand to unrelated dates or topics."
+        ],
+        "selected": true,
+        "rerank_rank": 1,
+        "rerank_reason": "The question specifies a date (February 7, 2022), and the skill is designed to handle date-specific queries by filtering memories to that exact date or a nearby window."
+      }
+    ],
+    "nearby_not_selected": [
+      {
+        "skill_id": "sk_access_alternative_activity_retrieval",
+        "version_id": "sk_access_alternative_activity_retrieval_v1",
+        "rank": 1,
+        "score": 0.38076508045196533,
+        "semantic_score": 0.11537867784500122,
+        "lexical_score": 1.0,
+        "name": "Alternative Activity Retrieval",
+        "description": "Use when a question asks what someone did or planned instead of, rather than, or as a supplement to a named activity.",
+        "content": [
+          "When a question asks for an activity done 'instead of', 'rather than', 'as an alternative to', or to 'supplement' a named activity, do not treat that named activity as the sole retrieval anchor.",
+          "After the first search, run at least one follow-up query that omits the superseded or primary activity and adds replacement-oriented terms such as 'alternative', 'plan', 'preference', 'together', 'play', 'instead', 'supplement', 'additional', 'strength', 'fit', or 'workout'.",
+          "In such follow-up searches, explicitly include memory kinds 'profile' and 'relationship', because the alternative may be recorded as a shared preference or interest rather than as an event.",
+          "If all top results still mention the superseded activity, treat that as evidence of over-anchoring and run another query targeting the replacement before answering."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_temporal_sequence",
+        "version_id": "sk_access_temporal_sequence_v1",
+        "rank": 2,
+        "score": 0.35235902667045593,
+        "semantic_score": 0.1249687671661377,
+        "lexical_score": 0.8829362392425537,
+        "name": "Temporal-sequence retrieval after anchor events",
+        "description": "Use when a question asks what someone did after, before, or following a specific event (e.g., 'after reading X', 'then what did they do'), and the initial search finds a memory about that event. Apply before answering.",
+        "content": [
+          "After retrieving an anchor event memory for a 'what did X do after/before/around Y' question, run an additional search using that person/subject as the query with temporal terms ('afterwards', 'next', the anchor's date) and a modest top_k; do not simply reuse the event's keywords.",
+          "When you have a candidate answer memory, confirm its timestamp is consistent with the requested temporal relationship; if the memory is earlier/later than the anchor or lacks timing, continue searching rather than answering from unrelated memories.",
+          "Stop after two time-focused searches yield no same-subject memories near the anchor, or when you find a memory describing the subject's next action in sequence."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_per_person_topic",
+        "version_id": "sk_access_per_person_topic_v1",
+        "rank": 4,
+        "score": 0.29516151547431946,
+        "semantic_score": 0.11250604689121246,
+        "lexical_score": 0.7213575839996338,
+        "name": "Per-Person Topic Search for Conversation Questions",
+        "description": "Apply when a question asks what two or more named people discussed on a specific date and initial retrieval returned only one person's events or only literal 'discussion' matches.",
+        "content": [
+          "Run separate memory searches for each named participant, using queries that mix their name, the date or nearby dates, and topic-neutral event words like 'achievement', 'struggle', 'activity', or 'event'.",
+          "In each search, restrict to memory kind 'event' and a narrow time window around the date; consider memories whose event date falls in the window even when not phrased as a conversation.",
+          "Before answering, confirm at least one supported topic signal exists for every named participant on or near the date; if any participant lacks evidence, run one more targeted search. Stop once each participant has a topic, then combine all supported topics."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_temporal_event_search",
+        "version_id": "sk_access_temporal_event_search_v1",
+        "rank": 5,
+        "score": 0.27217718958854675,
+        "semantic_score": 0.12001419067382812,
+        "lexical_score": 0.6272241473197937,
+        "name": "Temporal event search with date-range filters",
+        "description": "When a question asks what someone did or visited during a specific time period (week, month, date range), use structured search with a date-range filter and accept evidence only from memories overlapping that period.",
+        "content": [
+          "If the question includes a calendar period, compute its start and end dates from the session timestamp and run a structured search on world_start/world_end for events overlapping that range, using the person and activity as filters; do not rely only on semantic or keyword searches.",
+          "When the question asks about travel or destinations, include travel synonyms such as trip, road trip, visited, went, traveled, and destination in the query.",
+          "Treat memories dated outside the requested period (e.g., future preferences, plans, or interests) as non-evidence for that time. Continue searching until you find an event memory whose stored date range overlaps the window, or until both temporal and non-temporal strategies have been tried.",
+          "When the target memory uses a relative time phrase such as 'last Friday', resolve it against the message timestamp and include the resulting date in the structured query, since content keywords alone may miss it.",
+          "Stop as soon as one memory overlapping the time window directly answers the question; do not exhaustively retrieve all trips or preferences."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_post_event_activity",
+        "version_id": "sk_access_post_event_activity_v1",
+        "rank": 6,
+        "score": 0.2393207997083664,
+        "semantic_score": 0.21195316314697266,
+        "lexical_score": 0.303178608417511,
+        "name": "Temporal filter for post-event activity queries",
+        "description": "When a question asks how someone spends time after a major life event, first find the event date and run searches limited to memories at or after that date, including planned future activities.",
+        "content": [
+          "If the question references a life event (wedding, marriage, graduation, move, new job) and a later period (after, since, post-), locate that event's date from memory before answering.",
+          "Run hybrid/structured searches for the person's activities with a time filter: world_start on or after the event date; include planned future events and activity/event memory kinds.",
+          "If top results are dated before the event or do not fit the post-event window, add event-specific keywords (e.g., honeymoon, celebration) and re-search; do not answer from pre-event memories.",
+          "Stop once a coherent set of post-event activities covering the question's claims is retrieved; do not keep expanding after that."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      }
+    ]
+  },
+  "repair_package": {
+    "question": "What did Joanna recently watch and recommend to Nate on February 7, 2022?",
+    "reference_answer": "\"Little Women\"",
+    "missing_useful_current_memories": [
+      {
+        "version_id": "mem_conv-42_0017_v2",
+        "memory_id": "mem_conv-42_0017",
+        "version_no": 2,
+        "content": "Joanna watched the movie 'Little Women' and recommended it to Nate, describing it as a great story about sisterhood, love, and reaching for dreams. Joanna recommended the movie 'Little Women' to Nate, who found it captivating and praised its acting and storytelling.",
+        "memory_kind": "event",
+        "subject": "Joanna",
+        "predicate": "activity",
+        "object_text": "movie recommendation",
+        "world_start": "2022-10-05",
+        "world_end": null,
+        "update_type": "enrichment"
+      }
+    ],
+    "retrieved_current_version_ids": [
+      "mem_conv-42_0004_v1",
+      "mem_conv-42_0005_v1",
+      "mem_conv-42_0011_v1",
+      "mem_conv-42_0013_v2",
+      "mem_conv-42_0016_v1",
+      "mem_conv-42_0030_v2",
+      "mem_conv-42_0067_v1",
+      "mem_conv-42_0162_v1"
+    ],
+    "search_steps": [
+      {
+        "action_id": "access_conv-42_conv-42_conv-42_qa_0103_a000",
+        "step_index": 0,
+        "action_type": "search_memory",
+        "request": {
+          "action": "search_memory",
+          "arguments": {
+            "strategy": "hybrid",
+            "query": "Joanna recommended a movie or show to Nate on February 7, 2022",
+            "query_expansions": [
+              "What movie or show did Joanna recommend to Nate on February 7, 2022?",
+              "What was the recommendation Joanna made to Nate on February 7, 2022?",
+              "What did Joanna watch and suggest to Nate on February 7, 2022?"
+            ],
+            "keywords": [
+              "Joanna",
+              "Nate",
+              "February 7, 2022"
+            ],
+            "depth": "standard",
+            "entities": [
+              "Joanna",
+              "Nate"
+            ],
+            "memory_kinds": [
+              "event"
+            ],
+            "time_mode": "point",
+            "target_time": "2022-02-07"
+          },
+          "reason": "To find the specific recommendation Joanna made to Nate on February 7, 2022."
+        },
+        "returned_memories": [
+          {
+            "version_id": "mem_conv-42_0005_v1",
+            "memory_id": "mem_conv-42_0005",
+            "content": "Joanna completed her first full screenplay and printed it on January 18, 2022. The screenplay is a mix of drama and romance, and she plans to submit it to film festivals and seek producers and directors.",
+            "memory_kind": "event",
+            "subject": "Joanna",
+            "world_start": "2022-01-18",
+            "world_end": null,
+            "score": 0.0188,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0016_v1",
+            "memory_id": "mem_conv-42_0016",
+            "content": "Nate made a dairy-free chocolate cake with berries and suggested it to Joanna as a potential treat.",
+            "memory_kind": "event",
+            "subject": "Nate",
+            "world_start": "2022-02-07",
+            "world_end": null,
+            "score": 0.0179,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0011_v1",
+            "memory_id": "mem_conv-42_0011",
+            "content": "Nate started hanging out with people outside of his circle at the tournament. He tends to stick around the more chill people there.",
+            "memory_kind": "event",
+            "subject": "Nate",
+            "world_start": "2022-01-23",
+            "world_end": null,
+            "score": 0.014,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0013_v2",
+            "memory_id": "mem_conv-42_0013",
+            "content": "Joanna submitted a screenplay to a film festival and expressed mixed emotions about its potential success, hoping it will be accepted and shown on the big screen. She reflected on how moments of joy make the journey worthwhile.",
+            "memory_kind": "event",
+            "subject": "Joanna",
+            "world_start": "2022-02-07",
+            "world_end": null,
+            "score": 0.011,
+            "paths": [
+              "semantic",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0004_v1",
+            "memory_id": "mem_conv-42_0004",
+            "content": "Joanna watched a romantic drama about memory and relationships around 3 years ago and owns a physical copy of it, having seen it multiple times and considering it one of her favorites.",
+            "memory_kind": "event",
+            "subject": "Joanna",
+            "world_start": "2022-01-21",
+            "world_end": null,
+            "score": 0.0108,
+            "paths": [
+              "semantic",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0162_v1",
+            "memory_id": "mem_conv-42_0162",
+            "content": "Nate plans to invite Joanna over to watch him play with his turtles and potentially watch one of her movies or go to the park.",
+            "memory_kind": "event",
+            "subject": "Nate",
+            "world_start": "2022-11-09",
+            "world_end": null,
+            "score": 0.0082,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0067_v1",
+            "memory_id": "mem_conv-42_0067",
+            "content": "Nate gave Joanna a stuffed animal as a gift to remind her of positive vibes and bring joy.",
+            "memory_kind": "event",
+            "subject": "Nate",
+            "world_start": "2022-05-25",
+            "world_end": null,
+            "score": 0.008,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0030_v2",
+            "memory_id": "mem_conv-42_0030",
+            "content": "Nate supports Joanna in her writing endeavors and encourages her to keep working hard on her project. He expressed pride and support for her creative efforts, assuring her of continued encouragement and belief in her talent.",
+            "memory_kind": "event",
+            "subject": "Nate",
+            "world_start": "2022-03-24",
+            "world_end": null,
+            "score": 0.008,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          }
+        ],
+        "returned_version_ids": [
+          "mem_conv-42_0005_v1",
+          "mem_conv-42_0016_v1",
+          "mem_conv-42_0011_v1",
+          "mem_conv-42_0013_v2",
+          "mem_conv-42_0004_v1",
+          "mem_conv-42_0162_v1",
+          "mem_conv-42_0067_v1",
+          "mem_conv-42_0030_v2"
+        ]
+      },
+      {
+        "action_id": "access_conv-42_conv-42_conv-42_qa_0103_a001",
+        "step_index": 1,
+        "action_type": "inspect_memory",
+        "request": {
+          "action": "inspect_memory",
+          "arguments": {
+            "memory_id": "mem_conv-42_0016",
+            "include_versions": true,
+            "include_sources": true
+          },
+          "reason": "To verify the details of the recommendation made by Joanna to Nate on February 7, 2022."
+        },
+        "returned_memories": [
+          {
+            "version_id": "mem_conv-42_0016_v1",
+            "version_no": 1,
+            "content": "Nate made a dairy-free chocolate cake with berries and suggested it to Joanna as a potential treat.",
+            "world_start": "2022-02-07",
+            "world_end": null
+          }
+        ],
+        "returned_version_ids": [
+          "mem_conv-42_0016_v1"
+        ]
+      },
+      {
+        "action_id": "access_conv-42_conv-42_conv-42_qa_0103_a002",
+        "step_index": 2,
+        "action_type": "answer",
+        "request": {
+          "action": "answer",
+          "arguments": {
+            "answer": "dairy-free chocolate cake with berries",
+            "evidence_version_ids": [
+              "mem_conv-42_0016_v1"
+            ],
+            "confidence": 0.95
+          },
+          "reason": "The memory indicates that Nate made a dairy-free chocolate cake with berries and suggested it to Joanna on February 7, 2022."
+        },
+        "returned_memories": [],
+        "returned_version_ids": []
+      }
+    ],
+    "reason": "The current memory version mem_conv-42_0017_v2 explicitly states that Joanna watched 'Little Women' and recommended it to Nate, which directly supports both essential claims. Other current memories do not mention this movie or recommendation.",
+    "skill_trace": {
+      "trace_id": "skilltrace_access_conv-42_conv-42_conv-42_qa_0103",
+      "side": "access",
+      "bank_version": "bank1",
+      "query": "What did Joanna recently watch and recommend to Nate on February 7, 2022?",
+      "top_k": 2,
+      "disclose_k": 5,
+      "min_score": 0.2,
+      "scored_fields": [
+        "name",
+        "description"
+      ],
+      "scoring_weights": {
+        "semantic": 0.7,
+        "bm25": 0.3
+      },
+      "retrieval_method": "bank1_hybrid_router",
+      "candidate_k": 10,
+      "reranker": "bank1_applicability_router",
+      "reranker_error": "",
+      "selected": [
+        {
+          "skill_id": "sk_access_date_filtered_retrieval",
+          "version_id": "sk_access_date_filtered_retrieval_v1",
+          "rank": 3,
+          "score": 0.32679811120033264,
+          "semantic_score": 0.13056552410125732,
+          "lexical_score": 0.7846741080284119,
+          "name": "Date-filtered retrieval for date-specific questions",
+          "description": "When a question asks about an event on a specific date and initial retrieval finds no matching memory, run a structured search filtered to that date before answering 'No information available'.",
+          "content": [
+            "When the user question includes an explicit calendar date and the first search results contain no memory with world_start on that date, issue a structured search filtered to that exact date (or a ±1 day window) using the question's subject and an event-related predicate (e.g., made, did, occurred).",
+            "Do not conclude 'No information available' until this date-filtered search has been attempted; if it returns a matching memory, answer from it.",
+            "If the date-filtered search still returns no relevant memory, stop and answer no information; do not expand to unrelated dates or topics."
+          ],
+          "selected": true,
+          "rerank_rank": 1,
+          "rerank_reason": "The question specifies a date (February 7, 2022), and the skill is designed to handle date-specific queries by filtering memories to that exact date or a nearby window."
+        }
+      ],
+      "nearby_not_selected": [
+        {
+          "skill_id": "sk_access_alternative_activity_retrieval",
+          "version_id": "sk_access_alternative_activity_retrieval_v1",
+          "rank": 1,
+          "score": 0.38076508045196533,
+          "semantic_score": 0.11537867784500122,
+          "lexical_score": 1.0,
+          "name": "Alternative Activity Retrieval",
+          "description": "Use when a question asks what someone did or planned instead of, rather than, or as a supplement to a named activity.",
+          "content": [
+            "When a question asks for an activity done 'instead of', 'rather than', 'as an alternative to', or to 'supplement' a named activity, do not treat that named activity as the sole retrieval anchor.",
+            "After the first search, run at least one follow-up query that omits the superseded or primary activity and adds replacement-oriented terms such as 'alternative', 'plan', 'preference', 'together', 'play', 'instead', 'supplement', 'additional', 'strength', 'fit', or 'workout'.",
+            "In such follow-up searches, explicitly include memory kinds 'profile' and 'relationship', because the alternative may be recorded as a shared preference or interest rather than as an event.",
+            "If all top results still mention the superseded activity, treat that as evidence of over-anchoring and run another query targeting the replacement before answering."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_temporal_sequence",
+          "version_id": "sk_access_temporal_sequence_v1",
+          "rank": 2,
+          "score": 0.35235902667045593,
+          "semantic_score": 0.1249687671661377,
+          "lexical_score": 0.8829362392425537,
+          "name": "Temporal-sequence retrieval after anchor events",
+          "description": "Use when a question asks what someone did after, before, or following a specific event (e.g., 'after reading X', 'then what did they do'), and the initial search finds a memory about that event. Apply before answering.",
+          "content": [
+            "After retrieving an anchor event memory for a 'what did X do after/before/around Y' question, run an additional search using that person/subject as the query with temporal terms ('afterwards', 'next', the anchor's date) and a modest top_k; do not simply reuse the event's keywords.",
+            "When you have a candidate answer memory, confirm its timestamp is consistent with the requested temporal relationship; if the memory is earlier/later than the anchor or lacks timing, continue searching rather than answering from unrelated memories.",
+            "Stop after two time-focused searches yield no same-subject memories near the anchor, or when you find a memory describing the subject's next action in sequence."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_per_person_topic",
+          "version_id": "sk_access_per_person_topic_v1",
+          "rank": 4,
+          "score": 0.29516151547431946,
+          "semantic_score": 0.11250604689121246,
+          "lexical_score": 0.7213575839996338,
+          "name": "Per-Person Topic Search for Conversation Questions",
+          "description": "Apply when a question asks what two or more named people discussed on a specific date and initial retrieval returned only one person's events or only literal 'discussion' matches.",
+          "content": [
+            "Run separate memory searches for each named participant, using queries that mix their name, the date or nearby dates, and topic-neutral event words like 'achievement', 'struggle', 'activity', or 'event'.",
+            "In each search, restrict to memory kind 'event' and a narrow time window around the date; consider memories whose event date falls in the window even when not phrased as a conversation.",
+            "Before answering, confirm at least one supported topic signal exists for every named participant on or near the date; if any participant lacks evidence, run one more targeted search. Stop once each participant has a topic, then combine all supported topics."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_temporal_event_search",
+          "version_id": "sk_access_temporal_event_search_v1",
+          "rank": 5,
+          "score": 0.27217718958854675,
+          "semantic_score": 0.12001419067382812,
+          "lexical_score": 0.6272241473197937,
+          "name": "Temporal event search with date-range filters",
+          "description": "When a question asks what someone did or visited during a specific time period (week, month, date range), use structured search with a date-range filter and accept evidence only from memories overlapping that period.",
+          "content": [
+            "If the question includes a calendar period, compute its start and end dates from the session timestamp and run a structured search on world_start/world_end for events overlapping that range, using the person and activity as filters; do not rely only on semantic or keyword searches.",
+            "When the question asks about travel or destinations, include travel synonyms such as trip, road trip, visited, went, traveled, and destination in the query.",
+            "Treat memories dated outside the requested period (e.g., future preferences, plans, or interests) as non-evidence for that time. Continue searching until you find an event memory whose stored date range overlaps the window, or until both temporal and non-temporal strategies have been tried.",
+            "When the target memory uses a relative time phrase such as 'last Friday', resolve it against the message timestamp and include the resulting date in the structured query, since content keywords alone may miss it.",
+            "Stop as soon as one memory overlapping the time window directly answers the question; do not exhaustively retrieve all trips or preferences."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_post_event_activity",
+          "version_id": "sk_access_post_event_activity_v1",
+          "rank": 6,
+          "score": 0.2393207997083664,
+          "semantic_score": 0.21195316314697266,
+          "lexical_score": 0.303178608417511,
+          "name": "Temporal filter for post-event activity queries",
+          "description": "When a question asks how someone spends time after a major life event, first find the event date and run searches limited to memories at or after that date, including planned future activities.",
+          "content": [
+            "If the question references a life event (wedding, marriage, graduation, move, new job) and a later period (after, since, post-), locate that event's date from memory before answering.",
+            "Run hybrid/structured searches for the person's activities with a time filter: world_start on or after the event date; include planned future events and activity/event memory kinds.",
+            "If top results are dated before the event or do not fit the post-event window, add event-specific keywords (e.g., honeymoon, celebration) and re-search; do not answer from pre-event memories.",
+            "Stop once a coherent set of post-event activities covering the question's claims is retrieved; do not keep expanding after that."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        }
+      ]
+    }
+  },
+  "access_run_id": "access_conv-42_conv-42_conv-42_qa_0103",
+  "claims": [
+    {
+      "claim": "Joanna watched the movie 'Little Women'.",
+      "supporting_version_ids": [
+        "mem_conv-42_0017_v2"
+      ],
+      "coverage": null
+    },
+    {
+      "claim": "Joanna recommended 'Little Women' to Nate.",
+      "supporting_version_ids": [
+        "mem_conv-42_0017_v2"
+      ],
+      "coverage": null
+    }
+  ],
+  "current_related_memories": [
+    {
+      "version_id": "mem_conv-42_0017_v2",
+      "memory_id": "mem_conv-42_0017",
+      "version_no": 2,
+      "content": "Joanna watched the movie 'Little Women' and recommended it to Nate, describing it as a great story about sisterhood, love, and reaching for dreams. Joanna recommended the movie 'Little Women' to Nate, who found it captivating and praised its acting and storytelling.",
+      "memory_kind": "event",
+      "subject": "Joanna",
+      "predicate": "activity",
+      "object_text": "movie recommendation",
+      "world_start": "2022-10-05",
+      "world_end": null,
+      "update_type": "enrichment"
+    }
+  ],
+  "useful_current_version_ids": [
+    "mem_conv-42_0017_v2"
+  ],
+  "retrieved_current_version_ids": [
+    "mem_conv-42_0004_v1",
+    "mem_conv-42_0005_v1",
+    "mem_conv-42_0011_v1",
+    "mem_conv-42_0013_v2",
+    "mem_conv-42_0016_v1",
+    "mem_conv-42_0030_v2",
+    "mem_conv-42_0067_v1",
+    "mem_conv-42_0162_v1"
+  ],
+  "missing_useful_current_version_ids": [
+    "mem_conv-42_0017_v2"
+  ],
+  "search_steps": [
+    {
+      "action_id": "access_conv-42_conv-42_conv-42_qa_0103_a000",
+      "step_index": 0,
+      "action_type": "search_memory",
+      "request": {
+        "action": "search_memory",
+        "arguments": {
+          "strategy": "hybrid",
+          "query": "Joanna recommended a movie or show to Nate on February 7, 2022",
+          "query_expansions": [
+            "What movie or show did Joanna recommend to Nate on February 7, 2022?",
+            "What was the recommendation Joanna made to Nate on February 7, 2022?",
+            "What did Joanna watch and suggest to Nate on February 7, 2022?"
+          ],
+          "keywords": [
+            "Joanna",
+            "Nate",
+            "February 7, 2022"
+          ],
+          "depth": "standard",
+          "entities": [
+            "Joanna",
+            "Nate"
+          ],
+          "memory_kinds": [
+            "event"
+          ],
+          "time_mode": "point",
+          "target_time": "2022-02-07"
+        },
+        "reason": "To find the specific recommendation Joanna made to Nate on February 7, 2022."
+      },
+      "returned_memories": [
+        {
+          "version_id": "mem_conv-42_0005_v1",
+          "memory_id": "mem_conv-42_0005",
+          "content": "Joanna completed her first full screenplay and printed it on January 18, 2022. The screenplay is a mix of drama and romance, and she plans to submit it to film festivals and seek producers and directors.",
+          "memory_kind": "event",
+          "subject": "Joanna",
+          "world_start": "2022-01-18",
+          "world_end": null,
+          "score": 0.0188,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0016_v1",
+          "memory_id": "mem_conv-42_0016",
+          "content": "Nate made a dairy-free chocolate cake with berries and suggested it to Joanna as a potential treat.",
+          "memory_kind": "event",
+          "subject": "Nate",
+          "world_start": "2022-02-07",
+          "world_end": null,
+          "score": 0.0179,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0011_v1",
+          "memory_id": "mem_conv-42_0011",
+          "content": "Nate started hanging out with people outside of his circle at the tournament. He tends to stick around the more chill people there.",
+          "memory_kind": "event",
+          "subject": "Nate",
+          "world_start": "2022-01-23",
+          "world_end": null,
+          "score": 0.014,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0013_v2",
+          "memory_id": "mem_conv-42_0013",
+          "content": "Joanna submitted a screenplay to a film festival and expressed mixed emotions about its potential success, hoping it will be accepted and shown on the big screen. She reflected on how moments of joy make the journey worthwhile.",
+          "memory_kind": "event",
+          "subject": "Joanna",
+          "world_start": "2022-02-07",
+          "world_end": null,
+          "score": 0.011,
+          "paths": [
+            "semantic",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0004_v1",
+          "memory_id": "mem_conv-42_0004",
+          "content": "Joanna watched a romantic drama about memory and relationships around 3 years ago and owns a physical copy of it, having seen it multiple times and considering it one of her favorites.",
+          "memory_kind": "event",
+          "subject": "Joanna",
+          "world_start": "2022-01-21",
+          "world_end": null,
+          "score": 0.0108,
+          "paths": [
+            "semantic",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0162_v1",
+          "memory_id": "mem_conv-42_0162",
+          "content": "Nate plans to invite Joanna over to watch him play with his turtles and potentially watch one of her movies or go to the park.",
+          "memory_kind": "event",
+          "subject": "Nate",
+          "world_start": "2022-11-09",
+          "world_end": null,
+          "score": 0.0082,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0067_v1",
+          "memory_id": "mem_conv-42_0067",
+          "content": "Nate gave Joanna a stuffed animal as a gift to remind her of positive vibes and bring joy.",
+          "memory_kind": "event",
+          "subject": "Nate",
+          "world_start": "2022-05-25",
+          "world_end": null,
+          "score": 0.008,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0030_v2",
+          "memory_id": "mem_conv-42_0030",
+          "content": "Nate supports Joanna in her writing endeavors and encourages her to keep working hard on her project. He expressed pride and support for her creative efforts, assuring her of continued encouragement and belief in her talent.",
+          "memory_kind": "event",
+          "subject": "Nate",
+          "world_start": "2022-03-24",
+          "world_end": null,
+          "score": 0.008,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        }
+      ],
+      "returned_version_ids": [
+        "mem_conv-42_0005_v1",
+        "mem_conv-42_0016_v1",
+        "mem_conv-42_0011_v1",
+        "mem_conv-42_0013_v2",
+        "mem_conv-42_0004_v1",
+        "mem_conv-42_0162_v1",
+        "mem_conv-42_0067_v1",
+        "mem_conv-42_0030_v2"
+      ]
+    },
+    {
+      "action_id": "access_conv-42_conv-42_conv-42_qa_0103_a001",
+      "step_index": 1,
+      "action_type": "inspect_memory",
+      "request": {
+        "action": "inspect_memory",
+        "arguments": {
+          "memory_id": "mem_conv-42_0016",
+          "include_versions": true,
+          "include_sources": true
+        },
+        "reason": "To verify the details of the recommendation made by Joanna to Nate on February 7, 2022."
+      },
+      "returned_memories": [
+        {
+          "version_id": "mem_conv-42_0016_v1",
+          "version_no": 1,
+          "content": "Nate made a dairy-free chocolate cake with berries and suggested it to Joanna as a potential treat.",
+          "world_start": "2022-02-07",
+          "world_end": null
+        }
+      ],
+      "returned_version_ids": [
+        "mem_conv-42_0016_v1"
+      ]
+    },
+    {
+      "action_id": "access_conv-42_conv-42_conv-42_qa_0103_a002",
+      "step_index": 2,
+      "action_type": "answer",
+      "request": {
+        "action": "answer",
+        "arguments": {
+          "answer": "dairy-free chocolate cake with berries",
+          "evidence_version_ids": [
+            "mem_conv-42_0016_v1"
+          ],
+          "confidence": 0.95
+        },
+        "reason": "The memory indicates that Nate made a dairy-free chocolate cake with berries and suggested it to Joanna on February 7, 2022."
+      },
+      "returned_memories": [],
+      "returned_version_ids": []
+    }
+  ]
+}

@@ -1,0 +1,297 @@
+{
+  "batch": {
+    "batch_id": "access_bank1_new_build_0007",
+    "side": "access",
+    "base_bank_version": "v000",
+    "candidates": [
+      {
+        "candidate_id": "cand_access_6078f4e7d6c1",
+        "skill_id": "sk_access_69907b639f",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "CompleteAffectedGroupMemberSearches",
+          "description": "When a question asks who in a family or group was injured, hurt, sick, or otherwise affected, expand searches across member roles and condition synonyms before answering.",
+          "content": [
+            "When a question asks which members of a family or group were affected (injured, hurt, sick, in an accident, etc.), treat it as a completeness query: after any hit, run additional searches pairing each known or role-based member (son, daughter, partner, spouse, child, friend) with condition synonyms (accident, injury, ankle, hospital, doctor, illness, therapy).",
+            "Before giving a final answer, verify that you have searched for all plausible group members and alternate phrasings; if the evidence covers only one member or one wording, continue searching rather than answering."
+          ]
+        },
+        "solves": "When a question asks which members of a family or group were injured or otherwise affected, a single lexical search often misses a relevant memory because the event is phrased differently (e.g., 'soccer accident' vs. 'injured'). This rule requires member-aware query expansion and a completeness check before answering; it applies to any group-condition retrieval question and is not needed for single-subject queries.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-49_conv-49_qa_0049",
+        "source_failure_id": "access_conv-49_conv-49_qa_0049",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:07:56Z"
+      },
+      {
+        "candidate_id": "cand_access_7224a7856bf5",
+        "skill_id": "sk_access_1e3238e70b",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Synonym-expand damage queries before no-info",
+          "description": "Apply when a question asks what items or possessions a person had broken, damaged, or had issues with; expand searches with synonyms and event-type terms before answering.",
+          "content": [
+            "When a question asks about things a person had broken, damaged, or had issues with, expand the search with concept synonyms such as 'broke down', 'accident', 'crash', 'damage', 'malfunction', 'issue', 'problem', or 'not working', not only the literal word from the question.",
+            "If the initial results contain no damage-related memories, run a follow-up search using the person's name plus likely object categories (e.g., vehicle, car, possession) and, when available, filter by structured event predicates like accident, breakdown, or vehicle issues.",
+            "Do not answer 'No information available' after a single unhelpful result set; re-search with varied synonyms first and only conclude no evidence after multiple attempts."
+          ]
+        },
+        "solves": "The access agent ran a single keyword search for 'broken', missed memories describing 'accident' and 'broke down', and prematurely answered 'No information available'. The reusable mechanism is insufficient concept-level query expansion before a negative conclusion; the rule applies to questions about broken, damaged, or faulty possessions, not to metaphorical 'broken' (e.g., promises, hearts).",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-49_conv-49_qa_0001",
+        "source_failure_id": "access_conv-49_conv-49_qa_0001",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:07:49Z"
+      },
+      {
+        "candidate_id": "cand_access_748f176da052",
+        "skill_id": "sk_access_83bb9c6be5",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Per-subject enumeration for experience questions",
+          "description": "When a question asks what experiences or incidents (health scares, trips, problems) named people had, enumerate events per named subject with structured and expanded searches before answering.",
+          "content": [
+            "When a question asks what events or incidents one or more named people experienced (e.g., health scares, trips, problems), run a separate targeted search for each named person instead of relying only on a combined multi-person query; merge unique findings across subjects.",
+            "When the question uses a broad category label that may not match memory wording, also run a structured search per named subject constrained to the relevant memory kind (e.g., event) and supplement with concrete sub-terms, because relevant events can be stored under specific vocabulary and rank below the top-k of a hybrid query."
+          ]
+        },
+        "solves": "Category-word questions can miss stored events recorded under concrete vocabulary: a 'health scares' query retrieved two of three health events because one used 'heart palpitation' and a combined two-person query ranked it below top-k. This transfers to any multi-subject, category-level experience question: per-subject and structured enumeration prevents incomplete answers.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-49_conv-49_qa_0062",
+        "source_failure_id": "access_conv-49_conv-49_qa_0062",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:08:27Z"
+      },
+      {
+        "candidate_id": "cand_access_8429a0434457",
+        "skill_id": "sk_access_d7459a113a",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Require Named Answers for Specific-Entity Questions",
+          "description": "When a question asks which/what specific ailment, disease, dish, place, or other named entity (rather than a category), apply before answering: generic category evidence is insufficient; search for a memory that explicitly names the entity.",
+          "content": [
+            "When the question requests a specific named entity (e.g., 'which ailment', 'what disease', 'which restaurant'), treat generic category terms (e.g., 'health risk', 'discomfort') as insufficient evidence.",
+            "If current evidence lacks the named entity, run additional searches combining the subject's name with terms like 'experienced', 'diagnosed', 'visited', or use a structured search for event memories with a related predicate, before issuing an answer.",
+            "Answer with a named entity only if it appears verbatim in retrieved memory content; otherwise continue searching rather than settling for a general description."
+          ]
+        },
+        "solves": "An agent answering 'which ailment does X face' answered with a generic 'health risk' because retrieved memories described X's health category but never named the actual condition. The abstract rule is to require verbatim named evidence whenever the question demands a specific entity, and continue searching for event memories containing that name before answering. This applies to future 'which/what' questions about concrete entities (ailments, diseases, places, dishes); it does not apply to questions seeking category-level descriptions or when no memory names the entity.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-49_conv-49_qa_0064",
+        "source_failure_id": "access_conv-49_conv-49_qa_0064",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:08:10Z"
+      },
+      {
+        "candidate_id": "cand_access_9133f4d1d076",
+        "skill_id": "sk_access_ce1246e7e2",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "ConcreteTermQueryExpansion",
+          "description": "When a question contains an abstract or superordinate term, expand the search with concrete specific terms for that category and re-search if initial results are irrelevant.",
+          "content": [
+            "Identify abstract or superordinate words in the question (e.g., 'physical transformation', 'achievement', 'illness') and add concrete hyponyms or descriptors likely to appear in memory (e.g., hair, weight, tournament, injury).",
+            "If the first search returns topics unrelated to the abstract category, run additional searches using those concrete expansions before concluding no information.",
+            "Use synonyms and category members to cover different wordings of the same fact."
+          ]
+        },
+        "solves": "Retrieval fails when a question uses an abstract category (e.g., 'physical transformation') but memory stores the fact with concrete words (e.g., 'dyed his hair'). This rule prompts concrete-hyponym expansion and a re-search before concluding no information. It applies to any abstract-category retrieval (appearance, achievements, health, etc.) and does not apply when the query already contains the exact concrete terms.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-42_conv-42_qa_0016",
+        "source_failure_id": "access_conv-42_conv-42_qa_0016",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:05:50Z"
+      },
+      {
+        "candidate_id": "cand_access_97f5c8fd45a1",
+        "skill_id": "sk_access_75558a04de",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Expand submission-target synonyms before answering",
+          "description": "When a question asks for multiple places or targets someone submitted/sent something to, expand the category into concrete synonyms and search each one before answering.",
+          "content": [
+            "If the question asks for destinations or targets of an action (such as places/venues someone submitted or sent work to), generate concrete hyponyms and synonyms of that category (e.g., contest, competition, festival, publication, company) and run one search with each term instead of only the generic category word.",
+            "When the question is plural, continue searching until the retrieved evidence covers every distinct instance; do not answer after the first search that yields only one instance.",
+            "Answer with the union of distinct instances that have direct evidence, and never state an instance without retrieval support."
+          ]
+        },
+        "solves": "When a question asks for a list of destinations/targets for an action, a query with only the generic category term can miss memories naming specific instances (e.g., 'contest' vs 'places'). This skill triggers synonym/hyponym expansion and repeated searches until every instance implied by the plural question is supported. Not applicable when one retrieval already fully answers a single-fact question.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-42_conv-42_qa_0027",
+        "source_failure_id": "access_conv-42_conv-42_qa_0027",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:05:40Z"
+      },
+      {
+        "candidate_id": "cand_access_9c901cfcaa75",
+        "skill_id": "sk_access_f21a791f5f",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Expand search for course/workshop/group memberships",
+          "description": "When a question asks what classes, courses, workshops, seminars, groups, or clubs a person joined or attended, search with each activity-type noun variant in separate targeted queries.",
+          "content": [
+            "If the question asks which classes, courses, workshops, seminars, groups, or clubs a person has joined or attended, do not stop after one broad hybrid search.",
+            "Issue additional targeted searches that pair the person and topic with each concrete activity-type noun: 'workshop', 'course', 'class', 'seminar', 'group', 'club'; keep searching until all noun variants are exhausted or evidence is sufficient."
+          ]
+        },
+        "solves": "A single broad hybrid search missed stored event memories whose names use concrete nouns like 'workshop' or 'course' when the question only used generic terms like 'classes or groups'. Future questions asking about any courses, workshops, classes, seminars, or groups a person joined can trigger targeted noun-variant searches, avoiding this recall failure across any topic.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-44_conv-44_qa_0009",
+        "source_failure_id": "access_conv-44_conv-44_qa_0009",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:06:28Z"
+      },
+      {
+        "candidate_id": "cand_access_e92fc353c1a2",
+        "skill_id": "sk_access_09fc278e45",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Retrieve multi-topic merged memories for enumerative coping questions",
+          "description": "When a question asks what helped a person cope, grieve, or find peace, decompose it into per-facet searches and include keyword/BM25 to catch long multi-topic merged memories that one semantic top-k may miss.",
+          "content": [
+            "When a question asks what helped someone cope, grieve, or find peace, do not rely on a single broad semantic top-k search; decompose the question into distinct facets (practices, places, objects) and run a separate search for each facet.",
+            "Long merged memories that combine several topics dilute semantic relevance and can fall below the cutoff; when a facet lacks evidence, run a keyword or BM25 search with that facet's distinctive terms and inspect merged multi-topic versions.",
+            "Before finalizing an enumerative answer, ensure every plausible facet has supporting evidence or an explicit search attempt; treat the first semantic result set as non-exhaustive."
+          ]
+        },
+        "solves": "A single semantic search missed a multi-topic merged memory linking yoga to grief-comfort because merged memories dilute per-topic relevance. For enumerative questions asking what helped a person cope, grieve, or find peace, decompose into per-facet searches and add keyword/BM25 to surface merged memories; not needed when the question targets one narrow, already-evidenced facet.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-48_conv-48_qa_0008",
+        "source_failure_id": "access_conv-48_conv-48_qa_0008",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:07:14Z"
+      }
+    ],
+    "retrieved_skill_ids": [],
+    "relations": []
+  },
+  "plan": {
+    "transaction_id": "tx_access_bank1_new_build_0007",
+    "side": "access",
+    "base_bank_version": "v000",
+    "candidate_resolutions": [
+      {
+        "candidate_id": "cand_access_6078f4e7d6c1",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_access_merged_expansion"
+        ],
+        "reason": "Merged with other candidates that share the same query expansion and completeness mechanism."
+      },
+      {
+        "candidate_id": "cand_access_7224a7856bf5",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_access_merged_expansion"
+        ],
+        "reason": "Merged with other candidates that share the same query expansion and completeness mechanism."
+      },
+      {
+        "candidate_id": "cand_access_748f176da052",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_access_merged_expansion"
+        ],
+        "reason": "Merged with other candidates that share the same query expansion and completeness mechanism."
+      },
+      {
+        "candidate_id": "cand_access_8429a0434457",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_access_merged_expansion"
+        ],
+        "reason": "Merged with other candidates that share the same query expansion and completeness mechanism."
+      },
+      {
+        "candidate_id": "cand_access_9133f4d1d076",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_access_merged_expansion"
+        ],
+        "reason": "Merged with other candidates that share the same query expansion and completeness mechanism."
+      },
+      {
+        "candidate_id": "cand_access_97f5c8fd45a1",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_access_merged_expansion"
+        ],
+        "reason": "Merged with other candidates that share the same query expansion and completeness mechanism."
+      },
+      {
+        "candidate_id": "cand_access_9c901cfcaa75",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_access_merged_expansion"
+        ],
+        "reason": "Merged with other candidates that share the same query expansion and completeness mechanism."
+      },
+      {
+        "candidate_id": "cand_access_e92fc353c1a2",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_merged_expansion"
+        ],
+        "reason": "Absorbing all other candidates into this merged Skill."
+      }
+    ],
+    "operations": [
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_merged_expansion",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Query Expansion and Completeness for Enumerative Questions",
+        "description": "Use when a question asks for a list or enumeration of items, members, or instances, or uses abstract or category terms that may not match memory wording.",
+        "content": [
+          "When a question asks for a list or enumeration (e.g., which members, what items, which places, what experiences), treat it as a completeness query: after any hit, run additional searches pairing each known or role-based entity with concrete synonyms and hyponyms of the category.",
+          "If the question uses an abstract or superordinate term, expand the search with concrete specific terms likely to appear in memory (e.g., 'accident', 'injury', 'workshop', 'course', 'contest', 'diagnosed').",
+          "For multi-subject or multi-facet questions, run a separate targeted search for each named subject or facet, and use keyword/BM25 to catch long merged memories that may fall below semantic top-k.",
+          "Before finalizing an enumerative answer, verify that all plausible entities, facets, or instances have supporting evidence or an explicit search attempt; do not answer 'No information available' after a single unhelpful result set.",
+          "When the question demands a specific named entity, require verbatim evidence of that entity in retrieved memory content; otherwise continue searching rather than settling for a generic description."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_6078f4e7d6c1",
+          "cand_access_7224a7856bf5",
+          "cand_access_748f176da052",
+          "cand_access_8429a0434457",
+          "cand_access_9133f4d1d076",
+          "cand_access_97f5c8fd45a1",
+          "cand_access_9c901cfcaa75",
+          "cand_access_e92fc353c1a2"
+        ],
+        "reason": "All candidates share the same underlying mechanism: insufficient query expansion and completeness checking before answering enumerative or category-based questions. Merging into one orthogonal Skill.",
+        "hard_delete": false
+      }
+    ]
+  },
+  "status": "planned"
+}

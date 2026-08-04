@@ -1,0 +1,357 @@
+{
+  "batch": {
+    "batch_id": "construction_bank1_new_build_0002",
+    "side": "construction",
+    "base_bank_version": "v001",
+    "candidates": [
+      {
+        "candidate_id": "cand_construction_57d13ff5b1c3",
+        "skill_id": "sk_construction_9f3f067878",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Verify Memory Exists Before SKIP",
+          "description": "When deciding whether to SKIP a constructed memory candidate during CRUD, if the candidate's core assertion has no matching version in the retrieved existing memory pool, choose ADD instead of SKIP.",
+          "content": [
+            "Before choosing SKIP for a candidate, confirm that at least one retrieved existing memory actually contains the candidate's core assertion (same subject, predicate, and object, or a semantically equivalent phrasing).",
+            "If no existing memory matches the core assertion, do not SKIP; select ADD (or MERGE only when the existing memory is missing details) so the evidence-backed fact is persisted.",
+            "If an existing memory already expresses the same fact, SKIP or MERGE is still allowed; never add a duplicate or unnecessarily expand an existing memory."
+          ]
+        },
+        "solves": "Construction Agents sometimes SKIP a candidate on the assumption that it is already represented in memory even though no retrieved existing memory actually contains the asserted fact, so the fact is never persisted. Apply when a candidate's core assertion (subject, predicate, and object) has no matching version in the retrieved existing-memory pool: ADD it instead of SKIP. Do not apply when an existing memory version already expresses the same fact; in that case SKIP or MERGE remains correct.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-42_conv-42_qa_0161",
+        "source_failure_id": "cons_conv-42_conv-42_qa_0161",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:37:41Z"
+      },
+      {
+        "candidate_id": "cand_construction_6a80ce25a89f",
+        "skill_id": "sk_construction_2c3de63712",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Verify existing memory before SKIP as duplicate",
+          "description": "Use during construction decision stage when an extraction candidate is about to be skipped because it seems duplicate or already represented; apply before finalizing the decision.",
+          "content": [
+            "Before choosing SKIP with reason 'duplicate or already fully represented', verify that the retrieved existing-memory pool actually contains a memory whose subject and content cover the candidate's full claim. If no covering memory is present — including when the pool is empty — do not SKIP; record the candidate as a new memory with ADD (or use UPDATE/MERGE only when a partial covering memory exists).",
+            "A candidate cannot be 'already represented' by an absent memory; missing coverage is an add signal, not a skip signal."
+          ]
+        },
+        "solves": "Fixes false-duplicate SKIPs during construction decisions: a candidate is skipped with reason 'duplicate or already fully represented' even though the existing-memory pool contains no covering memory, so the fact is never stored. Applies whenever a construction candidate is evaluated for SKIP based on duplication; require positive evidence of a covering memory before skipping. Not applicable when a genuinely covering memory exists or when the candidate is not a valid memory candidate.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-42_conv-42_qa_0189",
+        "source_failure_id": "cons_conv-42_conv-42_qa_0189",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:46:15Z"
+      },
+      {
+        "candidate_id": "cand_construction_848e1be3bf1f",
+        "skill_id": "sk_construction_a845fc3df7",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Verify memory coverage before skipping candidates",
+          "description": "Apply during Construction CRUD when a candidate is skipped with the reason that its information is already included in an updated memory, or when several distinct facts from one message are skipped as duplicates.",
+          "content": [
+            "During CRUD decisions, before SKIP for reason 'already included in an updated memory', verify the covering memory is an existing committed memory from the retrieval pool or a memory returned by an earlier ADD/UPDATE in the current batch. A mere candidate from the same extraction batch is not sufficient coverage.",
+            "When a single user message states several distinct facts (e.g., multiple motivations, attributes, or preferences), add a separate memory for each distinct fact. Do not skip a candidate just because another candidate seems similar unless the other memory is actually committed or created in this batch and fully subsumes it."
+          ]
+        },
+        "solves": "This solves the failure where Construction CRUD skips extracted facts as 'already included in an updated memory' even though no committed or newly created memory covers them, so distinct facts are silently lost. It applies to future sessions where a message expresses multiple distinct facts and candidates are skipped based on another candidate or a nonexistent updated memory. It must not apply when a candidate genuinely duplicates an existing committed memory or a memory created earlier in the same batch.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-49_conv-49_qa_0026",
+        "source_failure_id": "cons_conv-49_conv-49_qa_0026",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:41:56Z"
+      },
+      {
+        "candidate_id": "cand_construction_8b9bab6279c8",
+        "skill_id": "sk_construction_9c5f172106",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "DistinctFactNotOverlapSkip",
+          "description": "Apply during construction CRUD decisions when a candidate memory describes a new distinct entity, event, or work that shares only a broad topic, category, or actor with an existing memory, before choosing SKIP or MERGE for apparent overlap.",
+          "content": [
+            "Before SKIPping or MERGEing a candidate as overlapping, verify that the existing memory covers the same specific fact, entity, or claim; sharing only the same broad subject, category, or person is not overlap.",
+            "If the candidate introduces a distinct concrete object (such as a different written work, project, event, or item) with its own details, ADD it as a separate memory instead of discarding it; when only part matches, merge only the matching portion and preserve the new distinct fact."
+          ]
+        },
+        "solves": "Fixes construction decisions that wrongly SKIP or MERGE a new durable fact because the candidate shares only a broad topic, category, or actor with an existing memory. Applies when a future candidate describes a distinct concrete entity, event, or work (e.g., a different project, item, or written work) that merely belongs to the same general subject or person as an existing memory; it must not apply to true restatements of the same fact, which should still be merged or skipped.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-42_conv-42_qa_0030",
+        "source_failure_id": "cons_conv-42_conv-42_qa_0030",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:36:56Z"
+      },
+      {
+        "candidate_id": "cand_construction_9712c2f3cc90",
+        "skill_id": "sk_construction_03bb751c9a",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Decision-Stage Redundancy Verification",
+          "description": "When deciding ADD, UPDATE, MERGE, or SKIP for a candidate memory, use this if the decision reason claims the candidate is already covered by an existing memory; verify the covering memory is present in the current related-memory pool before skipping or merging.",
+          "content": [
+            "Before applying SKIP or MERGE to a candidate because it is already covered, locate the covering memory in the current retrieved related-memory pool.",
+            "If no retrieved memory contains the same subject and fact, treat the candidate as new information and ADD it.",
+            "Do not infer coverage from group or organizational membership or from topically related but non-identical facts; the existing memory must explicitly state the fact being added."
+          ]
+        },
+        "solves": "The Construction decision stage skipped a valid candidate by citing an existing memory that was not actually present in the retrieved related-memory pool, causing evidence-bound facts to be lost. This Skill applies when a SKIP/UPDATE/MERGE decision is justified by claimed redundancy with a memory that is absent from the current pool; the agent must verify the covering memory exists and otherwise ADD the candidate. It does not apply when the covering memory is genuinely present and normal redundancy rules should be followed.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-44_conv-44_qa_0118",
+        "source_failure_id": "cons_conv-44_conv-44_qa_0118",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:40:01Z"
+      },
+      {
+        "candidate_id": "cand_construction_bb259013c60d",
+        "skill_id": "sk_construction_13a6e870aa",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Verify-duplicate-before-skip",
+          "description": "When deciding between ADD and SKIP for a candidate in the Construction Agent, use when the candidate is marked duplicate or update_type is add and you are considering skipping because existing memory allegedly covers it.",
+          "content": [
+            "Before SKIPping a candidate as a duplicate, verify that the retrieved existing-memory pool actually contains a memory that fully represents the same fact with matching subject and predicate; if no such memory is present or the pool is empty, perform ADD instead.",
+            "Do not skip an add candidate merely because it seems familiar, seems implied by another claim, or because the same speaker mentioned similar content earlier; the pool is the only source of truth for duplicates."
+          ]
+        },
+        "solves": "The general failure is skipping new candidate events as duplicates when the memory pool contains no corresponding memory, causing facts to be omitted. Applies to any construction session where a candidate with update_type add is skipped with a duplicate reason while the retrieved pool lacks the equivalent memory; in that case, the agent must ADD. Not applicable when a matching memory genuinely exists in the pool and SKIP/MERGE is appropriate.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-44_conv-44_qa_0086",
+        "source_failure_id": "cons_conv-44_conv-44_qa_0086",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:39:39Z"
+      },
+      {
+        "candidate_id": "cand_construction_bd42fb281040",
+        "skill_id": "sk_construction_ab934aae73",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Preserve New Claims on Partial Memory Overlap",
+          "description": "When, during construction CRUD decisions, a candidate memory only partially overlaps an existing memory but adds a new claim (e.g., emotional state, evaluation, relationship detail), use UPDATE/MERGE or ADD instead of SKIP.",
+          "content": [
+            "During CRUD decisions, before choosing SKIP, compare every assertion in the candidate against the existing memory; SKIP only when all candidate claims are already present or fully implied.",
+            "When a candidate shares some facts with an existing memory but adds any new claim (such as an emotional state, evaluation, or relationship detail), preserve the new claim by UPDATING/MERGING the existing memory or ADDING a separate compact memory; never discard the new claim because one overlapping aspect is represented.",
+            "Stop after adding the new claim; do not expand related memories or create redundant entries for facts already present."
+          ]
+        },
+        "solves": "When a Construction candidate partially overlaps an existing memory on one aspect (e.g., ownership) but also asserts a new distinct claim (e.g., a feeling or quality), the decision stage may wrongly SKIP because the old memory seems to cover it, losing the new fact. This Skill applies when a future extracted candidate matches an existing memory on some facts yet adds a new claim that should be preserved via UPDATE/MERGE or ADD. It does not apply when the candidate is fully redundant and SKIP is correct, and it never requires expanding memories beyond the evidence.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-48_conv-48_qa_0135",
+        "source_failure_id": "cons_conv-48_conv-48_qa_0135",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:41:19Z"
+      },
+      {
+        "candidate_id": "cand_construction_c24aae61a563",
+        "skill_id": "sk_construction_3b28955aee",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Confirm Duplicate Before Skipping Candidate",
+          "description": "Apply during CRUD when a candidate memory is about to be SKIPPED with a reason such as 'already represented' or 'duplicate'; verify that the retrieved existing-memory pool actually contains that information before deciding to skip.",
+          "content": [
+            "During the CRUD/decision stage, before issuing SKIP because a candidate is 'already represented' or a 'duplicate', check the retrieved existing-memory pool. If no existing memory contains the same fact or its paraphrase, do not skip; issue ADD for the candidate. Only SKIP or MERGE when an equivalent memory is actually present in the retrieved pool."
+          ]
+        },
+        "solves": "A candidate memory is sometimes skipped as 'already represented' even when no existing memory contains that fact, causing the information to be lost. This applies when a future session extracts a new memory and the CRUD decision would SKIP it on duplication grounds. It does not apply when the retrieved existing-memory pool genuinely contains an equivalent memory.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-49_conv-49_qa_0145",
+        "source_failure_id": "cons_conv-49_conv-49_qa_0145",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:42:31Z"
+      },
+      {
+        "candidate_id": "cand_construction_d5c6e23bfdb6",
+        "skill_id": "sk_construction_f1fd40e136",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Verify existing memory before skipping candidate as duplicate",
+          "description": "When deciding whether to SKIP or MERGE a candidate during construction, apply this before finalizing the action; trigger whenever the candidate is marked 'duplicate' or 'already represented' and the retrieved memory pool or snapshot memories contain no substantively matching memory.",
+          "content": [
+            "Before choosing SKIP with a 'duplicate' reason, verify that the retrieved existing-memory pool and snapshot memories contain at least one memory version whose subject, predicate, and time window substantively cover the candidate. If no such memory exists, the candidate is new.",
+            "When the candidate is not substantively covered by any existing memory version ID, ADD it as a new memory; do not infer duplication from similar wording in the source message or from an earlier turn that produced no persisted memory.",
+            "Only allow SKIP/MERGE when you can point to the specific existing memory ID(s) that already represent the candidate's content."
+          ]
+        },
+        "solves": "During construction decision-making, the model sometimes marks a candidate as 'duplicate' and SKIPs it even though the retrieved existing-memory pool and snapshot are empty, causing new facts to be lost. This Skill applies when a candidate is a new event/state/relationship and no existing memory version substantively covers its subject+predicate+time; in that case the candidate must be ADDed. It must not apply when the pool actually contains a matching memory, in which case MERGE/UPDATE/SKIP remains correct.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-44_conv-44_qa_0022",
+        "source_failure_id": "cons_conv-44_conv-44_qa_0022",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:39:06Z"
+      },
+      {
+        "candidate_id": "cand_construction_e6a10c17226b",
+        "skill_id": "sk_construction_b19966f0d2",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Check specific facts before SKIP/MERGE duplicate",
+          "description": "Use when deciding whether to SKIP or MERGE a construction candidate that seems to duplicate existing memories; verify that every specific factual claim is already present, since sharing only a topic or context is not duplication.",
+          "content": [
+            "When a candidate seems duplicated, list its specific factual claims (subject, action, named item/pose, place, time) and confirm each is present in the retrieved memory pool or already accepted in this batch before skipping.",
+            "If the candidate overlaps an existing memory only in topic or context but adds any new specific detail, ADD it or MERGE it into the closest memory; never SKIP it as duplicate.",
+            "Stop verification once all specific claims are found; SKIP or MERGE only when the candidate repeats exactly the same specific facts already stored."
+          ]
+        },
+        "solves": "A CRUD decision SKIPs a valid candidate as duplicate when no existing memory contains its specific claims; thematic overlap is mistaken for coverage. Applies when a candidate shares a subject/activity with prior memories but adds a distinct specific detail (new pose, item, place, occurrence). Does not apply when the candidate fully repeats the same specific facts already stored; SKIP/MERGE remains correct.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-48_conv-48_qa_0024",
+        "source_failure_id": "cons_conv-48_conv-48_qa_0024",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:40:23Z"
+      }
+    ],
+    "retrieved_skill_ids": [],
+    "relations": []
+  },
+  "plan": {
+    "transaction_id": "tx_construction_bank1_new_build_0002",
+    "side": "construction",
+    "base_bank_version": "v001",
+    "candidate_resolutions": [
+      {
+        "candidate_id": "cand_construction_57d13ff5b1c3",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_verify_before_skip"
+        ],
+        "reason": "Merged with other candidates that share the same failure mechanism: skipping a candidate as duplicate without verifying the covering memory exists."
+      },
+      {
+        "candidate_id": "cand_construction_6a80ce25a89f",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_verify_before_skip"
+        ],
+        "reason": "Same mechanism: verify existing memory before SKIP as duplicate."
+      },
+      {
+        "candidate_id": "cand_construction_848e1be3bf1f",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_verify_before_skip"
+        ],
+        "reason": "Same mechanism: verify memory coverage before skipping candidates."
+      },
+      {
+        "candidate_id": "cand_construction_8b9bab6279c8",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_verify_before_skip"
+        ],
+        "reason": "Same mechanism: verify specific fact coverage before SKIP/MERGE; distinct facts must be preserved."
+      },
+      {
+        "candidate_id": "cand_construction_9712c2f3cc90",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_verify_before_skip"
+        ],
+        "reason": "Same mechanism: verify covering memory exists before SKIP/MERGE."
+      },
+      {
+        "candidate_id": "cand_construction_bb259013c60d",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_verify_before_skip"
+        ],
+        "reason": "Same mechanism: verify duplicate before skip."
+      },
+      {
+        "candidate_id": "cand_construction_bd42fb281040",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_verify_before_skip"
+        ],
+        "reason": "Same mechanism: preserve new claims on partial overlap; verify coverage before SKIP."
+      },
+      {
+        "candidate_id": "cand_construction_c24aae61a563",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_verify_before_skip"
+        ],
+        "reason": "Same mechanism: confirm duplicate before skipping candidate."
+      },
+      {
+        "candidate_id": "cand_construction_d5c6e23bfdb6",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_verify_before_skip"
+        ],
+        "reason": "Same mechanism: verify existing memory before skipping candidate as duplicate."
+      },
+      {
+        "candidate_id": "cand_construction_e6a10c17226b",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_verify_before_skip"
+        ],
+        "reason": "Same mechanism: check specific facts before SKIP/MERGE duplicate."
+      }
+    ],
+    "operations": [
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_verify_before_skip",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Verify Memory Coverage Before SKIP",
+        "description": "Use during construction CRUD when a candidate is about to be SKIPped or MERGEd as duplicate or already represented; verify the covering memory exists in the retrieved pool before skipping.",
+        "content": [
+          "Before choosing SKIP or MERGE for a candidate, verify that the retrieved existing-memory pool (or a memory created earlier in this batch) actually contains a memory that covers the candidate's specific factual claims (subject, predicate, object, and time).",
+          "If no covering memory exists, ADD the candidate as a new memory; do not skip based on thematic overlap, similar wording, or an absent memory.",
+          "If the candidate shares only a broad topic or category but adds a distinct specific fact, ADD it or MERGE only the matching portion; preserve the new claim.",
+          "Only SKIP or MERGE when you can point to the specific existing memory ID(s) that fully represent the candidate's content."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_57d13ff5b1c3",
+          "cand_construction_6a80ce25a89f",
+          "cand_construction_848e1be3bf1f",
+          "cand_construction_8b9bab6279c8",
+          "cand_construction_9712c2f3cc90",
+          "cand_construction_bb259013c60d",
+          "cand_construction_bd42fb281040",
+          "cand_construction_c24aae61a563",
+          "cand_construction_d5c6e23bfdb6",
+          "cand_construction_e6a10c17226b"
+        ],
+        "reason": "All candidates share the same failure mechanism: skipping a candidate as duplicate without verifying the covering memory exists. Merged into one Skill.",
+        "hard_delete": false
+      }
+    ]
+  },
+  "status": "planned"
+}

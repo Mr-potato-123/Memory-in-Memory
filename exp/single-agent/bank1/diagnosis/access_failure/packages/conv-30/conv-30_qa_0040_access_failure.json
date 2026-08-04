@@ -1,0 +1,669 @@
+{
+  "schema_version": "access_diagnosis_v3",
+  "diagnosis_id": "access_conv-30_conv-30_qa_0040",
+  "diagnosis_type": "ACCESS_FAILURE",
+  "status": "completed",
+  "judge_run_id": "judge",
+  "diagnosis_run_id": "bank1_train_flash",
+  "source_runtime_run": "conv-30",
+  "conversation_id": "conv-30",
+  "qa_id": "conv-30_qa_0040",
+  "snapshot_commit_id": 19,
+  "question": "What is Jon's favorite style of dance?",
+  "reference_answer": "Contemporary",
+  "problem_found": true,
+  "reason": "The current memory mem_conv-30_0005_v1 explicitly states that Jon's favorite dance style is contemporary. Other current memories in the search chain do not mention a specific dance style, so they are not useful for supporting the claim.",
+  "confidence": 1.0,
+  "review_required": false,
+  "skill_trace": {
+    "trace_id": "skilltrace_access_conv-30_conv-30_conv-30_qa_0040",
+    "side": "access",
+    "bank_version": "bank1",
+    "query": "What is Jon's favorite style of dance?",
+    "top_k": 2,
+    "disclose_k": 5,
+    "min_score": 0.2,
+    "scored_fields": [
+      "name",
+      "description"
+    ],
+    "scoring_weights": {
+      "semantic": 0.7,
+      "bm25": 0.3
+    },
+    "retrieval_method": "bank1_hybrid_router",
+    "candidate_k": 10,
+    "reranker": "bank1_applicability_router",
+    "reranker_error": "",
+    "selected": [
+      {
+        "skill_id": "sk_access_favorite_preference_authority",
+        "version_id": "sk_access_favorite_preference_authority_v1",
+        "rank": 1,
+        "score": 0.368122398853302,
+        "semantic_score": 0.09731770306825638,
+        "lexical_score": 1.0,
+        "name": "Include Preference Memories for Favorite Questions",
+        "description": "When a question asks about a person's favorite or preferred thing, include memory_kind 'preference' in the memory search before answering.",
+        "content": [
+          "If the question asks what someone's favorite/preferred item, dish, activity, or attribute is, run a memory search that includes memory_kinds 'preference' (and 'profile' if relevant), not only 'event'.",
+          "When event memories mention several candidate favorites but a preference memory names one, use the preference memory as the authoritative source for the favorite answer; stop once this evidence is found."
+        ],
+        "selected": true,
+        "rerank_rank": 1,
+        "rerank_reason": "The question asks about Jon's favorite style of dance, which is a preference. The skill specifically addresses retrieving preference memories for favorite items, making it directly applicable."
+      }
+    ],
+    "nearby_not_selected": [
+      {
+        "skill_id": "sk_access_creative_work_retrieval",
+        "version_id": "sk_access_creative_work_retrieval_v1",
+        "rank": 2,
+        "score": 0.3470519781112671,
+        "semantic_score": 0.1067698523402214,
+        "lexical_score": 0.9077102541923523,
+        "name": "Creative Work Retrieval",
+        "description": "Use when asked what a person's creative work (screenplay, book, film, project) is about or its theme.",
+        "content": [
+          "Before answering what a creative work is about, search using generic descriptors (project, work, piece, story, theme, about) alongside the specific type (screenplay, book, film).",
+          "When the specific work is referenced by order or completion (e.g., third screenplay, finished script), also retrieve memories of completed/achieved works using verbs like completed, finished, wrote, premiered and look for event/achievement memories that state the theme even if they do not name the work type.",
+          "After retrieval, verify the returned memory actually describes the requested instance (e.g., its ordinal or completion status); if it only gives a title or a plan, inspect related versions or broaden the search before answering."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_creator_genre_inference",
+        "version_id": "sk_access_creator_genre_inference_v1",
+        "rank": 3,
+        "score": 0.2710767686367035,
+        "semantic_score": 0.13548728823661804,
+        "lexical_score": 0.5874521732330322,
+        "name": "Infer Preference for Named Creator",
+        "description": "When a question asks whether a user would enjoy a specific author, artist, or work, and retrieval returns the user's genre/taste preferences but no direct mention of that name, infer alignment using general knowledge of the creator's genre instead of returning 'no information'.",
+        "content": [
+          "When asked whether a user would enjoy a named author/creator/work, first retrieve the user's reading/viewing preferences and genres; do not require the name itself to appear in a memory.",
+          "If the retrieved preferences show a clear genre, use general knowledge of the named creator's typical genre to judge alignment: answer with the option whose genre matches the user's stated preference, and explain the match briefly.",
+          "Stop after one preference-retrieval pass and one alignment judgment; avoid repeated searches for the author's name or genre in memory."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_event_preference_retrieval",
+        "version_id": "sk_access_event_preference_retrieval_v1",
+        "rank": 4,
+        "score": 0.22139830887317657,
+        "semantic_score": 0.03498039394617081,
+        "lexical_score": 0.6563734412193298,
+        "name": "Event-Based Preference Retrieval",
+        "description": "When a question asks about a person's favorite or preferred items, use this to also retrieve event memories where the person made/tried and liked items, and attribute evidence to the correct person.",
+        "content": [
+          "When a question asks about a person's favorite or preferred items, run a supplementary hybrid memory search combining the person's name with terms like 'made', 'tried', 'enjoyed', 'loved', or 'found delicious' to surface event memories that may support the preference.",
+          "Treat an event memory where the subject themselves made or tried an item and expressed positive sentiment as evidence for that subject's preference; do not use another person's enjoyment or reaction as evidence of the subject's preference.",
+          "When answering with a list of favorites, enumerate each distinct item or flavor explicitly stated in eligible supporting memories, and stop when no retrieved memory supports an additional item."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_preference_memory_search",
+        "version_id": "sk_access_preference_memory_search_v1",
+        "rank": 5,
+        "score": 0.21074984967708588,
+        "semantic_score": 0.057040661573410034,
+        "lexical_score": 0.5694046020507812,
+        "name": "Preference-Memory Targeted Retrieval",
+        "description": "When a question asks what a person thinks, prefers, or considers ideal about a topic, include preference-focused queries and a structured preference-memory search before concluding evidence is missing.",
+        "content": [
+          "When the question asks about a person's opinion, preference, or ideal vision (e.g., what X thinks the ideal Y should look like, prefers, likes), include query variants with preference verbs (prefers, likes, thinks, wants) and the specific attributes mentioned (e.g., flooring, lighting, location).",
+          "If the initial hybrid search returns no preference-kind memories for the target subject, run one additional structured search filtered to memory_kind=preference and subject=<person> before answering.",
+          "Stop once preference memories covering the asked attributes are found; do not expand further."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_alternative_activity_retrieval",
+        "version_id": "sk_access_alternative_activity_retrieval_v1",
+        "rank": 6,
+        "score": 0.204924076795578,
+        "semantic_score": 0.0812893956899643,
+        "lexical_score": 0.49340498447418213,
+        "name": "Alternative Activity Retrieval",
+        "description": "Use when a question asks what someone did or planned instead of, rather than, or as a supplement to a named activity.",
+        "content": [
+          "When a question asks for an activity done 'instead of', 'rather than', 'as an alternative to', or to 'supplement' a named activity, do not treat that named activity as the sole retrieval anchor.",
+          "After the first search, run at least one follow-up query that omits the superseded or primary activity and adds replacement-oriented terms such as 'alternative', 'plan', 'preference', 'together', 'play', 'instead', 'supplement', 'additional', 'strength', 'fit', or 'workout'.",
+          "In such follow-up searches, explicitly include memory kinds 'profile' and 'relationship', because the alternative may be recorded as a shared preference or interest rather than as an event.",
+          "If all top results still mention the superseded activity, treat that as evidence of over-anchoring and run another query targeting the replacement before answering."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      }
+    ]
+  },
+  "repair_package": {
+    "question": "What is Jon's favorite style of dance?",
+    "reference_answer": "Contemporary",
+    "missing_useful_current_memories": [
+      {
+        "version_id": "mem_conv-30_0005_v1",
+        "memory_id": "mem_conv-30_0005",
+        "version_no": 1,
+        "content": "Jon's favorite dance style is contemporary, which he finds expressive and powerful.",
+        "memory_kind": "event",
+        "subject": "Jon",
+        "predicate": "preference",
+        "object_text": "dance style",
+        "world_start": "2023-01-20",
+        "world_end": null,
+        "update_type": "add"
+      }
+    ],
+    "retrieved_current_version_ids": [
+      "mem_conv-30_0025_v1",
+      "mem_conv-30_0055_v2",
+      "mem_conv-30_0069_v1",
+      "mem_conv-30_0071_v1",
+      "mem_conv-30_0077_v2",
+      "mem_conv-30_0081_v1"
+    ],
+    "search_steps": [
+      {
+        "action_id": "access_conv-30_conv-30_conv-30_qa_0040_a000",
+        "step_index": 0,
+        "action_type": "search_memory",
+        "request": {
+          "action": "search_memory",
+          "arguments": {
+            "strategy": "hybrid",
+            "query": "Jon's favorite style of dance",
+            "query_expansions": [
+              "What dance style does Jon prefer?",
+              "Jon's preferred dance style",
+              "Dance style favored by Jon"
+            ],
+            "keywords": [
+              "Jon",
+              "favorite",
+              "dance style"
+            ],
+            "depth": "standard",
+            "entities": [
+              "Jon"
+            ],
+            "memory_kinds": [
+              "preference",
+              "profile"
+            ],
+            "time_mode": "none",
+            "top_k": 8
+          },
+          "reason": "To find Jon's favorite style of dance, we need to search for preference or profile memories related to Jon and dance."
+        },
+        "returned_memories": [
+          {
+            "version_id": "mem_conv-30_0055_v2",
+            "memory_id": "mem_conv-30_0055",
+            "content": "Jon maintains a positive outlook despite the challenges, staying motivated and focused on achieving his goals through his dance studio. Dancing is Jon's way to express himself and find happiness. He values his own happiness over others' opinions and finds joy in sharing this with his students.",
+            "memory_kind": "preference",
+            "subject": "Jon",
+            "world_start": "2023-04-09",
+            "world_end": null,
+            "score": 0.018,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-30_0069_v1",
+            "memory_id": "mem_conv-30_0069",
+            "content": "Dancing serves as Jon's stress-buster and a source of motivation. It is an essential part of his life and helps him stay focused and alive.",
+            "memory_kind": "preference",
+            "subject": "Jon",
+            "world_start": "2023-05-11",
+            "world_end": null,
+            "score": 0.0175,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-30_0081_v1",
+            "memory_id": "mem_conv-30_0081",
+            "content": "Jon color-codes achievements on his whiteboard to easily track progress and maintain motivation.",
+            "memory_kind": "preference",
+            "subject": "Jon",
+            "world_start": "2023-06-13",
+            "world_end": null,
+            "score": 0.0174,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-30_0077_v2",
+            "memory_id": "mem_conv-30_0077",
+            "content": "Jon uses a whiteboard to visualize goals, track progress, and tokenize successes as part of his organizational strategy.",
+            "memory_kind": "preference",
+            "subject": "Jon",
+            "world_start": "2023-06-13",
+            "world_end": null,
+            "score": 0.0171,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-30_0025_v1",
+            "memory_id": "mem_conv-30_0025",
+            "content": "Jon finds emotional support and encouragement in Gina, who consistently motivates him and reinforces his belief in his abilities.",
+            "memory_kind": "preference",
+            "subject": "Jon",
+            "world_start": "2023-02-04",
+            "world_end": null,
+            "score": 0.0171,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-30_0071_v1",
+            "memory_id": "mem_conv-30_0071",
+            "content": "Dancing is Gina's stress fix and an essential part of her life, providing mental health benefits and a sense of identity.",
+            "memory_kind": "preference",
+            "subject": "Gina",
+            "world_start": "2023-05-11",
+            "world_end": null,
+            "score": 0.0108,
+            "paths": [
+              "semantic",
+              "keyword",
+              "structured"
+            ]
+          }
+        ],
+        "returned_version_ids": [
+          "mem_conv-30_0055_v2",
+          "mem_conv-30_0069_v1",
+          "mem_conv-30_0081_v1",
+          "mem_conv-30_0077_v2",
+          "mem_conv-30_0025_v1",
+          "mem_conv-30_0071_v1"
+        ]
+      },
+      {
+        "action_id": "access_conv-30_conv-30_conv-30_qa_0040_a001",
+        "step_index": 1,
+        "action_type": "answer",
+        "request": {
+          "action": "answer",
+          "arguments": {
+            "answer": "dance",
+            "evidence_version_ids": [
+              "mem_conv-30_0055_v2",
+              "mem_conv-30_0069_v1"
+            ],
+            "confidence": 0.95
+          },
+          "reason": "The evidence indicates that Jon's favorite style of dance is mentioned in multiple preference memories, where dancing is described as his way to express himself and find happiness."
+        },
+        "returned_memories": [],
+        "returned_version_ids": []
+      }
+    ],
+    "reason": "The current memory mem_conv-30_0005_v1 explicitly states that Jon's favorite dance style is contemporary. Other current memories in the search chain do not mention a specific dance style, so they are not useful for supporting the claim.",
+    "skill_trace": {
+      "trace_id": "skilltrace_access_conv-30_conv-30_conv-30_qa_0040",
+      "side": "access",
+      "bank_version": "bank1",
+      "query": "What is Jon's favorite style of dance?",
+      "top_k": 2,
+      "disclose_k": 5,
+      "min_score": 0.2,
+      "scored_fields": [
+        "name",
+        "description"
+      ],
+      "scoring_weights": {
+        "semantic": 0.7,
+        "bm25": 0.3
+      },
+      "retrieval_method": "bank1_hybrid_router",
+      "candidate_k": 10,
+      "reranker": "bank1_applicability_router",
+      "reranker_error": "",
+      "selected": [
+        {
+          "skill_id": "sk_access_favorite_preference_authority",
+          "version_id": "sk_access_favorite_preference_authority_v1",
+          "rank": 1,
+          "score": 0.368122398853302,
+          "semantic_score": 0.09731770306825638,
+          "lexical_score": 1.0,
+          "name": "Include Preference Memories for Favorite Questions",
+          "description": "When a question asks about a person's favorite or preferred thing, include memory_kind 'preference' in the memory search before answering.",
+          "content": [
+            "If the question asks what someone's favorite/preferred item, dish, activity, or attribute is, run a memory search that includes memory_kinds 'preference' (and 'profile' if relevant), not only 'event'.",
+            "When event memories mention several candidate favorites but a preference memory names one, use the preference memory as the authoritative source for the favorite answer; stop once this evidence is found."
+          ],
+          "selected": true,
+          "rerank_rank": 1,
+          "rerank_reason": "The question asks about Jon's favorite style of dance, which is a preference. The skill specifically addresses retrieving preference memories for favorite items, making it directly applicable."
+        }
+      ],
+      "nearby_not_selected": [
+        {
+          "skill_id": "sk_access_creative_work_retrieval",
+          "version_id": "sk_access_creative_work_retrieval_v1",
+          "rank": 2,
+          "score": 0.3470519781112671,
+          "semantic_score": 0.1067698523402214,
+          "lexical_score": 0.9077102541923523,
+          "name": "Creative Work Retrieval",
+          "description": "Use when asked what a person's creative work (screenplay, book, film, project) is about or its theme.",
+          "content": [
+            "Before answering what a creative work is about, search using generic descriptors (project, work, piece, story, theme, about) alongside the specific type (screenplay, book, film).",
+            "When the specific work is referenced by order or completion (e.g., third screenplay, finished script), also retrieve memories of completed/achieved works using verbs like completed, finished, wrote, premiered and look for event/achievement memories that state the theme even if they do not name the work type.",
+            "After retrieval, verify the returned memory actually describes the requested instance (e.g., its ordinal or completion status); if it only gives a title or a plan, inspect related versions or broaden the search before answering."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_creator_genre_inference",
+          "version_id": "sk_access_creator_genre_inference_v1",
+          "rank": 3,
+          "score": 0.2710767686367035,
+          "semantic_score": 0.13548728823661804,
+          "lexical_score": 0.5874521732330322,
+          "name": "Infer Preference for Named Creator",
+          "description": "When a question asks whether a user would enjoy a specific author, artist, or work, and retrieval returns the user's genre/taste preferences but no direct mention of that name, infer alignment using general knowledge of the creator's genre instead of returning 'no information'.",
+          "content": [
+            "When asked whether a user would enjoy a named author/creator/work, first retrieve the user's reading/viewing preferences and genres; do not require the name itself to appear in a memory.",
+            "If the retrieved preferences show a clear genre, use general knowledge of the named creator's typical genre to judge alignment: answer with the option whose genre matches the user's stated preference, and explain the match briefly.",
+            "Stop after one preference-retrieval pass and one alignment judgment; avoid repeated searches for the author's name or genre in memory."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_event_preference_retrieval",
+          "version_id": "sk_access_event_preference_retrieval_v1",
+          "rank": 4,
+          "score": 0.22139830887317657,
+          "semantic_score": 0.03498039394617081,
+          "lexical_score": 0.6563734412193298,
+          "name": "Event-Based Preference Retrieval",
+          "description": "When a question asks about a person's favorite or preferred items, use this to also retrieve event memories where the person made/tried and liked items, and attribute evidence to the correct person.",
+          "content": [
+            "When a question asks about a person's favorite or preferred items, run a supplementary hybrid memory search combining the person's name with terms like 'made', 'tried', 'enjoyed', 'loved', or 'found delicious' to surface event memories that may support the preference.",
+            "Treat an event memory where the subject themselves made or tried an item and expressed positive sentiment as evidence for that subject's preference; do not use another person's enjoyment or reaction as evidence of the subject's preference.",
+            "When answering with a list of favorites, enumerate each distinct item or flavor explicitly stated in eligible supporting memories, and stop when no retrieved memory supports an additional item."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_preference_memory_search",
+          "version_id": "sk_access_preference_memory_search_v1",
+          "rank": 5,
+          "score": 0.21074984967708588,
+          "semantic_score": 0.057040661573410034,
+          "lexical_score": 0.5694046020507812,
+          "name": "Preference-Memory Targeted Retrieval",
+          "description": "When a question asks what a person thinks, prefers, or considers ideal about a topic, include preference-focused queries and a structured preference-memory search before concluding evidence is missing.",
+          "content": [
+            "When the question asks about a person's opinion, preference, or ideal vision (e.g., what X thinks the ideal Y should look like, prefers, likes), include query variants with preference verbs (prefers, likes, thinks, wants) and the specific attributes mentioned (e.g., flooring, lighting, location).",
+            "If the initial hybrid search returns no preference-kind memories for the target subject, run one additional structured search filtered to memory_kind=preference and subject=<person> before answering.",
+            "Stop once preference memories covering the asked attributes are found; do not expand further."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_alternative_activity_retrieval",
+          "version_id": "sk_access_alternative_activity_retrieval_v1",
+          "rank": 6,
+          "score": 0.204924076795578,
+          "semantic_score": 0.0812893956899643,
+          "lexical_score": 0.49340498447418213,
+          "name": "Alternative Activity Retrieval",
+          "description": "Use when a question asks what someone did or planned instead of, rather than, or as a supplement to a named activity.",
+          "content": [
+            "When a question asks for an activity done 'instead of', 'rather than', 'as an alternative to', or to 'supplement' a named activity, do not treat that named activity as the sole retrieval anchor.",
+            "After the first search, run at least one follow-up query that omits the superseded or primary activity and adds replacement-oriented terms such as 'alternative', 'plan', 'preference', 'together', 'play', 'instead', 'supplement', 'additional', 'strength', 'fit', or 'workout'.",
+            "In such follow-up searches, explicitly include memory kinds 'profile' and 'relationship', because the alternative may be recorded as a shared preference or interest rather than as an event.",
+            "If all top results still mention the superseded activity, treat that as evidence of over-anchoring and run another query targeting the replacement before answering."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        }
+      ]
+    }
+  },
+  "access_run_id": "access_conv-30_conv-30_conv-30_qa_0040",
+  "claims": [
+    {
+      "claim": "Jon's favorite style of dance is contemporary.",
+      "supporting_version_ids": [
+        "mem_conv-30_0005_v1"
+      ],
+      "coverage": null
+    }
+  ],
+  "current_related_memories": [
+    {
+      "version_id": "mem_conv-30_0005_v1",
+      "memory_id": "mem_conv-30_0005",
+      "version_no": 1,
+      "content": "Jon's favorite dance style is contemporary, which he finds expressive and powerful.",
+      "memory_kind": "event",
+      "subject": "Jon",
+      "predicate": "preference",
+      "object_text": "dance style",
+      "world_start": "2023-01-20",
+      "world_end": null,
+      "update_type": "add"
+    }
+  ],
+  "useful_current_version_ids": [
+    "mem_conv-30_0005_v1"
+  ],
+  "retrieved_current_version_ids": [
+    "mem_conv-30_0025_v1",
+    "mem_conv-30_0055_v2",
+    "mem_conv-30_0069_v1",
+    "mem_conv-30_0071_v1",
+    "mem_conv-30_0077_v2",
+    "mem_conv-30_0081_v1"
+  ],
+  "missing_useful_current_version_ids": [
+    "mem_conv-30_0005_v1"
+  ],
+  "search_steps": [
+    {
+      "action_id": "access_conv-30_conv-30_conv-30_qa_0040_a000",
+      "step_index": 0,
+      "action_type": "search_memory",
+      "request": {
+        "action": "search_memory",
+        "arguments": {
+          "strategy": "hybrid",
+          "query": "Jon's favorite style of dance",
+          "query_expansions": [
+            "What dance style does Jon prefer?",
+            "Jon's preferred dance style",
+            "Dance style favored by Jon"
+          ],
+          "keywords": [
+            "Jon",
+            "favorite",
+            "dance style"
+          ],
+          "depth": "standard",
+          "entities": [
+            "Jon"
+          ],
+          "memory_kinds": [
+            "preference",
+            "profile"
+          ],
+          "time_mode": "none",
+          "top_k": 8
+        },
+        "reason": "To find Jon's favorite style of dance, we need to search for preference or profile memories related to Jon and dance."
+      },
+      "returned_memories": [
+        {
+          "version_id": "mem_conv-30_0055_v2",
+          "memory_id": "mem_conv-30_0055",
+          "content": "Jon maintains a positive outlook despite the challenges, staying motivated and focused on achieving his goals through his dance studio. Dancing is Jon's way to express himself and find happiness. He values his own happiness over others' opinions and finds joy in sharing this with his students.",
+          "memory_kind": "preference",
+          "subject": "Jon",
+          "world_start": "2023-04-09",
+          "world_end": null,
+          "score": 0.018,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-30_0069_v1",
+          "memory_id": "mem_conv-30_0069",
+          "content": "Dancing serves as Jon's stress-buster and a source of motivation. It is an essential part of his life and helps him stay focused and alive.",
+          "memory_kind": "preference",
+          "subject": "Jon",
+          "world_start": "2023-05-11",
+          "world_end": null,
+          "score": 0.0175,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-30_0081_v1",
+          "memory_id": "mem_conv-30_0081",
+          "content": "Jon color-codes achievements on his whiteboard to easily track progress and maintain motivation.",
+          "memory_kind": "preference",
+          "subject": "Jon",
+          "world_start": "2023-06-13",
+          "world_end": null,
+          "score": 0.0174,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-30_0077_v2",
+          "memory_id": "mem_conv-30_0077",
+          "content": "Jon uses a whiteboard to visualize goals, track progress, and tokenize successes as part of his organizational strategy.",
+          "memory_kind": "preference",
+          "subject": "Jon",
+          "world_start": "2023-06-13",
+          "world_end": null,
+          "score": 0.0171,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-30_0025_v1",
+          "memory_id": "mem_conv-30_0025",
+          "content": "Jon finds emotional support and encouragement in Gina, who consistently motivates him and reinforces his belief in his abilities.",
+          "memory_kind": "preference",
+          "subject": "Jon",
+          "world_start": "2023-02-04",
+          "world_end": null,
+          "score": 0.0171,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-30_0071_v1",
+          "memory_id": "mem_conv-30_0071",
+          "content": "Dancing is Gina's stress fix and an essential part of her life, providing mental health benefits and a sense of identity.",
+          "memory_kind": "preference",
+          "subject": "Gina",
+          "world_start": "2023-05-11",
+          "world_end": null,
+          "score": 0.0108,
+          "paths": [
+            "semantic",
+            "keyword",
+            "structured"
+          ]
+        }
+      ],
+      "returned_version_ids": [
+        "mem_conv-30_0055_v2",
+        "mem_conv-30_0069_v1",
+        "mem_conv-30_0081_v1",
+        "mem_conv-30_0077_v2",
+        "mem_conv-30_0025_v1",
+        "mem_conv-30_0071_v1"
+      ]
+    },
+    {
+      "action_id": "access_conv-30_conv-30_conv-30_qa_0040_a001",
+      "step_index": 1,
+      "action_type": "answer",
+      "request": {
+        "action": "answer",
+        "arguments": {
+          "answer": "dance",
+          "evidence_version_ids": [
+            "mem_conv-30_0055_v2",
+            "mem_conv-30_0069_v1"
+          ],
+          "confidence": 0.95
+        },
+        "reason": "The evidence indicates that Jon's favorite style of dance is mentioned in multiple preference memories, where dancing is described as his way to express himself and find happiness."
+      },
+      "returned_memories": [],
+      "returned_version_ids": []
+    }
+  ]
+}

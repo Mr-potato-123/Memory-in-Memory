@@ -1,0 +1,1276 @@
+    APEX-MEM: Agentic Semi-Structured Memory with Temporal Reasoning
+                   for Long-Term Conversational AI
+
+Pratyay Banerjee, Masud Moshtaghi, Shivashankar Subramanian, Amita Misra, Ankit Chadha
+
+                                            Amazon, AGI, Sunnyvale, USA
+                                {pratyay, mmasud, ssangu, misrami, ankitrc}@amazon.com
+
+
+
+
+                           Abstract                                memory for noise, severely increasing the risk of
+                                                                   irrelevant facts or hallucinations in the output of
+         Large language models still struggle with reli-
+                                                                   LLMs (Maharana et al., 2024; Zhang et al., 2024;
+         able long-term conversational memory: simply
+         enlarging context windows or applying naïve               Du et al., 2025). To reduce noise, researchers
+         retrieval often introduces noise and destabilizes         started leveraging retrieval augmented generation
+         responses. We present APEX-MEM, a conver-                 (RAG) techniques to identify most relevant parts of
+         sational memory system that combines three                conversation (Packer et al., 2023; Lee et al., 2024;
+         key innovations: (1) a property graph which               Alonso et al., 2024). In this approach, textual seg-
+         uses domain-agnostic ontology to structure con-           ments or summaries are stored and retrieved during
+         versations as temporally grounded events in
+                                                                   conversation. Yet these methods also suffer from
+         an entity-centric framework, (2) append-only
+         storage that preserves the full temporal evo-
+                                                                   fundamental limitations: retrieval accuracy does
+         lution of information, and (3) a multi-tool               not reliably translate to answer accuracy when sum-
+         retrieval agent that understands and resolves             maries lose critical details, and increasing the num-
+         conflicting or evolving information at query              ber of retrieved segments frequently reintroduces
+         time, producing a compact and contextually                noise (Pan et al., 2025; Zhang et al., 2024). More
+         relevant memory summary. This retrieval-                  broadly, RAG treats memory as unstructured text
+         time resolution preserves the full interaction            and offers no mechanism to maintain canonical en-
+         history while suppressing irrelevant details.
+                                                                   tities, track evolving facts, or distinguish persistent
+         APEX-MEM achieves 88.88% accuracy on LO-
+         COMO’s Question Answering task and 86.2%                  information from ephemeral conversational content.
+         on LongMemEval, outperforming state-of-the-               As conversational histories grow, LLMs struggle to
+         art session-aware approaches and demonstrat-              maintain factual consistency, entity continuity, and
+         ing that structured property graphs enable more           temporal coherence (Byerly and Khashabi, 2024).
+         temporally coherent long-term conversational                  These limitations motivate the shift toward struc-
+         reasoning.                                                tured memory representations, which explicitly or-
+                                                                   ganize conversational knowledge to reduce noise,
+    1    Introduction
+                                                                   improve retrieval precision, preserve coherence
+    Large language models (LLMs) have demonstrated                 across long-term interactions, and enable rela-
+    remarkable capabilities in understanding and gen-              tional and temporal reasoning that unstructured text
+    erating human-like text, yet they fundamentally                memory cannot support. Recent research has ex-
+    struggle with maintaining coherent memory across               plored this direction through various architectures:
+    extended conversations. In applications such as per-           Mem0g represents memory as entity-centric graphs
+    sonal assistants and complex goal-oriented tasks,              to capture relational structure (Chhikara et al.,
+    users expect systems to remember prior discus-                 2025), A-MEM constructs dynamic knowledge net-
+    sions, accumulate knowledge across sessions, and               works inspired by strategic note taking technique
+    adapt responses based on evolving context. This                (Zettelkasten) to maintain long-term memory con-
+    expectation is magnified in open-domain conver-                sistency (Xu et al., 2025a), Zep builds temporally-
+    sational agents, which must sustain far more turns             aware knowledge graphs to track evolving facts
+    across diverse topics (Kim et al., 2023).                      across sessions (Rasmussen et al., 2025), and Se-
+       A naïve solution is to leverage models with                 mantic Anchoring leverages linguistic structure and
+    larger context windows to retain longer conversa-              entity-aware memory to enhance persistence and
+    tional histories. However, longer contexts trade               coherence in conversational reasoning (Chatterjee
+                                                             16470
+Proceedings of the 64th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), pages 16470–16489
+                                 July 2-7, 2026 ©2026 Association for Computational Linguistics
+and Agarwal, 2025). These approaches demon-             open-domain questions.
+strate that structured memory provides a princi-
+pled foundation for improving long-term conver-         2   Related Work
+sational performance beyond what search-based
+unstructured text memory can achieve. Despite           Early Approaches to Conversational Memory.
+these advances, current memory systems face two         Initial efforts to extend conversational reasoning in
+critical limitations. First, entity-centric graph ap-   LLMs relied on larger context windows or retrieval-
+proaches like Mem0, have limited entity classes         augmented generation (RAG). The LOCOMO (Ma-
+and store information primarily as relationships        harana et al., 2024) showed inherent limitations in
+between entities, limiting their ability to capture     both approaches due to added noise in the context
+nuanced attributes and temporal evolution of facts.     window: while GPT-4-Turbo achieved 51.6% F1
+Second, existing systems consolidate (or overwrite      with 128K context vs 35.9% for GPT-3.5-Turbo at
+previous) information which risks losing important      16K, adversarial performance dropped sharply to
+contextual details needed for temporal reasoning        15.7% F1 as models attended to irrelevant details.
+and conflict resolution.                                Hence RAG methods only offered modest gains
+    To overcome the limitations of existing struc-      (GPT-3.5 + RAG reaching 43.3% F1 vs 22.4% no
+tured memory systems, we present APEX-MEM, a            retrieval) (Zhang et al., 2024).
+conversational memory framework that combines              First-Generation Memory Systems.               Re-
+property graphs supported by a domain-agnostic          searchers introduced explicit memory manage-
+ontology, append-only event storage, and retrieval-     ment architectures to address these weaknesses.
+time temporal resolution. Our contributions are         MemGPT (Packer et al., 2023) pioneered an OS-
+threefold: 1) We introduce a hybrid entity-event        inspired memory hierarchy (26.65% F1 on LO-
+ontology for conversational memory that combines        COMO). ReadAgent (Lee et al., 2024) used pagi-
+entity-centric and event-centric temporal modeling.     nated "gist memory" effective for narrative QA but
+Unlike purely entity-focused approaches that strug-     achieved only 9.15% F1 on conversations. Mem-
+gle with temporal evolution, our ontology repre-        oryBank (Zhong et al., 2023) adopted psychologi-
+sents conversational events as first-class citizens     cally motivated updates but struggled with factual
+enabling fine-grained temporal reasoning while          retention (5.0% F1). OpenAI’s Memory feature per-
+maintaining entity coherence. 2) To avoid the           formed comparably to GPT-4-Turbo (52.9%), in-
+risk of losing information, we use append-only          dicating general-purpose memory layers remained
+event storage where facts are anchored to tempo-        insufficient. These systems demonstrated that archi-
+rally grounded events rather than directly to en-       tectural complexity alone was inadequate without
+tities. This preserves the full evolution of infor-     mechanisms for preserving information fidelity and
+mation including contradictions and revisions en-       mitigating noise accumulation.
+abling retrieval-time resolution based on temporal         Advanced Memory Architectures. Recent
+validity rather than premature commitment to a sin-     work introduced sophisticated architectures for
+gle current state. 3) We develop a complementary        improved retrieval and reasoning. A-MEM (Xu
+multi-tool retrieval framework that combines entity     et al., 2025b) proposed agentic, Zettelkasten-
+linking (E NTITY L OOKUP), structured graph traver-     inspired memory with autonomous linking (27.0%
+sal (G RAPH S QL), and hybrid (semantic+lexical)        F1 single-hop). H-MEM (Sun and Zeng, 2025)
+search (S EARCH), all supported by meta-level           adopted hierarchical retrieval, reporting +21-point
+planning guidance tool (S CHEMAV IEWER). E N -          gains on multi-hop tasks. Mem0 (Chhikara et al.,
+TITY L OOKUP provides entity-centered access and        2025) implemented entity-centric relational graphs
+canonicalization, enabling resolution of surface        achieving 67.1% single-hop and 51.2% multi-hop
+mentions to canonical graph identifiers. G RAPH -       accuracy with 91% latency reduction; Mem0g im-
+S QL enables structured temporal reasoning through      proved temporal reasoning (58.1%) but lacked rich
+SQL-based graph traversal, supporting fact evolu-       property attributes. Semantic Anchoring (Chatter-
+tion tracking, temporal ordering via validity inter-    jee and Agarwal, 2025) demonstrated benefits of
+vals, duration calculations, and multi-hop relation-    linguistic structure for factual stability. Zep builds
+ship traversal across events. S EARCH enables flexi-    temporally-aware knowledge graphs to track evolv-
+ble hybrid retrieval across the entire graph memory     ing facts across sessions (Rasmussen et al., 2025).
+to retrieve high-relevance subgraphs especially for     However, it relies heavily on text retrieval tech-
+                                                   16471
+Figure 1: End-to-end pipeline for constructing and querying APEX-MEM Graph, showing data flow from unstruc-
+tured conversation to GraphSQL QA Agent.
+
+
+nique to search context. MIRIX (Wang and Chen,           (Person, Organization, Corporation), living organ-
+2025) achieved state-of-the-art 85.4% accuracy us-       isms (Animal, Plant, Taxonomy), spatiotempo-
+ing six specialized memory stores with multi-agent       ral constructs (Place, Event, Time), physical ar-
+routing, though its complexity and eager-update          tifacts (Product, Device, Vehicle), digital objects
+strategy risked losing nuanced temporal informa-         (Software, Dataset, Service), information resources
+tion. These systems show benefits of structured          (CreativeWork, Document, Message), financial in-
+memory and bring up trade-offs in complexity, ex-        struments (Stock, Contract), health concepts (Food,
+pressiveness, and temporal coherence preservation.       Medication, Disease), and abstract entities (Topic,
+                                                         Metric, Task). Each entity e = (n, τ, ρ, id) is char-
+3   APEX-MEM Graph Construction                          acterized by name n, type τ , conversational role
+APEX-MEM is a directed property graph G =                ρ ∈ R (Speaker, Listener, Agent, Mentioned), and
+(V, E, Π, Λ) where: V is the set of nodes (entities,     optional external identifier. Facts are represented
+events, facts, etc.), E ⊆ V × V is the set of labeled,   as temporally-grounded subject-property-value as-
+typed edges, Π : V ∪ E → P(K × S) maps                   sertions f = (s, p, v, δ, [tfrom , tto ], c, E) where s
+each element to a set of key–value property pairs,       denotes the subject entity, p the property, v the
+Λ : V ∪ E → T assigns a type (from the ontology)         value with data type δ, [tfrom , tto ] the temporal va-
+to every node and edge.                                  lidity interval, c ∈ [0, 1] the confidence score, and
+   For every source document (di ∈ D) we induce          E the evidence set. All facts are anchored to con-
+a sub-graph (gi ). Merging is performed incremen-        versational events ε = (type, T, L, P, F, Eε ) where
+tally using a soft-canonicalization function:            T represents the event timestamp, L the location,
+                                                        P ⊆ {ei } the participant set, F ⊆ {fj } the associ-
+                   G(t+1) ; ←; Merge G(t) , gt           ated facts, and Eε the supporting textual evidence,
+                                                   (1)
+    Merge(G, g) := (V ∪ Vg , ; E ∪ Eg , ; . . .)         enabling temporal reasoning over evolving world
+                                                         knowledge extracted from dialogue. This ontology
+where candidate entity nodes and properties are          allows flexible property attachment beyond strict
+fused when corresponding criteria for Entity and         schema constraints, enabling domain adaptation
+Property Resolution is met. Property graphs allow        while maintaining structural consistency.
+rich key-value representation of structured informa-
+tion about the entity and how it is referred in the      3.2   Entity and Property Resolution
+conversation, in contrast to Mem0 where conversa-
+tion is not ontologized.                                 To ensure robust entity and property canonical-
+                                                         ization across conversational turns we resolve
+3.1 Ontology                                             entities and properties in the conversation text
+We propose a temporal event ontology for con-            against existing set of entities. This maintains
+versational memory systems grounded in world             provenance through confidence scoring and
+knowledge representation. The ontology defines           explicit rationale generation. We use a retrieval-
+a comprehensive entity type hierarchy τ ∈ T              augmented generation approach combining
+comprising 35 classes analogous to YAGO tax-             dense semantic search over known entities with
+onomies (Suchanek et al., 2024), spanning agents         structured LLM reasoning. Given a mention
+                                                    16472
+m in conversational text, the entity resolver               SQLite schema in DB_SCHEMA (tables entities,
+retrieves top-k candidates C = {c1 , . . . , ck } from      properties, facts, events, evidence, turns
+a dense vector index using cosine similarity, where         and their lexical search views). Given a natural-
+each candidate ci = (idi , texti , si ) includes an         language question x and interaction history ht , the
+identifier, textual representation, and similarity          agent implements a policy πθ that, at step t, gen-
+score si ∈ [0, 1]. A structured LLM then evaluates          erates a reasoning trace rt and selects an action
+candidates against the mention and contextual               at ∈ A,
+information to produce a resolution decision                             (rt , at ) ∼ πθ (· | x, ht ).
+d ∈ {choose_existing, propose_new, none} with
+                                                            Actions are either (i) tool invocations
+output o = (d, id, nnorm , τ, A, c, r) where id is the
+                                                            at = (Tt , zt ), where Tt ∈ {S CHEMAV IEWER,
+resolved or newly generated entity identifier, nnorm
+                                                            E NTITY L OOK U P, G RAPH SQL, S EARCH} and
+the normalized name, τ the entity type, A a set of
+                                                            zt are structured arguments conforming to the
+aliases, c ∈ [0, 1] the confidence score, and r the
+                                                            corresponding tool inputs, or (ii) a special
+rationale. Property resolution follows an analogous
+                                                            A NSWER action that emits a final answer y.
+pipeline, additionally normalizing property
+                                                            The agent resolves temporal references in each
+names to snake_case and inferring data types δ ∈
+                                                            turn into dates and date-ranges which is used
+{str, int, float, bool, date, datetime, enum, url, list}.
+                                                            when a tool is invoked. Tool outputs ot are
+3.3 Fact Extraction                                         appended to the history, ht+1 = ht ∪ {(rt , at , ot )},
+                                                            enabling multi-step reasoning that interleaves
+Structured fact extraction is performed through             natural-language planning with structured access
+few-shot prompted large language models with                to entities, properties, events, evidence, and
+schema-constrained generation. Given a conver-              conversation turns stored in G via the tools exposed
+sational turn u = (s, l, text, tanchor , ctx) where s       by QnAAgent.
+denotes the speaker, l the listener, tanchor the anchor
+timestamp (the conversation temporal timestamp),            4.1   S CHEMAV IEWER
+and ctx the recent conversational context, the ex-          The S CHEMAV IEWER tool is a schema- and
+tractor generates a structured event representation         strategy-inspection operator
+ε = (type, T, L, P, F, E) conforming to a prede-
+fined schema, defined in the Ontology. The extrac-                         Tschema : {0, 1}2 → S,              (2)
+tion prompt comprises hand-crafted high-quality
+few-shot exemplars demonstrating comprehensive              which, given boolean flags (bex , bguide ) indicating
+fact extraction across diverse conversational pat-          whether to include examples and a usage guide,
+terns, including factual assertions, numerical data,        returns a structured schema view s ∈ S. The agent
+emotional states, environmental conditions, and             uses S CHEMAV IEWER both to inspect the rela-
+personal attributes. The LLM output is validated,           tional schema of the graph-backed SQLite database
+with strict type specifications: participants must          and to obtain query and tool-usage recommenda-
+conform to τ ∈ T and ρ ∈ R, facts must specify              tions (e.g., when to call entity, event, instructions
+data types δ ∈ ∆, and temporal expressions are              on how to do temporal reasoning using SQL), effec-
+normalized to ISO 8601 format relative to tanchor .         tively acting as a meta-level planner aid for Graph
+All facts include confidence scores c ∈ [0, 1] and          QnA.
+supporting evidence E = {(etext , eturn , espan )} link-
+ing assertions to source utterances. This structured        4.2   E NTITY L OOKUP
+approach ensures consistent, machine-readable               The E NTITY L OOK U P tool is a entity-retrieval op-
+knowledge extraction while preserving provenance            erator
+and enabling downstream temporal reasoning over                          Tent : Q × N → Dent ,               (3)
+evolving conversational state.
+                                                               mapping a free-text query q ∈ Q and a
+4   Graph Agents                                            top-k budget K to a ranked list of entity
+                                                            documents (d1 , . . . , dK ) ∈ Dent . It first re-
+APEX-MEM Graph QnA agent is a ReAct-style                   trieves candidate entity ids from a hybrid index
+agent (Yao et al., 2022) operating over a tempo-            (combining dense and lexical search), then
+ral property-graph database G instantiated by the           queries the underlying GraphDB over entities,
+                                                       16473
+facts, properties, events, and evidence to             infeasible and unnecessary to construct a complete
+construct, for each entity id e, a document d =        APEX-MEM Graph offline, as significant set of
+(id, name, type, latest, anchors, last_anchor, facts), conversations or documents are irrelevant to ex-
+where latest and facts are markdown tables             pected user questions. For such cases, we construct
+summarizing recent property values and an- APEX-MEM online, where, given a set of Docu-
+chors/last_anchor expose temporal context via          ments (D) and input question (Q), we determine
+events.anchor_datetime. The agent uses E NTITY- document relevance using semantic and lexical
+L OOK U P to canonicalize surface forms to graph       search, and limit Graph construction to those sub-
+ids and to retrieve time-aware fact snapshots that     set of temporally-ordered Documents Drel , with
+ground downstream reasoning and SQL queries.           Relevance(di |Q) > Θrel .
+
+4.3    G RAPH SQL                                          6     Experiments and Analysis
+The G RAPH SQL tool is a read-only SQL interface           We evaluate APEX-MEM on the following differ-
+                                                           ent datasets that require diverse reasoning, signal-
+             Tsql : Ssql × Psql → Rsql ,
+                                                           to-noise ratio, and are challenging to LLMs. We
+where Ssql is the set of safe SQLite SELECT (or            try to answer the following research questions:
+WITH . . . SELECT) statements over the whitelisted         RQ1. How does APEX-MEM compare to exist-
+tables: events, facts, evidence, entities,                 ing state-of-the-art for Memory-based Tasks? RQ2.
+event_participants, properties, turns. Psql                How important is each tool for APEX-MEM-based
+is the space of named-parameter maps, and Rsql             QnAAgent ? RQ3. Does APEX-MEM improve
+is the space of result tables. The tool first vali-        QA Agent’s ability to handle complex scenarios
+dates the statement, enforcing a single read-only          compared to other Deep research agents? RQ4.
+statement and forbidding Updates, or DDL then              How well does APEX-MEM generalize?
+executes it against the GraphDB and returns sql            6.1    Datasets
+outputs wrapped as markdown. G RAPH SQL is
+invoked when the agent needs precise graph rea-            LOCOMO (Long-term Conversational Memory)
+soning (e.g., joining entities and events), aggre-         is a benchmark for evaluating agent memory over
+gations, mathematical, or temporal computations            extended multi-session dialogues spanning weeks-
+based on anchor_datetime, going beyond what                long interactions with evolving user preferences,
+pure retrieval can provide.                                personal facts, and temporal events (Maharana
+                                                           et al., 2024). Its evaluation targets long-term recall,
+4.4    S EARCH                                             relevance discrimination, and cross-session con-
+The S EARCH tool conceptually exposes a hybrid re-         sistency. Questions are categorized as single-hop,
+trieval layer over the graph, its relational views, and    multi-hop, temporal, open-domain, and adversarial
+semantic indices, mapping a query q to a composite         (unanswerable). Following Chhikara et al. (2025),
+context                                                    we use LLM-as-a-Judge to assess factual accuracy,
+                                                           relevance, completeness, and contextual appropri-
+ Tsearch : Q → C,    Tsearch (q) = (Eq , Pq , Vq , Tq ),   ateness of generated answers against ground truth.
+
+where Eq are candidate entities, Pq are candidate          LongMemEval examines LLM ability to process
+properties, Vq are candidate events/evidence, and          and reason over extremely long inputs including
+Tq are relevant conversation turns. From the agent’s       multi-document collections, extended narratives,
+perspective, S EARCH provides a unified, hybrid            and dense conversational histories (Wu et al., 2024).
+graph–entity–property–SQL and semantic search              The benchmark emphasizes context-length gener-
+capability: it retrieves a high-relevance subgraph         alization, factual recall, cross-episode reasoning,
+around the question, which can then be further             and robustness under large-scale sequences, provid-
+filtered or aggregated via G RAPH SQL before the           ing a standardized framework for evaluating long-
+ReAct policy emits the final answer.                       context architectures. We measure performance
+                                                           using the recommended LLM-as-a-Judge for an-
+5     APEX-MEM Online Construction                         swer quality and factuality scores.
+For very-long conversations, where the number of           SealQA-Hard challenges search-augmented
+documents is a magnitude higher > 103 , and its            LLMs on fact-seeking questions where web
+                                                       16474
+Method                                                                  Single-Hop Multi-Hop Temporal Open-Domain Adversarial Overall w/o Adv.
+                               Graph                  QA Agent
+                            APEX-MEM               Claude 4.5 Haiku      85.46%     84.74%    79.17%     89.18%      87.22%    84.92%   84.25%
+   APEX-MEM                 APEX-MEM               Claude 4.5 Sonnet     89.36%     86.92%    90.63%     87.75%      86.10%    88.41%   89.08%
+                            APEX-MEM               Claude 3.5 Sonnet     87.58%     84.74%    87.50%     88.94%      86.10%    86.90%   87.13%
+                            APEX-MEM                    GPT5             89.88%     86.29%    90.63%     91.68%      86.77%    88.88%   89.49%
+                            APEX-MEM                    GPT4o            88.47%     85.46%    83.49%     86.46%      84.98%    86.35%   86.75%
+                              Retrieval                  Agent
+
+LOCOMO Baselines            SimpleSearch                GPT5             76.60%     71.96%    72.92%     83.95%      72.65%    77.90%
+                            SimpleSearch                GPT4             46.10%     51.40%    37.50%     73.60%      57.17%    60.67%
+                            SimpleSearch           Claude 4.5 Sonnet     71.99%     73.52%    73.96%     81.33%      74.22%    76.79%
+                            SimpleSearch           Claude 3.5 Sonnet     55.32%     61.99%    61.46%     79.55%      72.87%    70.90%
+                   MemInsight + Attribute Retrieval Claude 3.5 Sonnet    74.82%     74.45%    72.92%     80.02%      78.92%    77.79%
+                    MemInsight + RAG Baseline Claude 3.5 Sonnet          79.43%     82.55%    77.08%     75.15%      79.15%    77.95%
+   MemInsight
+                           MemInsight                  LLamaV3           76.95%     81.31%    80.21%     76.93%      78.92%    78.25%
+                           MemInsight                    Mistral         74.47%     82.55%    81.25%     78.60%      81.17%    79.36%
+                                    Memory Agent
+                                      OpenAI                             63.79%     42.92%    62.29%     21.71%        N/A     52.90%   52.90%
+                                      AMEM                               39.79%     18.85%    54.05%     49.91%        N/A     48.38%   48.38%
+    Memory                              Zep                              61.70%     41.35%    76.60%     49.31%        N/A     75.14%   75.14%
+                                  MemGPT/LangMem                         62.23%     47.92%    71.12%     23.43%        N/A     58.10%   58.10%
+                                     Memory-R1                           59.83%     53.01%    68.78%     51.55%        N/A       N/A      N/A
+                                       Mem0                              65.71%     47.19%    75.71%     58.13%        N/A     68.44%   68.44%
+                                     Mnemosyne                           62.78%     49.53%    60.42%     53.03%        N/A       N/A      N/A
+                                      Nemori                              84.9%      75.1%    77.60%      51.0%        N/A      79.4%    79.4%
+                                      MIRIX                              85.11%     83.70%    65.62%     88.39%        N/A     85.38%   85.38%
+                                       QA Agent
+   Full Context
+                                          GPT4o                          88.53%     77.70%    71.88%     92.70%        N/A     87.52% 87.52%
+
+
+                                     Table 1: LOCOMO Category Type Evaluation Results
+
+
+Model                     Fact    Schema Entity/Prop.                         6.2    Experimental Setup
+                       Extraction Coverage Resolution
+GPT4o                     94.2%            75.7%           98.1%
+Claude Sonnet 4.5         97.3%            91.1%           98.2%
+Claude Haiku 4.5          95.8%            90.3%           95.4%              For APEX-MEM construction task, refer to Ta-
+Qwen3-14B                 95.4%            88.9%           92.5%              ble 2, for how different LLMs perform at Fact
+                                                                              Extraction and Entity Resolution. We construct
+Table 2: APEX-MEM Construction metrics for fact                               APEX-MEM using Claude Sonnet 4.5 for Fact
+extraction (precision of extracted facts), schema cover-
+                                                                              Extraction and Claude Haiku 4.5 for Entity and
+age (plausible properties covered), and entity resolution
+(detecting and linking to proper entity). We measure                          Property Resolution, to balance cost versus task
+these metrics with 500 Random turns from LoCoMo                               performance. We test different LLMs (Claude,
+and LongMemEval. GPT5 is used as the judge.                                   GPT) for QnA Agents. All Tools are used with
+                                                                              a max limit of 40 for ReACT tool invocations. We
+                                                                              adopt APEX-MEM Online for LongMemEval and
+                                                                              SealQA, extracting Entities and Facts from conver-
+search yields conflicting or noisy results. We                                sations which are marked relevant with Θrel > 0.2.
+use SEAL-HARD to assess factual accuracy and                                  For LOCOMO, we construct a APEX-MEM for
+reasoning on questions where chat models (e.g.,                               all input sessions in respective conversations. We
+GPT-4.1) achieve near-zero accuracy. SEALQA                                   re-implement LOCOMO baselines to measure the
+presents long-context, multi-document "needle-                                impact of new versions of Claude and GPTs. For
+in-a-haystack" scenarios with 30 web-retrieved                                LongMemEval we implement a stronger Search
+documents containing 1/2 gold documents at                                    baseline of a Expanded Sessions that include top-5
+unknown positions. To align with memory                                       relevant Sessions. For all other benchmarks we
+benchmarks, we order documents by published                                   used reported numbers from (Salama et al., 2025;
+time as observation time, processing each as an                               Pham et al., 2025; Wang and Chen, 2025). To make
+agent-world interaction. Each question-search                                 the results replicable, we set the temperature to 0
+pair constitutes a separate session. Performance                              wherever applicable. For each LLM-as-a-Judge,
+is measured using LLM-as-a-Judge for answer                                   we report mean of 3 trials, with < ±1 standard
+quality and factuality.                                                       deviation.
+                                                                        16475
+                   Method                         Single-Hop   Multi-Hop   Temporal   Open-Domain   Adversarial   Overall
+  Graph     QA Agent: Claude 4.5 Haiku w/ Tools
+                SchemaViewer, EntityLookUp         80.85%       76.64%      72.92%      76.34%        77.80%      77.19%
+APEX-MEM               + GraphSQL                  80.78%       79.75%      82.29%      78.00%        81.16%      79.45%
+                         + Search                  85.46%       84.74%      79.17%      89.18%        87.22%      87.00%
+
+                                Table 3: APEX-MEM Ablations of different tools
+
+
+6.3 Results                                                    demonstrates that the combination of entity linking,
+RQ1: How does APEX-MEM compare to ex-                          structured graph traversal via SQL, and hybrid se-
+isting state-of-the-art for memory-based Tasks?                mantic search is essential for achieving optimal per-
+APEX-MEM achieves state-of-the-art performance                 formance in conversational memory tasks. In the
+across multiple conversational memory bench-                   appendix, Table 6 contains analysis on tool distri-
+marks, substantially outperforming previous sys-               bution for different ablation methods, and Figure 2
+tems. On the LOCOMO benchmark, APEX-MEM                        for task v/s accuracy v/s # of tool calls. GraphSQL
+with GPT5 achieves 88.88% overall accuracy (Ta-                and Search tools complement each other to enhance
+ble 1), surpassing the previous best system MIRIX              both quality and efficiency: while GraphSQL-only
+at 85.38% by 3.50 percentage points. APEX-MEM                  systems require 3.3x more tool calls (27,282 vs
+demonstrates strong performance across all ques-               8,260) to achieve 79.45% accuracy, the hybrid ap-
+tion categories: 89.88% on single-hop, 86.29% on               proach leverages Search for rapid context retrieval
+multi-hop reasoning, 90.63% on temporal queries,               and GraphSQL for precise structured reasoning,
+91.68% on open-domain, and 86.77% on adver-                    achieving superior 87% accuracy with balanced
+sarial examples. With GPT4o as the QnA agent,                  tool usage. GraphSQL is a complex structured
+APEX-MEM achieves 86.35% overall, demonstrat-                  query generation task, as we are using SQLite to
+ing that the architecture generalizes across LLM               model graph-queries. In future we will evaluate the
+backends, though we observe higher error rates                 impact of Graph databases.
+for GPT4o in SQLite query generation and tool                     RQ3: Does APEX-MEM improve QA Agent’s
+usage. On the LongMemEval, APEX-MEM with                       ability to handle complex scenarios compared
+Claude 4.5 Sonnet achieves 86.2% overall score                 to other Deep research agents? APEX-MEM
+(Table 4), improving over the strongest baseline               demonstrates superior performance on complex,
+Nemori (Nan et al., 2025) at 74.6% by 11.6 per-                multi-document reasoning tasks compared to state-
+centage points and session-aware RAG baselines                 of-the-art research agents. On the SealQA-Hard
+at 72.5% by 13.7 points. These results demonstrate             benchmark (Table 5), which evaluates search-
+that APEX-MEM provides a robust foundation for                 augmented LLMs on challenging fact-seeking ques-
+long-term conversational memory.                               tions with conflicting and noisy web search re-
+   RQ2: How important is each tool for APEX-                   sults, APEX-MEM with GPT5 achieves 40.15%
+MEM-based QnAAgent? The ablation study                         accuracy, substantially outperforming baseline
+in Table 3 reveals that each tool component                    agents including O3 at 34.6%, DeepSeek-R1 at
+contributes significantly to APEX-MEM’s perfor-                15.4%, GPT4o at 15%, and O4-Mini-HIGH at
+mance. Using only SchemaViewer and Entity-                     12%. This 5.55 percentage point improvement over
+LookUp tools, the system achieves 77.19% overall               the strongest baseline demonstrates APEX-MEM’s
+accuracy on LOCOMO. Adding GraphSQL capa-                      ability to effectively resolve contradictions and fil-
+bilities improves performance to 79.45%, represent-            ter noise through its append-only property graph
+ing a 2.26% gain, with particularly strong improve-            architecture and retrieval-time resolution strategy.
+ments on multi-hop reasoning (76.64% to 79.75%)                The system’s ontology-grounded entity linking and
+and temporal queries (72.92% to 82.29%). The                   GraphSQL traversal enable more precise identifi-
+addition of the Search tool further boosts overall             cation of relevant information across multiple con-
+accuracy to 87%, a 7.55 point improvement, with                flicting sources, a critical capability for real-world
+substantial gains across all categories including              applications where information quality varies sig-
+single-hop (80.78% to 85.46%), multi-hop (79.75%               nificantly. See Table 8 for GraphSQL examples.
+to 84.74%), open-domain (78.00% to 89.18%), and                   RQ4: How well does APEX-MEM general-
+adversarial questions (81.16% to 87.22%). This                 ize? APEX-MEM generalizes across diverse rea-
+                                                        16476
+      Method                                                                                         Overall Score
+    APEX-MEM                            Graph                                   QA Agent
+                                                                             Claude 4.5 Haiku           82.8%
+                                                                             Claude 4.5 Sonnet          86.2%
+                                  APEX-MEM Online                             Claude 4 Sonnet           81.0%
+                                                                                  GPT5                  85.2%
+                                                                                  GPT4o                 75.0%
+      Baseline                         Retrieval                                  Agent
+                                      Full-Context                                GPT4o                 60.2%
+                                      Full-Context                           Claude 4.5 Sonnet          62.2%
+                              Full-Context + Chain-of-Note                   Claude 4.5 Sonnet          63.9%
+                   SimpleSearch (K=V+fact), top-5 + expanded Sessions        Claude 4.5 Sonnet          72.5%
+    LongMemEval                SimpleSearch (K=V+fact)                  Mistral-Nemo-Instruct-2407      66.6%
+      Memory                         MemoryAgent
+                                          Zep                                                           71.2%
+                                         Mem0                                                           71.3%
+                                        A-Mem                                                           59.3%
+                                        Nemori                                                          74.6%
+
+                                   Table 4: LongMemEval Evaluation Results
+
+
+         Method                             Acc.             term conversational memory that achieves state-
+                  QnAAgent                                   of-the-art performance across multiple challeng-
+         APEX-MEM
+                  Claude 4 Sonnet         28.9%              ing benchmarks. By combining append-only se-
+                  Claude 4.5 Sonnet       35.2%
+         (Online)
+                  GPT5                    40.1%
+                                                             mantics at construction time with retrieval-time
+                  GPT4o                   19.0%              resolution through a graph agent equipped with
+         Baselines w/ Web-Search Tool                        entity linking, GraphSQL traversal, and hybrid
+                                                             search capabilities, APEX-MEM addresses fun-
+                      GPT4o                15%
+                      GPT5                38.6%              damental limitations in existing memory systems.
+         AGENT
+                      O4-Mini-HIGH         12%               Our approach achieves 88.88% accuracy on LO-
+                      O3                  34.6%
+                      QWEN3-235B          11.4%
+                                                             COMO’s Question Answering task, surpassing the
+                      DeepSeek-R1         15.4%              previous best system MIRIX by 3.50 percentage
+                                                             points, and 86.2% on LongMemEval, improving
+          Table 5: SealQA Evaluation Results                 over strong session-aware RAG baselines by 13.7
+                                                             points. These results demonstrate that property
+                                                             graphs provide a robust foundation for capturing
+soning types and task categories. On LOCOMO                  rich semantic information while enabling efficient
+(Table 1), the system maintains consistently high            retrieval and intelligent conflict resolution in con-
+performance across different question types with             versational contexts.
+less than 5 percentage points variation. This con-
+trasts sharply with previous systems such as MIRIX              Our evaluation focuses on conversational Ques-
+(20% drop in temporal accuracy 65.62% temporal)              tion Answering tasks across LOCOMO-QA, Long-
+and Mem0 (10% drop in single-hop and 18% drop                MemEval, and SealQA-Hard. APEX-MEM is ar-
+in multi-hop), which show significant performance            chitecturally designed as a retrieval-augmented QA
+disparities across question types. Furthermore,              system optimized for query-driven fact selection
+APEX-MEM’s strong results on both LOCOMO                     and temporal resolution. Extending to Event Sum-
+(88.88%), LongMemEval (86.2%), and SealQA-                   marization and Multimodal Dialog Generation—
+Hard (40.15%) demonstrate effective generaliza-              which require generative narrative synthesis and
+tion across different benchmarks, conversation               different evaluation metrics—represents valuable
+lengths, and information quality conditions, val-            future work that builds on our append-only tempo-
+idating the domain-agnostic nature of the ontology-          ral memory foundation.
+supported property graph architecture.                         Despite these advances, significant opportunities
+                                                             remain for future work. First, while APEX-MEM
+7    Conclusion                                              substantially outperforms existing systems, perfor-
+                                                             mance gaps persist in SealQA-Hard (40.15% ac-
+We have introduced APEX-MEM, an ontology-                    curacy), where noisy, conflicting multi-document
+supported property graph architecture for long-              scenarios continue to challenge even our best mod-
+                                                       16477
+els. Improving fact extraction to represent more        nuances, and queries requiring highly specialized
+complete entity information—including better han-       knowledge structures may benefit from extended or
+dling of implicit relationships, temporal nuances,      customized ontologies. Developing standardized
+and contextual dependencies—will be critical for        ontology frameworks and exploring automated on-
+closing this gap. Second, our current graph agent       tology refinement from conversational data could
+requires multiple tool invocations to converge on       enhance the system’s ability to support more pre-
+solutions, with the ablation study showing that all     cise querying and reasoning across diverse applica-
+three tool types (EntityLookUp, GraphSQL, and           tion domains.
+Search) contribute meaningfully to performance.            Third, APEX-MEM’s performance is sensitive
+Future work will focus on developing more effi-         to the QnA agent’s ability to generate correct
+cient query planning strategies and learned retrieval   SQLite queries and use tools effectively. With
+policies that reduce the number of agent tool calls     GPT4o as the QnA agent, we observed critically
+while maintaining or improving answer quality.          high error rates in graph query generation and tool
+Third, extending the ontology to capture domain-        selection, resulting in 86.35% overall accuracy on
+specific knowledge structures and exploring au-         LOCOMO compared to 88.88% with GPT5. We
+tomated ontology refinement from conversational         had to add explicit query generation error examples
+data could further enhance the system’s ability to      to the GPT4o prompt to achieve this level. Both
+represent and reason over specialized knowledge         Claude Sonnet 3.5 and 4.5 show similar tool-use
+domains. Finally, investigating the integration of      success rates and comparable performance, sug-
+APEX-MEM with emerging long-context models              gesting that the architecture works best with mod-
+and exploring hybrid architectures that combine         els that natively support structured tool interactions.
+parametric memory with our structured external          This dependency on the base model’s tool-use ca-
+memory approach represent promising directions          pabilities represents a practical deployment consid-
+for achieving human-level performance across all        eration.
+conversational memory tasks.                               Additionally, APEX-MEM’s performance on
+                                                        particularly SealQA-Hard (40.15% accuracy) in-
+Limitations                                             dicates room for improvement in handling noisy,
+                                                        conflicting multi-document scenarios. The cur-
+While APEX-MEM demonstrates strong perfor-              rent graph agent also requires multiple tool invoca-
+mance across multiple benchmarks and reasoning          tions to converge on solutions, which can impact
+tasks, several limitations remain and highlight areas   response latency in interactive settings. Optimiz-
+for future exploration.                                 ing the agent’s reasoning strategy and reducing the
+   First, the graph construction process incurs sig-    number of tool calls needed would improve effi-
+nificant computational costs, particularly during en-   ciency without sacrificing accuracy.
+tity resolution and property extraction phases. The        Finally, we acknowledge that APEX-MEM’s cur-
+current implementation relies on large language         rent implementation is limited to text-based inter-
+models for fact extraction, which can be resource-      actions. Future work could extend the system to
+intensive for real-time conversational applications.    support multimodal inputs, such as images, audio,
+Future work should explore smaller, more efficient      or video, enabling richer and more comprehensive
+models and optimized algorithms to reduce con-          contextual representations. Integration with emerg-
+struction overhead while maintaining graph quality      ing long-context models and exploration of hybrid
+and precision. Additionally, the accuracy of the        architectures that combine parametric memory with
+constructed graph depends heavily on the quality        structured external memory also present promising
+of entity and property resolution—errors or ambi-       directions for enhancing the system’s capabilities.
+guities in these processes can propagate through the
+graph structure, potentially affecting downstream       Ethical Considerations
+retrieval and reasoning performance.
+   Second, while APEX-MEM employs a domain-             We have conducted a comprehensive review of all
+agnostic ontology with 35 entity classes, standard-     scientific artifacts utilized in this research, includ-
+izing ontology schemas across different conver-         ing datasets and computational models, to ensure
+sational domains remains challenging. The cur-          their licenses explicitly permit academic research
+rent ontology may not capture all domain-specific       and publication use. All datasets employed in our
+                                                   16478
+experiments have been properly de-identified to                Wells, Roy Schwartz, Eliu A Huerta, and Hao
+maintain participant anonymity and protect individ-            Peng. 2025. Context length alone hurts llm per-
+                                                               formance despite perfect retrieval. arXiv preprint
+ual privacy.
+                                                               arXiv:2510.05381.
+   Our proposed APEX-MEM framework offers
+significant potential for reducing both the economic        Sungdong Kim, Sanghwan Bae, Jamin Shin, Soyoung
+and environmental impact associated with LLM en-              Kang, Donghyun Kwak, Kang Yoo, and Minjoon
+                                                              Seo. 2023. Aligning large language models through
+hancement. By minimizing the requirements for                 synthetic feedback. In Proceedings of the 2023 Con-
+extensive data collection and manual annotation               ference on Empirical Methods in Natural Language
+processes for Knowledge Graph construction, our               Processing, pages 13677–13700, Singapore. Associ-
+approach streamlines model development while                  ation for Computational Linguistics.
+providing robust safeguards for user privacy and            Kuang-Huei Lee, Xinyun Chen, Hiroki Furuta, John
+data protection. This reduction in data collection            Canny, and Ian Fischer. 2024. A human-inspired
+needs helps mitigate the risk of information leak-            reading agent with gist memory of very long contexts.
+                                                              arXiv preprint arXiv:2402.09727.
+age during training corpus assembly and reduces
+the computational resources typically required for          Adyasha Maharana, Dong-Ho Lee, Sergey Tulyakov,
+model improvement. Moreover, we aim to further                Mohit Bansal, Francesco Barbieri, and Yuwei Fang.
+reduce LLM inference costs by improving smaller               2024. Evaluating very long-term conversational
+                                                              memory of LLM agents. In Proceedings of the 62nd
+LLMs by using Knowledge Graphs.                               Annual Meeting of the Association for Computational
+   Throughout the development and evaluation of               Linguistics (Volume 1: Long Papers), pages 13851–
+this work, generative AI systems were employed                13870, Bangkok, Thailand. Association for Compu-
+in a limited and transparent manner. Specifically,            tational Linguistics.
+AI assistance was utilized for language refinement,         Jiayan Nan, Wenquan Ma, Wenlong Wu, and Yize
+paraphrasing, and grammatical checking during                  Chen. 2025.     Nemori: Self-organizing agent
+the manuscript preparation process. Additionally,              memory inspired by cognitive science. Preprint,
+generative AI was used to assist in writing code               arXiv:2508.03341.
+test cases for system validation and served as an           Charles Packer, Sarah Wooders, Kevin Lin, Vivian Fang,
+automated judge for evaluation tasks, supplement-             Shishir G. Patil, Ion Stoica, and Joseph E. Gonzalez.
+ing human evaluation where appropriate. All core              2023. Memgpt: Towards llms as operating systems.
+                                                              arXiv preprint arXiv:2310.08560.
+research contributions, experimental design, anal-
+ysis, and conclusions presented in this paper are           Zhuoshi Pan, Qianhui Wu, Huiqiang Jiang, Xufang Luo,
+the result of human intellectual effort and scientific        Hao Cheng, Dongsheng Li, Yuqing Yang, Chin-Yew
+                                                              Lin, H. Vicky Zhao, Lili Qiu, and Jianfeng Gao.
+reasoning.
+                                                              2025. Secom: On memory construction and retrieval
+                                                              for personalized conversational agents. In Interna-
+                                                              tional Conference on Representation Learning, vol-
+References                                                    ume 2025, pages 91851–91885.
+Nick Alonso, Tomás Figliolia, Anthony Ndirango, and
+                                                            Thinh Pham, Nguyen Nguyen, Pratibha Zunjare,
+  Beren Millidge. 2024. Toward conversational agents
+                                                              Weiyuan Chen, Yu-Min Tseng, and Tu Vu.
+  with context and time sensitive long-term memory.
+                                                              2025. Sealqa: Raising the bar for reasoning
+  Preprint, arXiv:2406.00057.
+                                                              in search-augmented language models. Preprint,
+Adam Byerly and Daniel Khashabi. 2024. Self-                  arXiv:2506.01062.
+  consistency falls short! the adverse effects of posi-
+  tional bias on long-context problems. arXiv preprint      Preston Rasmussen, Pavlo Paliychuk, Travis Beauvais,
+  arXiv:2411.01101.                                           Jack Ryan, and Daniel Chalef. 2025. Zep: a tempo-
+                                                              ral knowledge graph architecture for agent memory.
+Maitreyi Chatterjee and Devansh Agarwal. 2025. Se-            arXiv preprint arXiv:2501.13956.
+ mantic anchoring in agentic memory: Leveraging
+ linguistic structures for persistent conversational con-   Rana Salama, Jason Cai, Michelle Yuan, Anna Currey,
+ text. arXiv preprint arXiv:2508.12630.                       Monica Sunkara, Yi Zhang, and Yassine Benajiba.
+                                                              2025. Meminsight: Autonomous memory augmenta-
+Prateek Chhikara, Dev Khant, Saket Aryan, Taranjeet           tion for llm agents. Preprint, arXiv:2503.21760.
+  Singh, and Deshraj Yadav. 2025. Mem0: Building
+  production-ready ai agents with scalable long-term        Fabian M. Suchanek, Mehwish Alam, Thomas Bonald,
+  memory. arXiv preprint arXiv:2504.19413.                    Lihu Chen, Pierre-Henri Paris, and Jules Soria. 2024.
+                                                              Yago 4.5: A large and clean knowledge base with
+Yufeng Du, Minyang Tian, Srikanth Ronanki, Subendhu           a rich taxonomy. In Proceedings of the 47th Inter-
+  Rongali, Sravan Bodapati, Aram Galstyan, Azton              national ACM SIGIR Conference on Research and
+                                                       16479
+    Development in Information Retrieval, SIGIR ’24,    Search calls, and 5,160 EntityLookup calls, demon-
+    page 131–140, New York, NY, USA. Association for    strating effective utilization of all available tools.
+    Computing Machinery.
+                                                        In contrast, the GraphSQL-only agent compensates
+Haoran Sun and Shaoning Zeng. 2025. Hierarchical        for the absence of hybrid retrieval by invoking
+  memory for high-efficiency long-term reasoning in     GraphSQL 27,282 times—a 3.3× increase over the
+  llm agents. arXiv preprint arXiv:2507.22925.          full system. This dramatic escalation reflects the
+Yu Wang and Xi Chen. 2025. Mirix: Multi-agent mem-      agent’s need to express all reasoning operations
+  ory system for llm-based agents. arXiv preprint       through declarative queries, even when alternative
+  arXiv:2507.07957.                                     retrieval methods might be more efficient.
+Di Wu, Hongwei Wang, Wenhao Yu, Yuwei Zhang,               Notably, while the GraphSQL-only variant in-
+  Kai-Wei Chang, and Dong Yu. 2024. Longmemeval:        creases PropertySearch calls from 3,346 to 5,016
+  Benchmarking chat assistants on long-term interac-    and EntityLookup calls from 5,160 to 5,546. These
+  tive memory. arXiv preprint arXiv:2504.19413.
+                                                        auxiliary tools remain essential for identifying en-
+Wujiang Xu, Zujie Liang, Kai Mei, Hang Gao, Jun-        tity IDs and property names required to construct
+ tao Tan, and Yongfeng Zhang. 2025a. A-mem:             valid SQL queries, highlighting that even SQL-
+ Agentic memory for llm agents. arXiv preprint          centric approaches depend on entity resolution ca-
+ arXiv:2502.12110.
+                                                        pabilities.
+Wujiang Xu, Zujie Liang, Kai Mei, Hang Gao, Jun-
+ tao Tan, and Yongfeng Zhang. 2025b. A-MEM:             A.1.2   Performance Implications
+ Agentic memory for llm agents. arXiv preprint
+                                                        The architectural differences translate directly into
+ arXiv:2502.12110.
+                                                        performance outcomes. APEX-MEM achieves
+Shunyu Yao, Jeffrey Zhao, Dian Yu, Nan Du, Izhak        87.00% overall accuracy on LOCOMO, outper-
+  Shafran, Karthik R Narasimhan, and Yuan Cao. 2022.    forming the GraphSQL-only ablation (79.45%) by
+  React: Synergizing reasoning and acting in language
+  models. In The eleventh international conference on   7.55 percentage points. This advantage is par-
+  learning representations.                             ticularly pronounced in open-domain questions,
+                                                        where APEX-MEM’s 89.18% accuracy surpasses
+Yusen Zhang, Ruoxi Sun, Yanfei Chen, Tomas Pfister,
+  Rui Zhang, and Sercan Arik. 2024. Chain of agents:
+                                                        the GraphSQL variant by 11.18 points, demonstrat-
+  Large language models collaborating on long-context   ing the critical value of the Search tool for retriev-
+  tasks. Advances in Neural Information Processing      ing information not easily accessible through struc-
+  Systems, 37:132208–132237.                            tured queries alone.
+Wanjun Zhong, Lianghong Guo, Qiqi Gao, He Ye, and          Interestingly, the GraphSQL-only agent achieves
+ Yanlin Wang. 2023. Memorybank: Enhancing large         competitive or superior performance on temporal
+  language models with long-term memory. arXiv          reasoning tasks (82.29% vs. 79.17%), where SQL’s
+  preprint arXiv:2305.10250.                            native temporal operators and date functions pro-
+                                                        vide natural expressiveness. Table 7 reveals that
+A     Appendix
+                                                        temporal queries constitute the largest category
+A.1 Comparative Analysis: APEX-MEM vs.                  (6,775 instances) in the GraphSQL-only config-
+    GraphSQL-Only Retrieval                             uration, followed by aggregate queries (4,586), SE-
+To demonstrate the value of APEX-MEM’s hy-              LECT queries (1,850), and JOIN operations (430).
+brid tool architecture, we compare the full sys-        These statistics underscore SQL’s strength in tem-
+tem against a GraphSQL-only ablation that re-           poral and quantitative reasoning, while highlighting
+lies exclusively on SQL queries for memory re-          the limitations of a purely query-based approach
+trieval. This analysis reveals how APEX-MEM’s           for diverse conversational memory tasks.
+multi-tool approach achieves superior performance
+                                                        A.1.3   Query Complexity and Reasoning
+through complementary retrieval strategies.
+                                                                Patterns
+A.1.1    Tool Usage Patterns and Strategic              Table 8 provides representative examples of the
+         Differences                                    SQL queries generated by both systems. The tem-
+Table 6 illustrates the contrasting tool usage pat-     poral query example illustrates the sophistication
+terns between APEX-MEM and its GraphSQL-                achievable through declarative queries, comput-
+only variant. APEX-MEM employs a balanced               ing multiple temporal metrics (days, weeks, ap-
+retrieval strategy with 8,260 GraphSQL calls, 8,900     proximate months) using SQLite’s Julian day func-
+                                                   16480
+ Tool                Claude 4.5 Haiku    Claude 4.5 Haiku: Entity   Claude 4.5 Haiku: G RAPH SQL   Claude 4.5 Sonnet
+ E NTITY L OOKUP                5160                       17414                           5546                4894
+ S EARCH                        8900                        1058                              0               10544
+ P ROPERTY S EARCH              3346                         358                           5016                3342
+ S CHEMAV IEWER                 3958                        4004                           3622                3964
+ G RAPH SQL                     8260                           0                          27282                7168
+
+                                Table 6: Tool Call Distribution Across Methods
+
+ SQL Category    Claude 4.5 Haiku       Claude 4.5 Haiku: Entity    Claude 4.5 Haiku: GraphSQL     Claude 4.5 Sonnet
+ SELECT                        315                            0                           1850                   88
+ JOIN                           81                            0                            430                   31
+ AGGREGATE                    1417                            0                           4586                 1230
+ TEMPORAL                     2317                            0                           6775                 2235
+
+                                     Table 7: SQL Query Categories by Method
+
+
+tions. The aggregate query demonstrates set opera-           This analysis reveals distinct behavioral patterns
+tions over distinct entities, while the JOIN example         depending on the agent’s available tool set and the
+shows relationship traversal across facts and evi-           underlying language model’s capabilities.
+dence tables.
+   However, it is important to note that these query         B.1     Agent-Specific Behavioral Patterns
+categories are not mutually exclusive—a single               The tool call distribution demonstrates that differ-
+conversational question often requires multiple              ent agent configurations exhibit markedly different
+SQL queries of different types to construct a com-           behaviors as the number of tool calls increases.
+plete answer. APEX-MEM mitigates this complex-               APEX-MEM with Claude 4.5 Sonnet achieves the
+ity by strategically selecting the most appropriate          highest efficiency, reaching approximately 84-86%
+tool for each reasoning step, reducing the total num-        accuracy with just 10 tool calls across most cate-
+ber of tool invocations needed to converge on cor-           gories and answering 80-90% of questions within
+rect answers. The GraphSQL-only variant, lacking             the first 10-20 tool calls. The full APEX-MEM sys-
+this flexibility, must decompose complex questions           tem with Claude 4.5 Haiku shows similar patterns
+into multiple SQL operations, contributing to both           but requires slightly more tool calls to converge to
+increased query volume and reduced overall accu-             comparable accuracy levels.
+racy.                                                           In contrast, the GraphSQL-only ablation requires
+                                                             significantly more tool calls to achieve competitive
+A.1.4 Implications for System Design
+                                                             performance. This agent must first discover the
+This comparative analysis demonstrates that while            graph structure through SchemaViewer and Entity-
+GraphSQL provides powerful capabilities for struc-           Lookup operations before constructing effective
+tured reasoning—particularly for temporal and                SQL queries, resulting in a more gradual accuracy
+quantitative queries—APEX-MEM’s hybrid archi-                improvement curve. However, with sufficient tool
+tecture achieves superior performance by leverag-            calls (approximately 20-30), the GraphSQL-only
+ing complementary tool strengths. The full system            agent outperforms the EntityLookup-only baseline
+balances structured queries with entity-based re-            across most categories, demonstrating that struc-
+trieval and semantic search, enabling more efficient         tured queries can eventually compensate for the
+and accurate conversational memory access across             absence of hybrid retrieval capabilities.
+diverse reasoning requirements.
+                                                             B.2     Adversarial Questions: The Noise
+B   Tool Call Efficiency Analysis on                                 Introduction Effect
+    LOCOMO
+                                                             Adversarial questions exhibit a unique pattern
+Figure 2 presents a comprehensive analysis of the            where increased tool calls can introduce noise
+relationship between tool call frequency and ac-             rather than improve accuracy. At 10 tool calls,
+curacy across different question categories on the           Claude 4.5 Sonnet achieves 100% accuracy (albeit
+LOCOMO dataset, with tool calls capped at 40.                with only 1% coverage), while the full Haiku sys-
+                                                        16481
+                                     Accuracy vs Tool Call Limit by Category
+                 100%            Single-Hop                                                                  Multi-Hop
+                 (1%)                                                                     91%
+           1.0
+            90%
+                                     91%
+                                    (85%)                        90%
+                                                               (100%)                 1.0 (7%)                 87%
+                                                                                                              (80%)
+                                                                                                                                         87%
+                                                                                                                                       (100%)
+            (4%)
+                                         83%                        83%
+                                  78%91%(67%)                78%91%(98%)
+           0.8                  (100%)
+                                    (93%)                  (100%)
+                                                               (100%)                 0.8                    70%83%
+                                                                                                           (100%)
+                                                                                                                                             71%
+                                                                                                                                      70%83%(93%)
+                                                                                                                                    (100%)
+                                                                                                               (84%)64%                 (99%)
+                                                                                                                  (56%)
+                                                                                      0.6
+Accuracy
+
+
+
+
+                                                                           Accuracy
+           0.6 (1%)
+               67%
+
+
+           0.4      27%
+                                                                                      0.4
+                    (4%)
+
+           0.2                                                                        0.2
+                                                                                        0% 0%
+                                                                                       (1%) (7%)
+           0.0             10       20             30          40                     0.0             10       20             30        40
+                                                                                             0%
+                                  Tool Calls (K)                                            (0%)             Tool Calls (K)
+                                  Temporal                                                                 Open-Domain
+            100%                     94%                                                  90%                  91%                       91%
+                                                                 93%
+            (3%)
+           1.0
+                                    (88%)
+                                  89%
+                                                               (100%)
+                                                             89%
+                                                                                      1.0
+                                                                                       89%(5%)                (90%)                    (100%)
+                                                                                       (2%)
+                 100%           (100%)                     (100%)
+                 (1%)                                               82%                                                                      78%
+                                    92%75%                         (96%)                                           75%
+                                                                                                            74%90%(60%)               74%90%(93%)
+           0.8                     (88%)
+                                      (53%)
+                                                                 91%
+                                                               (100%)                 0.8                     (91%)
+                                                                                                           (99%)                        (99%)
+                                                                                                                                    (100%)
+
+
+                                                                                      0.6
+Accuracy
+
+
+
+
+                                                                           Accuracy
+
+
+
+
+           0.6
+                                                                                            50%
+           0.4                                                                        0.4 (1%)
+
+           0.2      11%
+                    (9%)                                                              0.2       6%
+                  0%                                                                           (8%)
+                 (0%)
+           0.0             10       20             30          40                     0.0             10       20             30        40
+                                  Tool Calls (K)                                                             Tool Calls (K)
+                                Adversarial                                                                    Overall
+                   100%
+                   (15%)                                                              1.0 (4%)
+                                                                                          86%                  88%
+                                                                                                              (87%)
+                                                                                                                                         88%
+                                                                                                                                       (100%)
+           1.0                    85%78%                     85%79%83%
+                                                                                       84%
+                                                                                       (2%)
+               100%             (100%)  82%                (100%)                                            77% 76%                         79%
+                                                                                                                                      77% (92%)
+               (1%)                 (88%)
+                                       (39%)                       (84%)
+                                                               (100%)                                      (100%)                   (100%)
+            75%69%
+           0.8
+            (1%)(4%)                                                                  0.8                       87%(56%)
+                                                                                                               (89%)
+                                                                                                                                          87%
+                                                                                                                                        (100%)
+                                    80%                         80%
+                                   (89%)                      (100%)
+                                                                                          69%
+                                                                                      0.6 (1%)
+Accuracy
+
+
+
+
+                                                                           Accuracy
+
+
+
+
+           0.6
+                                                                                               42%
+                                                                                               (9%)
+           0.4                                                                        0.4
+
+           0.2                                                                        0.2
+
+           0.0             10       20             30          40                     0.0             10       20             30        40
+                                  Tool Calls (K)                                                             Tool Calls (K)
+
+                                                                                         Claude 4.5 Sonnet                 Claude 4.5 Haiku: Entity
+   Format: Accuracy% (Coverage%)                                                         Claude 4.5 Haiku                  Claude 4.5 Haiku: GraphSQL
+   Coverage = % questions answerable within K tool calls
+
+             Figure 2: Analysis of Tool Calls v/s Accuracy on LOCOMO Dataset. We cap the max Tool calls at 40.
+
+
+
+
+                                                                             16482
+  Category          Example Query
+  SELECT    SELECT DISTINCT entity_id, entity_name, entity_type FROM
+            entities WHERE entity_name LIKE ’%Anthony%’ COLLATE NOCASE
+  JOIN      SELECT f.property_name, f.value_json, f.dtype FROM facts f JOIN
+            evidence e ON e.fact_id = f.id WHERE e.event_id = 518
+  AGGREGATE SELECT COUNT(DISTINCT device_name) as device_count FROM ( SELECT
+            ’Fitbit Versa 3’ as device_name UNION SELECT ’nebulizer machine’
+            as device_name UNION SELECT ’Accu-Chek Aviva Nano’ as device_name
+            UNION SELECT ’hearing aids’ as device_name )
+  TEMPORAL SELECT f.value_json as start_date,           date(:question_date)
+            as       question_date,         julianday(:question_date)        -
+            julianday(json_extract(f.value_json,             ’$’))         as
+            days_difference,         CAST((julianday(:question_date)         -
+            julianday(json_extract(f.value_json,      ’$’)))/     30.44    AS
+            INTEGER) as months_approx, CAST((julianday(:question_date)
+           - julianday(json_extract(f.value_json, ’$’)))/7 AS INTEGER) as
+            weeks_approx FROM facts f WHERE f.subject_id = :user_id AND
+            f.property_name = :property_id ORDER BY f.created_at DESC LIMIT
+            1
+
+                                  Table 8: Sample SQL Queries by Category
+
+
+tem reaches 75% accuracy. However, as tool calls         and its ability to strategically select the most infor-
+increase to 20, all agents converge to relatively sta-   mative tool invocations.
+ble performance levels: Sonnet at 85%, Haiku at             The full APEX-MEM system reaches 87-91%
+80%, and GraphSQL at 78% accuracy. Beyond 20             accuracy across most categories with 40 tool calls,
+tool calls, performance remains largely constant,        while the GraphSQL-only variant plateaus at 79-
+with all methods eventually converging to 80-85%         83% depending on the question type. Notably, the
+accuracy at 40 tool calls.                               GraphSQL agent shows competitive performance
+   This convergence pattern suggests that for adver-     on temporal queries (82% accuracy), where SQL’s
+sarial questions—which are specifically designed         native temporal operators provide natural expres-
+to be misleading or contain conflicting informa-         siveness, but struggles more significantly on open-
+tion—additional tool invocations may retrieve con-       domain questions (78% maximum), where the ab-
+tradictory evidence that introduces uncertainty into     sence of the Search tool limits its ability to retrieve
+the reasoning process. Most agents effectively           relevant contextual information.
+reach their performance ceiling at approximately
+20 tool calls, after which further retrieval provides    B.4   Graph Discovery and Multi-Call
+diminishing or even slightly negative returns.                 Requirements
+                                                         The GraphSQL-only agent’s performance trajec-
+B.3   Consistency of Stronger LLM Agents
+                                                         tory illustrates the inherent cost of graph discov-
+For non-adversarial categories (single-hop, multi-       ery in structured query-based approaches. Unlike
+hop, temporal, and open-domain questions),               the full APEX-MEM system, which can leverage
+stronger LLM agents demonstrate remarkable con-          EntityLookup and Search tools for rapid informa-
+sistency in accuracy regardless of tool call count.      tion access, the GraphSQL agent must iteratively
+APEX-MEM with Claude 4.5 Sonnet maintains                explore the graph schema, identify relevant enti-
+high accuracy even with relatively few tool calls,       ties and properties, and construct appropriate SQL
+requiring at least 10 tool calls to confidently answer   queries. This discovery process manifests as a
+approximately 80% of queries. This efficiency re-        more gradual accuracy improvement curve, with
+flects the model’s superior reasoning capabilities       the agent requiring 20-30 tool calls to reach per-
+                                                    16483
+formance levels that APEX-MEM achieves with              velop caching mechanisms for frequently accessed
+10-15 calls.                                             schema patterns to reduce discovery overheads, 3/
+   Despite this efficiency gap, the GraphSQL-            Explore parallel tool execution when dependencies
+only agent’s ability to eventually outperform the        allow.
+EntityLookup-only baseline (which plateaus at ap-
+proximately 77% overall accuracy) demonstrates           C   Cost and Resource Comparison
+the value of structured querying for complex rea-        Table 9 presents a comprehensive token-based cost
+soning tasks. The EntityLookup-only approach,            comparison across all memory methods. Token
+while efficient for simple entity retrieval, lacks the   counts provide a pricing-agnostic, stable compar-
+compositional reasoning capabilities needed for          ison metric, as dollar costs vary by model and
+multi-hop, temporal, and aggregate queries, result-      change frequently. Every memory method has
+ing in consistently lower maximum accuracy across        two cost components: (1) Graph/Memory Con-
+all categories.                                          struction (GC)—a one-time cost per conversation,
+   These findings underscore the importance of           amortized over queries, and (2) Query Answering
+APEX-MEM’s hybrid tool architecture, which bal-          (QnA)—per-query retrieval and generation cost.
+ances the efficiency of direct entity lookup, the        Graph construction accounts for only 16.6% of
+expressiveness of structured queries, and the flex-      APEX-MEM’s total cost; the majority is spent on
+ibility of semantic search to achieve superior per-      tool access and agentic reasoning loops. Overall,
+formance with minimal tool call overhead.                APEX-MEM’s per-query token consumption is sig-
+B.5   Additional Future Work                             nificantly lower than MIRIX, which performs ap-
+                                                         proximately 8 LLM calls per interaction.
+While APEX-MEM achieves state-of-the-art accu-              Table 10 decomposes APEX-MEM’s per-query
+racy, the current implementation faces efficiency        token usage by component, revealing that memory
+challenges that warrant future investigation. Our        retrieval content (26.6%) and tool framing over-
+analysis reveals that the system requires multiple       head (27.3%) dominate, while graph construction
+tool invocations to converge on solutions, with          is amortized to only 16.6%.
+most agents reaching their performance ceiling at
+approximately 20 tool calls. The 20-call perfor-         D   GraphSQL Execution Statistics
+mance ceiling and diminishing returns beyond this
+threshold suggest opportunities for intelligent stop-    Table 11 presents GraphSQL execution analysis
+ping criteria.                                           across different LLM backends. Claude Sonnet 4.5
+improve query planning: 1. Develop reinforce-            achieves the highest success rate (97.6%), while
+ment learning-based query planning that: 1/Pre-          GPT-5 shows a higher error rate (6.6%), primarily
+dicts optimal tool sequences based on question           due to SQLite syntax differences.
+type, 2/ Learns when to stop retrieval, 3/ Reduces          The agent successfully recovered from 87%
+average tool calls from 20-30 to 10-15 while main-       of SQL failures through three mechanisms: (1)
+taining accuracy efficient Model Alternatives:           SchemaViewer consultation (45% of recoveries):
+Claude 4.5 Sonnet’s superior efficiency (84-86%          re-examining table structure and correcting syn-
+at 10 calls) demonstrates that stronger reasoning        tax; (2) Fallback to EntityLookup (28%): retriev-
+reduces tool call requirements. improve efficiency       ing structured entity documents when SQL is too
+in graph construction: 1/ Fine-tune smaller mod-         complex, then identifying correct properties for
+els (7B-14B parameters) for specific subtasks to         structured queries; (3) Fallback to Search (14%):
+achieve Sonnet-level efficiency at lower cost, 2/        using semantic retrieval when graph structure is
+Target the 95-97% fact extraction precision and          insufficient. This demonstrates the robustness of
+95-98% entity resolution accuracy, and 3/ Explore        the multi-tool architecture: no single tool failure
+specialized models for entity resolution, property       blocks progress, and the agent adapts its retrieval
+extraction, and query planning 3.GraphSQL-only           strategy based on tool success.
+requires 3.3× more calls due to schema discov-
+                                                         E   Qualitative Case Studies
+ery overhead, while EntityLookup-only plateaus at
+77%. improve tool usage efficiency: 1/ Investi-          We present three case studies illustrating APEX-
+gate adaptive tool selection strategies that choose      MEM’s temporal resolution, multi-hop reasoning,
+optimal tools based on query characteristics, 2/ De-     and failure modes.
+                                                    16484
+  Method               GC            GC          Amort.       Mem        QnA          Total          Acc
+                     Tok/Conv        Calls       GC/Q         Tok/Q     Tok/Q         Tok/Q       (w/o Adv)
+  MIRIX (est.)        ∼15.2M        ∼4,704      ∼98,750       ∼4,500   ∼13,500      ∼112,000        85.38%
+  Zep/Graphiti        ∼9.4M         ∼5,292      ∼60,900        2,247   ∼3,900       ∼64,800         75.14%
+  Mem0g (est.)        ∼4.9M         ∼2,352      ∼31,882        3,616   ∼5,300       ∼37,200         68.44%
+  APEX-MEM            2.69M          3,717      13,557        8,000‡   ∼16,000      ∼30,000        84–89%†
+  Full Context           0             0           0          23,653   ∼25,000      ∼25,000         87.52%
+  Mem0 (est.)         ∼1.9M         ∼882        ∼12,409        1,764   ∼3,500       ∼15,900         68.44%
+  Nemori (est.)       ∼1.0M         ∼765        ∼6,422         2,745   ∼4,500       ∼10,900         79.40%
+
+Table 9: Token consumption comparison across memory methods. † Accuracy depends on QnA model. ‡ Tunable via
+top-k retrieval budget. GC = Graph/Memory Construction; Amort. = Amortized over queries per conversation.
+
+
+                                                          Case 1: Temporal Contradiction Resolution.
+                                                          Question: “What is Alice’s current favorite restau-
+                                                          rant?”
+                                                          Timeline: Session 1 (2024-01-15): Alice says “I
+ Component             Tok/Q   %    Source                love Italian Garden! Their pasta is the best in town.”
+                                                          Session 5 (2024-03-20): Alice says “Italian Garden
+ Graph constr. (amort.) 13,557 16.6 Extraction, resolu-
+                                    tion                  closed down last month. Now I go to Sakura Sushi
+ System prompt          7,854 9.6 Fixed per architec-     every week instead.”
+                                    ture
+ Memory retrieval       21,745 26.6 Graph search (top-    APEX-MEM Processing: During construction, the
+                                    k)                    system extracts (Alice, favorite_restaurant,
+ Agent loop overhead 16,174 19.8 Prior msgs in loop       “Italian Garden”, from=2024-01-15) and
+ Tool framing           22,274 27.3 Tool call/response
+                                    fmt                   later (Alice, favorite_restaurant, “Sakura
+ Total (mean)          81,604 100
+                                                          Sushi”, from=2024-03-20) without deleting
+                                                          the previous fact. At retrieval time, a GraphSQL
+Table 10: APEX-MEM token decomposition per query.         temporal query returns both facts ordered by times-
+                                                          tamp; the agent selects the most recent valid entry
+                                                          (“Sakura Sushi”). This preserves the full temporal
+                                                          evolution with evidence links, enabling follow-up
+                                                          questions like “When did Alice’s favorite restaurant
+                                                          change?”
+
+                                                          Case 2: Multi-Hop Reasoning Success. Ques-
+                                                          tion: “What is the title of Bob’s manager?”
+                                                          Processing: The agent performs multi-hop traver-
+                                                          sal via GraphSQL: Bob → reports_to → Sarah
+     Metric          Sonnet GPT-5 Sonnet Haiku
+                       4.5        (SQL)
+                                                          Chen → job_title → VP of Engineering. The
+                                                          structured graph enables compositional queries that
+     SQL Executions 3,659 2,163 66,580 4,277
+     Successful     3,574 2,020 65,900 4,080              would be difficult with flat text retrieval.
+     SQL Errors       87   143   791    197
+     Success Rate   97.6% 93.4% 98.8% 95.4%               Case 3: Failure Mode—Entity Linking Error.
+                                                          Question: “How many times did Bob visit restau-
+Table 11: GraphSQL execution analysis across LLM          rants in Paris last month?”
+backends. “Sonnet (SQL)” denotes the GraphSQL-only
+                                                          Root Cause: Entity linking failed to connect restau-
+ablation.
+                                                          rant names (“Le Jules Verne”) to the Paris location
+                                                          entity from contextual clues (“Eiffel Tower”). The
+                                                          system correctly identified the restaurants as enti-
+                                                          ties but did not resolve the implicit spatial relation-
+                                                          ship.
+                                                      16485
+Lesson: High-quality entity linking is critical         I   Ontological Architecture
+for spatial/relational queries. Integrating external
+knowledge bases (e.g., Wikidata) for landmark-to-       Figure 4 presents the complete ontological architec-
+location resolution could address this limitation.      ture of APEX-MEM, showing both the structural
+                                                        relationships between data components (sessions,
+F   Append-Only vs. Eager Update                        turns, events, facts, entities) and the semantic tax-
+    Strategies                                          onomy of entity types. This meta-level view illus-
+                                                        trates how conversational data flows through the
+Table 12 provides indirect evidence supporting          system’s layered architecture to create a rich, typed
+APEX-MEM’s append-only design by comparing              knowledge graph.
+temporal reasoning accuracy across systems with
+                                                           The ontological architecture consists of five
+different update strategies.
+                                                        distinct layers that transform diverse information
+                                                        sources into structured knowledge:
+    System        Append-       Temporal     ∆
+                  Only?                                    Temporal Layer: The foundation layer cap-
+    APEX-MEM Yes             90.63%          —          tures the chronological structure of information
+    Mem0     No (consolid.) 75.71%         –14.92       flows from multiple sources. Sessions represent
+    MIRIX    No       (state 65.62%        –25.01       complete interaction sequences with unique identi-
+             merge)
+    Zep      Partial (temp. 76.60%         –14.03       fiers and timestamps, encompassing not only user-
+             KG)                                        agent conversations but also news cycles, document
+                                                        streams, or event sequences. Turns represent indi-
+Table 12: LOCOMO temporal accuracy: append-only         vidual information instances within sessions, con-
+vs. eager update strategies. ∆ is the difference from
+                                                        taining source, recipient, and content. For example,
+APEX-MEM in percentage points.
+                                                        in conversational AI, turns capture user-agent ex-
+                                                        changes; in news monitoring, turns represent indi-
+   APEX-MEM’s +14 to +25 point advantage on
+                                                        vidual news articles where "World" is the speaker
+temporal queries strongly suggests that preserv-
+                                                        and "LLM Agent" is the listener; in document pro-
+ing full history enables better temporal reasoning.
+                                                        cessing, turns represent document ingestion events.
+Systems that consolidate or overwrite facts during
+                                                        This layer preserves temporal ordering essential for
+construction lose the temporal provenance needed
+                                                        understanding information context and evolution
+to resolve “when did X change?” or “what was Y
+                                                        across diverse domains.
+before Z?” queries, which require access to super-
+seded facts.                                               Event Layer: This layer extracts meaningful
+                                                        temporal events from information turns across mul-
+G    APEX-MEM Construction and                          tiple domains. Events represent semantically sig-
+     Evolution                                          nificant occurrences with structured metadata in-
+                                                        cluding event type, participants, location, and tem-
+Table 13 demonstrates how APEX-MEM trans-               poral anchors. Examples include conversational
+forms conversational text into structured graph rep-    meetings, global news events (elections, natural
+resentations. The examples show the systematic          disasters, policy changes), document publications,
+extraction of entities, properties, and typed values    or system interactions. Evidence provides the tex-
+from natural language, illustrating the rich seman-     tual spans that support event extraction, maintain-
+tic structure captured by our ontology-guided ap-       ing traceability between structured representations
+proach.                                                 and original content sources. This design enables
+                                                        APEX-MEM to process heterogeneous information
+H    Graph Structure Visualization
+                                                        streams—from intimate conversations to global
+Figure 3 illustrates the layered structure of APEX-     news feeds—using the same architectural princi-
+MEM’s property graph, showing how conversa-             ples.
+tional elements are organized into temporal, entity,       Knowledge Layer: The core semantic layer
+and relationship layers. The visualization demon-       transforms events into structured knowledge re-
+strates the systematic organization of turns, events,   gardless of information source. Facts represent
+entities, and their properties in a coherent graph      subject-property-value assertions extracted from
+structure that enables efficient querying and reason-   events, with temporal validity intervals and confi-
+ing.                                                    dence scores. These facts can describe personal
+                                                    16486
+Original Text             Entities           Types       Properties               Values                   Data
+                                                                                                           Types
+"I went to a LGBTQ        Caroline           PERSON      P:attended_event         "LGBTQ support group"    str
+support group                                            P:experience_            "powerful"               str
+yesterday and it was                                     description
+so powerful."             LGBTQ support      EVENT       P:event_date             "2023-05-07"             date
+                          group
+                                                         P:event_type             "support group"          str
+                          Melanie            PERSON      P:activities_ partici-   "pottery class"          str
+"I just signed up for a                                  pated
+pottery class                                            P:activity_benefit       "therapy for me"         str
+yesterday. It’s like                                     P:emotional_outlet       "pottery helps express   str
+therapy for me."                                                                  emotions"
+                          pottery class      EVENT       P:enrollment_date        "yesterday"              date
+                          pottery            CREATIVE_   P:purpose                "self-expression"        str
+                                             WORK
+                                                         P:therapeutic_value      true                     bool
+"You’d be a great         Melanie            PERSON      P:career_suggestion      "counselor"              str
+counselor! Your                                          P:personal_qualities     "empathy"                str
+empathy will help                                        P:predicted_impact       "will help people"       str
+people."                  counselor          PERSON      P:required_skills        "empathy"                str
+                          Melanie            PERSON      P:has_children           true                     bool
+"I’m swamped with                                        P:employment_status      "working"                str
+the kids & work."                                        P:emotional_state        "overwhelmed"            enum
+                                                         P:relationship_status    "swamped with kids and   str
+                                                                                  work"
+                          Caroline           PERSON      P:emotional_state     "thankful"                  str
+"The transgender
+                                                         P:reaction_to_content "inspiring"                 str
+stories were so
+                          transgender sto-   CREATIVE_   P:content_type        "personal narratives"       str
+inspiring! I was so
+                          ries               WORK
+thankful."
+                                                         P:emotional_impact       "inspiring"              str
+                          support            TOPIC       P:context                "LGBTQ community"        str
+
+Table 13: Examples of text-to-graph conversion in APEX-MEM. Each conversational utterance is systematically
+transformed into structured entity-property-value triplets with appropriate semantic types, enabling sophisticated
+querying and temporal reasoning over conversational knowledge.
+
+
+preferences from conversations, geopolitical de-           types include PERSON (individuals in conversa-
+velopments from news, or technical specifications          tions, public figures in news), CREATIVE_WORK
+from documents. Properties define the semantic re-         (personal stories, published content), PLACE (con-
+lationships and attributes that can be asserted about      versation locations, global regions), PRODUCT
+entities, with typed data schemas (string, boolean,        (personal tools, commercial products), GROUP
+date, etc.) that ensure consistency across diverse         (social circles, organizations, nations), TOPIC
+information domains and enable unified querying.           (discussion subjects, news themes), EVENT
+   Entity Layer: This layer manages the canoni-            (personal activities, world events), and NATU-
+cal representation of all named entities mentioned         RAL_PHENOMENON (local weather, global cli-
+across information sources. Entities serve as the          mate events). This semantic typing enables so-
+primary nodes in the knowledge graph, with unique          phisticated reasoning and querying that spans from
+identifiers, normalized names, and semantic type           personal context to global knowledge.
+classifications. The entity resolution process en-            The knowledge extraction process (vertical flow)
+sures that mentions of the same entity across differ-      systematically transforms unstructured information
+ent contexts—whether in personal conversations,            from any source through these layers, while the
+news articles, or documents—are properly linked            temporal flow (horizontal) preserves chronologi-
+and canonicalized, enabling cross-domain knowl-            cal relationships essential for understanding infor-
+edge integration.                                          mation dynamics and evolution over time. This
+   Semantic Layer: The top layer provides the              architecture’s generality enables APEX-MEM to
+ontological taxonomy that governs entity classi-           serve as a unified memory system for diverse AI
+fication across all information domains. Entity            applications, from personal assistants processing
+                                                      16487
+                                                                            APEX-MEM Graph: Construction and Evolution
+   CREATIVE_WORK     TOPIC
+   EVENT             Events
+   GROUP
+   ORG
+                     Turns
+                     Speaks/Participates
+                                                                                                             Temporal Flow
+   PERSON            Listens/Witnesses
+   PLACE             Activity Connection
+   PRODUCT           Location/Resource
+                                                                                                                                                         Melanie                              Caroline
+                                                                                                                                                          shar...                              sha...
+     Temporal                                                                                                                            LGBTQ         (2023-05-08)      Mental             (2023-05-25)              LGBTQ
+     Layer                                                                                                                              suppor...                        Healt...                                   commun...
+                                                                                                                                      (2023-05-08)                    (2023-05-25)                                 (2023-06-09)
+                         Turn-1               Turn-2            Turn-3               Turn-4           Turn-5             Turn-6
+                      (10:31 am o)         (10:31 am o)      (10:31 am o)         (10:31 am o)     (10:31 am o)       (10:31 am o)
+
+
+
+
+                                                                                                                                                                                Caroline Properties
+                                                                                                                                                                       Relationship Status: knows Mel personally
+                                                                                                                                                                       Attended Event: LGBTQ support group
+                                                                                                                                                                       Experience Description: powerful
+                                                                                                                                                                       Emotional State: happy
+
+
+
+     Main                                                                                                                                                                       Melanie Properties
+     Characters                                                                                                                                                        Relationship Status: swamped with kids and ...
+                                                                                        Caroline                                                      Melanie          Has Children: true
+                                                                                                                                                                       Employment Status: working
+                                                                                                                                                                       Emotional State: loves the painting
+
+
+
+
+                             EVENT                               TOPIC                      GROUP                        PLACE                CREATIVE_WORK                 PRODUCT                                     ORG
+
+     Connected
+     Entities
+                    LGBTQ LGBTQ+           pottery attended               pride       LGBTQ        Support        Community       Art         Pride       Rainbow     Pottery          Therapy            LGBTQ
+                   confer... pride...       class   LGB...               parade      suppor...     Network          Ce...        Studio       Flag         Mural      Wheel             Book              Alliance
+
+                    poetry transgender concert
+                   reading      ...                   LGBT           adoption
+                                                    pride e...        cou...
+                   LGBTQ+ advocacy
+                   couns... event
+                                                      Pride
+                                                     fest l...
+
+
+
+
+Figure 3: APEX-MEM Graph Structure: The figure demonstrates how conversational turns and events connect to
+entities through participation relationships, with temporal information preserved and entities organized by semantic
+type for efficient querying and reasoning.
+
+
+conversations to news analysis systems process-
+ing global events, all using the same ontological
+foundation.
+
+
+
+
+                                                                                                                   16488
+                                               APEX-MEM Ontology: Structural and Semantic Architecture
+                                                    From Conversations to Typed Knowledge Graph
+                                                                                                                         Sessions
+                                                                                                                         Turns
+                                                                                                                         Events
+                                                                                                                         Facts
+   Temporal                                Temporal Flow                                                                 Entities
+   Layer                                                                                                                 Structural Relations
+                            SESSION                               TURN                                                   Semantic Relations
+
+
+
+
+   Event
+   Layer
+                                                EVENT                              EVIDENCE
+               Knowledge
+               Extraction
+
+
+
+
+   Knowledge
+   Layer
+                                                 FACT                              PROPERTY
+
+
+
+
+   Entity
+   Layer
+                                                                  ENTITY
+
+
+
+
+   Semantic
+   Types
+            CREATIVE_WORK             PERSON            PRODUCT            TOPIC              GROUP   EVENT   PLACE   NATURAL_PHENOMENON
+                 (48)                   (37)              (35)              (34)               (34)    (29)    (25)           (12)
+
+
+
+
+Figure 4: APEX-MEM Ontological Architecture: Complete structural and semantic view showing the flow from
+conversational sessions through temporal events to typed knowledge extraction. The diagram illustrates both
+table-level relationships (solid arrows) and semantic type instantiation (dashed arrows), demonstrating how the
+system transforms unstructured conversations into a rich, ontology-grounded knowledge graph with diverse entity
+types including PERSON, CREATIVE_WORK, PLACE, PRODUCT, and others.
+
+
+
+
+                                                                             16489
+

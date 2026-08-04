@@ -1,0 +1,227 @@
+{
+  "batch": {
+    "batch_id": "construction_bank1_new_build_0013",
+    "side": "construction",
+    "base_bank_version": "v001",
+    "candidates": [
+      {
+        "candidate_id": "cand_construction_4f14dc43843b",
+        "skill_id": "sk_construction_c114d3121d",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Extract travel-location state memories",
+          "description": "During extraction, apply when a participant mentions a past vacation, trip, or travel photo with a named place and a time period, and no location-state or event candidate exists for that mention.",
+          "content": [
+            "During candidate extraction, convert explicit travel/vacation mentions into state/event candidates: record that the speaker was at the named place during the stated time period, resolving relative time from the session timestamp.",
+            "If the named place is a city, include its unambiguous country in the same memory; do not guess when the city name maps to more than one country.",
+            "Stop after one candidate per distinct place-and-time mention; do not add candidates for places shown in photos or mentioned only as context without claiming the speaker was there."
+          ]
+        },
+        "solves": "Travel or vacation statements that anchor a speaker to a specific place and time are often skipped during candidate extraction, leaving later questions about the speaker's location unanswerable. This Skill applies when a participant describes a past trip, vacation, or travel photo with a named place and a time reference. It must not apply when a place is mentioned without claiming the speaker was there, or when the named city's country is ambiguous.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-48_conv-48_qa_0028",
+        "source_failure_id": "cons_conv-48_conv-48_qa_0028",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:40:44Z"
+      },
+      {
+        "candidate_id": "cand_construction_50b659d843e4",
+        "skill_id": "sk_construction_04d2a9bb1d",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Aggregate-repeat-place-visits",
+          "description": "When a message mentions a visit to a place and an earlier distinct visit to the same place is already known, create a memory with the total visit count.",
+          "content": [
+            "During candidate extraction, when the current message reveals a subject's visit to a specific place (city/country) and the session history or existing memory already contains a distinct earlier visit by the same subject to that same place at a different time, add an additional compact memory stating the total number of visits to that place (e.g., '<subject> has been to <place> N times'). Use memory kind 'state' or 'event' as appropriate. Do not add this aggregate when only one visit is known, when the two mentions refer to the same visit, or when the total count is already recorded; stop once the count is stated without enumerating each trip."
+          ]
+        },
+        "solves": "The general failure is that repeated visits to the same place are stored only as separate event memories, leaving count questions like 'how many times has X been to Y?' unanswerable from memory. This applies when a later message reveals the same subject visiting the same city/country at a different time than an already-recorded visit. It must not apply when only one visit is known, when the two mentions refer to the same visit, or when the total count is already stored.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-48_conv-48_qa_0019",
+        "source_failure_id": "cons_conv-48_conv-48_qa_0019",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:40:38Z"
+      },
+      {
+        "candidate_id": "cand_construction_c585fa936e93",
+        "skill_id": "sk_construction_fcc604eaf2",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Implied venue locations in trip plans",
+          "description": "When extracting or updating a plan/event memory about a trip to a named major venue with widely known location(s), include the implied states or city, unless the user already states the location.",
+          "content": [
+            "During extraction or any update of a plan/event memory, if the destination is a major, well-known venue whose location is common knowledge and the user did not state it, add the venue's canonical location(s) (e.g., state or city) to the memory content.",
+            "Stop after adding the canonical known location(s); do not infer locations for obscure or ambiguous venues, and do not add any location the source message does not support."
+          ]
+        },
+        "solves": "Plan/event candidates often record a named destination while dropping its implicit location, so later 'which states might they be in' questions cannot be answered from memory. This applies when a future session mentions a trip to a major venue with widely known locations, requiring those implied states to be stored during extraction. It does not apply when the user already specifies the location or when the venue's location is not common knowledge.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-43_conv-43_qa_0032",
+        "source_failure_id": "cons_conv-43_conv-43_qa_0032",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:38:15Z"
+      },
+      {
+        "candidate_id": "cand_construction_eeb6c9463b6b",
+        "skill_id": "sk_construction_4e28d28926",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Propagate established location to later activity events",
+          "description": "When extracting an event memory for an activity or discovery and the speaker's current location was set in an earlier message of the same conversation or recent session, include that location in the memory content.",
+          "content": [
+            "Before finalizing an event candidate, scan prior turns for an explicit location associated with the speaker's ongoing trip or stay.",
+            "If the activity in the current message occurs during that same stay and no different location is mentioned, add the location to the candidate content (e.g., 'in <location>').",
+            "Do not add a location when the message states a different location, when the event is generic with no temporal/spatial tie to the established stay, or when no location anchor exists."
+          ]
+        },
+        "solves": "Extraction often captures later activity or discovery messages without the location established in an earlier turn, producing memories that cannot answer 'where' questions. This skill applies when a speaker's current location (trip/stay) was set in a prior message and a subsequent message describes an activity or discovery from that same stay; it does not apply when the message specifies a different location or the activity has no clear link to the established location.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-48_conv-48_qa_0077",
+        "source_failure_id": "cons_conv-48_conv-48_qa_0077",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:40:49Z"
+      }
+    ],
+    "retrieved_skill_ids": [],
+    "relations": []
+  },
+  "plan": {
+    "transaction_id": "tx_construction_bank1_new_build_0013",
+    "side": "construction",
+    "base_bank_version": "v001",
+    "candidate_resolutions": [
+      {
+        "candidate_id": "cand_construction_4f14dc43843b",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_construction_c114d3121d"
+        ],
+        "reason": "No existing Skill covers extraction of travel-location state memories."
+      },
+      {
+        "candidate_id": "cand_construction_50b659d843e4",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_construction_04d2a9bb1d"
+        ],
+        "reason": "No existing Skill covers aggregating repeated visits to the same place."
+      },
+      {
+        "candidate_id": "cand_construction_c585fa936e93",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_construction_fcc604eaf2"
+        ],
+        "reason": "No existing Skill covers adding implied locations for major venues in trip plans."
+      },
+      {
+        "candidate_id": "cand_construction_eeb6c9463b6b",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_construction_4e28d28926"
+        ],
+        "reason": "No existing Skill covers propagating established location to later activity events."
+      }
+    ],
+    "operations": [
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_c114d3121d",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Extract travel-location state memories",
+        "description": "During extraction, apply when a participant mentions a past vacation, trip, or travel photo with a named place and a time period, and no location-state or event candidate exists for that mention.",
+        "content": [
+          "During candidate extraction, convert explicit travel/vacation mentions into state/event candidates: record that the speaker was at the named place during the stated time period, resolving relative time from the session timestamp.",
+          "If the named place is a city, include its unambiguous country in the same memory; do not guess when the city name maps to more than one country.",
+          "Stop after one candidate per distinct place-and-time mention; do not add candidates for places shown in photos or mentioned only as context without claiming the speaker was there."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_4f14dc43843b"
+        ],
+        "reason": "Creating new Skill for travel-location state extraction.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_04d2a9bb1d",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Aggregate-repeat-place-visits",
+        "description": "When a message mentions a visit to a place and an earlier distinct visit to the same place is already known, create a memory with the total visit count.",
+        "content": [
+          "During candidate extraction, when the current message reveals a subject's visit to a specific place (city/country) and the session history or existing memory already contains a distinct earlier visit by the same subject to that same place at a different time, add an additional compact memory stating the total number of visits to that place (e.g., '<subject> has been to <place> N times'). Use memory kind 'state' or 'event' as appropriate. Do not add this aggregate when only one visit is known, when the two mentions refer to the same visit, or when the total count is already recorded; stop once the count is stated without enumerating each trip."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_50b659d843e4"
+        ],
+        "reason": "Creating new Skill for aggregating repeated visits.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_fcc604eaf2",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Implied venue locations in trip plans",
+        "description": "When extracting or updating a plan/event memory about a trip to a named major venue with widely known location(s), include the implied states or city, unless the user already states the location.",
+        "content": [
+          "During extraction or any update of a plan/event memory, if the destination is a major, well-known venue whose location is common knowledge and the user did not state it, add the venue's canonical location(s) (e.g., state or city) to the memory content.",
+          "Stop after adding the canonical known location(s); do not infer locations for obscure or ambiguous venues, and do not add any location the source message does not support."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_c585fa936e93"
+        ],
+        "reason": "Creating new Skill for implied venue locations.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_4e28d28926",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Propagate established location to later activity events",
+        "description": "When extracting an event memory for an activity or discovery and the speaker's current location was set in an earlier message of the same conversation or recent session, include that location in the memory content.",
+        "content": [
+          "Before finalizing an event candidate, scan prior turns for an explicit location associated with the speaker's ongoing trip or stay.",
+          "If the activity in the current message occurs during that same stay and no different location is mentioned, add the location to the candidate content (e.g., 'in <location>').",
+          "Do not add a location when the message states a different location, when the event is generic with no temporal/spatial tie to the established stay, or when no location anchor exists."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_eeb6c9463b6b"
+        ],
+        "reason": "Creating new Skill for propagating established locations.",
+        "hard_delete": false
+      }
+    ]
+  },
+  "status": "planned"
+}

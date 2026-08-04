@@ -1,0 +1,776 @@
+{
+  "schema_version": "access_diagnosis_v3",
+  "diagnosis_id": "access_conv-49_conv-49_qa_0010",
+  "diagnosis_type": "ACCESS_FAILURE",
+  "status": "completed",
+  "judge_run_id": "judge",
+  "diagnosis_run_id": "bank1_train_flash",
+  "source_runtime_run": "conv-49",
+  "conversation_id": "conv-49",
+  "qa_id": "conv-49_qa_0010",
+  "snapshot_commit_id": 25,
+  "question": "Which type of vacation would Evan prefer with his family, walking tours in metropolitan cities or camping trip in the outdoors?",
+  "reference_answer": "camping trip in the outdoors",
+  "problem_found": true,
+  "reason": "The current memory versions mem_conv-49_0006_v1 and mem_conv-49_0007_v1 describe Evan's recent road trip to Jasper, where he stayed in a cozy cabin surrounded by mountains and forests, indicating a preference for outdoor, nature-based activities. These entries support the claim that Evan prefers camping trip in the outdoors.",
+  "confidence": 0.8,
+  "review_required": false,
+  "skill_trace": {
+    "trace_id": "skilltrace_access_conv-49_conv-49_conv-49_qa_0010",
+    "side": "access",
+    "bank_version": "bank1",
+    "query": "Which type of vacation would Evan prefer with his family, walking tours in metropolitan cities or camping trip in the outdoors?",
+    "top_k": 2,
+    "disclose_k": 5,
+    "min_score": 0.2,
+    "scored_fields": [
+      "name",
+      "description"
+    ],
+    "scoring_weights": {
+      "semantic": 0.7,
+      "bm25": 0.3
+    },
+    "retrieval_method": "bank1_hybrid_router",
+    "candidate_k": 10,
+    "reranker": "bank1_applicability_router",
+    "reranker_error": "",
+    "selected": [
+      {
+        "skill_id": "sk_access_benefit_questions",
+        "version_id": "sk_access_benefit_questions_v1",
+        "rank": 2,
+        "score": 0.33831578493118286,
+        "semantic_score": 0.23447993397712708,
+        "lexical_score": 0.5805994868278503,
+        "name": "Search Interest Profile for Benefit Questions",
+        "description": "Use when a question asks which of a person's activities provides a benefit (escape, imagination, relaxation, creativity).",
+        "content": [
+          "When a question asks which activity gives a person a described benefit, search for the person's profile/hobbies/interests using their name plus terms like 'enjoys', 'hobby', 'interest', 'favorite' in addition to the benefit keywords.",
+          "Before finalizing an answer, if retrieved evidence points to one activity, check whether any interest profile memory lists another activity for the person; if it does, treat that explicit interest as a candidate and compare it with the current evidence.",
+          "Stop after the person's known interests are retrieved and the best-supported candidate is identified; do not exhaustively expand searches."
+        ],
+        "selected": true,
+        "rerank_rank": 1,
+        "rerank_reason": "The question asks about Evan's preference between two vacation types, which relates to identifying which activity provides a benefit (relaxation, enjoyment, etc.). This skill is specifically designed for such benefit-based preference questions."
+      }
+    ],
+    "nearby_not_selected": [
+      {
+        "skill_id": "sk_access_family_multi_entity",
+        "version_id": "sk_access_family_multi_entity_v1",
+        "rank": 1,
+        "score": 0.3695271611213684,
+        "semantic_score": 0.09932450205087662,
+        "lexical_score": 1.0,
+        "name": "Family Multi-Entity Search",
+        "description": "When a question asks who or what in a named person's family or group experienced a state or event, such as an injury, illness, or activity, and the answer may involve multiple family members.",
+        "content": [
+          "When a question asks who in a named person's family or group experienced an event/state, treat it as a multi-entity query: run additional targeted searches for each family member relation that appears in the session or retrieved memories combined with the property term, and for the named person themselves.",
+          "Before answering, confirm you have searched for all family members referenced in the session; if only one entity was found, do not finalize a single-entity answer until you have checked other known relations. Stop once all known relations have been searched or a matching memory has been found for each."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_retry_event_queries_synonyms_time",
+        "version_id": "sk_access_retry_event_queries_synonyms_time_v1",
+        "rank": 3,
+        "score": 0.2839382588863373,
+        "semantic_score": 0.06253135204315186,
+        "lexical_score": 0.8005543947219849,
+        "name": "Retry Event Queries with Synonyms and Time Filters",
+        "description": "Use when a question asks which holiday season or calendar period coincides with a person's event and the first search is inconclusive.",
+        "content": [
+          "If the first memory search returns no clear match, retry with synonyms and related forms (e.g., wedding → married, marriage, got married; trip → vacation, travel).",
+          "If the question or any retrieved memory mentions relative time, run a structured search filtering world_start to the corresponding recent window.",
+          "After finding an event memory, determine its world_start and identify which major holiday season contains that date.",
+          "Stop after at most two retry attempts without a match; do not keep expanding indefinitely."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_creator_genre_inference",
+        "version_id": "sk_access_creator_genre_inference_v1",
+        "rank": 4,
+        "score": 0.26176148653030396,
+        "semantic_score": 0.05320712551474571,
+        "lexical_score": 0.7483883500099182,
+        "name": "Infer Preference for Named Creator",
+        "description": "When a question asks whether a user would enjoy a specific author, artist, or work, and retrieval returns the user's genre/taste preferences but no direct mention of that name, infer alignment using general knowledge of the creator's genre instead of returning 'no information'.",
+        "content": [
+          "When asked whether a user would enjoy a named author/creator/work, first retrieve the user's reading/viewing preferences and genres; do not require the name itself to appear in a memory.",
+          "If the retrieved preferences show a clear genre, use general knowledge of the named creator's typical genre to judge alignment: answer with the option whose genre matches the user's stated preference, and explain the match briefly.",
+          "Stop after one preference-retrieval pass and one alignment judgment; avoid repeated searches for the author's name or genre in memory."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_hobby_activity_retrieval",
+        "version_id": "sk_access_hobby_activity_retrieval_v1",
+        "rank": 5,
+        "score": 0.2131223976612091,
+        "semantic_score": 0.235219344496727,
+        "lexical_score": 0.16156284511089325,
+        "name": "Hobby and Activity Retrieval",
+        "description": "Use when a question asks about hobbies, activities, or what someone does to keep busy, relax, or as a hobby, especially during recovery or when the memory uses indirect phrasing.",
+        "content": [
+          "When asked about hobbies or activities, run multiple searches using varied phrasings: 'hobby', 'interested in', 'enjoys', 'wants to try', 'started taking', 'attending class', 'recreation', 'activity', 'keep busy', 'pass the time'.",
+          "Include memory kinds preference, event, and plan; activities are often stored as enjoyed routines, planned sessions, or class attendance rather than as a hobby list.",
+          "If the question involves a recovery or illness period, run a separate hobby-focused search without requiring injury/treatment terms, and do not treat therapy or exercise as leisure unless explicitly asked.",
+          "Merge results across searches; stop once a clear leisure activity is found or no new distinct activities appear."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_favorite_preference_authority",
+        "version_id": "sk_access_favorite_preference_authority_v1",
+        "rank": 6,
+        "score": 0.2022024393081665,
+        "semantic_score": 0.1118341013789177,
+        "lexical_score": 0.41306185722351074,
+        "name": "Include Preference Memories for Favorite Questions",
+        "description": "When a question asks about a person's favorite or preferred thing, include memory_kind 'preference' in the memory search before answering.",
+        "content": [
+          "If the question asks what someone's favorite/preferred item, dish, activity, or attribute is, run a memory search that includes memory_kinds 'preference' (and 'profile' if relevant), not only 'event'.",
+          "When event memories mention several candidate favorites but a preference memory names one, use the preference memory as the authoritative source for the favorite answer; stop once this evidence is found."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      }
+    ]
+  },
+  "repair_package": {
+    "question": "Which type of vacation would Evan prefer with his family, walking tours in metropolitan cities or camping trip in the outdoors?",
+    "reference_answer": "camping trip in the outdoors",
+    "missing_useful_current_memories": [
+      {
+        "version_id": "mem_conv-49_0006_v1",
+        "memory_id": "mem_conv-49_0006",
+        "version_no": 1,
+        "content": "Evan took his family on a road trip to Jasper last weekend, driving through the Icefields Parkway and visiting glaciers and lakes. He took a photo of a glacier.",
+        "memory_kind": "event",
+        "subject": "Evan",
+        "predicate": "activity",
+        "object_text": "road trip to Jasper",
+        "world_start": "2023-05-20",
+        "world_end": null,
+        "update_type": "add"
+      },
+      {
+        "version_id": "mem_conv-49_0007_v1",
+        "memory_id": "mem_conv-49_0007",
+        "version_no": 1,
+        "content": "Evan stayed in a cozy cabin surrounded by mountains and forests during his road trip to Jasper, which provided a peaceful retreat.",
+        "memory_kind": "event",
+        "subject": "Evan",
+        "predicate": "stay",
+        "object_text": "cozy cabin",
+        "world_start": "2023-05-20",
+        "world_end": null,
+        "update_type": "add"
+      }
+    ],
+    "retrieved_current_version_ids": [],
+    "search_steps": [
+      {
+        "action_id": "access_conv-49_conv-49_conv-49_qa_0010_a000",
+        "step_index": 0,
+        "action_type": "search_memory",
+        "request": {
+          "action": "search_memory",
+          "arguments": {
+            "strategy": "hybrid",
+            "query": "Evan's vacation preferences with his family",
+            "query_expansions": [
+              "Evan's preferred family vacation type",
+              "Evan's favorite family activities"
+            ],
+            "keywords": [
+              "Evan",
+              "family vacation",
+              "walking tour",
+              "camping trip"
+            ],
+            "depth": "standard",
+            "entities": [
+              "Evan"
+            ],
+            "memory_kinds": [
+              "profile"
+            ],
+            "time_mode": "none",
+            "top_k": 8
+          },
+          "reason": "To determine Evan's preference between walking tours in metropolitan cities and camping trips in the outdoors"
+        },
+        "returned_memories": [],
+        "returned_version_ids": []
+      },
+      {
+        "action_id": "access_conv-49_conv-49_conv-49_qa_0010_a001",
+        "step_index": 1,
+        "action_type": "search_memory",
+        "request": {
+          "action": "search_memory",
+          "arguments": {
+            "strategy": "keyword",
+            "query": "Evan's family vacation preferences",
+            "query_expansions": [
+              "Evan's family activity preferences",
+              "Evan's preferred outdoor activities with family"
+            ],
+            "keywords": [
+              "Evan",
+              "family",
+              "vacation",
+              "walking tour",
+              "camping trip"
+            ],
+            "depth": "deep",
+            "entities": [
+              "Evan"
+            ],
+            "memory_kinds": [
+              "profile"
+            ],
+            "time_mode": "none",
+            "top_k": 8
+          },
+          "reason": "To explore deeper into Evan's family vacation preferences using keyword-based search"
+        },
+        "returned_memories": [],
+        "returned_version_ids": []
+      },
+      {
+        "action_id": "access_conv-49_conv-49_conv-49_qa_0010_a002",
+        "step_index": 2,
+        "action_type": "search_memory",
+        "request": {
+          "action": "search_memory",
+          "arguments": {
+            "strategy": "semantic",
+            "query": "Evan's preferred family vacation activities",
+            "query_expansions": [
+              "Evan's favorite family outdoor activities",
+              "Evan's preferred family travel experiences"
+            ],
+            "keywords": [
+              "Evan",
+              "family",
+              "vacation",
+              "walking tour",
+              "camping trip"
+            ],
+            "depth": "deep",
+            "entities": [
+              "Evan"
+            ],
+            "memory_kinds": [
+              "profile"
+            ],
+            "time_mode": "none",
+            "top_k": 8
+          },
+          "reason": "To find semantic matches for Evan's family vacation preferences"
+        },
+        "returned_memories": [],
+        "returned_version_ids": []
+      },
+      {
+        "action_id": "access_conv-49_conv-49_conv-49_qa_0010_a003",
+        "step_index": 3,
+        "action_type": "search_memory",
+        "request": {
+          "action": "search_memory",
+          "arguments": {
+            "strategy": "structured",
+            "query": "Evan's family vacation preferences",
+            "query_expansions": [
+              "Evan's family activity preferences",
+              "Evan's preferred outdoor activities with family"
+            ],
+            "keywords": [
+              "Evan",
+              "family",
+              "vacation",
+              "walking tour",
+              "camping trip"
+            ],
+            "depth": "deep",
+            "entities": [
+              "Evan"
+            ],
+            "memory_kinds": [
+              "profile"
+            ],
+            "time_mode": "none",
+            "top_k": 8
+          },
+          "reason": "To use structured search to find specific information about Evan's family vacation preferences"
+        },
+        "returned_memories": [],
+        "returned_version_ids": []
+      },
+      {
+        "action_id": "access_conv-49_conv-49_conv-49_qa_0010_a004",
+        "step_index": 4,
+        "action_type": "search_memory",
+        "request": {
+          "action": "search_memory",
+          "arguments": {
+            "strategy": "hybrid",
+            "query": "Evan's family vacation preferences",
+            "query_expansions": [
+              "Evan's preferred family vacation type",
+              "Evan's favorite family activities"
+            ],
+            "keywords": [
+              "Evan",
+              "family",
+              "vacation",
+              "walking tour",
+              "camping trip"
+            ],
+            "depth": "deep",
+            "entities": [
+              "Evan"
+            ],
+            "memory_kinds": [
+              "profile"
+            ],
+            "time_mode": "none",
+            "top_k": 8
+          },
+          "reason": "To exhaustively search for any potential evidence regarding Evan's family vacation preferences"
+        },
+        "returned_memories": [],
+        "returned_version_ids": []
+      },
+      {
+        "action_id": "access_conv-49_conv-49_conv-49_qa_0010_a005",
+        "step_index": 5,
+        "action_type": "answer",
+        "request": {
+          "action": "answer",
+          "arguments": {
+            "answer": "No information available.",
+            "evidence_version_ids": [],
+            "confidence": 0.0
+          },
+          "reason": "No relevant information was found in the memory store to determine Evan's vacation preference."
+        },
+        "returned_memories": [],
+        "returned_version_ids": []
+      }
+    ],
+    "reason": "The current memory versions mem_conv-49_0006_v1 and mem_conv-49_0007_v1 describe Evan's recent road trip to Jasper, where he stayed in a cozy cabin surrounded by mountains and forests, indicating a preference for outdoor, nature-based activities. These entries support the claim that Evan prefers camping trip in the outdoors.",
+    "skill_trace": {
+      "trace_id": "skilltrace_access_conv-49_conv-49_conv-49_qa_0010",
+      "side": "access",
+      "bank_version": "bank1",
+      "query": "Which type of vacation would Evan prefer with his family, walking tours in metropolitan cities or camping trip in the outdoors?",
+      "top_k": 2,
+      "disclose_k": 5,
+      "min_score": 0.2,
+      "scored_fields": [
+        "name",
+        "description"
+      ],
+      "scoring_weights": {
+        "semantic": 0.7,
+        "bm25": 0.3
+      },
+      "retrieval_method": "bank1_hybrid_router",
+      "candidate_k": 10,
+      "reranker": "bank1_applicability_router",
+      "reranker_error": "",
+      "selected": [
+        {
+          "skill_id": "sk_access_benefit_questions",
+          "version_id": "sk_access_benefit_questions_v1",
+          "rank": 2,
+          "score": 0.33831578493118286,
+          "semantic_score": 0.23447993397712708,
+          "lexical_score": 0.5805994868278503,
+          "name": "Search Interest Profile for Benefit Questions",
+          "description": "Use when a question asks which of a person's activities provides a benefit (escape, imagination, relaxation, creativity).",
+          "content": [
+            "When a question asks which activity gives a person a described benefit, search for the person's profile/hobbies/interests using their name plus terms like 'enjoys', 'hobby', 'interest', 'favorite' in addition to the benefit keywords.",
+            "Before finalizing an answer, if retrieved evidence points to one activity, check whether any interest profile memory lists another activity for the person; if it does, treat that explicit interest as a candidate and compare it with the current evidence.",
+            "Stop after the person's known interests are retrieved and the best-supported candidate is identified; do not exhaustively expand searches."
+          ],
+          "selected": true,
+          "rerank_rank": 1,
+          "rerank_reason": "The question asks about Evan's preference between two vacation types, which relates to identifying which activity provides a benefit (relaxation, enjoyment, etc.). This skill is specifically designed for such benefit-based preference questions."
+        }
+      ],
+      "nearby_not_selected": [
+        {
+          "skill_id": "sk_access_family_multi_entity",
+          "version_id": "sk_access_family_multi_entity_v1",
+          "rank": 1,
+          "score": 0.3695271611213684,
+          "semantic_score": 0.09932450205087662,
+          "lexical_score": 1.0,
+          "name": "Family Multi-Entity Search",
+          "description": "When a question asks who or what in a named person's family or group experienced a state or event, such as an injury, illness, or activity, and the answer may involve multiple family members.",
+          "content": [
+            "When a question asks who in a named person's family or group experienced an event/state, treat it as a multi-entity query: run additional targeted searches for each family member relation that appears in the session or retrieved memories combined with the property term, and for the named person themselves.",
+            "Before answering, confirm you have searched for all family members referenced in the session; if only one entity was found, do not finalize a single-entity answer until you have checked other known relations. Stop once all known relations have been searched or a matching memory has been found for each."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_retry_event_queries_synonyms_time",
+          "version_id": "sk_access_retry_event_queries_synonyms_time_v1",
+          "rank": 3,
+          "score": 0.2839382588863373,
+          "semantic_score": 0.06253135204315186,
+          "lexical_score": 0.8005543947219849,
+          "name": "Retry Event Queries with Synonyms and Time Filters",
+          "description": "Use when a question asks which holiday season or calendar period coincides with a person's event and the first search is inconclusive.",
+          "content": [
+            "If the first memory search returns no clear match, retry with synonyms and related forms (e.g., wedding → married, marriage, got married; trip → vacation, travel).",
+            "If the question or any retrieved memory mentions relative time, run a structured search filtering world_start to the corresponding recent window.",
+            "After finding an event memory, determine its world_start and identify which major holiday season contains that date.",
+            "Stop after at most two retry attempts without a match; do not keep expanding indefinitely."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_creator_genre_inference",
+          "version_id": "sk_access_creator_genre_inference_v1",
+          "rank": 4,
+          "score": 0.26176148653030396,
+          "semantic_score": 0.05320712551474571,
+          "lexical_score": 0.7483883500099182,
+          "name": "Infer Preference for Named Creator",
+          "description": "When a question asks whether a user would enjoy a specific author, artist, or work, and retrieval returns the user's genre/taste preferences but no direct mention of that name, infer alignment using general knowledge of the creator's genre instead of returning 'no information'.",
+          "content": [
+            "When asked whether a user would enjoy a named author/creator/work, first retrieve the user's reading/viewing preferences and genres; do not require the name itself to appear in a memory.",
+            "If the retrieved preferences show a clear genre, use general knowledge of the named creator's typical genre to judge alignment: answer with the option whose genre matches the user's stated preference, and explain the match briefly.",
+            "Stop after one preference-retrieval pass and one alignment judgment; avoid repeated searches for the author's name or genre in memory."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_hobby_activity_retrieval",
+          "version_id": "sk_access_hobby_activity_retrieval_v1",
+          "rank": 5,
+          "score": 0.2131223976612091,
+          "semantic_score": 0.235219344496727,
+          "lexical_score": 0.16156284511089325,
+          "name": "Hobby and Activity Retrieval",
+          "description": "Use when a question asks about hobbies, activities, or what someone does to keep busy, relax, or as a hobby, especially during recovery or when the memory uses indirect phrasing.",
+          "content": [
+            "When asked about hobbies or activities, run multiple searches using varied phrasings: 'hobby', 'interested in', 'enjoys', 'wants to try', 'started taking', 'attending class', 'recreation', 'activity', 'keep busy', 'pass the time'.",
+            "Include memory kinds preference, event, and plan; activities are often stored as enjoyed routines, planned sessions, or class attendance rather than as a hobby list.",
+            "If the question involves a recovery or illness period, run a separate hobby-focused search without requiring injury/treatment terms, and do not treat therapy or exercise as leisure unless explicitly asked.",
+            "Merge results across searches; stop once a clear leisure activity is found or no new distinct activities appear."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_favorite_preference_authority",
+          "version_id": "sk_access_favorite_preference_authority_v1",
+          "rank": 6,
+          "score": 0.2022024393081665,
+          "semantic_score": 0.1118341013789177,
+          "lexical_score": 0.41306185722351074,
+          "name": "Include Preference Memories for Favorite Questions",
+          "description": "When a question asks about a person's favorite or preferred thing, include memory_kind 'preference' in the memory search before answering.",
+          "content": [
+            "If the question asks what someone's favorite/preferred item, dish, activity, or attribute is, run a memory search that includes memory_kinds 'preference' (and 'profile' if relevant), not only 'event'.",
+            "When event memories mention several candidate favorites but a preference memory names one, use the preference memory as the authoritative source for the favorite answer; stop once this evidence is found."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        }
+      ]
+    }
+  },
+  "access_run_id": "access_conv-49_conv-49_conv-49_qa_0010",
+  "claims": [
+    {
+      "claim": "Evan prefers camping trip in the outdoors over walking tours in metropolitan cities for family vacations.",
+      "supporting_version_ids": [
+        "mem_conv-49_0006_v1",
+        "mem_conv-49_0007_v1"
+      ],
+      "coverage": null
+    }
+  ],
+  "current_related_memories": [
+    {
+      "version_id": "mem_conv-49_0006_v1",
+      "memory_id": "mem_conv-49_0006",
+      "version_no": 1,
+      "content": "Evan took his family on a road trip to Jasper last weekend, driving through the Icefields Parkway and visiting glaciers and lakes. He took a photo of a glacier.",
+      "memory_kind": "event",
+      "subject": "Evan",
+      "predicate": "activity",
+      "object_text": "road trip to Jasper",
+      "world_start": "2023-05-20",
+      "world_end": null,
+      "update_type": "add"
+    },
+    {
+      "version_id": "mem_conv-49_0007_v1",
+      "memory_id": "mem_conv-49_0007",
+      "version_no": 1,
+      "content": "Evan stayed in a cozy cabin surrounded by mountains and forests during his road trip to Jasper, which provided a peaceful retreat.",
+      "memory_kind": "event",
+      "subject": "Evan",
+      "predicate": "stay",
+      "object_text": "cozy cabin",
+      "world_start": "2023-05-20",
+      "world_end": null,
+      "update_type": "add"
+    },
+    {
+      "version_id": "mem_conv-49_0101_v2",
+      "memory_id": "mem_conv-49_0101",
+      "version_no": 2,
+      "content": "Evan and his partner announced their marriage to their extended family on January 5, 2024, which was met with overwhelming love and support.",
+      "memory_kind": "event",
+      "subject": "Evan",
+      "predicate": "announcement",
+      "object_text": "marriage",
+      "world_start": "2024-01-05",
+      "world_end": null,
+      "update_type": "correction"
+    },
+    {
+      "version_id": "mem_conv-49_0102_v2",
+      "memory_id": "mem_conv-49_0102",
+      "version_no": 2,
+      "content": "Evan believes in love at first sight and describes feeling a spark inside when he met his wife, calling it a beautiful and fulfilling experience. He also expressed excitement and a bit of nervousness about becoming a parent again after a long time.",
+      "memory_kind": "state",
+      "subject": "Evan",
+      "predicate": "emotion",
+      "object_text": "love",
+      "world_start": "2023-12-26",
+      "world_end": null,
+      "update_type": "enrichment"
+    }
+  ],
+  "useful_current_version_ids": [
+    "mem_conv-49_0006_v1",
+    "mem_conv-49_0007_v1"
+  ],
+  "retrieved_current_version_ids": [],
+  "missing_useful_current_version_ids": [
+    "mem_conv-49_0006_v1",
+    "mem_conv-49_0007_v1"
+  ],
+  "search_steps": [
+    {
+      "action_id": "access_conv-49_conv-49_conv-49_qa_0010_a000",
+      "step_index": 0,
+      "action_type": "search_memory",
+      "request": {
+        "action": "search_memory",
+        "arguments": {
+          "strategy": "hybrid",
+          "query": "Evan's vacation preferences with his family",
+          "query_expansions": [
+            "Evan's preferred family vacation type",
+            "Evan's favorite family activities"
+          ],
+          "keywords": [
+            "Evan",
+            "family vacation",
+            "walking tour",
+            "camping trip"
+          ],
+          "depth": "standard",
+          "entities": [
+            "Evan"
+          ],
+          "memory_kinds": [
+            "profile"
+          ],
+          "time_mode": "none",
+          "top_k": 8
+        },
+        "reason": "To determine Evan's preference between walking tours in metropolitan cities and camping trips in the outdoors"
+      },
+      "returned_memories": [],
+      "returned_version_ids": []
+    },
+    {
+      "action_id": "access_conv-49_conv-49_conv-49_qa_0010_a001",
+      "step_index": 1,
+      "action_type": "search_memory",
+      "request": {
+        "action": "search_memory",
+        "arguments": {
+          "strategy": "keyword",
+          "query": "Evan's family vacation preferences",
+          "query_expansions": [
+            "Evan's family activity preferences",
+            "Evan's preferred outdoor activities with family"
+          ],
+          "keywords": [
+            "Evan",
+            "family",
+            "vacation",
+            "walking tour",
+            "camping trip"
+          ],
+          "depth": "deep",
+          "entities": [
+            "Evan"
+          ],
+          "memory_kinds": [
+            "profile"
+          ],
+          "time_mode": "none",
+          "top_k": 8
+        },
+        "reason": "To explore deeper into Evan's family vacation preferences using keyword-based search"
+      },
+      "returned_memories": [],
+      "returned_version_ids": []
+    },
+    {
+      "action_id": "access_conv-49_conv-49_conv-49_qa_0010_a002",
+      "step_index": 2,
+      "action_type": "search_memory",
+      "request": {
+        "action": "search_memory",
+        "arguments": {
+          "strategy": "semantic",
+          "query": "Evan's preferred family vacation activities",
+          "query_expansions": [
+            "Evan's favorite family outdoor activities",
+            "Evan's preferred family travel experiences"
+          ],
+          "keywords": [
+            "Evan",
+            "family",
+            "vacation",
+            "walking tour",
+            "camping trip"
+          ],
+          "depth": "deep",
+          "entities": [
+            "Evan"
+          ],
+          "memory_kinds": [
+            "profile"
+          ],
+          "time_mode": "none",
+          "top_k": 8
+        },
+        "reason": "To find semantic matches for Evan's family vacation preferences"
+      },
+      "returned_memories": [],
+      "returned_version_ids": []
+    },
+    {
+      "action_id": "access_conv-49_conv-49_conv-49_qa_0010_a003",
+      "step_index": 3,
+      "action_type": "search_memory",
+      "request": {
+        "action": "search_memory",
+        "arguments": {
+          "strategy": "structured",
+          "query": "Evan's family vacation preferences",
+          "query_expansions": [
+            "Evan's family activity preferences",
+            "Evan's preferred outdoor activities with family"
+          ],
+          "keywords": [
+            "Evan",
+            "family",
+            "vacation",
+            "walking tour",
+            "camping trip"
+          ],
+          "depth": "deep",
+          "entities": [
+            "Evan"
+          ],
+          "memory_kinds": [
+            "profile"
+          ],
+          "time_mode": "none",
+          "top_k": 8
+        },
+        "reason": "To use structured search to find specific information about Evan's family vacation preferences"
+      },
+      "returned_memories": [],
+      "returned_version_ids": []
+    },
+    {
+      "action_id": "access_conv-49_conv-49_conv-49_qa_0010_a004",
+      "step_index": 4,
+      "action_type": "search_memory",
+      "request": {
+        "action": "search_memory",
+        "arguments": {
+          "strategy": "hybrid",
+          "query": "Evan's family vacation preferences",
+          "query_expansions": [
+            "Evan's preferred family vacation type",
+            "Evan's favorite family activities"
+          ],
+          "keywords": [
+            "Evan",
+            "family",
+            "vacation",
+            "walking tour",
+            "camping trip"
+          ],
+          "depth": "deep",
+          "entities": [
+            "Evan"
+          ],
+          "memory_kinds": [
+            "profile"
+          ],
+          "time_mode": "none",
+          "top_k": 8
+        },
+        "reason": "To exhaustively search for any potential evidence regarding Evan's family vacation preferences"
+      },
+      "returned_memories": [],
+      "returned_version_ids": []
+    },
+    {
+      "action_id": "access_conv-49_conv-49_conv-49_qa_0010_a005",
+      "step_index": 5,
+      "action_type": "answer",
+      "request": {
+        "action": "answer",
+        "arguments": {
+          "answer": "No information available.",
+          "evidence_version_ids": [],
+          "confidence": 0.0
+        },
+        "reason": "No relevant information was found in the memory store to determine Evan's vacation preference."
+      },
+      "returned_memories": [],
+      "returned_version_ids": []
+    }
+  ]
+}

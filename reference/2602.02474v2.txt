@@ -1,0 +1,2079 @@
+                                             MemSkill: Learning and Evolving Memory Skills for Self-Evolving Agents
+
+
+                                           Haozhen Zhang 1 Quanyu Long 1 Jianzhu Bao 1 Tao Feng 2 Weizhi Zhang 3 Haodong Yue 4 Wenya Wang 1
+
+
+                                                                      Abstract                                 memory for retaining experience and maintaining coher-
+                                                 Most Large Language Model (LLM) agent mem-                    ence (Hu et al., 2025). This need has driven rapid progress
+                                                 ory systems rely on a small set of static, hand-              in agent memory, including approaches that summarize
+                                                 designed operations for extracting memory. These              and retrieve past interactions or manage external memory
+arXiv:2602.02474v2 [cs.CL] 24 May 2026
+
+
+
+
+                                                 fixed procedures hard-code human priors about                 stores (Kang et al., 2025; Chhikara et al., 2025; Packer et al.,
+                                                 what to store and how to revise memory, mak-                  2023; Xu et al., 2025). However, most methods still rely on
+                                                 ing them rigid under diverse interaction patterns             static, hand-designed memory mechanisms, including fixed
+                                                 and inefficient on long histories. To this end, we            operation primitives (e.g., add/update/delete/skip) (Wang
+                                                 present MemSkill, which reframes these opera-                 et al., 2025a; Yan et al., 2025) and heuristic modules that
+                                                 tions as learnable and evolvable memory skills,               govern what to store, how to revise it (Kang et al., 2025;
+                                                 structured and reusable routines for extracting,              Fang et al., 2025), and when to prune it. Such designs bake
+                                                 consolidating, and pruning information from inter-            in strong human assumptions and often suffer under diverse
+                                                 action traces. Inspired by the design philosophy of           interaction patterns, scaling poorly as histories grow.
+                                                 agent skills, MemSkill employs a controller that              We argue that this formulation fundamentally limits the
+                                                 learns to select a small set of relevant skills, paired       adaptability of agent memory. Rather than treating memory
+                                                 with an LLM-based executor that produces skill-               as the output of fixed operations or hand-designed modules,
+                                                 guided memories. Beyond learning skill selection,             we propose to elevate memory extraction itself into a learn-
+                                                 MemSkill introduces a designer that periodically              able abstraction. Concretely, we view memory construction
+                                                 reviews hard cases where selected skills yield                as the outcome of applying a small set of generic, reusable
+                                                 incorrect or incomplete memories, and evolves                 memory skills: structured behaviors that specify when and
+                                                 the skill set by proposing refinements and new                how interaction traces should be transformed into memory
+                                                 skills. Together, MemSkill forms a closed-loop                and revised over time. This perspective reveals a key bottle-
+                                                 procedure that improves both the skill-selection              neck of prior pipelines: they hard-code memory behaviors
+                                                 policy and the skill set itself. Experiments on               into fixed procedural workflows that interleave heuristics
+                                                 LoCoMo, LongMemEval, HotpotQA, and ALF-                       with LLM-mediated extraction and revision, making them
+                                                 World demonstrate that MemSkill improves task                 brittle under distribution shift (Fang et al., 2025).
+                                                 performance over strong baselines and general-
+                                                 izes well across settings. Further analyses shed              Under this view, an ideal agent memory system should sat-
+                                                 light on how skills evolve, offering insights to-             isfy three properties. (i) Minimal reliance on human priors.
+                                                 ward more adaptive, self-evolving memory man-                 Instead of manually encoding what is worth remembering
+                                                 agement for LLM agents. Code is available at                  for a domain (Zhong et al., 2024), memory behaviors should
+                                                 https://github.com/ViktorAxelsen/MemSkill                     be shaped by interaction data and updated as task demands
+                                                                                                               evolve. (ii) Support for larger extraction granularity. Many
+                                                                                                               approaches are tuned to a fixed unit, such as per-turn pro-
+                                         1. Introduction                                                       cessing (Fang et al., 2025), and can weaken when applied
+                                                                                                               to longer spans. A practical system should be able to op-
+                                         As Large Language Model (LLM) agents engage in longer,                erate at larger extraction granularity when needed. (iii)
+                                         open-ended interactions, they must handle growing histories           Skill-conditioned, compositional memory construction. Ex-
+                                         that are essential yet challenging to leverage, motivating            isting systems often decompose memory construction into
+                                             1
+                                               Nanyang Technological University 2 University of Illi-          specialized modules (Kang et al., 2025). In contrast, we
+                                         nois Urbana-Champaign 3 University of Illinois Chicago                prefer to select and compose a small set of relevant skills for
+                                         4
+                                           Tsinghua University.    Correspondence to:       Haozhen            the current context and apply them in one generation step,
+                                         Zhang     <haozhen001@e.ntu.edu.sg>,      Wenya      Wang             enabling flexible reuse and evolution of memory behaviors.
+                                         <wangwy@ntu.edu.sg>.
+                                                                                                               Based on the above observations, we introduce MemSkill,
+                                         Preprint. May 26, 2026.
+
+                                                                                                           1
+                           MemSkill: Learning and Evolving Memory Skills for Self-Evolving Agents
+
+  (a) Prior: Turn-level + Handcrafted Operations                 (b) MemSkill: Span-level + Skill-conditioned Generation
+                                                                                                        Skill
+
+     Turn 1                                                          Turn 1                         Selection                               Skill Bank
+
+
+
+
+                                                                                       Span/Chunk
+                                          Interleave
+                            Handcrafted
+              ......         operations                LLM                    ......                                        Selected Skills
+                                                                                                                                 ......
+                                                                                                    Capture Temporal                  Handle Entity Rel.
+     Turn 2                                                          Turn 2                         Purpose: Capture temporal...      Purpose: Entity Relationship...
+
+
+
+
+                                                                                       Processing
+                                                                                                    When to use: When inputs...       When to use: When inputs...
+                                          Interleave                                                How to apply: Identify...         How to apply: Extract...
+                            Handcrafted
+              ......                                                          ......
+                                                                                                    Constraints: Avoid...             Constraints: Avoid...
+
+                             operations                LLM
+                                                                                                       Refine Details                     Capture Activity
+         ...
+
+
+
+
+                                 ...
+
+                                              ...
+
+                                                        ...
+
+
+                                                                         ...
+                                                                                                    Purpose: Update details...        Purpose: Capture activities...
+                                                                                                    When to use: When inputs...       When to use: When inputs...
+                                                                                                    How to apply: Refine...           How to apply: Capture..
+
+     Turn N                                                          Turn N                         Constraints: Focus on...          Constraints: Only use...
+
+
+                                          Interleave                                                                             ......
+                            Handcrafted                                                                                          Input
+              ......         operations                LLM                    ......
+                                                                                                        Input
+
+
+  Conversation Turns                      ......
+                                                                                                                                 LLM
+                                                         Memory Bank
+
+Figure 1. Comparison between (a) prior turn-level, handcrafted operations and (b) MemSkill’s span-level, skill-conditioned
+generation. Prior methods interleave handcrafted operations with LLM calls to incrementally extract and revise memory turn by turn,
+while MemSkill selects a small set of skills from a shared skill bank and applies them in one pass to produce skill-guided memories.
+
+
+which reframes memory operations as a learnable and evolv-           date key components and showcase representative evolved
+able set of memory skills. MemSkill maintains a shared               skills, offering insights toward more adaptive, self-evolving
+skill bank, where each skill captures a reusable way to ex-          memory management for LLM agents.
+tract, consolidate, or revise memories from interaction text
+                                                                     Our contributions can be summarized as follows.
+(Figure 1 shows the structured template of a memory skill).
+Given the current context, a controller learns to select a
+                                                                       • We propose MemSkill, an agent memory method that
+small set of relevant skills, and an LLM-based executor
+                                                                         represents memory operations as an evolving skill
+conditions on these skills to generate skill-guided memories
+                                                                         bank, where each skill provides reusable guidance for
+in one pass. This skill-conditioned formulation is not tied to
+                                                                         selecting, extracting, and organizing useful memories.
+a fixed extraction unit and can be applied to different span
+                                                                         This turns memory construction from a fixed hand-
+lengths when processing long interaction histories.
+                                                                         crafted pipeline into an adaptive skill-conditioned gen-
+Crucially, MemSkill goes beyond learning how to use a                    eration process.
+fixed set of skills. We introduce a closed-loop evolution
+                                                                       • We introduce a closed-loop optimization recipe that
+process that alternates between learning to use the current
+                                                                         combines reinforcement learning for skill selection
+skill bank and evolving the skill bank itself. Specifically,
+                                                                         with LLM-guided skill evolution from hard cases, en-
+we train the controller with reinforcement learning (RL)
+                                                                         abling continual refinement of the skill bank and taking
+using downstream task signals as feedback for skill selec-
+                                                                         a step toward self-evolving agent memory systems.
+tion. Periodically, a designer aggregates the hardest cases
+produced during training, selects representative failures, and         • We evaluate MemSkill on LoCoMo, LongMemEval,
+uses an LLM to refine existing skills and propose new ones.              HotpotQA, and ALFWorld, demonstrating consistent
+After each evolution step, the controller continues training             gains and strong transfer ability across conversational
+on the evolved skill bank, with additional exploration to                QA and embodied interaction settings, offering insights
+facilitate adopting newly introduced skills. Overall, this               for self-evolving memory in LLM agents.
+process gradually strengthens both the skill selection policy
+and the evolving skill bank, moving toward a more adaptive
+                                                                     2. Related Work
+memory management system driven by interaction data.
+Experiments on LoCoMo, LongMemEval, HotpotQA, and                    2.1. LLM Agent Memory Systems
+ALFWorld show that MemSkill consistently improves task               Prior work on agent memory focuses on constructing exter-
+performance and generalizes well. Further analyses vali-             nal memories from interaction histories and leveraging them
+
+                                                                 2
+                           MemSkill: Learning and Evolving Memory Skills for Self-Evolving Agents
+
+to support downstream reasoning and decision making. Typ-              3. Method
+ical pipelines periodically extract salient information into a
+memory store, retrieve relevant entries for a new query, and           In this section, we first provide an overview of MemSkill
+update the store via consolidation or pruning (Kang et al.,            (Section 3.1), then detail the skill bank (Section 3.2) and
+2025; Zhong et al., 2024; Xu et al., 2025; Packer et al., 2023;        the three core components (controller (Section 3.3.1), ex-
+Chhikara et al., 2025; Fang et al., 2025). More recently,              ecutor (Section 3.3.2), and designer (Section 3.4)), and
+learning-based approaches such as Memory-R1 (Yan et al.,               finally summarize the closed-loop optimization procedure
+2025) and Mem-α (Wang et al., 2025a) optimize memory                   that alternates between learning to use the current skills and
+management with reinforcement learning using downstream                evolving the skill bank from hard cases (Section 3.5).
+task signals. Despite this progress, memory management
+is still largely governed by static, hand-crafted routines for         3.1. Overview
+extraction, consolidation, and pruning.                                As shown in Figure 2, we propose MemSkill, which op-
+Several concurrent works also explore self-evolving mem-               timizes agent memory through two intertwined processes.
+ory in agent settings, but differ from our focus. Evo-                 First, it learns to use a given skill bank: a controller se-
+Memory (Wei et al., 2025) evaluates streaming memory                   lects context-relevant skills, and an executor applies them
+evolution, MemEvolve (Zhang et al., 2025b) optimizes                   to produce memory updates. Second, it improves the skill
+predefined memory architectures, MemGen (Zhang et al.,                 bank itself: a designer periodically revises existing skills
+2025a) targets latent memory for reasoning, and Reasoning-             and adds new ones based on challenging training cases.
+Bank (Ouyang et al., 2025) distills reasoning strategies from          To disentangle trace-specific memories from reusable mem-
+experience. By contrast, we target the evolution of memory             ory management knowledge, MemSkill maintains two
+skills themselves, enabling the system to refine and grow              stores. The memory bank is trace-specific and stores memo-
+reusable memory operations over time.                                  ries for each training trace (e.g., a long dialogue). In contrast,
+                                                                       the skill bank is shared across traces and contains reusable
+2.2. Self-Evolving LLM Agents                                          memory skills. During training, the controller and executor
+Recent work on self-evolving LLM agents studies how                    build each trace’s memory bank, while the designer updates
+agents can improve from interaction experience with mini-              the shared skill bank between phases. This alternating pro-
+mal manual supervision. ExpeL (Zhao et al., 2024) distills             cedure gradually improves both the skill selection policy
+trajectories into editable natural-language insights and re-           and the skill bank for memory construction.
+trieves relevant experiences to guide future decisions, while
+EvolveR (Wu et al., 2025) formalizes an experience lifecy-             3.2. Skill Bank
+cle that consolidates interactions into reusable principles            As shown in Figure 2, a memory skill specifies a reusable
+and closes the loop with reinforcement learning updates. A             memory operation as structured guidance, including when
+complementary line reduces reliance on curated data via                it is applicable and how it should be applied to the current
+self-play style curricula: Absolute Zero Reasoner (Zhao                context. Concretely, each skill s ∈ S contains (i) a short
+et al., 2025) trains a proposer and solver with verifiable re-         description for skill representation and selection, and (ii) a
+wards from a code executor, and Multi-Agent Evolve (Chen               detailed content specification that instructs the executor on
+et al., 2025) extends this to a proposer solver judge triad with       memory extraction or revision.
+LLM-based evaluation; R-Zero (Huang et al., 2025) follows
+a similar challenger solver co-evolution pattern. Beyond cur-          We start from a minimal set of general-purpose primitives
+ricula, systems such as AgentEvolver (Zhai et al., 2025) and           to ensure a stable and functional initialization. Specifically,
+RAGEN (Wang et al., 2025b) study efficient agent learn-                we initialize the skill bank with four basic skills correspond-
+ing dynamics and stabilization in multi-turn RL settings,              ing to canonical memory operations: I NSERT, U PDATE,
+while ADAS (Hu et al., 2024) and AlphaEvolve (Novikov                  D ELETE, and S KIP. Starting from this minimal set, the
+et al., 2025) explore automated discovery and evolutionary             designer progressively refines existing skills and expands
+improvement of agent designs. Finally, SkillWeaver (Zheng              the bank by proposing new skills that address uncovered
+et al., 2025) shows that agents can discover and refine                failure modes. (Appendix C details skill description)
+reusable skills for web interaction. In contrast, our focus
+is on self-evolving memory skills that govern how agents               3.3. Learning to Use Memory Skills
+construct and revise memories over time.
+                                                                       In this part, we describe how MemSkill learns to use mem-
+                                                                       ory skills, covering (i) the skill-selection policy and (ii)
+                                                                       skill-conditioned memory construction.
+
+
+
+                                                                   3
+                              MemSkill: Learning and Evolving Memory Skills for Self-Evolving Agents
+
+      Interaction                 Learning to Use Memory Skills                                                   Skill Bank                                                      Skill Evolution
+        Traces                       (Controller & Executor)                                               (Shared Across Training)                                                 (Designer)
+                                                                   Sequential Process
+   Trace 1                 Trace 1               Segmenter
+                                                                            ...                                   Skip
+                                                                                                         Description: ...
+                                                                                                                                         Delete
+                                                                                                                                    Description: ...
+                                                                                                                                                                                  Refine Existing Skills
+                                                                                                                                                                                   Propose New Skills
+                                                                           ... ...                            Update                      Insert
+
+
+
+
+                                                                                                                                                                Evolve Skills
+                                                  Text Span                                              Content:                   Content:
+                                                                                                           Description: ...          Description: ...
+                                                                                                          (1)New     Skill
+                                                                                                               Purpose: ...   1     (1)New     Skill
+                                                                                                                                         Purpose: ...   2
+                                                                                                           Content:                  Content:                                       LLM-based Feedback
+   Trace 2                                                                Controller                      (2)  When to use:
+                                                                                                                         ... ...    (2)            ... ...
+                                                                                                                                         When to use:
+                                                                                                                                      Description:
+
+                                                                                                                            +                          +
+                                                                                                            Description:
+                                                                                                           (1) Purpose: ...          (1) Purpose: ...
+                                                                                                          (3)  How to apply: ...
+                                                                                                            Content:                (3)  How to apply: ...
+                                                                                                                                      Content:                                       Analyze Failures
+                             Current                                                                       (2) When to use: ...      (2) When to use: ...
+
+
+
+
+                                                                                           Read Skills
+                                      Input                                                                 (1)Constraints:
+                                                                                                          (4)   Purpose: ......       (1)Constraints:
+                                                                                                                                    (4)   Purpose: ......
+                            Text Span           Retriever                 State/Skill
+                                                                                                           (3) How to apply: ...
+                                                                                                            (2) When to use: ...
+                                                                                                                                     (3) How to apply: ...
+                                                                                                                                      (2) When to use: ...                        Two-stage Skill Evolusion
+                                                                                                           (4) Constraints: ...      (4) Constraints: ...
+                                                                           Encoder                          (3) How to apply: ...     (3) How to apply: ...
+   Trace 3
+
+
+
+
+                                                 Retrieve
+                                                                                                           (4) Constraints: ...      (4) Constraints: ...
+                                                                          Top-K Skill                                                                                               Aggregate Cases
+                            Reset Every Trace                 Retrieved
+                                                               Memory      Selection                                           ......                                              from Each Cluster
+                                                                                                           Refines and Evolves Over Training
+                                                                                                                                                                                     Filter by Reward
+   Trace 4                                                                                                                                                                          Score and Fail Count
+                                                               Memory                                             Hard Case Buffer
+                                                                           Executor
+
+
+
+
+                                                                                                                                                                Read Hard Cases
+                                                                                                                                                       ......                      Difficulty Filtering
+                                                               Update       (LLM)                          Failure Case 1
+                                        Memory Bank                                                               Failure Case 2
+                                                                                                                                    Case 3
+                                                                                                           Model PredictionFailureFailure
+                                                                                                                                                                                     Divided by Groups
+             ...
+
+
+
+
+                                                                                                                   Model Prediction       Case N
+                                                            Optimize Controller                              Reward Score Model Prediction
+                                                                                                                      Reward Score Model Prediction
+                                                                                                             Ground Truth Reward Score
+                                                                                                                                                                                   Cluster Hard Cases
+   Trace E                  Evaluation on Training Data                   Task Reward                                 Ground Truth      Reward Score
+                                                                                                               Fail Count      Ground Truth                                        Select Representative
+                                     Record Recently Observed Failure Cases
+                                                                                                                  ...... ......
+                                                                                                                        Fail Count      Ground Truth
+                                                                                                                                 Fail Count                                             Hard Cases
+                                                                                                         ......                     ...... ......
+                                                                                                                                          Fail Count
+                                                                                                                                                                                   Trigger Periodically
+                                                                                         Closed-loop Optimization
+
+Figure 2. MemSkill architecture overview. Given an interaction trace, MemSkill processes it span by span: the controller selects a
+Top-K subset of skills from a shared skill bank conditioned on the current text span and retrieved memories, and an LLM executor applies
+the selected skills in one pass to update the trace-specific memory bank. The constructed memory is then evaluated on memory-dependent
+training queries to provide task reward for optimizing the controller, while query-centric failures are logged into a sliding hard-case buffer.
+Periodically, the designer mines representative hard cases to refine existing skills and propose new ones, yielding alternating phases of
+skill usage and skill evolution. More skill case study can be found in Section 4.5 and Appendix C.
+
+
+3.3.1. C ONTROLLER : S KILL S ELECTION P OLICY                                    ory embedding, and is omitted when Mt is empty. Here,
+                                                                                  ui is the representation of skill si ∈ St , computed from its
+To enable effective skill selection as the skill bank evolves,
+                                                                                  description as a compact and stable semantic signal rather
+we introduce a controller that selects a small set of relevant
+                                                                                  than the full skill content. The embedding model e(·) is
+memory skills for the current context. At each memory
+                                                                                  shared and fixed, while fθctx and fθskill are trainable neural
+construction step, we update memory at the span level:
+                                                                                  networks in the controller for learnable skill selection.
+we split each interaction trace (e.g., a dialogue) into fixed-
+length contiguous spans by token count and process them                           Compatibility with an evolving skill bank. Instead of
+sequentially. For each span, the controller conditions its                        producing a fixed-dimensional action head tied to a fixed
+selection on (i) the current text span and (ii) the retrieved                     number of skills, the controller concatenates the state rep-
+existing memories from the current trace’s memory bank                            resentation with each candidate skill representation and ap-
+(empty for initial span), rather than operating turn by turn.                     plies a shared scorer to all such state-skill pairs in parallel:
+To remain compatible with a variable-size skill bank as it
+continuously evolves, the controller scores each skill by                               zt,i = fθscore ([ht ; ui ]) ,
+                                                                                                                 pθ (i | ht ) = softmax(zt )i ,
+measuring the semantic distance between the current state                                                                                    (2)
+and skill representations, supporting a changing skill set                        where fθscore is a trainable neural network, and zt ∈ R|St |
+while staying sensitive to what is already stored in memory.                      adapts as the skill bank evolves.
+
+State and skill representations. Formally, let xt denote the                      Top-K skill selection. Given the categorical distribution
+current text span at step t, and let Mt = {mt,1 , . . . , mt,R }                  pθ (i | ht ) over the current skill bank St , the controller
+be the retrieved memories from the current trace’s memory                         selects an ordered Top-K set of skills At = (at,1 , . . . , at,K )
+bank. We first encode xt and Mt with a fixed embedding                            (e.g., via Gumbel-Top-K (Kool et al., 2019)), and only
+model e(·), aggregate the retrieved memory embeddings by                          passes the selected skills to the executor, keeping the skill
+element-wise averaging, and concatenate it with the span                          context concise and relevant.
+embedding:
+                                                                                  3.3.2. E XECUTOR : S KILL -C ONDITIONED M EMORY
+                                                                                         E XTRACTION
+  ht = fθctx ([e(xt ); m̄t ]) ,      ui = fθskill (e(desc(si ))) ,
+                   PR                                      (1)                    Given the selected skills At , the fixed executor constructs
+where m̄t = R1       r=1 e(mt,r ) denotes the aggregated mem-                     memory updates by conditioning an LLM on (i) the current
+
+                                                                              4
+                           MemSkill: Learning and Evolving Memory Skills for Self-Evolving Agents
+
+text span xt , (ii) the retrieved memory items Mt , and (iii)          using a difficulty score that increases when task performance
+the selected skills At . This mirrors skill-conditioned infer-         is low and when the same case fails repeatedly. This pro-
+ence in agent systems, where a small set of relevant skills            duces a compact set of high-value cases for skill evolution
+is provided to guide behavior for the current context. The             while preserving diversity across error types.
+executor produces structured memory updates, which are
+                                                                       Two-stage skill evolution. The designer updates the skill
+parsed and applied to the trace’s memory bank. By com-
+                                                                       bank in two stages. First, it employs an LLM to analyze
+posing several skills for the same text span and extracting
+                                                                       the selected hard cases and identify what memory behaviors
+memory in one LLM call, MemSkill reduces repeated per-
+                                                                       are missing or mis-specified. Second, it uses the resulting
+turn processing and scales better to long interaction histories.
+                                                                       analysis to propose concrete edits to existing skills and to
+Appendix D details the executor prompt.
+                                                                       introduce new skills. We keep the designer description
+                                                                       concise and provide prompts in Appendix D.
+3.3.3. C ONTROLLER O PTIMIZATION
+                                                                       Notably, we maintain snapshots of the best-performing skill
+We train the controller with reinforcement learning, using
+                                                                       bank and roll back if an update degrades performance, with
+downstream task performance as feedback for its skill se-
+                                                                       early stopping when repeated designer updates fail to im-
+lections. For each training trace, the controller makes a
+                                                                       prove the training signal. After each evolution step, we
+sequence of Top-K selections while the executor incremen-
+                                                                       also briefly increase exploration by biasing selection toward
+tally builds the trace-specific memory bank. After construc-
+                                                                       newly introduced skills, encouraging the controller to try
+tion, we evaluate the resulting memory bank on the trace’s
+                                                                       them and facilitating efficient learning of their utility. Due
+memory-dependent training queries and use the resulting
+                                                                       to page limit, more details about the designer can be found
+task performance as the reward (e.g., F1 or success rate).
+                                                                       in Appendix B.2.
+A key technical detail is that the controller’s action is an
+ordered Top-K list selected without replacement, rather than           3.5. Closed-Loop Optimization
+a single discrete action. We therefore compute the joint log-
+probability log πθ (At | ht ) under this selection process and         MemSkill alternates between (i) learning to select and apply
+use it in standard policy-gradient objectives (Schulman et al.,        skills to build memory banks and (ii) evolving the skill
+2017) via importance weighting and clipping. Concretely,               bank from hard cases mined during training. Each cycle
+for At = (at,1 , . . . , at,K ), the joint probability is              begins with controller training on the current skill bank,
+                                                                       where the executor constructs memories and accumulates
+                          K
+                                   p (a | h )                          challenging cases. The designer then updates the skill bank
+                                   Pθ t,j t
+                          Y
+        πθ (At | ht ) =                                 ,   (3)        using representative hard cases, optionally rolling back to
+                          j=1
+                              1−    ℓ<j pθ (at,ℓ | ht )
+                                                                       a prior snapshot if performance regresses. The next cycle
+which reduces to the single-action case when K = 1. Ap-                resumes controller training on the updated skill bank, with
+pendix B.4 gives implementation details.                               additional exploration to encourage early use of new skills.
+                                                                       Over cycles, this closed loop gradually improves how skills
+3.4. Skill Evolution through Designer Feedback                         are selected, applied, and refined for memory construction.
+
+Beyond learning to select from a fixed set of skills, Mem-
+Skill evolves the skill bank using an LLM-based designer               4. Experiments
+(fixed) that operates periodically during training.                    4.1. Experiment Setup
+Hard-case buffer. During controller training, we maintain              Datasets and Baselines. We evaluate MemSkill on four
+a sliding-window buffer of challenging cases observed re-              benchmarks: LoCoMo (Maharana et al., 2024), Long-
+cently. Each case is query-centric, recording the query along          MemEval (Wu et al., 2024), HotpotQA (Yang et al., 2018),
+with its ground-truth and metadata (e.g., retrieved memories           and ALFWorld (Shridhar et al., 2020), where HotpotQA
+and model prediction), as well as summary statistics such              is used in Section 4.3 to study skill transfer under distri-
+as task performance and the number of failures observed so             bution shift. The remaining three benchmarks cover two
+far. The buffer uses two expiration rules: cases are removed           representative settings. (i) Conversational Benchmarks in-
+if they become too old (exceeding a maximum training step              clude LoCoMo and LongMemEval, which evaluate memory
+gap) or if the buffer reaches its capacity limit, which tracks         construction from long, dialogue-style interaction histories.
+recent failure patterns without growing unbounded.                     For these datasets, we report F1-score (F1) and an LLM-
+Selecting representative hard cases. To focus designer up-             based judge score (L-J). (ii) Embodied Interactive Tasks are
+dates on impactful failures, we cluster cases (e.g., KMeans)           evaluated on ALFWorld with two standard subsets, ALF-
+into groups that naturally reflect different query or error            Seen and ALF-Unseen, and we report success rate (SR)
+types. Within each cluster, we prioritize representative cases         and the number of environment interaction steps (#Stps).
+
+                                                                   5
+                                   MemSkill: Learning and Evolving Memory Skills for Self-Evolving Agents
+
+                                 Table 1. Main comparison results on LoCoMo, LongMemEval, and ALFWorld.
+
+                                               Conversational Benchmarks                       Embodied Interactive Tasks
+   Model               Methods           LoCoMo         ▲
+                                                            LongMemEval       Avg.       ALF-Seen†         ALF-Unseen†         Avg.
+                                        F1       L-J        F1    L-J          L-J      SR      #Stps↓      SR      #Stps↓      SR
+                       No-Memory         -        -       -         -           -      62.14     26.10     73.88     21.36     68.01
+                       CoN             30.86    41.72   30.78     56.44       49.08    75.00     19.15     80.60     17.38     77.80
+                       ReadAgent       28.63    38.25   24.48     42.62       40.44    62.86     26.14     71.64     22.88     67.25
+    70B-Instruct
+     LLaMA3.3
+
+
+
+
+                       MemoryBank      36.80    44.43   30.56     41.96       43.20    60.71     28.23     66.42     24.64     63.57
+                       A-MEM           39.39    49.71   25.83     38.04       43.88    62.86     27.53     70.15     23.79     66.51
+                       Mem0            25.48    34.58   30.25     46.81       40.70    74.29     19.77     81.34     17.15     77.82
+                       LangMem         30.91    35.82   18.36     24.35       30.09    72.86     21.25     79.85     18.30     76.36
+                       MemoryOS        41.39    48.64   17.59     39.83       44.24    57.86     27.94     65.67     24.46     61.77
+                       MemSkill        44.21    53.82   31.12     60.89       57.36    77.14     18.91     83.58     16.63     80.36
+                       No-Memory         -        -        -        -           -      63.57     24.61     60.45     26.57     62.01
+                       CoN             38.46    50.96   29.19     44.06       47.51    77.14     17.59     70.90     20.74     74.02
+    80B-A3B-Instruct
+       Qwen3-Next
+
+
+
+
+                       ReadAgent       25.89    34.26   24.13     42.25       38.26    73.57     20.21     65.67     23.28     69.62
+                       MemoryBank      29.56    44.15    8.45     26.37       35.26    63.57     23.68     52.24     29.01     57.91
+                       A-MEM           36.43    50.30   13.84     36.59       43.45    55.71     27.42     54.48     28.60     55.10
+                       Mem0            23.29    33.68   27.36     46.20       39.94    71.43     19.89     64.93     23.32     68.18
+                       LangMem         28.17    32.94   18.35     23.86       28.40    73.57     19.76     64.18     23.58     68.88
+   ▲
+
+
+
+
+                       MemoryOS        39.86    47.37   15.97     39.25       43.31    62.14     25.64     50.75     30.35     56.45
+                       MemSkill        42.08    54.14   25.29     60.40       57.27    85.71     13.84     76.87     18.16     81.29
+   Bold indicates the best score within each base model block; ▲ indicates transfer evaluation only.
+   †
+     indicates evaluation with in-context demonstrations. Appendix A reports more baselines and datasets.
+
+
+
+
+Appendix B.1 provides dataset splits.                                     skills per unit. We instantiate e(·) with Qwen3-Embedding-
+                                                                          0.6B (Yang et al., 2025), also used as the memory retriever,
+We compare MemSkill against several strong baselines: (1)
+                                                                          and retrieve up to 20 memory items for MemSkill and all
+No-Memory, which answers directly without an external
+                                                                          baselines for consistency. For the designer, skill evolution is
+memory; (2) CoN (Yu et al., 2024); (3) ReadAgent (Lee
+                                                                          triggered every 100 training steps, with at most 3 skill edits
+et al., 2024); (4) MemoryBank (Zhong et al., 2024); (5)
+                                                                          per evolution round. For ALFWorld, we cap environment
+A-MEM (Xu et al., 2025); (6) Mem0 (Chhikara et al.,
+                                                                          interactions at 50 steps.
+2025); (7) LangMem (LangChain, 2025); and (8) Memo-
+ryOS (Kang et al., 2025). Overall, this setup spans diverse               At evaluation time, we keep the same span-level formulation
+benchmarks and baselines, enabling a broad and consistent                 and set the span/chunk size to 512 by default, while keeping
+comparison across diverse settings.                                       the overall procedure unchanged. Unless otherwise speci-
+                                                                          fied, we use K=7 skills for LoCoMo and LongMemEval
+Implementation Details. We instantiate fθctx , fθskill , and
+                                                                          at evaluation time, and K=5 for ALFWorld. Additional
+fθscore as independent lightweight multilayer perceptrons
+                                                                          implementation details and prompt templates are provided
+(MLPs), and use LLaMA-3.3-70B-Instruct (Grattafiori et al.,
+                                                                          in Appendix B and Appendix D.
+2024) and Qwen3-Next-80B-A3B-Instruct (Yang et al.,
+2025) as the base LLMs, accessed through an API service.
+Unless otherwise specified, we train MemSkill on LLaMA                    4.2. Comparison Experiments
+and use Qwen only for transfer experiments. LongMemEval                   Effectiveness across conversational and embodied set-
+is also evaluated in a transfer setting, where we directly ap-            tings. Table 1 summarizes the main comparison results on
+ply the skills learned on LoCoMo without further training.                LoCoMo, LongMemEval, and ALFWorld. Across these
+During training, we optimize the controller with PPO (Schul-              datasets, MemSkill achieves the strongest overall perfor-
+man et al., 2017). MemSkill constructs memory at the span                 mance among all compared methods. On conversational
+level; on conversational benchmarks, each dialogue ses-                   benchmarks, MemSkill attains the best LLM-judge scores
+sion is a processing unit, and the controller selects K=3                 on both LoCoMo and LongMemEval within each base-
+
+
+                                                                     6
+                                                    MemSkill: Learning and Evolving Memory Skills for Self-Evolving Agents
+
+                                  200 Docs Concatenated                                                  100 Docs Concatenated                                                 50 Docs Concatenated
+                  68      67.97
+                                                                                         72      71.48                                                         68      67.57
+LLM Judge (L-J)
+
+
+
+
+                                                                       LLM Judge (L-J)
+
+
+
+
+                                                                                                                                             LLM Judge (L-J)
+                  66
+                                                                                         70                                                                                                     66.02
+                  64                                                                                               68.75                                       66                                        65.63
+                                    62.89                                                                  68.36                                                                64.85
+                  62                                           61.72                     68
+                                                      60.55                                                                 67.19    66.80                                              64.06
+                                            59.76                                                                                                              64
+                  60
+                                                                                         66
+                                 l       l       l                                                      l       l       l                                                     l       l       l
+                              kil )   kil )   kil ) yOS          EM                                  kil )   kil )   kil ) yOS          EM                                 kil )   kil )   kil ) yOS        EM
+                         e mS(K=7 emS(K=5 emS(K=3 emor        A-M                               e mS(K=7 emS(K=5 emS(K=3 emor       A-M                               e mS(K=7 emS(K=5 emS(K=3 emor     A-M
+                       M            M       M   M                                             M            M       M    M                                           M            M       M  M
+
+Figure 3. Skill generalization under distribution shift on HotpotQA. We transfer the LoCoMo-trained skill bank to HotpotQA and
+evaluate three context-length settings (50/100/200 concatenated documents) following (Yu et al., 2025). Bars show LLM-judge (L-J)
+under LLaMA with different Top-K skill counts, compared to MemoryOS and A-MEM.
+
+
+model block, indicating higher-quality constructed mem-                                                                settings with increasing difficulty, corresponding to different
+ories. In comparison, prior methods such as MemoryBank,                                                                numbers of concatenated documents (i.e., 50/100/200). All
+A-MEM, and MemoryOS use fixed, manually specified                                                                      results in this section use LLaMA as the base model and
+memory procedures for extraction and revision, whereas                                                                 report the LLM-judge score (L-J). For baselines, we include
+MemSkill learns and evolves its skills from interaction, en-                                                           MemoryOS and A-MEM, the most competitive methods
+abling better adaptation across contexts. On ALFWorld,                                                                 on conversational benchmarks in Table 1, and omit weaker
+MemSkill achieves the highest success rates on both seen                                                               alternatives for clarity.
+and unseen splits, indicating that skill-guided memory con-
+                                                                                                                       Figure 3 shows that MemSkill transfers strongly to Hot-
+struction can benefit interactive decision making, whereas
+                                                                                                                       potQA across all three context sizes. MemSkill consistently
+other baselines are less reliable at leveraging memory to
+                                                                                                                       outperforms strong baselines such as MemoryOS and A-
+support long-horizon action execution. Overall, the results
+                                                                                                                       MEM, with gains becoming more pronounced in the chal-
+show that MemSkill is effective across diverse settings.
+                                                                                                                       lenging long-context setting. These results suggest that
+Generalization across base models. A key advantage of                                                                  the learned memory skills are not tied to dialogue-specific
+MemSkill is strong generalization across base models. We                                                               surface forms, but capture reusable extraction and revision
+train MemSkill only with LLaMA and directly transfer the                                                               behaviors that remain effective as input structure and re-
+learned skills to Qwen without retraining. Despite this strict                                                         trieval demands change.
+transfer setting, MemSkill remains competitive and outper-
+                                                                                                                       The same plots also reveal mild sensitivity to the number
+forms strong baselines on both conversational and embodied
+                                                                                                                       of selected skills K. Increasing K generally improves per-
+evaluations, showing that the evolved skills capture reusable
+                                                                                                                       formance, with K=7 achieving the best results across all
+memory behaviors that can be instantiated by different un-
+                                                                                                                       three settings, while smaller K can under-utilize the skill
+derlying LLMs.
+                                                                                                                       bank under longer contexts. Overall, the trend indicates that
+Cross-dataset transfer. MemSkill also generalizes across                                                               MemSkill benefits from composing multiple skills when the
+datasets within the same broad setting. In particular, Long-                                                           context becomes longer and noisier, while still maintaining
+MemEval is evaluated purely by transferring the skill bank                                                             strong transfer without any HotpotQA-specific training.
+learned on LoCoMo, yet MemSkill achieves the best results
+among all methods, suggesting that the learned skills are not                                                          4.4. Ablation Study
+overfit to a single benchmark. Section 4.3 studies transfer
+under more pronounced distribution shifts.                                                                             We perform ablations to disentangle the contributions of
+                                                                                                                       (i) learning to select skills and (ii) evolving the skill bank.
+                                                                                                                       Table 2 reports LLM Judge (L-J) results on LoCoMo under
+4.3. Skill Generalization Under Distribution Shift
+                                                                                                                       both base models (LLaMA and Qwen). As shown, w/o
+Beyond transfer within dialogue-style memory benchmarks,                                                               controller (w/o Ctrl) replaces the learned controller with
+we evaluate whether learned skills generalize under a dis-                                                             random skill selection while keeping the rest of the pipeline
+tribution shift in interaction format and evidence structure.                                                          unchanged. w/o designer (w/o Des) disables the designer
+Concretely, we directly apply the skill bank trained on Lo-                                                            and fixes the skill bank to the four initial primitives. Refine-
+CoMo to HotpotQA, where inputs are long-form, document-                                                                only (Ref.-only) allows the designer to refine existing skills
+style narratives rather than multi-turn dialogues. Following                                                           but prohibits adding new ones.
+the protocol in (Yu et al., 2025), we test three context-length
+                                                                                                                       Across both base models, removing either component con-
+
+                                                                                                                   7
+                               MemSkill: Learning and Evolving Memory Skills for Self-Evolving Agents
+
+                  LoCoMo (Conversational Skills)                                                ALFWorld (Embodied Task Skills)
+                  Capture Temporal Context                                                          Capture Action Constraints
+   Purpose: Capture the temporal context of events, activities, or facts            Purpose: Capture detailed constraints on actions, including object
+   mentioned in the text chunk, including any relevant dates, times,                states and movements, necessary for task completion.
+   durations, or sequential information.
+                                                                                    When to use: The input mentions constraints on actions, including
+   When to use: The text chunk mentions a specific event, activity,                 object states and movements, which are crucial for future task steps.
+   or fact with associated temporal information.
+   How to apply: Identify the key temporal elements (e.g., start time,              How to apply: Identify the action, its constraints, and relevant object
+   end time, duration, sequence). Capture the temporal context in a                 states and movements from the input. Create a new memory item
+   concise and specific format, considering any sequential relationships.           with the action-constraint pair, including object states and movements.
+   Constraints: Focus on explicit temporal information mentioned in the             Constraints: Only capture constraints on actions relevant to the task.
+   text chunk. Avoid inferring temporal details not directly stated.                Update existing constraint memories if new information is provided.
+
+                    Capture Activity Details                                                           Track Object Location
+   Purpose: Capture detailed information about activities mentioned in              Purpose: Explicitly track the location and state of an object necessary
+   the text chunk, including the type of activity, location, participants,          for task completion.
+   temporal details, and any relevant contextual information.
+   When to use: The text chunk mentions a specific activity or event                When to use: The text chunk mentions an object's location or state.
+   with contextual details.                                                         The object's location or state is crucial for future task steps.
+   How to apply: Identify the key elements of the activity (e.g., type,
+   location, participants, temporal details). Capture any relevant                  How to apply: Identify the object, its location, and relevant state
+   contextual information that provides additional insight into the activity.       from the text chunk. Create a new memory item with the
+   Keep the activity details specific, actionable, and concise.                     object-location-state triplet.
+   Constraints: Focus on explicit activity details and contextual info.             Constraints: Only track locations and states of objects relevant to the
+   Avoid inferring activity details or context not directly stated.                 task. Update existing location memories if new information is provided.
+
+
+                    Figure 4. Case study. We show representative evolved skills learned on LoCoMo and ALFWorld.
+
+
+sistently degrades performance, confirming that MemSkill                            tion constraints and object locations, showing that embodied
+benefits from both targeted skill selection and skill evolu-                        tasks require actionable world-state memories for multi-step
+tion. In particular, random skill selection leads to a clear                        execution. Overall, the evolved skill bank reflects recurring
+drop from the default setting, highlighting the importance                          information needs from the data, rather than a fixed notion
+of learning to choose relevant skills rather than providing                         of what to remember.
+arbitrary ones. Disabling the designer yields an even larger
+                                                                                    Together, these skills show that MemSkill distills and refines
+degradation, especially under Qwen, suggesting that evolv-
+                                                                                    reusable memory behaviors from interaction data, reducing
+ing the skill bank is important for learning reusable memory
+                                                                                    reliance on hand-crafted memory designs. Appendix C
+behaviors that generalize beyond a fixed, manually spec-
+                                                                                    gives more examples.
+ified operation set. Finally, refinement-only consistently
+outperforms static skills on both LLaMA and Qwen, with a                            Cost analysis. We conduct a runtime cost analysis on
+particularly large gain under Qwen, yet remains below the                           LoCoMo using LLaMA, additionally including Light-
+default setting, indicating that introducing new skills yields                      Mem (Fang et al., 2025) as a baseline. We report L-J,
+additional benefits beyond refining the initial primitives.                         input/output tokens, and LLM calls, accounting for all
+                                                                                    inference-time LLM calls from memory extraction and
+                Table 2. LoCoMo ablation (L-J).                                     query answering, excluding LLM-judge calls used only
+                                                                                    for evaluation. Since MemSkill learns and evolves the skill
+               Variant            LLaMA           Qwen                              bank before deployment, this preparation cost is amortized
+               MemSkill              53.82        54.14                             over repeated use, with further evolution triggered only occa-
+                w/o Ctrl             48.43        42.84                             sionally. We therefore focus on runtime cost as the practical
+                w/o Des              46.50        36.15                             efficiency measure. At inference time, MemSkill constructs
+                Ref.-only            47.45        48.88                             memory at the span level rather than turn by turn, substan-
+                                                                                    tially reducing LLM calls. To show this trade-off, we vary
+                                                                                    the span size (SS) and report the quality-cost frontier in
+4.5. Discussion                                                                     Table 3.
+Case study. To make MemSkill more interpretable, we                                 MemSkill achieves a stronger quality-cost trade-off than
+inspect the final evolved skill bank and report representative                      prior baselines. With moderate span sizes, it obtains higher
+skills from LoCoMo and ALFWorld. As shown in Figure 4,                              L-J scores while using fewer input/output tokens and LLM
+the learned skills show clear domain specialization. Lo-                            calls. In particular, Span Size=512 offers the best overall
+CoMo skills emphasize temporal context and activity details,                        balance, achieving the highest quality with much lower
+suggesting that dialogue memory benefits from lightweight                           runtime cost than MemoryOS, A-MEM, and LightMem.
+event structure. In contrast, ALFWorld skills focus on ac-                          This suggests span-level construction reduces redundant
+
+                                                                                8
+                          MemSkill: Learning and Evolving Memory Skills for Self-Evolving Agents
+
+LLM calls without sacrificing memory quality. Larger span             Deng, S., Yao, Y., Wang, M., Qiao, S., et al. Lightmem:
+sizes reduce cost, but may hurt performance because each              Lightweight and efficient memory-augmented generation.
+memory update covers a longer span. This makes span                   arXiv preprint arXiv:2510.18866, 2025.
+size a knob for adapting MemSkill to different efficiency
+requirements.                                                       Grattafiori, A., Dubey, A., Jauhri, A., Pandey, A., Kadian,
+                                                                      A., Al-Dahle, A., Letman, A., Mathur, A., Schelten, A.,
+              Table 3. Cost analysis on LoCoMo.                       Vaughan, A., et al. The llama 3 herd of models. arXiv
+                                                                      preprint arXiv:2407.21783, 2024.
+    Setting             L-J    In (K)   Out (K)    Calls
+    MemoryOS           48.64    1013      165      1288             Hu, S., Lu, C., and Clune, J. Automated design of agentic
+    A-MEM              49.71    2850      362      1548               systems. arXiv preprint arXiv:2408.08435, 2024.
+    LightMem           51.95     789      209      685
+    Ours (SS=128)      53.14    622        57       376             Hu, Y., Liu, S., Yue, Y., Zhang, G., Liu, B., Zhu, F., Lin, J.,
+    Ours (SS=256)      51.61    390        19       270               Guo, H., Dou, S., Xi, Z., et al. Memory in the age of ai
+    Ours (SS=512)      53.82    249        18       215
+    Ours (SS=1024)     48.11    188        11       187
+                                                                      agents. arXiv preprint arXiv:2512.13564, 2025.
+    Ours (SS=2048)     50.46    178        10       185
+                                                                    Huang, C., Yu, W., Wang, X., Zhang, H., Li, Z., Li,
+                                                                      R., Huang, J., Mi, H., and Yu, D. R-zero: Self-
+5. Conclusion                                                         evolving reasoning llm from zero data. arXiv preprint
+                                                                      arXiv:2508.05004, 2025.
+We present MemSkill, an agent memory method that re-
+frames memory operations as an evolving skill bank. Mem-            Kang, J., Ji, M., Zhao, Z., and Bai, T. Memory os of ai
+Skill learns to select relevant skills for each context span          agent. arXiv preprint arXiv:2506.06326, 2025.
+and conditions an LLM executor on them to construct skill-
+guided memories. Beyond learning to use a fixed skill set,          Kool, W., Van Hoof, H., and Welling, M. Stochastic beams
+MemSkill introduces a designer that improves the skill bank           and where to find them: The gumbel-top-k trick for sam-
+by refining existing skills and proposing new ones from               pling sequences without replacement. In International
+challenging cases, forming a closed-loop training proce-              conference on machine learning, pp. 3499–3508. PMLR,
+dure. Experiments on LoCoMo, LongMemEval, HotpotQA,                   2019.
+and ALFWorld show consistent improvements over strong
+baselines, while qualitative analyses illustrate how evolving       LangChain. Langmem.  https://github.com/
+skills enable more adaptive memory management. We hope                langchain-ai/langmem, 2025. GitHub repository.
+MemSkill encourages future work on self-improving agent
+                                                                    Lee, K.-H., Chen, X., Furuta, H., Canny, J., and Fischer, I. A
+memory systems that learn not only to use memory, but
+                                                                      human-inspired reading agent with gist memory of very
+also to continually improve how memory is constructed and
+                                                                      long contexts. arXiv preprint arXiv:2402.09727, 2024.
+maintained.
+                                                                    Maharana, A., Lee, D.-H., Tulyakov, S., Bansal, M., Bar-
+Acknowledgements                                                     bieri, F., and Fang, Y. Evaluating very long-term
+                                                                     conversational memory of llm agents. arXiv preprint
+This research/project is supported by the NTU Start-Up               arXiv:2402.17753, 2024.
+Grant (#023284-00001), Singapore, and the MOE AcRF
+Tier 1 Seed Grant (RS37/24, #025041-00001), Singapore.              Novikov, A., Vũ, N., Eisenberger, M., Dupont, E., Huang,
+                                                                      P.-S., Wagner, A. Z., Shirobokov, S., Kozlovskii, B., Ruiz,
+References                                                            F. J., Mehrabian, A., et al. Alphaevolve: A coding agent
+                                                                      for scientific and algorithmic discovery. arXiv preprint
+Chen, Y., Wang, Y., Zhu, S., Yu, H., Feng, T., Zhang,                 arXiv:2506.13131, 2025.
+  M., Patwary, M., and You, J. Multi-agent evolve:
+  Llm self-improve through co-evolution. arXiv preprint             Ouyang, S., Yan, J., Hsu, I., Chen, Y., Jiang, K., Wang,
+  arXiv:2510.23595, 2025.                                             Z., Han, R., Le, L. T., Daruki, S., Tang, X., et al. Rea-
+Chhikara, P., Khant, D., Aryan, S., Singh, T., and Yadav, D.          soningbank: Scaling agent self-evolving with reasoning
+  Mem0: Building production-ready ai agents with scalable             memory. arXiv preprint arXiv:2509.25140, 2025.
+  long-term memory. arXiv preprint arXiv:2504.19413,
+                                                                    Packer, C., Fang, V., Patil, S., Lin, K., Wooders, S., and
+  2025.
+                                                                      Gonzalez, J. Memgpt: Towards llms as operating systems.
+Fang, J., Deng, X., Xu, H., Jiang, Z., Tang, Y., Xu, Z.,              2023.
+
+                                                                9
+                          MemSkill: Learning and Evolving Memory Skills for Self-Evolving Agents
+
+Schulman, J., Wolski, F., Dhariwal, P., Radford, A., and              Yang, A., Li, A., Yang, B., Zhang, B., Hui, B., Zheng, B.,
+  Klimov, O. Proximal policy optimization algorithms.                   Yu, B., Gao, C., Huang, C., Lv, C., et al. Qwen3 technical
+  arXiv preprint arXiv:1707.06347, 2017.                                report. arXiv preprint arXiv:2505.09388, 2025.
+
+Shridhar, M., Yuan, X., Côté, M.-A., Bisk, Y., Trischler,           Yang, Z., Qi, P., Zhang, S., Bengio, Y., Cohen, W., Salakhut-
+  A., and Hausknecht, M. Alfworld: Aligning text and                    dinov, R., and Manning, C. D. Hotpotqa: A dataset for
+  embodied environments for interactive learning. arXiv                 diverse, explainable multi-hop question answering. In
+  preprint arXiv:2010.03768, 2020.                                      Proceedings of the 2018 conference on empirical methods
+                                                                        in natural language processing, pp. 2369–2380, 2018.
+Trivedi, H., Khot, T., Hartmann, M., Manku, R., Dong, V.,
+  Li, E., Gupta, S., Sabharwal, A., and Balasubramanian,              Yu, H., Chen, T., Feng, J., Chen, J., Dai, W., Yu, Q., Zhang,
+  N. Appworld: A controllable world of apps and people                  Y.-Q., Ma, W.-Y., Liu, J., Wang, M., et al. Memagent: Re-
+  for benchmarking interactive coding agents. In Proceed-               shaping long-context llm with multi-conv rl-based mem-
+  ings of the 62nd Annual Meeting of the Association for                ory agent. arXiv preprint arXiv:2507.02259, 2025.
+  Computational Linguistics (Volume 1: Long Papers), pp.
+                                                                      Yu, W., Zhang, H., Pan, X., Cao, P., Ma, K., Li, J., Wang,
+  16022–16076, 2024.
+                                                                        H., and Yu, D. Chain-of-note: Enhancing robustness in
+Wang, Y., Takanobu, R., Liang, Z., Mao, Y., Hu, Y.,                     retrieval-augmented language models. In Proceedings
+ McAuley, J., and Wu, X. Mem-{\alpha}: Learning                         of the 2024 conference on empirical methods in natural
+ memory construction via reinforcement learning. arXiv                  language processing, pp. 14672–14685, 2024.
+ preprint arXiv:2509.25911, 2025a.
+                                                                      Zhai, Y., Tao, S., Chen, C., Zou, A., Chen, Z., Fu, Q., Mai,
+Wang, Z., Wang, K., Wang, Q., Zhang, P., Li, L., Yang, Z.,              S., Yu, L., Deng, J., Cao, Z., et al. Agentevolver: To-
+ Jin, X., Yu, K., Nguyen, M. N., Liu, L., et al. Ragen:                 wards efficient self-evolving agent system. arXiv preprint
+ Understanding self-evolution in llm agents via multi-turn              arXiv:2511.10395, 2025.
+ reinforcement learning. arXiv preprint arXiv:2504.20073,             Zhang, G., Fu, M., and Yan, S. Memgen: Weaving gen-
+ 2025b.                                                                 erative latent memory for self-evolving agents. arXiv
+Wang, Z. Z., Mao, J., Fried, D., and Neubig, G. Agent                   preprint arXiv:2509.24704, 2025a.
+ workflow memory. arXiv preprint arXiv:2409.07429,                    Zhang, G., Ren, H., Zhan, C., Zhou, Z., Wang, J., Zhu, H.,
+ 2024.                                                                  Zhou, W., and Yan, S. Memevolve: Meta-evolution of
+                                                                        agent memory systems. arXiv preprint arXiv:2512.18746,
+Wei, T., Sachdeva, N., Coleman, B., He, Z., Bei, Y., Ning,
+                                                                        2025b.
+ X., Ai, M., Li, Y., He, J., Chi, E. H., et al. Evo-memory:
+ Benchmarking llm agent test-time learning with self-                 Zhao, A., Huang, D., Xu, Q., Lin, M., Liu, Y.-J., and Huang,
+ evolving memory. arXiv preprint arXiv:2511.20857,                      G. Expel: Llm agents are experiential learners. In Pro-
+ 2025.                                                                  ceedings of the AAAI Conference on Artificial Intelli-
+                                                                        gence, volume 38, pp. 19632–19642, 2024.
+Wu, D., Wang, H., Yu, W., Zhang, Y., Chang, K.-W.,
+ and Yu, D. Longmemeval: Benchmarking chat assis-                     Zhao, A., Wu, Y., Yue, Y., Wu, T., Xu, Q., Lin, M., Wang,
+ tants on long-term interactive memory. arXiv preprint                  S., Wu, Q., Zheng, Z., and Huang, G. Absolute zero:
+ arXiv:2410.10813, 2024.                                                Reinforced self-play reasoning with zero data. arXiv
+                                                                        preprint arXiv:2505.03335, 2025.
+Wu, R., Wang, X., Mei, J., Cai, P., Fu, D., Yang, C., Wen, L.,
+ Yang, X., Shen, Y., Wang, Y., et al. Evolver: Self-evolving          Zheng, B., Fatemi, M. Y., Jin, X., Wang, Z. Z., Gandhi, A.,
+ llm agents through an experience-driven lifecycle. arXiv               Song, Y., Gu, Y., Srinivasa, J., Liu, G., Neubig, G., et al.
+ preprint arXiv:2510.16079, 2025.                                       Skillweaver: Web agents can self-improve by discover-
+                                                                        ing and honing skills. arXiv preprint arXiv:2504.07079,
+Xu, W., Liang, Z., Mei, K., Gao, H., Tan, J., and Zhang, Y.             2025.
+ A-mem: Agentic memory for llm agents. arXiv preprint
+  arXiv:2502.12110, 2025.                                             Zhong, W., Guo, L., Gao, Q., Ye, H., and Wang, Y. Memo-
+                                                                        rybank: Enhancing large language models with long-term
+Yan, S., Yang, X., Huang, Z., Nie, E., Ding, Z., Li, Z., Ma,            memory. In Proceedings of the AAAI Conference on Arti-
+  X., Kersting, K., Pan, J. Z., Schütze, H., et al. Memory-            ficial Intelligence, volume 38, pp. 19724–19731, 2024.
+  r1: Enhancing large language model agents to manage
+  and utilize memories via reinforcement learning. arXiv
+  preprint arXiv:2508.19828, 2025.
+
+                                                                 10
+                          MemSkill: Learning and Evolving Memory Skills for Self-Evolving Agents
+
+A. More Experimental Results
+A.1. More Comparison Experiments
+We further compare MemSkill with additional baselines on ALFWorld, including LightMem (Fang et al., 2025), AWM (Wang
+et al., 2024), and Expel (Zhao et al., 2024). As shown in Table 4, MemSkill consistently achieves the best performance across
+both base models and evaluation splits. With LLaMA, MemSkill obtains an average success rate of 80.36, outperforming
+the strongest baseline LightMem by 5.53 points. The gain is especially clear on ALF-Unseen, where MemSkill improves the
+success rate from 75.37 to 83.58 while reducing the average number of steps from 20.69 to 16.63.
+The advantage remains under transfer evaluation with Qwen, where MemSkill is not trained using this base model or dataset.
+MemSkill achieves an average success rate of 81.29, surpassing the strongest baseline Expel by 7.61 points. It also requires
+fewer interaction steps on both ALF-Seen and ALF-Unseen. These results suggest that the learned memory skills can
+capture reusable experience patterns for embodied decision-making, leading to both higher task success and more efficient
+execution across seen and unseen environments.
+
+                                          Table 4. More comparison results on ALFWorld.
+
+                                                              Embodied Interactive Tasks
+                                 ModelMethods
+                                                        ALF-Seen†        ALF-Unseen†       Avg.
+                                                       SR      #Stps↓    SR     #Stps↓      SR
+                                          LightMem    74.29     21.69   75.37    20.69     74.83
+                                  LLaMA
+
+
+
+
+                                          AWM         66.43     23.25   68.66    22.25     67.55
+                                          Expel       67.14     23.26   66.42    22.40     66.78
+                                          MemSkill    77.14     18.91   83.58    16.63     80.36
+                                        LightMem 70.71          20.48     58.21    25.62   64.46
+                                  Qwen
+
+
+
+
+                                        AWM            74.29    19.03     61.19    24.67   67.74
+                                        Expel          75.71    18.81     71.64    20.98   73.68
+                                 ▲
+
+
+
+
+                                        MemSkill 85.71          13.84     76.87    18.16   81.29
+                                 Bold indicates the best score within each base model block.
+                                 ▲
+                                   indicates no training using this base model or dataset.
+                                 †
+                                   indicates evaluation with in-context demonstrations.
+
+
+Table 5 further reports ALFWorld results without in-context demonstrations. This setting is complementary to the main-table
+evaluation with demonstrations, but is more controlled for studying memory itself. Since in-context demonstrations can also
+act as an external form of memory, including them may confound the gains brought by each method’s constructed memory.
+Therefore, this setting decouples demonstrations from memory construction and isolates the contribution of the learned
+memory mechanism.
+Under this stricter setting, MemSkill still consistently outperforms all baselines across both base models and both evaluation
+splits. With LLaMA, MemSkill achieves an average success rate of 57.71, outperforming the strongest baseline LightMem
+by 11.72 points. The improvement is larger on ALF-Unseen, where MemSkill improves the success rate from 46.27 to
+59.70, suggesting stronger generalization to unseen environments. MemSkill also requires fewer interaction steps than all
+baselines, reducing the average steps on ALF-Seen and ALF-Unseen to 26.87 and 25.88, respectively.
+The same trend holds in the transfer setting with Qwen, where MemSkill is not trained using this base model or dataset.
+MemSkill achieves an average success rate of 63.83, improving over the strongest baseline by 8.03 points. It also obtains the
+lowest number of steps on both ALF-Seen and ALF-Unseen. These results show that the gains of MemSkill do not rely on
+in-context demonstrations, and that the learned memory skills provide reusable task experience that improves both success
+rate and execution efficiency.
+
+A.2. More Results on Appworld
+To further evaluate whether memory skills generalize beyond conversational and embodied household settings, we extend
+our study to AppWorld (Trivedi et al., 2024), a more challenging interactive tool-use benchmark. We report results on both
+Test-Normal (Test-N) and Test-Challenge (Test-C), using Pass Rate (PR) and the average number of execution steps as
+evaluation metrics. Our default setting follows the stronger evaluation protocol with in-context demonstrations. In addition,
+
+                                                                11
+                          MemSkill: Learning and Evolving Memory Skills for Self-Evolving Agents
+
+                      Table 5. More comparison results on ALFWorld without in-context demonstrations.
+
+                                                                       Embodied Interactive Tasks
+                                ModelMethods
+                                                                 ALF-Seen         ALF-Unseen        Avg.
+                                                                SR      #Stps↓    SR     #Stps↓      SR
+                                                  No-Memory    17.14     43.74   20.15   42.99      18.65
+                                                  CoN          40.71     33.44   30.60   37.66      35.66
+                                                  ReadAgent    32.86     37.09   38.06   34.78      35.46
+                                                  MemoryBank   25.00     39.96   32.84   36.54      28.92
+
+                                70B-Instruct
+                                 LLaMA3.3         A-MEM        24.29     40.51   28.36   38.83      26.33
+                                                  Mem0         32.86     36.47   32.09   37.32      32.48
+                                                  LangMem      37.86     34.39   35.07   35.70      36.47
+                                                  MemoryOS     15.71     43.74   14.18   44.54      14.95
+                                                  LightMem     45.71     31.76   46.27   30.66      45.99
+                                                  AWM          35.71     35.87   39.55   34.93      37.63
+                                                  Expel        42.14     34.61   43.28   33.25      42.71
+                                                  MemSkill     55.71     26.87   59.70   25.88      57.71
+                                       No-Memory         18.57     42.48   26.12     39.35          22.35
+                                       CoN               57.86     25.81   53.73     28.40          55.80
+                                       ReadAgent         53.57     27.88   54.48     27.41          54.03
+                               80B-A3B-Instruct
+
+
+
+
+                                       MemoryBank 37.86            35.15   38.06     34.99          37.96
+                                   Qwen3-Next
+
+
+
+
+                                       A-MEM             25.00     40.28   29.10     39.04          27.05
+                                       Mem0              38.57     33.64   41.04     33.16          39.81
+                                       LangMem           37.14     34.42   31.34     37.17          34.24
+                                       MemoryOS          19.29     42.43   18.66     42.95          18.98
+                                 ▲
+
+
+
+
+                                       LightMem          30.71     36.81   26.87     38.96          28.79
+                                       AWM               47.86     31.24   47.01     31.69          47.44
+                                       Expel             54.29     28.90   55.22     29.57          54.76
+                                       MemSkill          65.71     22.49   61.94     24.59          63.83
+                                Bold indicates the best score within each base model block.
+                                ▲
+                                  indicates no training using this base model or dataset.
+
+
+
+we also report a controlled variant without demonstrations, which helps isolate the contribution of each method’s constructed
+memory from the task guidance provided by demonstrations.
+As shown in Table 6, MemSkill achieves the best average PR across both base models under the default demonstration-based
+setting. With LLaMA, the No-Memory baseline already performs strongly, indicating that in-context demonstrations provide
+substantial task-specific guidance and make this setting partially saturated. As a result, the performance gaps among different
+memory methods become relatively small. Nevertheless, MemSkill still achieves the best overall pass rate and uses the
+fewest execution steps across both splits, suggesting that the learned memory skills can still improve efficiency even when
+demonstrations already provide strong external guidance.
+The benefit of MemSkill is more evident with Qwen, where the demonstration-based setting leaves more room for memory-
+based improvement. In this case, MemSkill consistently outperforms prior memory methods and also improves over the
+No-Memory baseline. It further achieves the lowest execution steps on both Test-N and Test-C, indicating that MemSkill
+can effectively complement in-context demonstrations and support more efficient tool-use behavior.
+The controlled setting without in-context demonstrations further confirms the independent contribution of learned memory
+skills. In this setting, MemSkill achieves the best average PR under both base models, with consistent gains on both Test-N
+and Test-C. This shows that MemSkill is not merely benefiting from demonstrations, but can provide useful experience
+abstraction when the agent must rely more directly on constructed memory.
+Overall, these results show that MemSkill generalizes to interactive tool-use environments beyond conversational and
+embodied household tasks. Under the default demonstration-based setting, MemSkill remains competitive even when
+demonstrations provide strong task guidance, and brings clearer gains when the base model leaves more room for memory-
+based improvement. Under the controlled no-demonstration setting, MemSkill consistently improves pass rate over prior
+memory methods, further supporting the effectiveness of skill-conditioned memory construction for complex multi-step tool
+use.
+
+                                                                        12
+                                     MemSkill: Learning and Evolving Memory Skills for Self-Evolving Agents
+
+                             Table 6. More comparison results on AppWorld with and without in-context demonstrations.
+
+                                                                      Interactive Tool-Use Benchmark
+         ModelMethods
+                                                Test-N             Test-C        Avg.       Test-N†           Test-C†        Avg.
+                                           PR      #Steps↓    PR      #Steps↓     PR      PR     #Steps↓    PR     #Steps↓    PR
+                            No-Memory     22.80     36.71    19.10     37.92     20.95   54.03    14.21    38.78    19.12    46.41
+                            ReadAgent     23.43     34.82    20.49     31.36     21.96   53.76    14.54    38.67    19.24    46.22
+                            MemoryBank    23.28     35.66    19.96     33.34     21.62   53.66    14.89    38.46    18.84    46.06
+         70B-Instruct
+          LLaMA3.3
+
+
+
+
+                            A-MEM         22.13     38.46    17.60     38.46     19.87   52.85    14.31    38.16    18.78    45.51
+                            Mem0          27.02     27.04    21.62     30.64     24.32   54.32    14.14    39.73    18.55    47.03
+                            MemoryOS      23.24     38.26    19.17     36.17     21.21   53.14    13.62    38.52    17.83    45.83
+                            LightMem      25.42     30.73    21.32     30.33     23.37   51.25    14.10    39.12    18.50    45.19
+                            AWM           29.00     17.73    21.83     20.48     25.42   54.68    14.26    39.54    18.64    47.11
+                            Expel         25.29     29.96    21.20     30.63     23.25   52.88    13.56    39.49    17.91    46.19
+                            MemSkill      31.12     29.38    22.29     32.17     26.71   54.84    13.25    39.79    17.59    47.32
+                No-Memory        22.41      38.39   19.99     36.78              21.20   47.68    16.81    38.42    19.70    43.05
+                ReadAgent        26.29      34.77   20.36     35.07              23.33   46.83    17.59    37.65    21.12    42.24
+         80B-A3B-Instruct
+
+
+
+
+                MemoryBank 24.41            36.94   20.28     36.19              22.35   46.50    16.98    37.18    22.03    41.84
+            Qwen3-Next
+
+
+
+
+                A-MEM            23.03      37.17   18.39     37.43              20.71   45.44    17.49    38.14    21.40    41.79
+                Mem0             40.42      18.48   22.16     22.97              31.29   50.19    15.11    39.64    20.33    44.92
+                MemoryOS         25.00      35.98   21.46     35.20              23.23   50.98    16.11    38.03    21.32    44.51
+                LightMem         36.90      23.71   23.44     27.05              30.17   48.91    17.23    40.85    21.14    44.88
+         ▲
+
+
+
+
+                AWM              27.02      23.90   22.05     22.63              24.54   53.23    16.77    41.26    22.95    47.25
+                Expel            25.00      22.20   20.40     21.00              22.70   49.88    16.86    39.17    20.06    44.53
+                MemSkill         43.05      26.11   25.41     31.39              34.23   54.53    15.05    42.30    19.23    48.42
+         Bold indicates the best score within each base model block.
+         ▲
+           indicates no training using this base model or dataset.
+         †
+           indicates evaluation with in-context demonstrations.
+
+
+A.3. Experimental Results on Small Models
+We further evaluate MemSkill with Llama-3.1-8B-Instruct to examine whether the learned memory skills remain effective
+when the base model has more limited capacity. As shown in Table 7, MemSkill consistently achieves the best performance
+across both LoCoMo and LongMemEval. Compared with prior memory methods, MemSkill improves both F1 and L-J on
+the two conversational benchmarks, indicating that skill-conditioned memory construction can provide useful support even
+for smaller backbone models.
+The improvement is also maintained on LongMemEval, where no training is performed using this base model or dataset.
+This suggests that the learned memory skills are not tightly coupled to a specific backbone, and can transfer to smaller
+models under long-context conversational settings. Overall, these results show that MemSkill does not rely solely on the
+capability of a large base model. Instead, its learned memory skills provide complementary gains that remain effective under
+a more resource-efficient model setting.
+
+A.4. Training Stability
+MemSkill incorporates several mechanisms to improve the stability of skill learning and evolution. First, we maintain a
+snapshot of the skill bank after each evolution round. If the updated skill bank underperforms the best-performing snapshot
+observed so far, we roll back to the best snapshot and continue subsequent evolution from it. This prevents occasional
+harmful skill updates from permanently degrading the memory system.
+Second, hard cases are selected according to difficulty scores, so the designer is guided by recurring failure patterns rather
+than noisy random examples. This encourages each evolution round to focus on systematic weaknesses of the current skill
+bank. Third, skill evolution is performed at controlled intervals, with a capped number of skill modifications in each round.
+This avoids abrupt changes to the skill bank and makes the learning process more gradual.
+Together, these mechanisms make the evolution process less sensitive to noisy feedback and reduce the risk of unstable skill
+drift. In practice, we observe that the learned skill bank improves progressively over evolution rounds, suggesting that the
+snapshot rollback, hard-case selection, and controlled update strategy provide a stable basis for self-evolving memory skills.
+
+                                                                            13
+                          MemSkill: Learning and Evolving Memory Skills for Self-Evolving Agents
+
+                  Table 7. Experimental results on LoCoMo and LongMemEval using Llama-3.1-8B-Instruct.
+
+                                                              Conversational Benchmarks
+                                ModelMethods                            ▲
+                                                         LoCoMo             LongMemEval       Avg.
+                                                         F1      L-J        F1     L-J        L-J
+                                       ReadAgent         17.53 21.49 9.45           18.80     20.15
+                                       MemoryBank 18.84 22.36 13.27                 24.59     23.48
+
+
+
+                                8B-Instruct
+                                LLaMA3.1
+                                       A-MEM             19.95 25.62 16.12          25.71     25.67
+                                       Mem0              14.26 17.12 14.59          26.38     21.75
+                                       LangMem           13.36 15.71 6.52           17.16     16.44
+                                       MemoryOS          17.68 23.08 7.88           18.24     20.66
+                                       LightMem          19.74 26.85 17.68          29.40     28.13
+                                       MemSkill          20.59 27.23 18.13          30.20     28.72
+                                Bold indicates the best score within each base model block.
+                                ▲
+                                  indicates no training using this base model or dataset.
+
+
+More details can be found in Appendix B.2
+
+B. More Implementation Details
+B.1. Evaluation Details
+LLM judge and infrastructure. We use openai/gpt-oss-120b as the LLM judge (judge prompts can be found in
+Appendix D). All API-based models are accessed through the NV NIM API1 and Together API2 . Training is conducted on
+NVIDIA A6000 GPUs.
+LoCoMo (Maharana et al., 2024). LoCoMo contains 10 long interaction samples, each paired with roughly 200 training
+queries on average. We split the dataset by sample into train, validation, and test sets with a 6/2/2 ratio. We further remove
+adversarial queries, since their supporting evidence is absent from the provided context and may introduce noisy supervision
+during training.
+LongMemEval (Wu et al., 2024). We use the LongMemEval-S split, where each example contains an ultra-long conversation
+of roughly 100K tokens. We remove abstention questions, since they do not require retrieving or constructing useful memory
+from the conversation history. We split the remaining data into train, validation, and test sets. Although the training split
+is not used for learning in this transfer setting, the validation split is used to tune dataset-specific configurations. We then
+conduct transfer evaluation on a stratified test sample of about one-fifth of the dataset, approximately 100 samples, ensuring
+coverage of different question types for a comprehensive assessment.
+ALFWorld (Shridhar et al., 2020). We first collect expert trajectories from the training split and use them as the corpus
+for memory or experience construction. We then evaluate on the official ALF-Seen and ALF-Unseen splits. More training
+configuration details can be found in Appendix B.3.
+HotpotQA (Yang et al., 2018). We use HotpotQA to study transfer under distribution shift, following the evaluation protocol
+of (Yu et al., 2025). Specifically, we evaluate on three context-length settings with increasing difficulty, corresponding to 50,
+100, and 200 concatenated documents, denoted as eval 50, eval 100, and eval 200. Unless otherwise specified, all
+results in this part use LLaMA as the base model and report the LLM-judge score (L-J).
+Span-level evaluation. During evaluation, we construct memory at the span level with a default span size of 512 tokens,
+rather than updating memory turn by turn. This substantially reduces the number of LLM calls and improves evaluation
+efficiency.
+
+B.2. More Details of the Designer
+Hard-case buffer and representative case mining. The designer maintains a sliding hard-case buffer that tracks recently
+challenging evaluation cases without growing unbounded. Each case stores the query, the retrieved memories used to answer
+   1
+       https://docs.nvidia.com/nim/
+   2
+       https://docs.together.ai/
+
+                                                               14
+                          MemSkill: Learning and Evolving Memory Skills for Self-Evolving Agents
+
+it, the model prediction, the reference answer, the resulting task reward (e.g., F1), and a failure counter that records how
+many times the case has been answered incorrectly. To prioritize cases that are both low-reward and repeatedly failed, we
+assign each case a difficulty score
+                                                                    
+                                                d(q) = 1 − r(q) · c(q),                                                   (4)
+where r(q) ∈ [0, 1] is the task reward for query q and c(q) is its cumulative failure count within the buffer window. Higher
+d(q) indicates more critical cases that should be examined first.
+To encourage coverage over diverse failure types, we further cluster hard cases by semantic similarity of their queries
+and mine representative cases from each cluster. For example, in LoCoMo, some queries focus on temporal cues (e.g.,
+when an event happened) while others emphasize locations (e.g., where something occurred). Clustering helps separate
+these semantic types so the designer feedback is not dominated by a single frequent error mode, improving diversity and
+completeness of the mined supervision.
+
+Exploration incentive for newly introduced skills. After each evolution round, the designer may introduce new skills
+that the controller has not yet learned to utilize. To facilitate adoption, we apply a short post-update exploration phase by
+biasing the controller toward new skills directly at the logit level. Let Snew ⊆ St denote the newly added skills, and let
+pθ (i | ht ) = softmax(zt )i be the controller distribution at step t. We encourage the total probability mass assigned to new
+skills to reach a target threshold τq :
+                                             X
+                                                  pθ (i | ht ) ≥ τq ,     τq ∈ [0, 1].                                      (5)
+                                               i∈Snew
+
+When the constraint in Eq. (5) is violated, we add a uniform logit gain δq to all new skills,
+                                         (
+                               ′             zt,i + δq , i ∈ Snew ,
+                              zt,i   =                                    p′θ (· | ht ) = softmax(zt′ ),                      (6)
+                                             zt,i ,      otherwise,
+
+where δq is chosen as the minimal value that makes i∈Snew p′θ (i | ht ) ≥ τq . By operating on logits, this mechanism
+                                                       P
+preserves the controller architecture and provides a smooth probability-level encouragement toward new skills.
+We apply this incentive for the first Texplore =50 training steps after each evolution round. To avoid persistent bias, the target
+threshold decays linearly within this window:
+                                                        q 
+                                  τq = τ0 · 1 −                ,     q = 0, 1, . . . , Texplore − 1,                           (7)
+                                                      Texplore
+
+with default τ0 =0.3. This schedule provides strong initial exploration and then gradually fades, yielding a smooth transition
+back to the controller’s learned selection behavior.
+
+Early stopping and rollback based on stabilized rewards. MemSkill performs skill evolution periodically, where each
+evolution cycle consists of a fixed number of controller-training steps (e.g., 100 steps) on the current skill bank. Because the
+reward signal can be volatile immediately after a skill-bank update, we assess whether a cycle improves performance using a
+stabilized reward estimate: we compute the average task reward over the last quarter of training steps within the cycle, and
+treat this value as the cycle’s score.
+Let L denote the number of controller-training steps per cycle and {rt }L
+                                                                        t=1 the step-level rewards within the cycle. We
+define the cycle score as
+                                                                L
+                                                         1     X
+                                              r̄tail =               rt .                                            (8)
+                                                       L/4
+                                                                      t=3L/4+1
+
+We compare r̄tail against the best score observed so far. If the current cycle does not improve this criterion, then before
+performing the next skill evolution step, we roll back the skill bank to the previously best-performing snapshot and restart
+evolution from that snapshot. This rollback prevents compounding degradations from suboptimal designer updates.
+Finally, if the stabilized reward fails to improve for several consecutive evolution cycles (we use a fixed patience), we early
+stop training and return the best skill bank snapshot encountered during training.
+
+                                                                 15
+                              MemSkill: Learning and Evolving Memory Skills for Self-Evolving Agents
+
+B.3. Details on ALFWorld Training
+ALFWorld differs from the other benchmarks in that it is an interactive environment rather than a static text corpus. To
+instantiate MemSkill in this setting, we first convert ALFWorld into an offline training protocol by collecting expert
+trajectories on the training split. Each trajectory records the agent’s interaction sequence (observations, actions, and
+outcomes) and serves as an interaction trace for memory construction.
+
+Task-type grouping. ALFWorld tasks naturally fall into a small number of recurring goal templates. Following common
+practice, we group trajectories by task type (i.e., goal template), such as P ICK & P LACE (put an object into/on a target
+receptacle), C LEAN & P LACE (clean an object and then place it), H EAT & P LACE (heat an object and then place it), and
+C OOL & P LACE (cool an object and then place it).3
+
+Experience corpus vs. evaluation cases. To fit ALFWorld into our training framework, we construct per-type train-time
+data splits from the offline expert trajectories. For each task type, we randomly sample a subset of trajectories as the
+experience corpus used for memory construction, and sample another non-overlapping subset of trajectories from the same
+type as evaluation cases. During training, MemSkill builds a trajectory-specific memory bank from the experience corpus
+(span by span, via controller and executor), and then evaluates the constructed memory on the evaluation cases to obtain task
+reward and to log failure cases.
+
+Motivation. Using non-overlapping trajectories from the same task type for experience construction and evaluation
+provides a controlled generalization signal: trajectories within a type share goal structure and recurrent interaction patterns,
+making memories and skills more transferable across different instances of the same template. This setup encourages
+MemSkill to learn reusable memory skills that capture type-level regularities (e.g., relevant object states and action
+prerequisites) rather than overfitting to a single trajectory, while still ensuring that evaluation traces are held out from the
+traces used to build memory.
+
+B.4. Details on Training Objectives
+This part details the reinforcement learning objective used to optimize the controller in MemSkill when each decision selects
+an ordered Top-K set of skills without replacement.
+
+Episode, states, and Top-K actions. Training iterates over interaction traces (episodes). For a trace, MemSkill processes
+spans sequentially. At step t, the controller observes the raw state st ≜ (xt , Mt ), represented by the learned state embedding
+ht defined in Section 3.3.1. Let St = {1, . . . , Nt } denote the current skill bank, whose size Nt may change as the designer
+evolves skills. The controller computes logits zt ∈ RNt by applying the shared scorer to all state-skill pairs, and induces
+
+                                                         pθ (i | ht ) = softmax(zt )i .                                      (9)
+
+Instead of sampling a single skill, the controller selects an ordered Top-K set At = (at,1 , . . . , at,K ) without replacement,
+implemented via Gumbel-Top-K sampling (Kool et al., 2019) (i.e., adding i.i.d. Gumbel noise to logits and taking the top-K
+indices).
+
+Joint probability of Top-K without-replacement selection. For PPO-style policy optimization, we need the joint
+probability of sampling the ordered set At under the without-replacement process. This probability can be written as
+                                                                K
+                                                                        p (a | h )
+                                                                       Pθ t,j t
+                                                                Y
+                                             πθ (At | ht ) =                                ,                               (10)
+                                                                j=1
+                                                                    1 − ℓ<j pθ (at,ℓ | ht )
+
+with the corresponding joint log-probability
+                                                   K 
+                                                   X                                       X                       
+                             log πθ (At | ht ) =           log pθ (at,j | ht ) − log 1 −         pθ (at,ℓ | ht )        .   (11)
+                                                   j=1                                     ℓ<j
+
+When K = 1, Eq. 10 reduces to the standard single-action case.
+   3
+       We use the task template provided by the environment to define task types.
+
+                                                                      16
+                           MemSkill: Learning and Evolving Memory Skills for Self-Evolving Agents
+
+Rewards from memory-dependent evaluation. For each trace, after processing all spans and constructing the trace-
+specific memory bank, we evaluate the memory bank on the trace’s memory-dependent training queries and obtain a scalar
+task score (e.g., F1 or success rate). We treat this score as the episode-level reward:
+
+
+                                        R ≜ Eval(memory bank; training queries) ∈ R.                                            (12)
+
+
+This reward is then assigned to the sequence of controller decisions within the trace. Concretely, we use standard return
+computation with discount factor γ:
+
+                                                                 T
+                                                                 X
+                                                          Gt =          γ τ −t rτ ,                                             (13)
+                                                                 τ =t
+
+
+where rτ is the per-step reward. In our default setting, reward is provided only after memory construction completes, i.e.,
+rT = R and rτ = 0 for τ < T , so Gt = γ T −t R. We learn a value function Vϕ (ht ) and compute advantages Ât using
+generalized advantage estimation (GAE).
+
+
+PPO objective with Top-K actions. We optimize the controller using proximal policy optimization (PPO) (Schulman
+et al., 2017), replacing the standard single-action log-probability with the Top-K joint log-probability in Eq. 11. Let
+θold denote the parameters of the behavior policy used to collect rollouts. For simplicity, we use ht to denote the state
+representation computed under the policy being evaluated. Define the importance ratio:
+
+                                        πθ (At | ht )                                                
+                            rt (θ) =                    = exp log πθ (At | ht ) − log πθold (At | ht ) .                        (14)
+                                       πθold (At | ht )
+
+The clipped surrogate policy objective is
+
+                                                h                                               i
+                                Lpolicy (θ) = Et min rt (θ) Ât , clip(rt (θ), 1 − ϵ, 1 + ϵ) Ât .                              (15)
+
+
+We additionally optimize a value function and include an entropy bonus for exploration:
+
+                                                                  h              2 i
+                                                   Lvalue (ϕ) = Et Vϕ (ht ) − Gt ,                                              (16)
+                                                                               
+                                                       H(θ) = Et H(pθ (· | ht )) ,                                              (17)
+
+
+where H(·) is the entropy of the categorical distribution over all skills. The overall objective (to maximize) is
+
+
+                                            max Lpolicy (θ) − cv Lvalue (ϕ) + cH H(θ).                                          (18)
+                                             θ,ϕ
+
+
+
+In implementation, we minimize the negative of Eq. 18.
+
+
+Gumbel-Top-K exploration. To sample Top-K skills without replacement during rollout collection, we use Gumbel-Top-
+K sampling: at each step we draw i.i.d. Gumbel noise {gi }N   i=1 , form perturbed logits z̃t,i = zt,i + gi , and take the indices of
+                                                                t
+
+
+the K largest z̃t,i to obtain At . This provides stochastic exploration over skill subsets while remaining compatible with PPO
+through the joint probability in Eq. 10. For training stability, entropy regularization is computed from the base categorical
+distribution pθ (· | ht ) over all skills (Eq. 17), which encourages exploration of the evolving skill bank even though the
+executed action is a Top-K set.
+
+                                                                  17
+                          MemSkill: Learning and Evolving Memory Skills for Self-Evolving Agents
+
+C. Case Study
+C.1. Initial Primitive Skills
+   Initial Primitive Skill - INSERT
+   Skill: Insert New Memory
+
+   Description: Memory management skill for capturing new, durable facts from the current text chunk that
+   are not already in memory.
+
+   Purpose: Capture new, durable facts from the current text chunk that are missing in memory.
+
+   When to use:
+   - The text chunk introduces new facts, events, plans, or context worth storing.
+   - The information is stable and likely useful later.
+
+   How to apply:
+   - Compare against retrieved memories to avoid duplicates.
+   - Split distinct facts into separate items.
+   - Keep each item concise and specific.
+
+   Constraints:
+   - Skip trivial, fleeting, or speculative content.
+   - Do not update or delete existing memories.
+
+   Action type: INSERT only.
+
+
+
+
+   Initial Primitive Skill - UPDATE
+   Skill: Update Existing Memory
+
+   Description: Memory management skill for revising an existing memory item when the text chunk pro-
+   vides corrections or new details.
+
+   Purpose: Revise a retrieved memory with new or corrected information from the text chunk.
+
+   When to use:
+   - The text chunk clarifies, corrects, or extends a retrieved memory.
+
+   How to apply:
+   - Select the best matching memory item.
+   - Merge new details into a single updated item.
+   - Preserve accurate details that still hold.
+
+   Constraints:
+   - Do not create new memories.
+   - Do not delete items.
+
+   Action type: UPDATE only.
+
+
+
+
+                                                            18
+                      MemSkill: Learning and Evolving Memory Skills for Self-Evolving Agents
+
+Initial Primitive Skill - DELETE
+Skill: Delete Invalid Memory
+
+Description: Memory management skill for removing memory items that are incorrect, outdated, or su-
+perseded.
+
+Purpose: Remove a retrieved memory that is wrong, outdated, or superseded by the text chunk.
+
+When to use:
+- The text chunk clearly contradicts a memory.
+- A plan or fact is explicitly canceled or replaced.
+
+How to apply:
+- Only delete when evidence is explicit.
+
+Constraints:
+- If uncertain, prefer no action over deletion.
+
+Action type: DELETE only.
+
+
+
+
+Initial Primitive Skill - SKIP
+Skill: No Operation
+
+Description: Memory management skill for confirming that no memory changes are required.
+
+Purpose: Confirm no memory changes are needed for the text chunk.
+
+When to use:
+- The text chunk contains no new, corrective, or actionable information.
+
+Constraints:
+- Emit NOOP only if none of the selected skills produce actions.
+
+Action type: NOOP only.
+
+
+
+
+                                                        19
+                         MemSkill: Learning and Evolving Memory Skills for Self-Evolving Agents
+
+C.2. Evolved Skills on LoCoMo
+   Evolved Skill on LoCoMo - CAPTURE ACTIVITY DETAILS
+   Skill: Capture Activity Details
+
+   Purpose: Capture detailed information about activities mentioned in the text chunk, including the type of
+   activity, location, participants, temporal details, and any relevant contextual information.
+
+   When to use:
+   - The text chunk mentions a specific activity or event with contextual details.
+
+   How to apply:
+   - Identify the key elements of the activity (e.g., type, location, participants, temporal details).
+   - Capture any relevant contextual information that provides additional insight into the activity.
+   - Keep the activity details specific, actionable, and concise.
+
+   Constraints:
+   - Focus on explicit activity details and contextual information mentioned in the text chunk.
+   - Avoid inferring activity details or context not directly stated.
+
+   Action type: INSERT only.
+
+
+
+
+   Evolved Skill on LoCoMo - CAPTURE ENTITY NUANCES
+   Skill: Capture Entity Nuances
+
+   Purpose: Capture nuanced details about entities mentioned in the text chunk, such as nicknames, aliases,
+   or comparative statements.
+
+   When to use:
+   - The text chunk mentions an entity with nuanced details (e.g., nickname, alias, comparison).
+
+   How to apply:
+   - Identify the entity and its associated nuances.
+   - Capture these nuances in a way that distinguishes them from the entity’s primary information.
+
+   Constraints:
+   - Focus on explicit nuances mentioned in the text chunk.
+   - Avoid inferring nuances not directly stated.
+
+   Action type: INSERT only.
+
+
+
+
+                                                              20
+                      MemSkill: Learning and Evolving Memory Skills for Self-Evolving Agents
+
+Evolved Skill on LoCoMo - CAPTURE TEMPORAL CONTEXT
+Skill: Capture Temporal Context
+
+Purpose: Capture the temporal context of events, activities, or facts mentioned in the text chunk, includ-
+ing any relevant dates, times, durations, or sequential information.
+
+When to use:
+- The text chunk mentions a specific event, activity, or fact with associated temporal information.
+
+How to apply:
+- Identify the key temporal elements (e.g., start time, end time, duration, sequence).
+- Capture the temporal context in a concise and specific format, considering any sequential relationships.
+
+Constraints:
+- Focus on explicit temporal information mentioned in the text chunk.
+- Avoid inferring temporal details not directly stated.
+
+Action type: INSERT only.
+
+
+
+
+Evolved Skill on LoCoMo - DELETE
+Skill: Delete Invalid Memory
+
+Purpose: Remove a retrieved memory that is wrong, outdated, or superseded by the text chunk.
+
+When to use:
+- The text chunk clearly contradicts a memory.
+- A plan or fact is explicitly canceled or replaced.
+
+How to apply:
+- Only delete when evidence is explicit.
+
+Constraints:
+- If uncertain, prefer no action over deletion.
+
+Action type: DELETE only.
+
+
+
+
+                                                         21
+                       MemSkill: Learning and Evolving Memory Skills for Self-Evolving Agents
+
+Evolved Skill on LoCoMo - HANDLE ENTITY RELATIONSHIPS
+Skill: Handle Entity Relationships
+
+Purpose: Capture and manage complex relationships between entities mentioned in the text chunk, in-
+cluding nuanced details.
+
+When to use:
+- The text chunk mentions interactions, associations, or relationships between entities with specific details.
+
+How to apply:
+- Identify the entities involved and their roles in the relationship.
+- Capture the nature of the relationship and any nuanced details (e.g., nicknames, comparative statements).
+- Update existing memories to reflect the new relationship information.
+
+Constraints:
+- Focus on explicit relationships mentioned in the text chunk.
+- Avoid inferring relationships not directly stated.
+
+Action type: INSERT only.
+
+
+
+
+Evolved Skill on LoCoMo - INSERT
+Skill: Insert New Memory
+
+Purpose: Capture new, durable facts from the current text chunk that are missing in memory, including
+specific temporal details such as dates or time frames and detailed activity information.
+
+When to use:
+- The text chunk introduces new facts, events, plans, or context worth storing.
+- The information is stable and likely useful later.
+
+How to apply:
+- Compare against retrieved memories to avoid duplicates.
+- Split distinct facts into separate items.
+- Keep each item concise and specific, including relevant temporal information and activity details.
+
+Constraints:
+- Skip trivial, fleeting, or speculative content.
+- Do not update or delete existing memories.
+
+Action type: INSERT only.
+
+
+
+
+                                                          22
+                      MemSkill: Learning and Evolving Memory Skills for Self-Evolving Agents
+
+Evolved Skill on LoCoMo - NOOP
+Skill: No Operation
+
+Purpose: Confirm no memory changes are needed for the text chunk.
+
+When to use:
+- The text chunk contains no new, corrective, or actionable information.
+
+Constraints:
+- Emit NOOP only if none of the selected skills produce actions.
+
+Action type: NOOP only.
+
+
+
+
+Evolved Skill on LoCoMo - REFINE TEMPORAL DETAILS WITH CONTEXT
+Skill: Refine Temporal Details with Context
+
+Purpose: Update the temporal context of existing memories with new information from the text chunk,
+considering the context in which the information is provided.
+
+When to use:
+- The text chunk provides new or corrected temporal information relevant to an existing memory, and the context
+suggests a need for refinement.
+
+How to apply:
+- Identify the relevant existing memory and its current temporal context.
+- Update the temporal details to reflect the new information, ensuring consistency with the provided context.
+
+Constraints:
+- Focus on explicit temporal information mentioned in the text chunk and supported by the context.
+- Avoid inferring temporal details not directly stated or implied by the context.
+
+Action type: UPDATE only.
+
+
+
+
+                                                        23
+                         MemSkill: Learning and Evolving Memory Skills for Self-Evolving Agents
+
+   Evolved Skill on LoCoMo - UPDATE
+   Skill: Update Existing Memory
+
+   Purpose: Revise a retrieved memory with new or corrected information from the text chunk, including
+   entity-specific details.
+
+   When to use:
+   - The text chunk clarifies, corrects, or extends a retrieved memory.
+   - The text chunk provides new information about a specific entity or its activities.
+
+    How to apply:
+   - Select the best matching memory item.
+   - Merge new details into a single updated item.
+   - Preserve accurate details that still hold, and ensure entity-specific information is accurately captured and updated.
+
+   Constraints:
+   - Do not create new memories.
+   - Do not delete items.
+
+   Action type: UPDATE only.
+
+
+
+
+C.3. Evolved Skills on ALFWorld
+   Evolved Skill on ALFWorld - CAPTURE ACTION CONSTRAINTS
+   Skill: Capture Action Constraints
+
+   Purpose: Capture detailed constraints on actions, including object states and movements, necessary for
+   task completion.
+
+   When to use:
+   - The text chunk mentions constraints on actions, including object states and movements.
+   - The constraints are crucial for future task steps.
+
+   How to apply:
+   - Identify the action, its constraints, and relevant object states and movements from the text chunk.
+   - Create a new memory item with the action-constraint pair, including object states and movements.
+
+   Constraints:
+   - Only capture constraints on actions relevant to the task.
+   - Update existing constraint memories if new information is provided.
+
+   Action type: INSERT only.
+
+
+
+
+                                                             24
+                       MemSkill: Learning and Evolving Memory Skills for Self-Evolving Agents
+
+Evolved Skill on ALFWorld - DELETE
+Skill: Delete Invalid Memory
+
+Purpose: Remove a retrieved memory that is wrong, outdated, or superseded by the text chunk.
+
+When to use:
+- The text chunk clearly contradicts a memory.
+- A plan or fact is explicitly canceled or replaced.
+
+How to apply:
+- Only delete when evidence is explicit.
+
+Constraints:
+- If uncertain, prefer no action over deletion.
+
+Action type: DELETE only.
+
+
+Evolved Skill on ALFWorld - INSERT
+Skill: Insert New Memory
+
+Purpose: Capture new, durable facts, including procedural knowledge and action sequences, from the cur-
+rent text chunk that are missing in memory.
+
+When to use:
+- The text chunk introduces new facts, events, plans, or context worth storing.
+- The information is stable and likely useful later.
+
+How to apply:
+- Compare against retrieved memories to avoid duplicates.
+- Split distinct facts into separate items, including action sequences.
+- Keep each item concise and specific.
+
+Constraints:
+- Skip trivial, fleeting, or speculative content.
+- Do not update or delete existing memories.
+
+Action type: INSERT only.
+
+
+Evolved Skill on ALFWorld - NOOP
+Skill: No Operation
+
+Purpose: Confirm no memory changes are needed for the text chunk.
+
+When to use:
+- The text chunk contains no new, corrective, or actionable information.
+
+Constraints:
+- Emit NOOP only if none of the selected skills produce actions.
+
+Action type: NOOP only.
+
+
+                                                          25
+                       MemSkill: Learning and Evolving Memory Skills for Self-Evolving Agents
+
+Evolved Skill on ALFWorld - TRACK OBJECT LOCATION
+Skill: Track Object Location
+
+Purpose: Explicitly track the location and state of an object necessary for task completion.
+
+When to use:
+- The text chunk mentions an object’s location or state.
+- The object’s location or state is crucial for future task steps.
+
+How to apply:
+- Identify the object, its location, and relevant state from the text chunk.
+- Create a new memory item with the object-location-state triplet.
+
+Constraints:
+- Only track locations and states of objects relevant to the task.
+- Update existing location memories if new information is provided.
+
+Action type: INSERT only.
+
+
+
+
+Evolved Skill on ALFWorld - TRACK OBJECT MOVEMENTS
+Skill: Track Object Movements
+
+Purpose: Track movements of objects necessary for task completion.
+
+When to use:
+- The text chunk mentions an object’s movement.
+- The object’s movement is crucial for future task steps.
+
+How to apply:
+- Identify the object and its movement from the text chunk.
+- Create a new memory item with the object-movement pair.
+
+Constraints:
+- Only track movements of objects relevant to the task.
+- Update existing movement memories if new information is provided.
+
+Action type: INSERT only.
+
+
+
+
+                                                            26
+                        MemSkill: Learning and Evolving Memory Skills for Self-Evolving Agents
+
+  Evolved Skill on ALFWorld - UPDATE
+  Skill: Update Existing Memory
+
+  Purpose: Revise a retrieved memory with new or corrected information from the text chunk.
+
+  When to use:
+  - The text chunk clarifies, corrects, or extends a retrieved memory.
+
+  How to apply:
+  - Select the best matching memory item.
+  - Merge new details into a single updated item.
+  - Preserve accurate details that still hold.
+
+  Constraints:
+  - Do not create new memories.
+  - Do not delete items.
+
+  Action type: UPDATE only.
+
+
+D. Prompts
+  LoCoMo Answer Prompt
+
+  Based on the above context, write an answer in the form of a short phrase for the following question. Answer with
+  exact words from the context whenever possible.
+
+  Question: {} Short answer:
+
+
+  LongMemEval Answer Prompt
+
+  I will give you several history chats between you and a user. Please answer the question based on the relevant chat
+  history.
+  History Chats: {}
+  Current Date: {}
+  Question: {}
+  Short Answer:
+
+
+  HotpotQA Answer Prompt
+
+  Based on the following context, answer the question. The question may require reasoning across multiple pieces of
+  information.
+  {context}
+  Question: {question}
+
+  Instructions:
+  - Read the context carefully and identify relevant information
+  - If the answer can be found in the context, provide a short, precise answer
+  - Output your answer within <answer></answer>tags
+
+  <answer>your answer here</answer>
+
+
+                                                           27
+                      MemSkill: Learning and Evolving Memory Skills for Self-Evolving Agents
+
+ALFWorld Env Interaction Prompt
+
+You are controlling a text-based ALFWorld environment. Your job: choose the NEXT action as ONE text command.
+Output ONLY the command string, with no extra text. You MUST choose an action from the admissible actions list
+and copy it EXACTLY.
+
+Goal: {goal}
+Retrieved procedural tips (optional, short & actionable): {retrieved memory}
+Interaction history so far (most recent info matters most): {history}
+Admissible actions (choose exactly ONE and copy it verbatim): {actions}
+
+Now output exactly one line: the chosen action (must match one item above).
+
+
+
+
+Executor Prompt
+
+You are a memory management executor. Apply the selected skills to the input text chunk and retrieved memories,
+then output memory actions.
+
+Input Text Chunk: {session text}
+Retrieved Memories (0-based index): {mem text}
+Selected Skills: {skills text}
+
+Guidelines:
+- Apply any skill as needed; a skill may be used multiple times.
+- Read the input text chunk carefully line by line and apply any skill as needed.
+- Only use action types supported by the selected skills.
+- MEMORY INDEX is 0-based and must reference the retrieved memories list.
+- Output only action blocks in the format below.
+- Do not include explanations or REASONING lines.
+
+Output format (repeat as needed). Use ONE block per action and separate blocks with a blank line:
+
+INSERT block:
+ACTION: INSERT
+MEMORY ITEM: [concise but complete summary with essential details]
+
+UPDATE block:
+ACTION: UPDATE
+MEMORY INDEX: [0-based index]
+UPDATED MEMORY: [concise but complete merged summary with essential updates]
+
+DELETE block:
+ACTION: DELETE
+MEMORY INDEX: [0-based index]
+
+
+
+
+                                                         28
+                      MemSkill: Learning and Evolving Memory Skills for Self-Evolving Agents
+
+Designer Analysis Prompt
+
+You are an expert analyst for a memory-augmented QA system. Analyze the failure cases below to identify why the
+system failed and how the memory management skills should change.
+
+## How This System Works
+1. **Memory Storage**: The system applies memory management skills to decide what information to store from
+the text chunk.
+2. **Memory Retrieval**: At question time, it retrieves the most relevant memories by semantic similarity.
+3. **Answer Generation**: An LLM answers using the retrieved memories.
+
+Failures can occur at any stage:
+- **Storage failure**: Important information was never stored (skill missing or misapplied)
+- **Retrieval failure**: Relevant memory exists but was not retrieved (embedding mismatch)
+- **Memory quality failure**: Memory exists but is too vague or incomplete to answer
+
+## Current Memory Management Skills
+{operation bank description}
+
+## Operation Evolution Feedback
+{evolution feedback}
+
+## Failure Cases ({num failure cases} cases)
+{failure cases details}
+
+## Analysis Instructions
+This is round 1 of a reflection loop. Produce a strong initial analysis that can be critiqued and improved.
+1. For each case, check whether the retrieved memories contain the answer or the needed evidence.
+2. If missing, decide whether it was never stored (storage failure) or stored but too weak (memory quality failure).
+3. If the answer is present but not retrieved, label it retrieval failure and avoid changing skills unless the pattern
+repeats.
+4. Group cases into patterns tied to information types, entities, temporal details, or constraints.
+5. For each pattern, propose a concrete skill change: add a new skill or refine an existing one to capture missing
+details.
+6. Provide up to {max changes} recommendations total (use fewer if only one change is justified).
+
+## Output Format
+Provide your analysis as JSON:
+{ “failure patterns”: [ { “pattern name”: “[descriptive name for this failure pattern]”, “affected cases”: [list
+of case numbers, e.g., 1, 3, 5], “root cause”: “[storage failure—retrieval failure—memory quality failure]”,
+“explanation”: “[why this pattern of failures is occurring]”, “potential fix”: “[what kind of operation change could
+address this]” } ], “recommendations”: [ { “action”: “[add new operation—refine existing operation—no change]”,
+“target operation”: “[operation name to refine, or null if adding new]”, “rationale”: “[clear explanation of why this is
+the best improvement]”, “priority”: “[high—medium—low]” } ], “summary”: “[1-2 sentence summary of main
+findings]” }
+
+Focus on actionable insights. What specific change to the skill bank would prevent these failures?
+Output ONLY the JSON, no other text.
+
+
+
+
+                                                          29
+                      MemSkill: Learning and Evolving Memory Skills for Self-Evolving Agents
+
+Designer Refinement Prompt (1/2)
+
+Based on the failure analysis, propose a specific improvement to the memory operation bank.
+
+## Failure Analysis (from Stage 1)
+{analysis feedback}
+
+## Current Operation Bank
+{operation bank full}
+
+{evolution feedback}
+
+## Your Task
+Propose up to {max changes} improvements based on the analysis:
+
+**Option A - Add New Operation**: Create a new operation if the analysis shows a capability gap (e.g., certain
+information types are not being captured).
+**Option B - Refine Existing Operation**: Improve an existing operation’s instruction template if the analysis
+shows it’s not working well (e.g., memories are too vague, missing key details).
+**Option C - No Change**: If the failures are due to retrieval issues (not operation issues), or if the current
+operations are already well-designed.
+
+## CRITICAL Requirements
+1. instruction template MUST be a skill-style guide and MUST NOT include context placeholders (the executor
+injects the text chunk and retrieved memories)
+2. instruction template MUST clearly state purpose, when to use, and constraints
+3. instruction template MUST specify the allowed action type (INSERT or UPDATE only)
+4. For new operations, ‘update type‘ must be either “insert” or “update” (delete and noop operations are not evolved
+at this time)
+5. Only propose operations with update type “insert” or “update”
+6. Avoid labels like “ENHANCED”, “ADVANCED”, or other marketing adjectives in descriptions or templates;
+keep phrasing neutral and task-specific
+7. Do NOT embed output blocks; the executor handles output formatting and can apply the skill multiple times
+8. The number of changes in the list MUST be less than max changes
+9. Do NOT modify the same operation more than once in a single response, and do NOT refine an operation you add
+in the same response
+
+## Example of a Well-Designed Insert Operation
+{ “name”: “extract personal preferences”, “description”: “Memory management skill for capturing personal
+preferences and habits mentioned in the text chunk.”, “update type”: “insert”, “instruction template”: “Skill: Insert
+Preferences. Purpose: Capture personal preferences, habits, or opinions stated in the text chunk. When to use: The
+text chunk mentions likes, dislikes, routines, or goals tied to a person. How to apply: Attribute the preference to the
+correct person. Keep the preference specific and actionable. Constraints: Avoid one-off or ambiguous statements.
+Action type: INSERT only.” }
+
+## Output Format
+Respond with ONE of these JSON structures:
+### One or more changes (up to max changes): { “action”: “apply changes”, “summary”: “[overall rationale for the
+set of changes]”, “changes”: [ { “action”: “add new”, “new operation”: { “name”: “[snake case name]”, “descrip-
+tion”: “[what it does and when to use it]”, “instruction template”: “[skill-style instruction template]”, “update type”:
+“[insert—update]”, “reasoning”: “[how this addresses the identified failures]” } }, { “action”: “refine existing”,
+“refined operation”: { “name”: “[existing operation name]”, “changes”: { “description”: “[improved description]”,
+“instruction template”: “[improved template]” }, “reasoning”: “[how these changes address the identified failures]”
+}}]}
+
+
+                                                          30
+                     MemSkill: Learning and Evolving Memory Skills for Self-Evolving Agents
+
+Designer Refinement Prompt (2/2)
+
+### No changes needed:
+{ “action”: “no change”, “reasoning”: “[why the current operations are sufficient]” }
+
+## Instruction Template Structure
+When writing instruction templates, follow this structure:
+
+Skill: [Short skill name]
+Purpose: [What this skill does]
+When to use:
+- [Trigger 1]
+- [Trigger 2]
+How to apply:
+- [Step 1]
+- [Step 2]
+Constraints:
+- [What to avoid]
+Action type: [INSERT only — UPDATE only]
+
+Output ONLY the JSON, no other text.
+
+
+
+
+                                                        31
+                         MemSkill: Learning and Evolving Memory Skills for Self-Evolving Agents
+
+   LLM Judge Prompt
+
+   You are an expert judge evaluating the quality of an answer for a QA task. Your goal is to determine whether the
+   model’s answer correctly and sufficiently answers the given question.
+
+   Read the following information carefully:
+
+   [Question]
+   {question}
+
+   [Ground Truth Answers]
+   {ground truth}
+
+   [Model Answer]
+   {model answer}
+
+   Your evaluation criteria:
+   1. Correctness:
+   - Is the model answer factually consistent with ANY of the correct answers?
+   - Does it avoid contradictions or introducing false information?
+
+   2. Relevance:
+   - Does the answer address the question directly without unnecessary content?
+
+   3. Completeness:
+   - Does the answer include all essential information needed to fully answer the question?
+   - Partial answers are allowed but should receive lower scores.
+
+   Scoring Rules:
+   - Score = 1.0 if the answer is fully correct.
+   - Score = 0.5 if the answer is partially correct but incomplete or slightly inaccurate.
+   - Score = 0.0 if the answer is incorrect, irrelevant, or contradicts the ground truth.
+
+   Output Format (STRICT):
+   Return your output as a JSON dictionary with two fields:
+   { “explanation”: “<brief explanation of your reasoning>”, ”score”: <0.0 — 0.5 — 1.0>}
+
+   Be concise and objective. Do not include anything outside the JSON.
+
+
+E. Use of Large Language Models
+LLMs are used as part of our method and evaluation pipeline. Specifically, MemSkill uses an LLM executor for skill-
+conditioned memory generation, an LLM designer for skill evolution, and an LLM judge for evaluation on tasks where
+automatic metrics are insufficient. The corresponding prompts are provided in Appendix D.
+LLM-based tools may also be used for grammar polishing and code assistance. The authors take full responsibility for all
+scientific claims, experimental results, figures, and references in this paper.
+
+F. Limitations and Societal Impact
+Limitations. This work focuses on benchmarked research settings for skill-conditioned memory construction. Practical
+deployments of agent memory systems may require additional mechanisms for privacy protection, user consent, access
+control, and data retention. These considerations are orthogonal to the core algorithmic contribution of MemSkill and are
+left for future deployment-oriented studies.
+
+                                                             32
+                         MemSkill: Learning and Evolving Memory Skills for Self-Evolving Agents
+
+Societal impact. MemSkill contributes toward more adaptive and reusable memory mechanisms for long-horizon LLM
+agents. Instead of repeatedly designing task-specific memory pipelines, the proposed skill-based formulation allows memory
+behaviors to be learned, reused, and evolved from interaction traces, which may lower the engineering barrier for building
+memory-augmented agents. This can benefit research and practical applications that require long-term context management,
+such as personalized assistants, educational agents, research support tools, and embodied task-solving systems. Since
+agent memory may involve user-provided or task-specific information, practical deployments should follow standard data
+governance practices, including user consent, privacy protection, data retention control, and mechanisms for inspecting or
+deleting stored memories. Our work focuses on benchmarked research settings and does not target surveillance, deception,
+or high-stakes decision making.
+
+
+
+
+                                                           33
+

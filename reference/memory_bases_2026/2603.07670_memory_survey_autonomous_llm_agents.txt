@@ -1,0 +1,959 @@
+                                                            Memory for Autonomous LLM Agents:
+                                                        Mechanisms, Evaluation, and Emerging Frontiers
+                                                                                                Pengfei Du1
+                                                                         1 Hong Kong Research Institute of Technology, HongKong, China
+
+                                                                                         E-mail: lldpf1234@gmail.com
+
+
+
+                                        Abstract                                                             a user’s birthday twice. All of this demands memory.
+
+                                        Large language model (LLM) agents increasingly oper-
+                                        ate in settings where a single context window is far too
+                                                                                                             1.1   What goes wrong without it
+arXiv:2603.07670v1 [cs.AI] 8 Mar 2026
+
+
+
+
+                                        small to capture what has happened, what was learned,                Picture a debugging assistant that works on a large codebase
+                                        and what should not be repeated. Memory—the abil-                    across a week of sessions. Without memory, every Mon-
+                                        ity to persist, organize, and selectively recall information         day morning it rediscovers the directory layout, re-reads the
+                                        across interactions—is what turns a stateless text genera-           same README, and—worst of all—retries the exact fix
+                                        tor into a genuinely adaptive agent. This survey offers              that crashed the build on Friday. Equip the same agent with
+                                        a structured account of how memory is designed, imple-               even a modest memory module and the dynamic shifts: it
+                                        mented, and evaluated in modern LLM-based agents, cov-               arrives already knowing the hotspots, skips the dead ends,
+                                        ering work from 2022 through early 2026. We formalize                and gradually distills project-specific heuristics.
+                                        agent memory as a write–manage–read loop tightly cou-                   This is not a marginal improvement; it is a qualitative
+                                        pled with perception and action, then introduce a three-             change. Memory transforms a stateless LLM into a self-
+                                        dimensional taxonomy spanning temporal scope, represen-              evolving agent [Zhang et al., 2024a] that can (i) accumu-
+                                        tational substrate, and control policy. Five mechanism fam-          late factual knowledge and user preferences, (ii) develop be-
+                                        ilies are examined in depth: context-resident compression,           havioral patterns grounded in prior experience, (iii) avoid
+                                        retrieval-augmented stores, reflective self-improvement, hi-         repeating costly mistakes, and (iv) continuously improve
+                                        erarchical virtual context, and policy-learned management.           through interaction.
+                                        On the evaluation side, we trace the shift from static re-
+                                        call benchmarks to multi-session agentic tests that interleave
+                                        memory with decision-making, analyzing four recent bench-            1.2   A brief history of neural memory
+                                        marks that expose stubborn gaps in current systems. We               The ambition to give neural networks external storage dates
+                                        also survey applications where memory is the differentiat-           back over a decade. Memory Networks [Weston et al., 2015]
+                                        ing factor—personal assistants, coding agents, open-world            and their end-to-end variant [Sukhbaatar et al., 2015] intro-
+                                        games, scientific reasoning, and multi-agent teamwork—               duced differentiable read-write access to external slots for
+                                        and address the engineering realities of write-path filtering,       question answering. Neural Turing Machines [Graves et al.,
+                                        contradiction handling, latency budgets, and privacy gover-          2014] and Differentiable Neural Computers [Graves et al.,
+                                        nance. The paper closes with open challenges: continual              2016] pushed further, supporting both content-based and
+                                        consolidation, causally grounded retrieval, trustworthy re-          location-based addressing over a memory matrix. Memoriz-
+                                        flection, learned forgetting, and multimodal embodied mem-           ing Transformers [Wu et al., 2022] and Recurrent Memory
+                                        ory.                                                                 Transformers [Bulatov et al., 2022] later integrated explicit
+                                        Keywords: large language model agents; agent memory;                 memory layers directly into the Transformer backbone.
+                                        long-term memory; retrieval-augmented generation; contin-               A parallel thread focused on retrieval. RAG [Lewis et al.,
+                                        ual adaptation; agent evaluation                                     2020] married a pre-trained generator with a dense docu-
+                                                                                                             ment retriever, and RETRO [Borgeaud et al., 2022] showed
+                                                                                                             that pulling from a trillion-token corpus at inference time
+                                        1    Introduction                                                    could match much larger models at a fraction of the param-
+                                                                                                             eter count. These systems proved a crucial point: external
+                                        Scaling large language models has unlocked a new class of            knowledge stores can be queried dynamically during gener-
+                                        autonomous software agents—systems that perceive envi-               ation without retraining.
+                                        ronments, reason about goals, wield tools, and take action              The leap from retrieval-augmented models to memory-
+                                        over extended time horizons [Brown et al., 2020, Achiam              augmented agents happened quickly. ReAct [Yao et al.,
+                                        et al., 2023, Touvron et al., 2023]. What separates these            2022] interleaved reasoning traces with environment ac-
+                                        agents from a vanilla chatbot is not merely bigger models; it        tions, producing an interpretable trajectory that doubles
+                                        is the expectation that they learn from experience. A coding         as short-horizon memory. Reflexion [Shinn et al., 2023]
+                                        assistant should remember that a particular API is flaky, a          took this further by storing verbal self-critiques after task
+                                        game-playing agent should recall which crafting recipes it           attempts—essentially giving the agent a post-mortem jour-
+                                        already mastered, and a personal scheduler should never ask          nal. Then came the Generative Agents paper [Park et al.,
+
+
+                                                                                                         1
+2023], whose simulated town of 25 characters demonstrated              Two aspects deserve emphasis. First, U is not a simple
+that a simple observation–reflection–planning loop could            append operation. In a well-designed system it summarizes,
+produce months of coherent social behavior. Since 2023,             deduplicates, scores priority, resolves contradictions, and—
+the design space has exploded: hierarchical virtual memory          when appropriate—deletes. Second, πθ and (R, U ) form
+inspired by operating systems [Packer et al., 2024], ever-          a feedback loop: the agent’s decisions determine what gets
+growing skill libraries in Minecraft [Wang et al., 2023a],          written, and what is written shapes future decisions. This
+SQL databases as symbolic memory [Hu et al., 2023], and—            recursive dependence is what makes memory both powerful
+most recently—end-to-end learned memory management                  and brittle—one bad write can pollute the store for many
+via reinforcement learning [Yu et al., 2026].                       steps downstream.
+
+1.3   Why another survey?                                           2.2    Connection to POMDPs
+Several broad agent surveys already exist [Xi et al., 2023,
+Wang et al., 2024a], and Zhang et al. [Zhang et al., 2024a]         Cast formally, the setup above is a partially observable
+published a memory-focused review in 2024. However,                 Markov decision process. Memory Mt plays the role of
+the landscape has shifted considerably since then. A                the agent’s belief state: an internal summary of history
+wave of 2025–2026 contributions—Agentic Memory [Yu                  that stands in for the unobservable true state of the world.
+et al., 2026], MemBench [Tan et al., 2025], MemoryAgent-            Classical POMDP solvers update beliefs via Bayesian filter-
+Bench [Hu et al., 2025], MemoryArena [He et al., 2026]—             ing; LLM agents do something analogous—albeit messier—
+has introduced learned memory control, richer evaluation di-        through natural language compression, vector indexing, or
+mensions, and agentic benchmarks that tightly couple mem-           structured storage.
+ory with action.                                                       The analogy clarifies an important point: agent memory is
+   This survey zooms in on the memory module and asks               not merely a database lookup problem. It is about maintain-
+three questions:                                                    ing a sufficient statistic of the interaction history for good
+                                                                    action selection, subject to hard computational and storage
+RQ1 How should memory in LLM agents be decomposed                   budgets.
+    and formalized?
+
+RQ2 What mechanisms exist, and what trade-offs do they              2.3    Five design objectives and their tensions
+    impose?
+                                                                    Across the systems we review, memory mechanisms are
+RQ3 How should memory be evaluated when the ultimate                pulled along five axes:
+    test is downstream agent performance?
+
+Contributions. We formalize agent memory as a write–                 • Utility – Does memory actually improve task outcomes?
+manage–read loop within a POMDP-style agent cycle (Sec-
+tion 2), propose a three-dimensional taxonomy that unifies           • Efficiency – What is the token, latency, and storage cost
+disparate designs (Section 3), provide deep mechanism re-              per unit of utility gained?
+views with concrete system comparisons (Section 4), survey
+benchmarks alongside a practical metric stack (Section 5),           • Adaptivity – Can the system update incrementally from
+map applications where memory is the differentiating fac-              interaction feedback without a full retrain?
+tor (Section 6), discuss engineering realities and architec-
+ture patterns (Section 7), position relative to prior surveys        • Faithfulness – Is recalled information accurate and cur-
+(Section 8), and chart open research directions (Section 9).           rent? Stale or hallucinated recall can be worse than no
+                                                                       recall at all.
+
+2     Problem Formulation and Design                                 • Governance – Does the system respect privacy, support
+                                                                       deletion requests, and comply with organizational pol-
+      Objectives                                                       icy?
+2.1   The agent loop, seen through memory
+                                                                       These objectives tug in opposite directions. Maximizing
+At each discrete step t, an agent receives input xt —a user         utility tempts you to store everything, which bloats storage
+message, a sensor reading, or a tool return value—and must          and creates governance headaches. Aggressive compres-
+produce an action at . Between these two events, it consults        sion improves efficiency but silently discards the one rare
+its accumulated memory. We write:                                   fact that turns out to be critical three weeks later. Any real
+                                                                    deployment must navigate these trade-offs deliberately, and
+                 at = πθ xt , R(Mt , xt ), gt ,
+                                                
+                                                         (1)        the “right” balance point shifts with the application. A medi-
+              Mt+1 = U Mt , xt , at , ot , rt ,
+                                             
+                                                         (2)        cal triage agent, where a missed allergy record could be life-
+                                                                    threatening, operates under a very different faithfulness–
+where πθ is the policy (typically a prompted or partially           efficiency frontier than a casual recipe recommender. Un-
+fine-tuned LLM), R reads from memory, U writes to and               derstanding these tensions is not merely academic—it di-
+manages memory, gt encodes active goals, ot is environment          rectly shapes architectural choices, as we discuss in subse-
+feedback, and rt is any reward-like signal.                         quent sections.
+
+
+                                                                2
+2.4    Memory as a differentiator: an empirical                          To illustrate the interplay, consider a customer-support
+       perspective                                                    agent handling returns. Each return request constitutes an
+                                                                      episodic record. After processing hundreds of similar re-
+The practical importance of memory design is perhaps best             quests, the agent might consolidate the pattern into a seman-
+illustrated by ablation results reported across recent systems.       tic rule: “customers who received damaged items within 7
+In the Generative Agents experiment [Park et al., 2023],              days are eligible for express replacement.” When a new
+removing the reflection component caused agent behavior               request arrives, this semantic rule is loaded into working
+to degenerate from coherent multi-day planning to repeti-             memory alongside the specific episodic details of the cur-
+tive, context-free responses within 48 simulated hours. Voy-          rent case. If the agent also has stored scripts for processing
+ager [Wang et al., 2023a] without its skill library lost 15.3×        returns (procedural memory), the four memory types form a
+in tech-tree milestone speed—the skill library was the per-           complete reasoning stack: the procedure says how, seman-
+formance. And in MemoryArena [He et al., 2026], swap-                 tic memory says what the policy is, episodic memory says
+ping an active memory agent for a long-context-only base-             what happened, and working memory holds the live reason-
+line dropped task completion from over 80% to roughly 45%             ing context.
+on interdependent multi-session tasks.                                   This four-layer integration is the aspiration; most current
+   These numbers underscore a recurring theme: the gap be-            systems implement only two layers well and handle the tran-
+tween “has memory” and “does not have memory” is often                sitions between layers via crude heuristics. The consolida-
+larger than the gap between different LLM backbones. In-              tion step—where episodes become semantic knowledge—
+vesting in memory architecture can yield returns that rival—          is particularly underserved: it typically requires either ex-
+or exceed—model scaling.                                              plicit developer rules or periodic LLM-driven summariza-
+                                                                      tion, both of which are fragile and hard to validate.
+
+3     A Unified Taxonomy of Agent                                     3.2    Representational substrate
+      Memory                                                          How memory is physically stored constrains what the agent
+                                                                      can efficiently do with it.
+Cognitive scientists have long distinguished multiple mem-
+                                                                         Context-resident text—summaries, scratchpads, chain-
+ory systems in the human brain [Atkinson and Shiffrin,
+                                                                      of-thought traces [Wei et al., 2022]—is the simplest sub-
+1968, Tulving, 1972, Baddeley, 2000, Squire, 2004]. Agent
+                                                                      strate. Fully transparent, zero infrastructure, but ruthlessly
+designers—often unconsciously—mirror that structure. We
+                                                                      capacity-limited.
+organize the space along three orthogonal dimensions.
+                                                                         Vector-indexed stores encode records as dense em-
+                                                                      beddings and support approximate nearest-neighbor
+3.1    Temporal scope                                                 search [Karpukhin et al., 2020, Johnson et al., 2021]. They
+                                                                      scale gracefully to millions of records but lose structured
+Working memory. Whatever fits inside the current context              relationships: you can ask “what’s most similar?” but not
+window constitutes the agent’s working memory. Badde-                 “what caused what?”
+ley’s central executive plus buffer model [Baddeley, 2000]               Structured stores—SQL databases [Hu et al., 2023],
+maps neatly: the LLM is the executive, the context window             key–value maps, knowledge graphs [Ji et al., 2022]—
+is the buffer, and both share the same bottleneck—limited             preserve relational structure and support complex queries
+capacity.                                                             (“all API failures involving service X in the last 7 days”),
+   Episodic memory. Records of concrete experiences: in-              at the cost of upfront schema design.
+dividual tool calls, conversation turns, environment obser-              Executable repositories—code libraries, tool defini-
+vations. In the Generative Agents world [Park et al., 2023],          tions, plan templates [Wang et al., 2023a]—let the agent in-
+every observation—“Isabella saw Klaus painting in the park            voke stored skills directly, sidestepping regeneration and the
+at 3pm”—lands in the episodic stream with a timestamp, an             errors it introduces.
+importance score, and an embedding for later retrieval.                  Hybrid stores are the norm in production.
+   Semantic memory.            Abstracted, de-contextualized          MemGPT [Packer et al., 2024], for instance, layers a
+knowledge. An episodic fact like “the user corrected the date         context-window “main memory” over a searchable recall
+format on Jan 5, Jan 12, and Feb 1” may consolidate into the          database and a vector-indexed archive—each tier with
+semantic record “user prefers DD/MM/YYYY.” This con-                  different access patterns and eviction rules.
+solidation is rarely automatic; most current systems require
+explicit prompting or heuristic triggers.
+                                                                      3.3    Control policy
+   Procedural memory. Reusable skills and executable
+plans. Voyager’s skill library [Wang et al., 2023a] is the            Perhaps the most consequential—and least discussed—
+clearest example: every verified Minecraft routine is stored          dimension is who decides what to store, what to retrieve,
+as runnable JavaScript, indexed by a natural language de-             and what to discard.
+scription, and composed on the fly for novel tasks.                      Heuristic control hard-codes rules: top-k retrieval, sum-
+   In practice, most agents blend at least two of these. The          marize every n turns, expire records older than d days. Pre-
+hard question is the transition policy: when does an episodic         dictable, easy to debug, but blind to context.
+record graduate to semantic status, and when does a seman-               Prompted self-control exposes memory operations
+tic fact get instantiated back into working memory for a spe-         as tool calls and lets the LLM decide when to in-
+cific task?                                                           voke them.        MemGPT’s core_memory_append and
+
+
+                                                                  3
+archival_memory_search              are   canonical     exam-           This is not a hypothetical failure mode; it mirrors re-
+ples [Packer et al., 2024]. Quality here hinges on the               ported issues in deployed long-running chatbots and cod-
+LLM’s instruction-following ability and on how well the              ing assistants. The implication is clear: for any agent ex-
+memory API is documented in the system prompt.                       pected to run for more than a handful of sessions, context-
+   Learned control treats memory operations as policy ac-            resident memory should be supplemented—not replaced,
+tions optimized end-to-end. Agentic Memory [Yu et al.,               but supplemented—with an external store that preserves raw
+2026] trains store, retrieve, update, summarize, and discard         records at full fidelity.
+as callable tools via a three-stage RL pipeline with step-wise          A less obvious but equally important limitation of
+GRPO. The payoff is substantial—learned policies discover            context-resident memory is attentional dilution. Even
+non-obvious strategies such as preemptive summarization              within a sufficiently large window, the LLM’s attention
+before the context is full—but so is the training cost.              mechanism must distribute capacity across all tokens. As
+                                                                     more memory content is injected, the model’s ability to
+                                                                     focus on any single piece degrades—a phenomenon em-
+3.4    Representative systems at a glance                            pirically documented in the “lost in the middle” literature,
+Table 1 plots key systems and benchmarks on a timeline.              where information placed in the center of a long context is
+                                                                     recalled less reliably than information at the beginning or
+                                                                     end. This suggests that simply making the window bigger
+4     Core Memory Mechanisms                                         is not a complete solution; the agent must also curate what
+                                                                     enters the window, which brings us back to the fundamental
+We now examine each mechanism family in detail, ground-              need for retrieval and filtering mechanisms.
+ing the discussion in concrete system designs and their em-
+pirical trade-offs.
+                                                                     4.2    Retrieval-augmented memory stores
+
+4.1    Context-resident memory and compres-                          RAG [Lewis et al., 2020] demonstrated that pairing a gen-
+                                                                     erator with a non-parametric retrieval index produces strong
+       sion                                                          results on knowledge-intensive tasks. In agent settings, the
+The most straightforward way to give an agent memory is to           store is populated not with encyclopedia articles but with liv-
+keep relevant information in the prompt. System messages,            ing interaction records: tool call logs, environment observa-
+recent conversation turns, scratchpad notes—everything the           tions, user corrections, partial plans, and verbal reflections.
+LLM “sees” on every call functions as working memory                    Indexing granularity. Fine-grained indexing (individ-
+with perfect in-window recall.                                       ual tool calls or single sentences) gives precise recall but
+   The trouble starts when history outgrows the window.              can fragment multi-step reasoning into meaningless shards.
+Several compression strategies have emerged: (i) sliding             Coarse-grained indexing (full sessions or long passages)
+windows that retain the n most recent turns and drop the rest;       preserves context but drowns the signal in noise. The prac-
+(ii) rolling summaries that periodically condense older his-         tical sweet spot is multi-granularity indexing, where the re-
+tory into a shorter precis; (iii) hierarchical summaries op-         triever adaptively selects the right resolution. Dense passage
+erating at turn, session, and topic granularities; (iv) task-        retrieval [Karpukhin et al., 2020] via learned encoders, typ-
+conditioned compression, where the current query decides             ically backed by FAISS-style approximate nearest-neighbor
+which parts of history keep full detail. The Self-Controlled         search [Johnson et al., 2021], remains the default implemen-
+Memory system [Liang et al., 2023] hands this decision to            tation, often augmented with sparse BM25 and metadata fil-
+the agent itself, letting it choose which segments deserve           ters (timestamps, tool types, task tags).
+verbatim retention versus aggressive condensation.                      Query formulation. A subtlety that many systems gloss
+   Context-resident      memory       is    transparent   and        over: the agent’s immediate input xt is often a poor retrieval
+infrastructure-free, but it carries a well-known pathol-             query. A user asking “Why did that crash?” needs the
+ogy: summarization drift. Each compression pass silently             agent to retrieve the crash log from two sessions ago, not
+discards low-frequency details.         After enough passes,         the most semantically similar sentence. Strategies include
+the agent “remembers” a sanitized, generic version of                LLM-reformulated queries, multi-query fan-out with result
+history—precisely the kind of memory that fails on edge              fusion, and using the current subgoal as an additional re-
+cases. Extending context windows to 100k+ tokens [Chen               trieval signal. Self-RAG [Asai et al., 2024] goes one step
+et al., 2023] delays the problem but cannot eliminate it, and        further and teaches the model to decide whether retrieval is
+longer contexts incur quadratic cost increases in attention.         warranted at all—a simple gate that substantially cuts un-
+   To make this concrete: consider an agent that processes           necessary latency.
+50 user interactions per day. After one week of rolling sum-            Scale. RETRO [Borgeaud et al., 2022] and follow-up
+marization, the raw 350-turn history has been compressed             work on trillion-token datastores [Raad et al., 2024] sug-
+through at least three summary cycles. A rare but critical           gest that retrieval memory can scale to years of interaction
+instruction from day one—say, “never call the production             history without architectural changes. The bottleneck shifts
+database directly”—may survive the first compression but             decisively from storage to relevance: ensuring that the most
+is exactly the kind of low-frequency, high-importance de-            useful—not merely the most similar—records are returned.
+tail that tends to vanish by the third pass. The agent then             Read-write memory. RET-LLM [Sun et al., 2024]
+proceeds to call the production database, with predictable           bridges free-form retrieval and structured storage by let-
+consequences.                                                        ting the agent write structured triplets at storage time while
+
+
+                                                                 4
+                  Table 1: Representative memory systems and benchmarks for LLM agents (2020–2026).
+         System                  Year    Memory Category             Distinguishing Feature
+         RAG [Lewis et al.,      2020    Non-parametric re-          First to couple a seq2seq generator with a dense docu-
+         2020]                           trieval                     ment retriever at NeurIPS 2020.
+         RETRO [Borgeaud         2022    Retrieval at scale          Chunks retrieved from a 2-trillion-token corpus; 7.5B-
+         et al., 2022]                                               parameter model rivals 175B Jurassic-1 on 10/16
+                                                                     benchmarks.
+         ReAct [Yao et al., 2022         Trajectory traces           Reasoning-and-acting traces double as short-horizon
+         2022]                                                       working memory; 34% absolute gain on ALFWorld.
+         Reflexion       [Shinn 2023     Reflective episodic         Verbal self-critiques stored as episodic memory; 91%
+         et al., 2023]                                               pass@1 on HumanEval (vs. 80% GPT-4 baseline).
+         Generative             2023     Episodic + reflective       25 simulated characters autonomously organize a Valen-
+         Agents [Park et al.,                                        tine’s party via observation–reflection–planning cycles.
+         2023]
+         Voyager [Wang et al., 2023      Procedural skill li-        3.3× more unique items and 15.3× faster tech-tree pro-
+         2023a]                          brary                       gression than prior Minecraft agents.
+         LongMem         [Wang 2023      Long-form external          Frozen backbone + residual side-network; memory bank
+         et al., 2023b]                                              scales to 65k tokens.
+         ChatDB [Hu et al., 2023         Structured symbolic         SQL databases as agent memory; supports precise IN-
+         2023]                                                       SERT/SELECT queries over interaction records.
+         ExpeL [Zhao et al., 2024        Experiential learning       Systematically extracts success/failure “rules of thumb”
+         2024]                                                       from trajectory comparisons.
+         MemGPT         [Packer 2024     Hierarchical virtual        OS-inspired paging across main context, recall DB, and
+         et al., 2024]                                               archival vector store.
+         MemoryBank [Zhong 2024          Long-term with for-         Ebbinghaus-curve decay applied to chatbot memory;
+         et al., 2024]                   getting                     published at AAAI 2024.
+         LoCoMo [Maharana 2024           Benchmark                   Up to 35 sessions, 300+ turns, 9k–16k tokens per conver-
+         et al., 2024]                                               sation; humans still far ahead.
+         MemBench          [Tan 2025     Benchmark                   Separates factual vs. reflective memory; participation vs.
+         et al., 2025]                                               observation modes; ACL 2025 Findings.
+         MemoryAgentBench [Hu2025        Benchmark                   Tests four cognitive competencies; no current system
+         et al., 2025]                                               masters all four.
+         Agentic Memory [Yu 2026         Unified    STM/LTM          Memory ops trained as RL actions via step-wise GRPO;
+         et al., 2026]                   policy                      outperforms all memory-augmented baselines on five
+                                                                     benchmarks.
+         MemoryArena       [He   2026    Benchmark                   Multi-session interdependent tasks in four domains; near-
+         et al., 2026]                                               saturated LoCoMo models drop to 40–60% here.
+
+
+querying them via natural language. This is a pragmatic                  ExpeL [Zhao et al., 2024] pushes the paradigm further
+compromise: schema at write time, flexibility at read time.           by systematically contrasting successful and failed trajecto-
+                                                                      ries, extracting discriminative “rules of thumb,” and storing
+                                                                      them as reusable heuristics. Think-in-Memory [Liu et al.,
+4.3    Reflective and self-improving memory                           2024a] separates retrieval from reasoning: the agent first re-
+Reflexion [Shinn et al., 2023] introduced a deceptively sim-          calls, then performs a dedicated thinking step over the re-
+ple idea: after failing a task, have the agent write a natural        called content before generating a response.
+language post-mortem, then prepend it to the prompt on the               The central risk of reflective memory is self-reinforcing
+next attempt. No gradient updates, no reward model—just               error. If the agent incorrectly concludes “API X always
+a text file of self-critiques. The results were striking: 91%         returns errors with parameter Y,” it will avoid that call
+pass@1 on HumanEval, versus 80% for GPT-4 without re-                 path forever, never collecting evidence to overturn the false
+flection.                                                             belief. Over-generalization is the sibling risk: a lesson
+   Generative Agents [Park et al., 2023] built a richer               learned in one context applied blindly in another. Qual-
+pipeline. Raw observations accumulate in an episodic                  ity gates—confidence scores, contradiction checking against
+stream. Periodically, the agent clusters related observations         other memories, periodic expiration—are necessary but still
+and synthesizes higher-order reflections—e.g., “Klaus has             underdeveloped.
+been eating alone and seems withdrawn.” Retrieval scores                 The problem becomes more acute at scale. A sin-
+memories by a weighted mix of recency (exponential de-                gle incorrect reflection in a short-lived agent causes lim-
+cay), relevance (embedding similarity), and importance (a             ited damage; the same incorrect reflection persisting in
+self-assessed integer). This multi-signal scoring is a sub-           a long-running production agent—potentially influencing
+stantial improvement over pure cosine similarity and re-              thousands of downstream decisions over weeks—can be
+mains influential in later designs.                                   catastrophic. The severity of the reflective memory failure
+
+
+                                                                 5
+mode scales with agent lifetime, making it particularly dan-            4.5    Policy-learned memory management
+gerous in exactly the settings where memory is most needed.
+   One mitigation strategy explored in recent work is reflec-           Heuristics and prompted self-control are not optimized for
+tion grounding: requiring the agent to cite specific episodic           the agent’s end task. A k-nearest-neighbor retriever does not
+evidence for each reflection it generates. If the reflection            know whether the retrieved record will actually help; a fixed
+“API X is unreliable” must point to three concrete failure              summarization schedule does not care whether the material
+instances, the agent is less likely to generate baseless gener-         being compressed is important.
+alizations. This does not fully solve the problem—the cited                Agentic Memory (AgeMem) [Yu et al., 2026] addresses
+evidence may itself be unrepresentative—but it provides an              this by treating five memory operations—store, retrieve,
+auditable trail that can be reviewed by human operators.                update, summarize, discard—as callable tools within the
+                                                                        agent’s policy, then optimizing the entire pipeline with re-
+                                                                        inforcement learning. Training proceeds in three stages:
+4.4    Hierarchical memory and virtual context                          supervised warm-up on memory demonstrations, task-level
+       management                                                       RL with outcome rewards, and finally step-level GRPO that
+                                                                        provides denser credit assignment for individual memory ac-
+MemGPT [Packer et al., 2024] borrows an idea that operat-               tions. Across five long-horizon benchmarks, AgeMem con-
+ing system designers perfected decades ago: virtual mem-                sistently outperforms strong baselines, and the learned pol-
+ory. An OS gives each process the illusion of vast, con-                icy surfaces non-obvious tactics: proactively summarizing
+tiguous memory by transparently paging data between RAM                 intermediate results before the context fills up, and selec-
+and disk. MemGPT does the same for the LLM’s context                    tively discarding records that are semantically similar to ex-
+window:                                                                 isting ones but add no new information.
+                                                                           Open concerns remain. RL training over long horizons
+ • Main context (RAM): the active window holding sys-                   is expensive. Learned forgetting could delete safety-critical
+   tem prompt, recent messages, and currently relevant                  information. Policies trained on one task distribution may
+   records.                                                             fail to transfer. And it is hard to explain why the agent chose
+                                                                        a particular memory action—interpretability lags behind ca-
+ • Recall storage (disk): a searchable database of all past             pability.
+   messages.
+
+ • Archival storage (cold storage): a vector-indexed store              4.6    Parametric memory and weight-based
+   for documents and long-term knowledge.                                      adaptation
+
+The agent moves data between tiers by calling memory                    All of the above treat memory as external to the model’s
+management “functions”—archival_memory_search,                          weights. An alternative family embeds memory inside the
+core_memory_append, and so on. An interrupt mecha-                      parameters through fine-tuning or adapter modules. Mem-
+nism passes control to the agent on each user message or                LLM [Modarressi et al., 2024] fine-tunes the LLM to inter-
+timer event, letting it perform multiple internal memory                act with an explicit read-write memory module, tightly cou-
+operations before responding.                                           pling parametric and non-parametric knowledge. Joint train-
+                                                                        ing of retrieval and generation [Zhong et al., 2022] yields
+   JARVIS-1 [Wang et al., 2024b] extends the hierarchical
+                                                                        better memory utilization than frozen-retriever baselines.
+principle to multimodal settings, with separate stores for vi-
+sual observations, textual plans, and executable skills. Cog-              Parametric memory offers seamless integration—the
+nitive Architectures for Language Agents [Sumers et al.,                model just “knows” things. But it is hard to audit (where
+2024] propose a generalized blueprint where working,                    exactly in the weights is the user’s birthday stored?), hard to
+episodic, semantic, and procedural stores interact through              delete from (machine unlearning is still immature), and ex-
+a central executive (the LLM), directly echoing Baddeley’s              pensive to update (each new fact requires fine-tuning). For
+model [Baddeley, 2000].                                                 these reasons, most deployed agents favor non-parametric,
+                                                                        inspectable stores.
+   The Achilles’ heel of hierarchical memory is orchestra-
+tion. Page the wrong things in and you waste precious con-
+text tokens; archive too aggressively and you create “mem-
+ory blindness”—the agent simply does not know that the                  5     Evaluation: From Recall to Agentic
+critical fact exists somewhere in cold storage. This tension                  Utility
+motivates the next mechanism family.
+   It is worth noting that orchestration failures in hierarchical       5.1    Why classical retrieval metrics fall short
+memory tend to be silent. Unlike a crashed API call, which
+produces an error message, a paging decision that evicts the            Precision@k and nDCG tell you whether the right docu-
+wrong record simply results in a slightly worse response—               ment was retrieved. They say nothing about whether the
+no exception, no log entry, no obvious signal that something            agent used that document correctly—or whether retrieving
+went wrong. Over time, these silent failures compound. Di-              it was even worth the latency. Agent memory evaluation
+agnosing them requires detailed memory operation logs and               must jointly assess memory quality and decision quality,
+retrospective analysis—an engineering investment that few               along with concerns that classical IR ignores entirely: stale-
+current systems make but that is essential for production-              ness, contradiction, forgetting quality, and governance com-
+grade deployments.                                                      pliance.
+
+
+                                                                    6
+5.2    The new benchmark landscape                                    5.5    Cross-cutting lessons from the bench-
+                                                                             marks
+Four recent benchmarks push evaluation in complementary
+directions.                                                           Aggregating results across these four evaluations, several
+   LoCoMo [Maharana et al., 2024] tests very long-term                patterns stand out.
+conversational memory: up to 35 sessions, 300+ turns,                    Long context is not memory. Despite context windows
+and 9k–16k tokens per conversation. Three evaluation                  stretching to 200k tokens [Chen et al., 2023], long-context
+tasks—factual QA, event summarization, and dialogue                   models consistently underperform purpose-built memory
+generation—probe different memory demands. The head-                  systems on tasks requiring selective retrieval and active
+line result: even RAG-augmented LLMs lag far behind hu-               management. MemoryArena makes this starkest: passive
+mans, especially on temporal and causal dynamics.                     recall aces are poor memory agents.
+                                                                         RAG helps, but the gap to humans is wide. RAG-based
+   MemBench [Tan et al., 2025] distinguishes factual from
+                                                                      agents beat pure long-context baselines across the board, yet
+reflective memory and tests each in both participation and
+                                                                      the primary bottleneck is no longer storage—it is retrieval
+observation modes. Metrics span three dimensions: effec-
+                                                                      quality. Agents routinely surface plausible but stale or off-
+tiveness (accuracy), efficiency (number of memory opera-
+                                                                      topic records [Maharana et al., 2024].
+tions), and capacity (performance degradation as the mem-
+                                                                         Nobody evaluates forgetting well. Only MemoryAgent-
+ory store grows).
+                                                                      Bench tests selective forgetting explicitly. Yet in any long-
+   MemoryAgentBench [Hu et al., 2025] grounds evalua-                 running deployment, the inability to discard outdated infor-
+tion in cognitive science, probing four competencies: accu-           mation gradually poisons retrieval precision.
+rate retrieval, test-time learning, long-range understanding,            Cross-session coherence is underexplored. Most bench-
+and selective forgetting. Long-context datasets are refor-            marks measure within-session performance.              Memor-
+matted into incremental multi-turn interactions to simulate           yArena’s multi-session design reveals that maintaining con-
+realistic accumulation. No current system masters all four            sistent knowledge and behavior across sessions separated
+competencies; most fail conspicuously on selective forget-            by hours or days is a distinct—and largely unsolved—
+ting.                                                                 challenge.
+   MemoryArena [He et al., 2026] embeds memory eval-                     The parametric–non-parametric gap is real. Systems
+uation inside complete agentic tasks—web navigation,                  with parametric memory (fine-tuned weights) and non-
+preference-constrained planning, progressive information              parametric memory (external stores) show different failure
+search, and sequential formal reasoning—where later sub-              profiles. Parametric memory excels at seamless knowledge
+tasks depend on what the agent learned from earlier ones.             integration but fails at targeted deletion and auditing. Non-
+The most striking finding: models that score near-perfectly           parametric memory supports inspection and governance but
+on LoCoMo plummet to 40–60% in MemoryArena, expos-                    can feel “bolted on”—the agent sometimes ignores retrieved
+ing a deep gap between passive recall and active, decision-           records or uses them inconsistently. The optimal balance
+relevant memory use.                                                  between these two approaches, and how to combine them
+                                                                      effectively, remains an open empirical question.
+                                                                         Evaluation must include cost. A memory system that
+5.3    Benchmark comparison                                           achieves 5% higher accuracy but triples latency and storage
+                                                                      cost may not be an improvement in practice. None of the
+Table 2 summarizes design differences across these four               current benchmarks systematically report efficiency metrics
+benchmarks.                                                           alongside effectiveness, making it difficult to assess whether
+                                                                      reported gains are “free” or come at significant operational
+                                                                      expense. Future evaluations should mandate reporting of at
+                                                                      least token consumption and latency overhead alongside ac-
+5.4    A practical metric stack                                       curacy numbers.
+
+Deployment demands more nuance than any single bench-
+mark provides. We propose a four-layer evaluation stack:              6     Where Memory Makes or Breaks
+   Layer 1—Task effectiveness: success rate, factual cor-
+rectness, plan completion rate.
+                                                                            the Agent
+   Layer 2—Memory quality: retrieved-record preci-                    Memory is not uniformly important. A one-shot translation
+sion/recall, contradiction rate, staleness distribution, cover-       tool barely needs it; a month-long project collaborator can-
+age of task-relevant facts.                                           not function without it. Below we examine domains where
+   Layer 3—Efficiency: latency per memory operation,                  memory is the differentiating factor.
+prompt tokens consumed by memory content, retrieval calls
+per step, storage growth over time.
+                                                                      6.1    Personal assistants and conversational
+   Layer 4—Governance: privacy leakage rate, deletion
+compliance, access-scope violations.
+                                                                             agents
+   Ablation studies should isolate the write policy, the re-          A personal assistant that forgets your dietary restrictions or
+trieval strategy, and the compression module to attribute             re-asks your timezone every session is, at best, annoying.
+gains to specific components rather than the overall pipeline.        MemoryBank [Zhong et al., 2024] models memory decay
+
+
+                                                                  7
+                             Table 2: Feature comparison of recent agent memory benchmarks.
+             Benchmark             Year    Multi-session   Multi-turn       Agentic tasks   Forgetting   Multimodal
+             LoCoMo                2024         ✓                ✓               –              –             ✓
+             MemBench              2025         –                ✓               –              –             –
+             MemoryAgentBench      2025         –                ✓               –              ✓             –
+             MemoryArena           2026         ✓                ✓               ✓              –             –
+
+
+via Ebbinghaus forgetting curves [Ebbinghaus, 1885]: fre-            new data arrives—something most current memory systems
+quently accessed, high-importance memories are reinforced,           handle poorly or not at all.
+while neglected ones fade. MemGPT [Packer et al., 2024]
+demonstrates multi-session chat with evolving user models.
+The core tension in this domain is personalization without           6.5    Multi-agent collaboration
+overstepping—the agent must remember enough to be gen-
+                                                                     When multiple agents work together, memory becomes a
+uinely helpful without surfacing information the user con-
+                                                                     coordination mechanism. AutoGen [Wu et al., 2023] lets
+siders private or forgotten.
+                                                                     agents build on each other’s contributions through shared
+                                                                     context. CAMEL [Li et al., 2024] explores role-aware com-
+6.2    Software engineering agents                                   municative agents that must remember prior agreements and
+                                                                     collaborative history. ProAgent [Zhang et al., 2024b] builds
+Coding agents assist with generation, debugging, review,             proactive teammates that anticipate needs based on memory
+and project management across codebases that may contain             of past interactions.
+millions of lines [Qian et al., 2024, Hong et al., 2024]. Mem-          Two challenges dominate: shared vs. private memory
+ory requirements are steep: retain architecture decisions,           boundaries—what should be visible to whom?—and con-
+track bug report histories, remember code-style preferences,         sistency under concurrent writes—what happens when two
+and maintain a library of verified solutions. ChatDev [Qian          agents update shared memory simultaneously? Current
+et al., 2024] equips role-playing agents (CEO, CTO, pro-             multi-agent frameworks handle shared memory in one of
+grammer, tester) with shared memory to keep a project                two ways: either all memory is shared (simple but leaks
+coherent across development phases. MetaGPT [Hong                    private information) or each agent maintains its own store
+et al., 2024] structures this shared memory as standardized          with no cross-agent access (isolated but prevents knowledge
+documents—PRDs, design specs, code modules—that per-                 transfer). Neither extreme is satisfactory. A principled mid-
+sist and evolve.                                                     dle ground would define role-based access controls over a
+   The distinguishing challenge here is structural scale: the        shared memory substrate, allowing a project manager agent
+memory system must index and retrieve relevant portions of           to see high-level summaries from a developer agent without
+a codebase that may span thousands of files, not just conver-        accessing the raw code diffs. Database-style access control
+sations.                                                             lists, adapted for natural language records, are a natural but
+                                                                     unexplored solution.
+6.3    Open-world game agents
+Minecraft and similar sandboxes are popular testbeds pre-
+                                                                     6.6    Tool use and API orchestration
+cisely because they demand long-horizon planning and com-            Tool-using agents [Schick et al., 2024] interact with APIs,
+positional skill reuse. Voyager [Wang et al., 2023a] showed          databases, and web services. Memory must track which
+that an ever-growing skill library enables lifelong learning:        tools exist, how to call them, what parameters worked
+3.3× more unique items and 15.3× faster milestone progres-           last time, and which sequences of calls have been veri-
+sion than prior agents. JARVIS-1 [Wang et al., 2024b] ex-            fied. AgentBench [Liu et al., 2023] evaluates agents across
+tends this with multimodal memory spanning visual obser-             eight environments; agents that lose track of their command
+vations and textual plans. Ghost in the Minecraft [Zhu et al.,       history show sharp performance drops in multi-step tasks.
+2023] uses text-based knowledge and memory for generally             DERA [Nair et al., 2023] uses dialog-turn memory to refine
+capable open-world agents.                                           tool-use strategies iteratively.
+   The key challenge is compositional skill reuse: the agent            A practical hazard unique to this setting is schema drift:
+must not only recall individual skills but chain them cre-           when an API updates its interface, stored usage patterns be-
+atively to solve novel problems.                                     come invalid. Version tracking and schema validation on
+                                                                     stored tool-use records are essential but rarely implemented.
+6.4    Scientific reasoning and discovery                            In fast-moving API ecosystems, a tool-use memory system
+                                                                     that does not handle schema drift will accumulate an in-
+Scientific agents must track hypotheses, record experimen-           creasing fraction of invalid records, progressively degrading
+tal outcomes, digest literature, and revise beliefs as ev-           the agent’s ability to reuse past experience.
+idence accumulates. Memory here acts as a hypothesis                    The broader point here is that tool-use memory is not
+ledger and evidence accumulator. The distinctive challenge           just about storing “what worked”; it is about maintaining
+is uncertainty-aware memory: the agent must maintain not             a living, versioned catalog of tool capabilities that degrades
+just facts but confidence levels, and update them correctly as       gracefully as the external world changes. This connects to
+
+
+                                                                 8
+the software engineering concept of dependency manage-              7.2    The read path
+ment: just as a build system must track library versions,
+a tool-using agent must track API versions in its memory            Not every step needs retrieval, and not every retrieval needs
+store.                                                              the full pipeline. Practical read-path optimizations include:
+                                                                    two-stage retrieval (fast BM25 or metadata filter → slower
+                                                                    cross-encoder reranker), retrieval-or-not gating [Asai et al.,
+6.7   Cross-domain memory transfer                                  2024], token budgeting that dynamically allocates context
+                                                                    space between memory and current task, and cache layers
+An emerging direction is transferring memory across
+                                                                    for high-frequency records like user preferences.
+domains—e.g., debugging heuristics learned in Python
+reused for Java, or time-management strategies from one
+user applied to another. Tree of Thoughts [Yao et al., 2024]        7.3    Staleness, contradictions, and drift
+provides a framework for deliberate problem-solving that
+could benefit from cross-domain procedural memory. The              A personal assistant that sends a birthday card to a user’s ex-
+open question is how to identify which memories generalize          partner at the old address is not just unhelpful—it is harm-
+and which are hopelessly context-specific.                          ful. Long-lived memory stores accumulate stale records, and
+                                                                    without explicit mechanisms the agent has no way to distin-
+                                                                    guish the 2024 address from the 2022 one.
+6.8   Summary: where different memory types                            Robust systems need temporal versioning (prefer the
+      matter most                                                   newest record), source attribution (user statement > agent
+The application survey reveals a clear pattern: different do-       inference), contradiction detection (flag conflicts for reso-
+mains stress different memory types. Personal assistants de-        lution), and periodic consolidation (scheduled sweeps that
+pend most on semantic memory (user preferences and pro-             merge duplicates and retire stale entries).
+files). Software engineering agents lean heavily on proce-
+dural memory (verified code patterns and architecture deci-         7.4    Latency and cost
+sions). Game agents need tight integration of episodic and
+procedural memory (what happened + what to do about it).            Users expect sub-second responses for simple queries. Re-
+Scientific agents require semantic memory with explicit un-         trieval pipelines can easily add 200–500ms. Common mit-
+certainty tracking. Multi-agent systems add a coordination          igations: asynchronous writes (defer storage until after the
+layer that no single-agent memory design currently handles          response), progressive retrieval (start generating while re-
+well.                                                               trieval runs in parallel), and dynamic routing (skip retrieval
+   No existing system provides strong support across all            for straightforward requests, engage the full pipeline only
+these profiles simultaneously, which suggests that the next         when ambiguity is high).
+leap in agent memory may come from more modular, plug-                 Xu et al. [Xu et al., 2024] show that retrieving a hand-
+gable architectures where memory components can be com-             ful of highly relevant passages into a moderate-length con-
+posed and configured per deployment rather than baked into          text often beats both pure long-context and pure retrieval
+a monolithic design.                                                approaches—a useful guideline for tuning the latency–
+                                                                    quality tradeoff.
+
+7     Engineering Realities
+                                                                    7.5    Privacy, compliance, and deletion
+7.1   The write path                                                Agent memory can harbor sensitive data: health details, fi-
+Storing every interaction verbatim is tempting and almost           nancial records, private conversations. Deployments must
+always wrong. Noise—small talk, redundant confirmations,            provide encryption at rest and in transit, per-user access
+repeated greetings—degrades retrieval precision. A well-            scoping, automated PII redaction, configurable retention
+designed write path includes: filtering to reject low-signal        policies, and auditable deletion that removes data from every
+records, canonicalization to normalize dates, names, and            tier—including vector index entries and backup snapshots.
+quantities, deduplication to merge overlapping entries, pri-           When memories have leaked into fine-tuned weights, ex-
+ority scoring to rank records by task relevance and novelty,        ternal deletion is insufficient. Machine unlearning [Bour-
+and metadata tagging (timestamp, source, task label, confi-         toule et al., 2021, Liu et al., 2024b] is the only path, and
+dence) to support structured queries downstream.                    it remains far from production-ready. The intersection of
+   The optimal filtering threshold is application-specific.         agent memory governance and machine unlearning is an ur-
+A medical agent cannot afford false negatives (missing a            gent open problem.
+drug allergy mention); a casual chat assistant can toler-
+ate them. Between these extremes lies a spectrum: enter-            7.6    Three architecture patterns
+prise customer-support bots typically prioritize high recall
+for contractual commitments but accept lower recall for ca-         In practice, agent memory systems cluster into three recur-
+sual preferences, while financial advisory agents demand            ring patterns:
+near-perfect recall for regulatory disclosures but can afford          Pattern A: Monolithic context. All memory lives in-
+to forget informal chit-chat. The write-path design should be       side the prompt. Zero infrastructure, fully transparent, but
+informed by a risk analysis that maps memory failure modes          capacity-capped and prone to summarization drift. Suitable
+to their downstream consequences in the target domain.              for short-lived agents or rapid prototyping.
+
+
+                                                                9
+   Pattern B: Context + retrieval store. Working mem-                  8     Positioning Relative to Prior Sur-
+ory in the context window; long-term records in an external
+vector or structured store. A retrieval pipeline injects rele-
+                                                                             veys
+vant records each step. This is the workhorse pattern behind
+most production agents today: coding assistants, customer-             Xi et al. [Xi et al., 2023] and Wang et al. [Wang et al., 2024a]
+service bots, enterprise copilots. The engineering burden is           offer broad agent surveys in which memory is one module
+manageable; the main challenge is retrieval quality.                   among many. Zhang et al. [Zhang et al., 2024a] focus specif-
+   Pattern C: Tiered memory with learned control.                      ically on memory and organize their review around write–
+Multiple tiers—context, structured DB, vector store, cold              manage–read operations; our work updates their coverage
+archive—managed by a learned or prompted controller.                   with 2025–2026 systems (AgeMem, MemBench, Memo-
+MemGPT [Packer et al., 2024] and AgeMem [Yu et al.,                    ryAgentBench, MemoryArena), adds a POMDP-grounded
+2026] are exemplars. This pattern offers the most headroom             formulation, and extends the discussion to applications, en-
+but demands the most sophisticated engineering and train-              gineering patterns, and governance.
+ing.                                                                      Gao et al. [Gao et al., 2024] survey RAG comprehen-
+   Our recommendation: start with Pattern B, instrument it             sively, but their scope is the retrieval–generation pipeline,
+thoroughly, and graduate to Pattern C only when empirical              not agent-specific memory needs. Sumers et al. [Sumers
+data shows that learned control meaningfully improves your             et al., 2024] propose a cognitive architecture blueprint for
+target workload.                                                       language agents; our taxonomy is complementary, sharing
+                                                                       the cognitive science terminology but extending the analy-
+                                                                       sis to representational substrates and control policies.
+7.7    Observability and debugging
+                                                                          A question often raised is whether expanding context
+Memory systems are notoriously difficult to debug. When                windows—from 4k in early GPT models to 200k+ to-
+an agent gives a wrong answer, was the problem in retrieval            day [Chen et al., 2023]—makes external memory obsolete.
+(wrong records surfaced), in the write path (relevant in-              The evidence says no. Longer context enlarges working
+formation never stored), in compression (detail lost during            memory but does not provide persistent cross-session stor-
+summarization), or in the LLM’s reasoning over correctly               age, structured knowledge organization, selective retrieval
+retrieved content?                                                     from months of history, or governance mechanisms like
+   Production deployments benefit from comprehensive                   deletion and access control. Moreover, inference cost scales
+memory operation logging: every write, read, update, and               quadratically with context length, and Xu et al. [Xu et al.,
+delete should be recorded with timestamps, triggering con-             2024] show empirically that a modest context augmented
+text, and the records involved. Replay tools that let de-              with targeted retrieval outperforms brute-force long context
+velopers re-run a failed interaction with modified mem-                on many tasks.
+ory content are invaluable for root-cause analysis. Some
+teams have found that a simple “memory diff”—showing
+what changed in the memory store between two conversa-
+tion turns—provides more diagnostic value than traditional             9     Open Challenges
+log analysis.
+   This observability infrastructure is rarely discussed in re-        9.1    Principled consolidation
+search papers, but its absence is one of the primary reasons
+that impressive demo-stage memory systems fail to make                 Current systems oscillate between hoarding (store every-
+the transition to reliable production deployments.                     thing, drown in noise) and amnesia (compress aggressively,
+   Beyond debugging, memory observability also supports                lose rare but vital facts). Neuroscience offers a suggestive
+continuous improvement. By analyzing patterns in memory                model: during sleep, the hippocampus replays recent ex-
+operations—which types of records are retrieved most of-               periences, strengthening important traces and pruning the
+ten, which are written but never read, which retrieval queries         rest [Squire, 2004]. An analogous “offline consolidation”
+consistently return empty results—teams can identify bottle-           process—scheduled during idle periods—could provide a
+necks and calibrate their memory systems over time. This               principled balance. Open questions: how to estimate mem-
+feedback loop is standard in database engineering (query               ory importance without future-sight, how to detect when
+performance monitoring, index optimization) but is almost              consolidation is needed, and how to guarantee that safety-
+entirely absent in agent memory practice. Borrowing these              critical records survive the process.
+techniques, even in simplified form, would significantly im-              One concrete approach worth exploring is dual-buffer
+prove the reliability of deployed memory-augmented agents.             consolidation, where newly formed memories reside in a
+   A related concern is regression testing for memory be-              “hot” buffer during a probation period and are promoted
+havior. When a memory system is updated—say, a new em-                 to long-term storage only after passing quality checks—re-
+bedding model is deployed for the vector store—the effects             verification, deduplication, and importance scoring. This
+on retrieval quality are unpredictable and potentially sub-            mirrors the hippocampal-to-neocortical transfer observed in
+tle. Without a suite of regression tests that verify expected          biological memory [Squire, 2004], where new memories are
+memory behavior on representative scenarios, changes to                initially hippocampus-dependent and gradually become in-
+the memory subsystem become a source of untracked risk.                dependent through repeated reactivation. Implementing this
+Building such test suites requires ground-truth annotations            in an agent system would require defining the probation pe-
+of “which memories should be retrieved for which queries,”             riod, the promotion criteria, and the fallback behavior when
+an investment that pays dividends in system stability.                 the hot buffer overflows before promotion occurs.
+
+
+                                                                  10
+9.2    Causally grounded retrieval                                     9.6   Multi-agent memory governance
+Semantic similarity answers “what looks like this?” but not            Multi-agent systems raise questions that single-agent mem-
+“what caused this?” When an agent debugs a system failure,             ory never encounters: access control over shared stores, con-
+the relevant memory may be temporally distant and semanti-             sensus protocols for concurrent writes, and knowledge trans-
+cally dissimilar to the current error message yet causally up-         fer mechanisms between agents with different specializa-
+stream. Hybrid retrievers blending semantic similarity, tem-           tions. Current approaches rely on shared conversation logs
+poral ordering, causal graph traversal, and counterfactual             or document stores; more sophisticated designs—distributed
+relevance remain largely unexplored. Building them will re-            memory with merge semantics, hierarchical shared memory
+quire integrating causal discovery techniques with memory              with per-agent caches—remain wide open.
+indexing—technically challenging but potentially transfor-
+mative for complex reasoning tasks.
+   A concrete starting point would be to augment the stan-             9.7   Toward memory-efficient architectures
+dard vector index with a lightweight causal metadata layer.
+When storing a memory record, the agent could annotate                 Memory-augmented agents are expensive: large context
+it with an estimated causal parent—the earlier record or               windows, multiple retrieval calls per step, ever-growing
+event that precipitated it. At retrieval time, the system would        stores. Sparse retrieval (activating a tiny fraction of
+traverse these causal links alongside the standard similar-            the store per step), compressed session vectors, memory-
+ity search, surfacing records that are semantically distant            native architectures like Recurrent Memory Transform-
+but causally relevant. Such a system need not perform full             ers [Bulatov et al., 2022], and retrieval-free injection via
+causal inference; even approximate causal annotations, gen-            adapters [Modarressi et al., 2024] all point toward cheaper
+erated by the LLM at write time, could substantially improve           alternatives, though none has yet demonstrated strong agent-
+retrieval for reasoning-heavy tasks like root cause analysis,          level performance.
+counterfactual planning, and multi-step debugging.
+
+                                                                       9.8   Deeper neuroscience integration
+9.3    Trustworthy reflection
+                                                                       Current agent memory borrows cognitive science la-
+Self-reflection is a powerful adaptation mechanism that can            bels; deeper engagement could yield better mechanisms.
+also entrench mistakes. If the agent falsely concludes that            Spreading activation [Anderson, 1983]—where accessing
+“approach A always fails,” it will never test approach A               one memory primes related ones—could improve re-
+again—a classic confirmation bias. Future systems need                 trieval beyond direct similarity. Memory reconsolida-
+external validation (check reflections against ground truth            tion theory—retrieval renders a memory labile and subject
+when available), uncertainty quantification (decay confi-              to revision—could inform update mechanisms. Ebbing-
+dence over time without confirming evidence), adversarial              haus curves [Ebbinghaus, 1885], already used in Memory-
+probing (periodically challenge stored beliefs with coun-              Bank [Zhong et al., 2024], could be extended with spaced
+terexamples), and expiration policies (retire unvalidated re-          repetition to optimize reinforcement timing.
+flections after a set period).
+
+                                                                       9.9   Foundation models for memory manage-
+9.4    Learning to forget                                                    ment
+Forgetting is not a bug; it is a feature—essential for robust-         A longer-term vision: a foundation model for memory
+ness, privacy, and efficiency. Yet current systems handle it           control, trained across diverse agent tasks to perform
+crudely: hard time-based expiration, storage-limit eviction,           write, retrieve, summarize, forget, and consolidate opera-
+or nothing at all. The research problem is to learn selec-             tions with general competence—much as instruction-tuned
+tive forgetting policies that maximize long-term utility un-           LLMs [Ouyang et al., 2022] provide general language ca-
+der safety and compliance constraints. Connections to ma-              pabilities. AgeMem [Yu et al., 2026] takes a first step by
+chine unlearning [Bourtoule et al., 2021, Liu et al., 2024b]           learning memory management as a policy, but the vision of
+are critical when memories have influenced model behavior              a truly task-agnostic memory controller remains unrealized.
+through in-context learning or fine-tuning.                               Such a foundation model would need to handle a di-
+                                                                       verse distribution of memory challenges: short-term conver-
+                                                                       sational tracking, long-term user profiling, high-frequency
+9.5    Multimodal and embodied memory                                  tool-use logging, rare but safety-critical information reten-
+                                                                       tion, and graceful degradation when storage budgets are ex-
+As agents move into robotics and mixed-reality, memory                 hausted. The training data requirements are daunting—the
+must fuse text, vision, audio, proprioception, and tool state.         model would need exposure to thousands of agent trajec-
+JARVIS-1 [Wang et al., 2024b] provides an early example                tories across dozens of domains, with ground-truth labels
+in Minecraft, but real-world embodied settings add spatial             for memory operation quality. Generating this training data
+memory, real-time latency constraints, and the thorny prob-            synthetically, perhaps by having advanced LLMs retrospec-
+lem of cross-modal retrieval—finding a visual memory via               tively annotate which memory operations in historical traces
+a textual query, or vice versa.                                        were helpful or harmful, could bootstrap the process.
+
+
+                                                                  11
+9.10    Standardized evaluation                                       References
+The field still lacks a community-standard evaluation har-            Tom Brown, Benjamin Mann, Nick Ryder, Melanie Sub-
+ness. Each benchmark uses its own datasets, metrics,                    biah, Jared D. Kaplan, Prafulla Dhariwal, Arvind Nee-
+and protocols, making cross-paper comparison unreliable.                lakantan, Pranav Shyam, Girish Sastry, Amanda Askell,
+A GLUE-style shared leaderboard for agent memory—                       et al. Language models are few-shot learners. Advances in
+spanning conversational, agentic, and multi-session tracks,             Neural Information Processing Systems (NeurIPS), 2020.
+with standardized metrics from our four-layer stack—would
+substantially accelerate progress and reduce duplicated ef-           Josh Achiam, Steven Adler, Sandhini Agarwal, Lama Ah-
+fort.                                                                   mad, Ilge Akkaya, Florencia Leoni Aleman, Diogo
+                                                                        Almeida, Janko Altenschmidt, Sam Altman, Shyamal
+                                                                        Anadkat, et al. GPT-4 technical report. arXiv preprint
+                                                                        arXiv:2303.08774, 2023.
+10     Conclusion
+                                                                      Hugo Touvron, Thibaut Lavril, Gautier Izacard, Xavier Mar-
+Memory has moved from a peripheral add-on to the central                tinet, Marie-Anne Lachaux, Timothée Lacroix, Baptiste
+engineering and research challenge for LLM-based agents.                Rozière, Naman Goyal, Eric Hambro, Faisal Azhar, et al.
+The field has traversed three generations in rapid succes-              LLaMA: Open and efficient foundation language models.
+sion: prompt-level compression, retrieval-augmented exter-              arXiv preprint arXiv:2302.13971, 2023.
+nal stores, and end-to-end learned memory policies. Evalua-           Zeyu Zhang, Xiaohe Bo, Chen Ma, Rui Li, Xu Chen,
+tion has evolved in tandem—from static recall tests to multi-           Quanyu Dai, Jieming Zhu, Zhenhua Dong, and Ji-
+session agentic benchmarks that expose the gap between re-              Rong Wen. A survey on the memory mechanism of
+membering a fact and actually using it.                                 large language model based agents. arXiv preprint
+   This survey has offered a POMDP-grounded formaliza-                  arXiv:2404.13501, 2024a.
+tion, a three-axis taxonomy, a deep dive into five mech-
+anism families, a structured benchmark comparison, an                 Jason Weston, Sumit Chopra, and Antoine Bordes. Memory
+application-level analysis, and a practical engineering play-           networks. arXiv preprint arXiv:1410.3916, 2015.
+book. But the hardest problems remain ahead: how to con-
+                                                                      Sainbayar Sukhbaatar, Arthur Szlam, Jason Weston, and
+solidate without catastrophic loss, how to retrieve by cause
+                                                                        Rob Fergus. End-to-end memory networks. Advances in
+rather than similarity, how to reflect without entrenching er-
+                                                                        Neural Information Processing Systems (NeurIPS), 2015.
+rors, and how to forget safely. Solving these will determine
+whether the next generation of agents is merely impressive            Alex Graves, Greg Wayne, and Ivo Danihelka. Neural turing
+or genuinely reliable.                                                  machines. arXiv preprint arXiv:1410.5401, 2014.
+   If there is one takeaway from this survey, it is that mem-
+ory deserves the same level of engineering investment as the          Alex Graves, Greg Wayne, Malcolm Reynolds, Tim
+LLM itself. Model selection gets months of careful bench-               Harley, Ivo Danihelka, Agnieszka Grabska-Barwińska,
+marking; memory architecture often gets an afternoon. The               Sergio Gómez Colmenarejo, Edward Grefenstette, Tiago
+evidence reviewed here suggests that flipping this priority—            Ramalho, John Agapiou, et al. Hybrid computing using
+treating memory as a first-class system component worthy of             a neural network with dynamic external memory. Nature,
+dedicated design, testing, and optimization—may be the sin-             538:471–476, 2016.
+gle highest-leverage intervention available to agent builders         Yuhuai Wu, Markus N. Rabe, DeLesley Hutchins, and
+today.                                                                  Christian Szegedy. Memorizing transformers. arXiv
+                                                                        preprint arXiv:2203.08913, 2022.
+                                                                      Aydar Bulatov, Yuri Kuratov, and Mikhail Burtsev. Recur-
+Acknowledgments                                                         rent memory transformer. Advances in Neural Informa-
+                                                                        tion Processing Systems (NeurIPS), 2022.
+This manuscript targets Advanced Intelligent Systems. Au-
+thor, funding, and ethics metadata should be finalized before         Patrick Lewis, Ethan Perez, Aleksandra Piktus, Fabio
+submission.                                                             Petroni, Vladimir Karpukhin, Naman Goyal, Heinrich
+                                                                        Küttler, Mike Lewis, Wen tau Yih, Tim Rocktäschel, Se-
+                                                                        bastian Riedel, and Douwe Kiela. Retrieval-augmented
+                                                                        generation for knowledge-intensive NLP tasks.       In
+Conflict of Interest                                                    Advances in Neural Information Processing Systems
+                                                                        (NeurIPS), 2020.
+The authors declare no conflict of interest.
+                                                                      Sebastian Borgeaud, Arthur Mensch, Jordan Hoffmann,
+                                                                        Trevor Cai, Eliza Rutherford, Katie Millican, George
+                                                                        van den Driessche, Jean-Baptiste Lespiau, Bogdan
+Data Availability Statement                                             Damoc, Aidan Clark, Diego de Las Casas, et al. Im-
+                                                                        proving language models by retrieving from trillions of
+No primary data were generated in this study. All referenced            tokens. In Proceedings of the 39th International Confer-
+works are publicly available as cited.                                  ence on Machine Learning (ICML), 2022.
+
+
+                                                                 12
+Shunyu Yao, Jeffrey Zhao, Dian Yu, Nan Du, Izhak Shafran,           Richard C. Atkinson and Richard M. Shiffrin. Human mem-
+  Karthik Narasimhan, and Yuan Cao. ReAct: Synergizing                ory: A proposed system and its control processes. Psy-
+  reasoning and acting in language models. arXiv preprint             chology of Learning and Motivation, 2:89–195, 1968.
+  arXiv:2210.03629, 2022.
+                                                                    Endel Tulving. Episodic and semantic memory. Organiza-
+Noah Shinn, Federico Cassano, Edward Berman, Ashwin                   tion of Memory, pages 381–403, 1972.
+  Gopinath, Karthik Narasimhan, and Shunyu Yao. Reflex-
+  ion: Language agents with verbal reinforcement learning.          Alan Baddeley. The episodic buffer: A new component of
+  arXiv preprint arXiv:2303.11366, 2023.                              working memory? Trends in Cognitive Sciences, 4(11):
+                                                                      417–423, 2000.
+Joon Sung Park, Joseph C. O’Brien, Carrie J. Cai, Mered-
+  ith Ringel Morris, Percy Liang, and Michael S. Bernstein.         Larry R. Squire. Memory systems of the brain: A brief his-
+  Generative agents: Interactive simulacra of human behav-            tory and current perspective. Neurobiology of Learning
+  ior. In Proceedings of the 36th Annual ACM Symposium                and Memory, 82(3):171–177, 2004.
+  on User Interface Software and Technology (UIST), 2023.
+                                                                    Jason Wei, Xuezhi Wang, Dale Schuurmans, Maarten
+Charles Packer, Sarah Wooders, Kevin Lin, Vivian Fang,                Bosma, Brian Ichter, Fei Xia, Ed Chi, Quoc V. Le, and
+  Shishir G. Patil, Ion Stoica, and Joseph E. Gonzalez.               Denny Zhou. Chain-of-thought prompting elicits reason-
+  MemGPT: Towards LLMs as operating systems. arXiv                    ing in large language models. Advances in Neural Infor-
+  preprint arXiv:2310.08560, 2024.                                    mation Processing Systems (NeurIPS), 2022.
+
+Guanzhi Wang, Yuqi Xie, Yunfan Jiang, Ajay Mandlekar,               Vladimir Karpukhin, Barlas Oğuz, Sewon Min, Patrick
+  Chaowei Xiao, Yuke Zhu, Linxi Fan, and Anima Anand-                 Lewis, Ledell Wu, Sergey Edunov, Danqi Chen, and Wen
+  kumar. Voyager: An open-ended embodied agent with                   tau Yih. Dense passage retrieval for open-domain ques-
+  large language models. arXiv preprint arXiv:2305.16291,             tion answering. arXiv preprint arXiv:2004.04906, 2020.
+  2023a.
+                                                                    Jeff Johnson, Matthijs Douze, and Hervé Jégou. Billion-
+Chenxu Hu, Jie Fu, Chenzhuang Du, Simian Luo, Junbo                    scale similarity search with GPUs. IEEE Transactions on
+  Zhao, and Hang Zhao. ChatDB: Augmenting LLMs                         Big Data, 7(3):535–547, 2021.
+  with databases as their symbolic memory. arXiv preprint
+  arXiv:2306.03901, 2023.                                           Shaoxiong Ji, Shirui Pan, Erik Cambria, Pekka Marttinen,
+                                                                      and Philip S. Yu. A survey on knowledge graphs: Rep-
+Yi Yu, Liuyi Yao, Yuexiang Xie, Qingquan Tan, Jiaqi Feng,             resentation, acquisition, and applications. IEEE Transac-
+  Yaliang Li, and Libing Wu. Agentic memory: Learn-                   tions on Neural Networks and Learning Systems, 33(2):
+  ing unified long-term and short-term memory manage-                 494–514, 2022.
+  ment for large language model agents. arXiv preprint
+  arXiv:2601.01885, 2026.                                           Weizhi Wang, Li Dong, Hao Cheng, Xiaodong Liu, Xifeng
+                                                                     Yan, Jianfeng Gao, and Furu Wei. Augmenting language
+Zhiheng Xi, Wenxiang Chen, Xin Guo, Wei He, Yiwen                    models with long-term memory. In Advances in Neural
+  Ding, Boyang Hong, Ming Zhang, Junzhe Wang, Sen-                   Information Processing Systems (NeurIPS), 2023b.
+  jie Jin, Enyu Zhou, et al. The rise and potential of large
+  language model based agents: A survey. arXiv preprint             Andrew Zhao, Daniel Huang, Quentin Xu, Matthieu Lin,
+  arXiv:2309.07864, 2023.                                             Yong-Jin Liu, and Gao Huang. ExpeL: LLM agents are
+                                                                      experiential learners. Proceedings of the AAAI Confer-
+Lei Wang, Chen Ma, Xueyang Feng, Zeyu Zhang, Hao                      ence on Artificial Intelligence, 38, 2024.
+  Yang, Jingsen Zhang, Zhiyuan Chen, Jiakai Tang,
+  Xu Chen, Yankai Lin, Wayne Xin Zhao, Zhewei Wei, and              Wanjun Zhong, Lianghong Guo, Qiqi Gao, He Ye, and Yan-
+  Ji-Rong Wen. A survey on large language model based                lin Wang. MemoryBank: Enhancing large language mod-
+  autonomous agents. Frontiers of Computer Science, 18               els with long-term memory. Proceedings of the AAAI
+  (6):186345, 2024a.                                                 Conference on Artificial Intelligence, 38, 2024.
+
+Haoran Tan, Zeyu Zhang, Chen Ma, Xu Chen, Quanyu Dai,               Adyasha Maharana, Dong-Ho Lee, Sergey Tulyakov, Mohit
+  and Zhenhua Dong. MemBench: Towards more compre-                    Bansal, Francesco Barbieri, and Yuwei Fang. Evaluating
+  hensive evaluation on the memory of LLM-based agents.               very long-term conversational memory of LLM agents.
+  arXiv preprint arXiv:2506.21605, 2025.                              arXiv preprint arXiv:2402.17753, 2024.
+
+Yuanzhe Hu, Yu Wang, and Julian McAuley. Evaluating                 Xinnian Liang, Bing Wang, Hui Huang, Shuangzhi Wu,
+  memory in LLM agents via incremental multi-turn inter-              Peihao Wu, Lu Lu, Zejun Ma, and Zhoujun Li. Un-
+  actions. arXiv preprint arXiv:2507.05257, 2025.                     leashing infinite-length input capacity for large-scale lan-
+                                                                      guage models with self-controlled memory system. arXiv
+Zexue He, Yu Wang, Churan Zhi, Yuanzhe Hu, Tzu-Ping                   preprint arXiv:2304.13343, 2023.
+  Chen, Lang Yin, Ze Chen, Tong Arthur Wu, Siru Ouyang,
+  Zihan Wang, Jiaxin Pei, Julian McAuley, Yejin Choi,               Shouyuan Chen, Sherman Wong, Liangjian Chen, and
+  and Alex Pentland. MemoryArena: Benchmarking agent                  Yuandong Tian. Extending context window of large lan-
+  memory in interdependent multi-session agentic tasks.               guage models via positional interpolation. arXiv preprint
+  arXiv preprint arXiv:2602.16313, 2026.                              arXiv:2306.15595, 2023.
+
+
+                                                               13
+Akari Asai, Zeqiu Wu, Yizhong Wang, Avirup Sil, and Han-               applications via multi-agent conversation. arXiv preprint
+  naneh Hajishirzi. Self-RAG: Learning to retrieve, gen-               arXiv:2308.08155, 2023.
+  erate, and critique through self-reflection. arXiv preprint
+  arXiv:2310.11511, 2024.                                            Guohao Li, Hasan Abed Al Kader Hammoud, Hani Itani,
+                                                                       Dmitrii Khizbullin, and Bernard Ghanem. CAMEL:
+Jad Raad, Xian Li, Peter West, and Yejin Choi. Scal-                   Communicative agents for “mind” exploration of large
+  ing retrieval-based language models with a trillion-token            language model society. Advances in Neural Information
+  datastore. arXiv preprint arXiv:2407.12854, 2024.                    Processing Systems (NeurIPS), 2024.
+Jianlv Sun, Zihao Shi, Simeng Han, Chuang Gan, and Yilun
+                                                                     Ceyao Zhang, Kaijie Yang, Siyi Du, Xuewei Guo, Yulin
+   Du. RET-LLM: Towards a general read-write memory for
+                                                                       Chen, Yao Huang, Haonan Li, Kunlun Zhu, Zhe Zheng,
+   large language models. arXiv preprint arXiv:2305.14322,
+                                                                       Haoqi Fan, Jiaqi Li, Yu Song, Yiwen Sun, and Sirui Hong.
+   2024.
+                                                                       ProAgent: Building proactive cooperative agents with
+Lei Liu, Xiaoyan Yang, Yue Shen, Binbin Hu, Zhiqiang                   large language models. Proceedings of the AAAI Con-
+  Zhang, Jinjie Gu, and Jun Zhou. Think-in-memory: Re-                 ference on Artificial Intelligence, 38, 2024b.
+  calling and post-thinking enable LLMs with long-term
+  memory. arXiv preprint arXiv:2311.08719, 2024a.                    Timo Schick, Jane Dwivedi-Yu, Roberto Dessì, Roberta
+                                                                       Raileanu, Maria Lomeli, Luke Zettlemoyer, Nicola Can-
+Zihao Wang, Shaofei Cai, Anji Liu, Yonggang Jin, Jinbing               cedda, and Thomas Scialom. Toolformer: Language
+  Hou, Bowei Zhang, Haowei Lin, Zhaofeng He, Zilong                    models can teach themselves to use tools. Advances in
+  Zheng, Yaodong Yang, Xiaojian Ma, and Yitao Liang.                   Neural Information Processing Systems (NeurIPS), 2024.
+  JARVIS-1: Open-world multi-task agents with memory-
+  augmented multimodal language models. arXiv preprint               Xiao Liu, Hao Yu, Hanchen Zhang, Yifan Xu, Xuanyu Lei,
+  arXiv:2311.05997, 2024b.                                             Hanyu Lai, Yu Gu, Hangliang Ding, Kaiwen Men, Kejuan
+                                                                       Yang, et al. AgentBench: Evaluating LLMs as agents.
+Theodore R. Sumers, Shunyu Yao, Karthik Narasimhan, and                arXiv preprint arXiv:2308.03688, 2023.
+  Thomas L. Griffiths. Cognitive architectures for language
+  agents. Transactions on Machine Learning Research,                 Varun Nair, Elliot Schumacher, Geoffrey Tso, and Anitha
+  2024.                                                                Kannan. DERA: Enhancing large language model com-
+                                                                       pletions with dialog-enabled resolving agents. arXiv
+Ali Modarressi, Aber Rizvi, Mehdi Rezagholizadeh, and
+                                                                       preprint arXiv:2303.17071, 2023.
+  Pascal Poupart.     MemLLM: Finetuning LLMs to
+  use an explicit read-write memory.   arXiv preprint
+                                                                     Shunyu Yao, Dian Yu, Jeffrey Zhao, Izhak Shafran,
+  arXiv:2404.11672, 2024.
+                                                                       Thomas L. Griffiths, Yuan Cao, and Karthik Narasimhan.
+Wanjun Zhong, Lianghong Guo, Qiqi Gao, He Ye, and Yan-                 Tree of thoughts: Deliberate problem solving with large
+ lin Wang. Training language models with memory aug-                   language models. Advances in Neural Information Pro-
+ mentation. arXiv preprint arXiv:2205.12674, 2022.                     cessing Systems (NeurIPS), 2024.
+
+Hermann Ebbinghaus. Über das gedächtnis: Untersuchun-                Peng Xu, Wei Ping, Xianchao Wu, Lawrence McAfee, Chen
+  gen zur experimentellen psychologie. Leipzig: Duncker                Zhu, Zihan Liu, Sandeep Subramanian, Evelina Bakh-
+  & Humblot, 1885.                                                     turina, Mohammad Shoeybi, and Bryan Catanzaro. Re-
+                                                                       trieval meets long context large language models. arXiv
+Chen Qian, Xin Cong, Cheng Yang, Weize Chen, Yusheng                   preprint arXiv:2310.03025, 2024.
+  Su, Juyuan Xu, Zhiyuan Liu, and Maosong Sun. Chat-
+  Dev: Communicative agents for software development.                Lucas Bourtoule, Varun Chandrasekaran, Christopher A.
+  arXiv preprint arXiv:2307.07924, 2024.                               Choquette-Choo, Henning Brendel, Milad Nasr, Matthew
+Sirui Hong, Mingchen Zhuge, Jonathan Chen, Xiawu                       Hoover, Barbara Fung, Dimitris Papadopoulos, Chiyuan
+  Zheng, Yuheng Cheng, Ceyao Zhang, Jinlin Wang, Zili                  Zhang, Adelin Travers, et al. Machine unlearning. IEEE
+  Wang, Steven Ka Shing Yau, Zijuan Lin, et al. MetaGPT:               Symposium on Security and Privacy, 2021.
+  Meta programming for a multi-agent collaborative frame-
+                                                                     Zheyuan Liu, Guangyao Dou, Zhaoxuan Tan, Yijun
+  work. arXiv preprint arXiv:2308.00352, 2024.
+                                                                       Tian, and Meng Jiang. Towards safer large language
+Xizhou Zhu, Yuntao Chen, Hao Tian, Chenxin Tao, Weijie                 models through machine unlearning. arXiv preprint
+  Su, Chenyu Yang, Gao Huang, Bin Li, Lewei Lu, Xi-                    arXiv:2402.10058, 2024b.
+  aogang Wang, Yu Qiao, Zhaoxiang Zhang, and Jifeng
+  Dai. Ghost in the minecraft: Generally capable agents              Yunfan Gao, Yun Xiong, Xinyu Gao, Kangxiang Jia, Jin-
+  for open-world environments via large language models                liu Pan, Yuxi Bi, Yi Dai, Jiawei Sun, and Haofen Wang.
+  with text-based knowledge and memory. arXiv preprint                 Retrieval-augmented generation for large language mod-
+  arXiv:2305.17144, 2023.                                              els: A survey. arXiv preprint arXiv:2312.10997, 2024.
+
+Qingyun Wu, Gagan Bansal, Jieyu Zhang, Yiran Wu, Beibin              John R. Anderson. A spreading activation theory of mem-
+  Li, Erkang Zhu, Li Jiang, Xiaoyun Zhang, Shaokun                     ory. Journal of Verbal Learning and Verbal Behavior, 22
+  Zhang, Jiale Liu, et al. AutoGen: Enabling next-gen LLM              (3):261–295, 1983.
+
+
+                                                                14
+Long Ouyang, Jeff Wu, Xu Jiang, Diogo Almeida, Car-
+  roll L. Wainwright, Pamela Mishkin, Chong Zhang, Sand-
+  hini Agarwal, Katarina Slama, Alex Ray, et al. Training
+  language models to follow instructions with human feed-
+  back. Advances in Neural Information Processing Sys-
+  tems (NeurIPS), 2022.
+
+
+
+
+                                                            15
+

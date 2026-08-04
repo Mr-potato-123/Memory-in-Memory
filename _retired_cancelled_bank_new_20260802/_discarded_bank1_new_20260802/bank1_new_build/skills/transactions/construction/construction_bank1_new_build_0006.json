@@ -1,0 +1,455 @@
+{
+  "batch": {
+    "batch_id": "construction_bank1_new_build_0006",
+    "side": "construction",
+    "base_bank_version": "v001",
+    "candidates": [
+      {
+        "candidate_id": "cand_construction_8522ab4dbce6",
+        "skill_id": "sk_construction_bdcdf01cea",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "ExtractUserItemDescriptions",
+          "description": "When a user shares a photo or link and adds a qualitative description of an owned object, pet, or recent purchase, during extraction create a memory candidate for the description before judging it trivial.",
+          "content": [
+            "During candidate extraction, treat short evaluative statements about the user's own items (e.g., new purchases, pets, home improvements) as memory candidates even when they accompany a photo or casual message.",
+            "Extract the description as a preference or state fact only if it conveys a durable quality or opinion the user would want recalled (e.g., 'super cozy and comfy').",
+            "Skip statements that are temporary, purely conversational, or not tied to a concrete object the user owns or uses; do not expand one mention into multiple memories."
+          ]
+        },
+        "solves": "General failure mechanism: the construction pipeline skips extraction for user messages that attach a brief qualitative description to an image or link, so durable evaluative facts about owned items are never persisted. Applies to future sessions where a user posts a photo of an object, pet, or purchase and states its qualities in the same message. Does not apply to ordinary statements already covered by base extraction, to purely conversational feedback without a durable object, or to temporary states such as 'it is warm today'.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-44_conv-44_qa_0092",
+        "source_failure_id": "cons_conv-44_conv-44_qa_0092",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:39:43Z"
+      },
+      {
+        "candidate_id": "cand_construction_86b7f7587ddc",
+        "skill_id": "sk_construction_70729e2a6b",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Separate speaker and pet facts during extraction",
+          "description": "When a user message describes both the speaker and their pet(s)' or animal(s)' distinct reactions, preferences, or behaviors, use separate memory candidates per subject and attribute each fact to the entity that actually experienced it.",
+          "content": [
+            "During extraction, if a message states facts about the speaker and also about their pet(s) or animal(s), create separate candidate memories for each subject instead of merging them into a single profile memory.",
+            "Attribute reactions, preferences, and behaviors to the subject that experiences them: the pet's reaction belongs to the pet, the owner's preference belongs to the owner.",
+            "During ADD/UPDATE/MERGE, preserve subject-specific facts as distinct memory entries; do not collapse pet and owner facts into one profile memory. Only split the stated facts by subject; do not infer additional facts."
+          ]
+        },
+        "solves": "Extraction sometimes merges facts about the speaker and their pets into one memory, dropping pet-specific reactions and misattributing preferences, so later questions about the pet cannot be answered. This Skill applies when a future message states distinct reactions, preferences, or behaviors for both the speaker and their pet(s) or animal(s). It does not apply when a message describes only the speaker or only the pet.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-44_conv-44_qa_0107",
+        "source_failure_id": "cons_conv-44_conv-44_qa_0107",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:39:54Z"
+      },
+      {
+        "candidate_id": "cand_construction_9930f251df2a",
+        "skill_id": "sk_construction_ec54289a40",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "RecordFamilyPetOwnership",
+          "description": "When a speaker mentions a pet as belonging to their family or household (e.g., 'my family's dog'), create a state memory of that ownership during extraction.",
+          "content": [
+            "During extraction, when a message includes a possessive reference to a family pet (e.g., 'my family's dog', 'our cat', or a photo caption like 'here's my family's dog'), generate a candidate state memory that the speaker's family has that pet. Include pet type and name if stated.",
+            "Do not extract when the pet is hypothetical, explicitly belongs to someone outside the speaker's family, or when the ownership fact is already captured in an existing memory."
+          ]
+        },
+        "solves": "The extraction stage missed an implicit durable fact when a speaker casually mentioned a family pet (e.g., 'here's a photo of my family's dog'), leaving no memory to answer later questions about that speaker's pets. Apply when a future message contains a possessive reference to a pet owned by the speaker's family, from any speaker, to generate a concise state memory with pet type and name if stated. Do not apply to hypothetical pets, pets explicitly belonging outside the speaker's family, or passages where the speaker's pet experience is already described explicitly.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-44_conv-44_qa_0024",
+        "source_failure_id": "cons_conv-44_conv-44_qa_0024",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:39:48Z"
+      },
+      {
+        "candidate_id": "cand_construction_9b10fbfae352",
+        "skill_id": "sk_construction_cfca21c151",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Extract explicit user relationship statements",
+          "description": "When a user explicitly states what an entity means to them (e.g., 'feel like family', 'is my best friend'), create a preference or relationship memory candidate before deciding no fact was stated.",
+          "content": [
+            "During extraction, treat first-person statements assigning personal meaning or relationship to an entity (e.g., 'pets feel like family') as durable preference/relationship facts; produce a candidate even if the sentence is phrased with the entity as subject.",
+            "Do not extract general world statements (e.g., 'dogs are loyal') or transient opinions (e.g., 'this movie is great') as user memories."
+          ]
+        },
+        "solves": "Extraction often misses memory-worthy facts when a user states a lasting personal view in an indirect phrasing, such as 'pets feel like family', because the subject is the object rather than the user. This Skill applies when a future session contains an explicit statement of how the user values or categorizes an entity and no candidate was extracted, ensuring a preference/relationship memory is written. It must not apply to generic factual claims about the world or one-off opinions that do not express a durable personal relationship.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-44_conv-44_qa_0048",
+        "source_failure_id": "cons_conv-44_conv-44_qa_0048",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:39:26Z"
+      },
+      {
+        "candidate_id": "cand_construction_b20d0d223d24",
+        "skill_id": "sk_construction_de18ff2dae",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Extract explicit relationship-identity statements during extraction",
+          "description": "When a user explicitly states how they view someone or something (e.g., 'pets are family', 'she is my best friend'), during construction extraction capture that framing as a profile or relationship memory, even if the message also has activity or photo details.",
+          "content": [
+            "During extraction, if a message contains an explicit statement of how the speaker views a person, pet, or thing (e.g., 'pets are family', 'she is my best friend'), always create a profile or relationship memory capturing that framing, even when the same message also describes activities or shared photos.",
+            "When a later message repeats the same relational framing for an already-known subject (e.g., 'my little family'), prefer confirming/merging into the existing profile memory rather than creating a new activity-only memory.",
+            "Stop after capturing the explicit relational claim; do not enumerate every sentiment or opinion in the message."
+          ]
+        },
+        "solves": "The general failure is that explicit self-declarations of relationship or identity framing are omitted when the same message also contains concrete activities or photo-sharing, leaving memories that describe events but not the user's stated view. This skill applies whenever a future message contains a direct statement such as 'X is/are family' or 'I view Y as Z', including repeated references like 'my little family'. It must not apply to messages that only describe activities or photos without an explicit relational claim, where the base extraction is sufficient.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-44_conv-44_qa_0049",
+        "source_failure_id": "cons_conv-44_conv-44_qa_0049",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:39:20Z"
+      },
+      {
+        "candidate_id": "cand_construction_bacff9e011f2",
+        "skill_id": "sk_construction_e35e59c4cd",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "PreserveExactObjectNounDuringExtraction",
+          "description": "When extracting an event memory that mentions a gift or object being given or received, use the exact noun the speaker used for that object (e.g., 'pup', not 'stuffed animal'); do not replace it with a different category or an invented item.",
+          "content": [
+            "During extraction, when a message explicitly names a concrete object or gift (e.g., 'pup', 'ring', 'book') given or received, record that exact noun in the candidate memory; do not replace it with a different object type, hypernym, or invented item.",
+            "If the object is only referenced vaguely (pronoun, metaphor, or no explicit noun), do not guess the object type; either omit it or mark it as unclear based on surrounding evidence."
+          ]
+        },
+        "solves": "General failure: extraction replaces a concrete object noun from the source (e.g., 'pup') with a plausible but incorrect category (e.g., 'stuffed animal'), losing the evidence. Applies when a message explicitly names an object or gift given/received; preserve the literal noun in the memory candidate. Not for messages with ambiguous pronouns or metaphors needing inference.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-42_conv-42_qa_0051",
+        "source_failure_id": "cons_conv-42_conv-42_qa_0051",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:37:24Z"
+      },
+      {
+        "candidate_id": "cand_construction_d123b75844e2",
+        "skill_id": "sk_construction_4ad60ab7ac",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Resolve pronoun antecedents before assigning memory subject",
+          "description": "When extracting memories from a message that mentions a person and their pets or another group, and later uses 'they'/'them', attribute the claim to the group, not the person; split merged claims by subject.",
+          "content": [
+            "During extraction, identify every entity mentioned in the message (speaker, pets, family, colleagues, etc.) before assigning a memory subject. If the subject of a claim is a pronoun, resolve it to the most recent matching antecedent in the same message; do not default it to the speaker.",
+            "When a speaker says their pets (or another group) 'they' do or prefer something, create a separate candidate whose subject is the pets/group, and do not merge that claim with a candidate about the speaker.",
+            "If a candidate would combine claims with different subjects, split it so each memory has exactly one subject and remains evidence-bound to the source message."
+          ]
+        },
+        "solves": "During extraction, a message that mentions both a person and their pets (or another group) can yield a single merged candidate where a plural pronoun such as 'they' is misassigned to the person, so the pet's preference is recorded as the owner's. This Skill applies when a future message introduces multiple referents and then uses a plural pronoun that refers to the non-human or non-speaker group; the extractor must resolve the antecedent and keep each subject's claim as its own memory. It does not apply when the pronoun unambiguously refers to the speaker or when only one subject is present.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-44_conv-44_qa_0108",
+        "source_failure_id": "cons_conv-44_conv-44_qa_0108",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:40:06Z"
+      },
+      {
+        "candidate_id": "cand_construction_d8b2ade1694f",
+        "skill_id": "sk_construction_4b887939b5",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Extract nickname relationships from direct address",
+          "description": "When a message contains a person being addressed by a nickname, diminutive, or shortened name with the full name identifiable from context, extract a relationship memory for the nickname.",
+          "content": [
+            "During extraction, when a speaker addresses or refers to a person by a nickname or shortened form of the person's name, and the full name is identifiable from the same message, recent context, or existing memory, also create a `relationship` candidate recording that the speaker uses that nickname for the person.",
+            "Keep the nickname relationship separate from any event or state candidates in the same message; do not fold it into the event memory.",
+            "Do not extract a nickname when the referenced name is the person's full proper name, a title, or an ambiguous placeholder that cannot be confidently linked to a known individual."
+          ]
+        },
+        "solves": "Construction extraction overlooks nickname/alias relationships when a salient event in the same message dominates, leaving 'what nickname' questions unanswerable. This applies to future sessions where a known person is called by a nickname or shortened name and the full name is clearly resolvable, requiring a separate relationship memory. It does not apply to full proper names, titles, or ambiguous terms, where base extraction is already adequate.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-42_conv-42_qa_0014",
+        "source_failure_id": "cons_conv-42_conv-42_qa_0014",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:37:13Z"
+      },
+      {
+        "candidate_id": "cand_construction_ef9a794e1a10",
+        "skill_id": "sk_construction_451d458750",
+        "version": 1,
+        "side": "construction",
+        "payload": {
+          "name": "Extract same-item confirmation replies",
+          "description": "When a speaker replies to another person's description of a possession or attribute with an explicit confirmation that they also have the same item (e.g., 'I also have...', 'I have one too'), create a candidate memory for that speaker during extraction.",
+          "content": [
+            "During extraction, identify turns where the speaker explicitly confirms possessing the same kind of item or attribute that the previous speaker described (e.g., 'I also have a pendant', 'I have one too', 'me too').",
+            "Create a candidate memory for the current speaker (not the previous speaker) recording that they possess that item/attribute; use `state` for a current possession, or `event` when the speaker adds origin or time details.",
+            "Do not copy attributes, origins, or symbolic meanings from the previous speaker's description unless the current speaker states them; record only what the current speaker says.",
+            "Do not extract when the reply only acknowledges or comments on the other's item without claiming the same item for the speaker (e.g., 'That sounds nice')."
+          ]
+        },
+        "solves": "Extraction skips short replies where a speaker confirms they also have an item/attribute just described by another, leaving the speaker's fact unrecorded. Applies during extraction when a turn explicitly claims the same item for the speaker (e.g., 'I also have...', 'I have one too') after another's description; create a candidate for the current speaker. Not for mere acknowledgements or first introductions.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "cons_conv-48_conv-48_qa_0006",
+        "source_failure_id": "cons_conv-48_conv-48_qa_0006",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T00:46:34Z"
+      }
+    ],
+    "retrieved_skill_ids": [],
+    "relations": []
+  },
+  "plan": {
+    "transaction_id": "tx_construction_bank1_new_build_0006",
+    "side": "construction",
+    "base_bank_version": "v001",
+    "candidate_resolutions": [
+      {
+        "candidate_id": "cand_construction_8522ab4dbce6",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_construction_extract_item_descriptions"
+        ],
+        "reason": "No existing Skill covers extracting qualitative descriptions of owned items from photo/link messages."
+      },
+      {
+        "candidate_id": "cand_construction_86b7f7587ddc",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_construction_separate_subject_facts"
+        ],
+        "reason": "No existing Skill covers separating speaker and pet facts into distinct memories."
+      },
+      {
+        "candidate_id": "cand_construction_9930f251df2a",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_construction_record_family_pet_ownership"
+        ],
+        "reason": "No existing Skill covers extracting family pet ownership from possessive references."
+      },
+      {
+        "candidate_id": "cand_construction_9b10fbfae352",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_extract_relationship_framing"
+        ],
+        "reason": "Merged with cand_construction_b20d0d223d24 because both repair the same mechanism of extracting explicit relationship/identity statements."
+      },
+      {
+        "candidate_id": "cand_construction_b20d0d223d24",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_construction_extract_relationship_framing"
+        ],
+        "reason": "Creates one Skill for extracting explicit relationship/identity statements."
+      },
+      {
+        "candidate_id": "cand_construction_bacff9e011f2",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_construction_preserve_exact_object_noun"
+        ],
+        "reason": "No existing Skill covers preserving exact object nouns during extraction."
+      },
+      {
+        "candidate_id": "cand_construction_d123b75844e2",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_construction_separate_subject_facts"
+        ],
+        "reason": "Merged with cand_construction_86b7f7587ddc because both repair the same mechanism of separating facts by subject and resolving pronoun antecedents."
+      },
+      {
+        "candidate_id": "cand_construction_d8b2ade1694f",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_construction_extract_nickname_relationships"
+        ],
+        "reason": "No existing Skill covers extracting nickname relationships from direct address."
+      },
+      {
+        "candidate_id": "cand_construction_ef9a794e1a10",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_construction_extract_same_item_confirmation"
+        ],
+        "reason": "No existing Skill covers extracting same-item confirmation replies."
+      }
+    ],
+    "operations": [
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_extract_item_descriptions",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Extract User Item Descriptions",
+        "description": "When a user shares a photo or link and adds a qualitative description of an owned object, pet, or recent purchase, create a memory candidate for the description.",
+        "content": [
+          "During candidate extraction, treat short evaluative statements about the user's own items (e.g., new purchases, pets, home improvements) as memory candidates even when they accompany a photo or casual message.",
+          "Extract the description as a preference or state fact only if it conveys a durable quality or opinion the user would want recalled (e.g., 'super cozy and comfy').",
+          "Skip statements that are temporary, purely conversational, or not tied to a concrete object the user owns or uses; do not expand one mention into multiple memories."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_8522ab4dbce6"
+        ],
+        "reason": "Creating Skill for extracting item descriptions from photo/link messages.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_separate_subject_facts",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Separate Facts by Subject",
+        "description": "When a message describes both the speaker and their pets or another group, create separate memory candidates per subject and resolve pronoun antecedents correctly.",
+        "content": [
+          "During extraction, identify every entity mentioned in the message (speaker, pets, family, colleagues, etc.) before assigning a memory subject.",
+          "If the subject of a claim is a pronoun, resolve it to the most recent matching antecedent in the same message; do not default it to the speaker.",
+          "When a speaker says their pets (or another group) 'they' do or prefer something, create a separate candidate whose subject is the pets/group, and do not merge that claim with a candidate about the speaker.",
+          "If a candidate would combine claims with different subjects, split it so each memory has exactly one subject and remains evidence-bound to the source message."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_86b7f7587ddc",
+          "cand_construction_d123b75844e2"
+        ],
+        "reason": "Creating merged Skill for separating facts by subject and resolving pronouns.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_record_family_pet_ownership",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Record Family Pet Ownership",
+        "description": "When a speaker mentions a pet as belonging to their family or household, create a state memory of that ownership during extraction.",
+        "content": [
+          "During extraction, when a message includes a possessive reference to a family pet (e.g., 'my family's dog', 'our cat', or a photo caption like 'here's my family's dog'), generate a candidate state memory that the speaker's family has that pet. Include pet type and name if stated.",
+          "Do not extract when the pet is hypothetical, explicitly belongs to someone outside the speaker's family, or when the ownership fact is already captured in an existing memory."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_9930f251df2a"
+        ],
+        "reason": "Creating Skill for extracting family pet ownership.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_extract_relationship_framing",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Extract Relationship Framing Statements",
+        "description": "When a user explicitly states how they view someone or something (e.g., 'pets are family', 'she is my best friend'), create a preference or relationship memory candidate.",
+        "content": [
+          "During extraction, treat first-person statements assigning personal meaning or relationship to an entity (e.g., 'pets feel like family') as durable preference/relationship facts; produce a candidate even if the sentence is phrased with the entity as subject.",
+          "If a message contains an explicit statement of how the speaker views a person, pet, or thing (e.g., 'pets are family', 'she is my best friend'), always create a profile or relationship memory capturing that framing, even when the same message also describes activities or shared photos.",
+          "When a later message repeats the same relational framing for an already-known subject (e.g., 'my little family'), prefer confirming/merging into the existing profile memory rather than creating a new activity-only memory.",
+          "Stop after capturing the explicit relational claim; do not enumerate every sentiment or opinion in the message. Do not extract general world statements (e.g., 'dogs are loyal') or transient opinions (e.g., 'this movie is great') as user memories."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_9b10fbfae352",
+          "cand_construction_b20d0d223d24"
+        ],
+        "reason": "Creating merged Skill for extracting relationship framing statements.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_preserve_exact_object_noun",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Preserve Exact Object Noun",
+        "description": "When extracting an event memory that mentions a gift or object being given or received, use the exact noun the speaker used for that object.",
+        "content": [
+          "During extraction, when a message explicitly names a concrete object or gift (e.g., 'pup', 'ring', 'book') given or received, record that exact noun in the candidate memory; do not replace it with a different object type, hypernym, or invented item.",
+          "If the object is only referenced vaguely (pronoun, metaphor, or no explicit noun), do not guess the object type; either omit it or mark it as unclear based on surrounding evidence."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_bacff9e011f2"
+        ],
+        "reason": "Creating Skill for preserving exact object nouns.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_extract_nickname_relationships",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Extract Nickname Relationships",
+        "description": "When a message contains a person being addressed by a nickname, diminutive, or shortened name with the full name identifiable from context, extract a relationship memory for the nickname.",
+        "content": [
+          "During extraction, when a speaker addresses or refers to a person by a nickname or shortened form of the person's name, and the full name is identifiable from the same message, recent context, or existing memory, also create a `relationship` candidate recording that the speaker uses that nickname for the person.",
+          "Keep the nickname relationship separate from any event or state candidates in the same message; do not fold it into the event memory.",
+          "Do not extract a nickname when the referenced name is the person's full proper name, a title, or an ambiguous placeholder that cannot be confidently linked to a known individual."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_d8b2ade1694f"
+        ],
+        "reason": "Creating Skill for extracting nickname relationships.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_construction_extract_same_item_confirmation",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Extract Same-Item Confirmation Replies",
+        "description": "When a speaker replies to another person's description of a possession or attribute with an explicit confirmation that they also have the same item, create a candidate memory for that speaker.",
+        "content": [
+          "During extraction, identify turns where the speaker explicitly confirms possessing the same kind of item or attribute that the previous speaker described (e.g., 'I also have a pendant', 'I have one too', 'me too').",
+          "Create a candidate memory for the current speaker (not the previous speaker) recording that they possess that item/attribute; use `state` for a current possession, or `event` when the speaker adds origin or time details.",
+          "Do not copy attributes, origins, or symbolic meanings from the previous speaker's description unless the current speaker states them; record only what the current speaker says.",
+          "Do not extract when the reply only acknowledges or comments on the other's item without claiming the same item for the speaker (e.g., 'That sounds nice')."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "construction",
+        "source_candidate_ids": [
+          "cand_construction_ef9a794e1a10"
+        ],
+        "reason": "Creating Skill for extracting same-item confirmation replies.",
+        "hard_delete": false
+      }
+    ]
+  },
+  "status": "planned"
+}

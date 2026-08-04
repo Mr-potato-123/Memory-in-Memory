@@ -1,0 +1,965 @@
+{
+  "schema_version": "access_diagnosis_v3",
+  "diagnosis_id": "access_conv-49_conv-49_qa_0050",
+  "diagnosis_type": "ACCESS_FAILURE",
+  "status": "completed",
+  "judge_run_id": "judge",
+  "diagnosis_run_id": "bank1_train_flash",
+  "source_runtime_run": "conv-49",
+  "conversation_id": "conv-49",
+  "qa_id": "conv-49_qa_0050",
+  "snapshot_commit_id": 25,
+  "question": "What kind of hobbies does Evan pursue?",
+  "reference_answer": "painting, hiking, reading books, biking, skiing, snowboarding, ice skating, swimming, camping, kayaking",
+  "problem_found": true,
+  "reason": "The current related memories contain explicit mentions of Evan's hobbies: painting (mem_conv-49_0004_v1), hiking (mem_conv-49_0001_v1, mem_conv-49_0030_v1), reading (mem_conv-49_0020_v1), biking (mem_conv-49_0030_v1), winter sports (mem_conv-49_0045_v1), swimming (mem_conv-49_0048_v1), and camping/kayaking (mem_conv-49_0140_v1). These directly support the reference answer claims.",
+  "confidence": 1.0,
+  "review_required": false,
+  "skill_trace": {
+    "trace_id": "skilltrace_access_conv-49_conv-49_conv-49_qa_0050",
+    "side": "access",
+    "bank_version": "bank1",
+    "query": "What kind of hobbies does Evan pursue?",
+    "top_k": 2,
+    "disclose_k": 5,
+    "min_score": 0.2,
+    "scored_fields": [
+      "name",
+      "description"
+    ],
+    "scoring_weights": {
+      "semantic": 0.7,
+      "bm25": 0.3
+    },
+    "retrieval_method": "bank1_hybrid_router",
+    "candidate_k": 10,
+    "reranker": "bank1_applicability_router",
+    "reranker_error": "",
+    "selected": [
+      {
+        "skill_id": "sk_access_hobby_activity_retrieval",
+        "version_id": "sk_access_hobby_activity_retrieval_v1",
+        "rank": 1,
+        "score": 0.5306130647659302,
+        "semantic_score": 0.32944726943969727,
+        "lexical_score": 1.0,
+        "name": "Hobby and Activity Retrieval",
+        "description": "Use when a question asks about hobbies, activities, or what someone does to keep busy, relax, or as a hobby, especially during recovery or when the memory uses indirect phrasing.",
+        "content": [
+          "When asked about hobbies or activities, run multiple searches using varied phrasings: 'hobby', 'interested in', 'enjoys', 'wants to try', 'started taking', 'attending class', 'recreation', 'activity', 'keep busy', 'pass the time'.",
+          "Include memory kinds preference, event, and plan; activities are often stored as enjoyed routines, planned sessions, or class attendance rather than as a hobby list.",
+          "If the question involves a recovery or illness period, run a separate hobby-focused search without requiring injury/treatment terms, and do not treat therapy or exercise as leisure unless explicitly asked.",
+          "Merge results across searches; stop once a clear leisure activity is found or no new distinct activities appear."
+        ],
+        "selected": true,
+        "rerank_rank": 1,
+        "rerank_reason": "The question asks about Evan's hobbies, which directly aligns with the purpose of the Hobby and Activity Retrieval Skill."
+      }
+    ],
+    "nearby_not_selected": [
+      {
+        "skill_id": "sk_access_shared_interests",
+        "version_id": "sk_access_shared_interests_v1",
+        "rank": 2,
+        "score": 0.31345683336257935,
+        "semantic_score": 0.2370011955499649,
+        "lexical_score": 0.4918532967567444,
+        "name": "Search per Person for Shared-Interest Questions",
+        "description": "When a question asks what two named people share or have in common (interests, hobbies, preferences), search each person's profile separately and intersect before answering.",
+        "content": [
+          "When a question asks what two people share (common interests, hobbies, preferences), do not settle for one generic query. Run a targeted hybrid search for each person's profile (e.g., \"<name> hobbies\" and \"<name> interests\") and intersect the returned interests.",
+          "Before answering a shared-interest question, confirm that every claimed commonality is supported by evidence from both individuals (e.g., their profile memories). If the initial generic search returns only events or plans, search each person's profile separately before concluding."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_benefit_questions",
+        "version_id": "sk_access_benefit_questions_v1",
+        "rank": 3,
+        "score": 0.30200833082199097,
+        "semantic_score": 0.3259721100330353,
+        "lexical_score": 0.24609285593032837,
+        "name": "Search Interest Profile for Benefit Questions",
+        "description": "Use when a question asks which of a person's activities provides a benefit (escape, imagination, relaxation, creativity).",
+        "content": [
+          "When a question asks which activity gives a person a described benefit, search for the person's profile/hobbies/interests using their name plus terms like 'enjoys', 'hobby', 'interest', 'favorite' in addition to the benefit keywords.",
+          "Before finalizing an answer, if retrieved evidence points to one activity, check whether any interest profile memory lists another activity for the person; if it does, treat that explicit interest as a candidate and compare it with the current evidence.",
+          "Stop after the person's known interests are retrieved and the best-supported candidate is identified; do not exhaustively expand searches."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_alternative_activity_retrieval",
+        "version_id": "sk_access_alternative_activity_retrieval_v1",
+        "rank": 4,
+        "score": 0.2787047028541565,
+        "semantic_score": 0.21803292632102966,
+        "lexical_score": 0.42027223110198975,
+        "name": "Alternative Activity Retrieval",
+        "description": "Use when a question asks what someone did or planned instead of, rather than, or as a supplement to a named activity.",
+        "content": [
+          "When a question asks for an activity done 'instead of', 'rather than', 'as an alternative to', or to 'supplement' a named activity, do not treat that named activity as the sole retrieval anchor.",
+          "After the first search, run at least one follow-up query that omits the superseded or primary activity and adds replacement-oriented terms such as 'alternative', 'plan', 'preference', 'together', 'play', 'instead', 'supplement', 'additional', 'strength', 'fit', or 'workout'.",
+          "In such follow-up searches, explicitly include memory kinds 'profile' and 'relationship', because the alternative may be recorded as a shared preference or interest rather than as an event.",
+          "If all top results still mention the superseded activity, treat that as evidence of over-anchoring and run another query targeting the replacement before answering."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_recommendation_preferences",
+        "version_id": "sk_access_recommendation_preferences_v1",
+        "rank": 5,
+        "score": 0.2610296905040741,
+        "semantic_score": 0.16789287328720093,
+        "lexical_score": 0.47834891080856323,
+        "name": "Infer Recommendations from Preference Memories",
+        "description": "When a question asks what one person recommends or suggests for another, and direct recommendation searches return no explicit evidence, search the recommender's stated preferences, hobbies, and enjoyed items.",
+        "content": [
+          "For 'what does X recommend/suggest for Y' questions, if a search with 'recommend' or 'suggest' finds no memory naming both X and Y, run another hybrid/keyword search combining X with preference verbs ('enjoys', 'likes', 'favorite', 'plays', 'loves') and the item category; additionally try a structured search on subject=X with predicate hobby or preference.",
+          "Use memories of what X enjoys or plays as candidate evidence for X's recommendations when no explicit recommendation memory exists; do not use Y's own activities as X's recommendations.",
+          "Stop after one or two preference-focused search variants if still no evidence; do not expand exhaustively."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_hobby_recommendation_crossref",
+        "version_id": "sk_access_hobby_recommendation_crossref_v1",
+        "rank": 6,
+        "score": 0.2247290015220642,
+        "semantic_score": 0.32104143500328064,
+        "lexical_score": 0.0,
+        "name": "Hobby Recommendation Cross-Reference",
+        "description": "Use when a user asks for a hobby or activity related to a person's interest, dream, or goal.",
+        "content": [
+          "When a question asks for a hobby or activity suited to a person's interest/dream, first search for that interest, then run one or two additional searches pairing the interest with the person's other known activities or hobbies (e.g., interest + writing), using terms from retrieved memories.",
+          "Before answering, inspect retrieved memories for any existing activity that can combine with the interest (e.g., a person who loves travel and writes articles may enjoy travel writing). Use such combined evidence in the answer.",
+          "Stop after the interest has been paired with the most salient activities from the first retrieval; do not exhaustively expand into unrelated topics."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      }
+    ]
+  },
+  "repair_package": {
+    "question": "What kind of hobbies does Evan pursue?",
+    "reference_answer": "painting, hiking, reading books, biking, skiing, snowboarding, ice skating, swimming, camping, kayaking",
+    "missing_useful_current_memories": [
+      {
+        "version_id": "mem_conv-49_0001_v1",
+        "memory_id": "mem_conv-49_0001",
+        "version_no": 1,
+        "content": "Evan and his family went on a trip to the Rockies last week, where they hiked trails and enjoyed amazing views.",
+        "memory_kind": "event",
+        "subject": "Evan",
+        "predicate": "trip",
+        "object_text": "Rockies",
+        "world_start": "2023-05-12",
+        "world_end": null,
+        "update_type": "add"
+      },
+      {
+        "version_id": "mem_conv-49_0004_v1",
+        "memory_id": "mem_conv-49_0004",
+        "version_no": 1,
+        "content": "Evan has been passionate about watercolor painting for a few years and enjoys it as a stress-buster.",
+        "memory_kind": "preference",
+        "subject": "Evan",
+        "predicate": "interest",
+        "object_text": "watercolor painting",
+        "world_start": "2020-05-18",
+        "world_end": null,
+        "update_type": "add"
+      },
+      {
+        "version_id": "mem_conv-49_0020_v1",
+        "memory_id": "mem_conv-49_0020",
+        "version_no": 1,
+        "content": "Evan mentioned he is reading the novel 'The Great Gatsby' and found it gripping. He suggested flavored seltzer water as a low-calorie alternative to soda and recommended pairing it with air-popped popcorn or fruit.",
+        "memory_kind": "event",
+        "subject": "Evan",
+        "predicate": "reading",
+        "object_text": "novel",
+        "world_start": "2023-07-27",
+        "world_end": null,
+        "update_type": "add"
+      },
+      {
+        "version_id": "mem_conv-49_0045_v1",
+        "memory_id": "mem_conv-49_0045",
+        "version_no": 1,
+        "content": "Evan enjoys winter activities such as skiing, snowboarding, and ice skating.",
+        "memory_kind": "event",
+        "subject": "Evan",
+        "predicate": "winter_activities",
+        "object_text": "winter sports",
+        "world_start": "2023-08-19",
+        "world_end": null,
+        "update_type": "add"
+      },
+      {
+        "version_id": "mem_conv-49_0048_v1",
+        "memory_id": "mem_conv-49_0048",
+        "version_no": 1,
+        "content": "Evan plans to attend physical therapy sessions for his knee injury and will continue with low-impact exercises like swimming until then.",
+        "memory_kind": "plan",
+        "subject": "Evan",
+        "predicate": "treatment",
+        "object_text": "physical therapy",
+        "world_start": "2023-08-23",
+        "world_end": null,
+        "update_type": "add"
+      },
+      {
+        "version_id": "mem_conv-49_0140_v1",
+        "memory_id": "mem_conv-49_0140",
+        "version_no": 1,
+        "content": "Evan went on a camping trip last summer where he kayaked and watched a sunset, finding it unforgettable and peaceful.",
+        "memory_kind": "event",
+        "subject": "Evan",
+        "predicate": "outing",
+        "object_text": "camping trip",
+        "world_start": "2024-01-11",
+        "world_end": null,
+        "update_type": "add"
+      }
+    ],
+    "retrieved_current_version_ids": [
+      "mem_conv-49_0010_v2",
+      "mem_conv-49_0011_v2",
+      "mem_conv-49_0030_v1",
+      "mem_conv-49_0054_v1",
+      "mem_conv-49_0060_v1",
+      "mem_conv-49_0073_v1",
+      "mem_conv-49_0120_v1",
+      "mem_conv-49_0132_v1"
+    ],
+    "search_steps": [
+      {
+        "action_id": "access_conv-49_conv-49_conv-49_qa_0050_a000",
+        "step_index": 0,
+        "action_type": "search_memory",
+        "request": {
+          "action": "search_memory",
+          "arguments": {
+            "strategy": "hybrid",
+            "query": "What hobbies does Evan enjoy?",
+            "query_expansions": [
+              "What activities does Evan like to do?",
+              "What kind of recreation does Evan engage in?",
+              "What hobbies does Evan have?"
+            ],
+            "keywords": [
+              "Evan",
+              "hobby",
+              "activity",
+              "recreation"
+            ],
+            "depth": "standard",
+            "memory_kinds": [
+              "event",
+              "preference",
+              "plan"
+            ],
+            "top_k": 8
+          },
+          "reason": "To identify the hobbies and activities that Evan pursues."
+        },
+        "returned_memories": [
+          {
+            "version_id": "mem_conv-49_0060_v1",
+            "memory_id": "mem_conv-49_0060",
+            "content": "Evan engages in watercolor painting as a hobby, which he finds relaxing and a way to express himself.",
+            "memory_kind": "event",
+            "subject": "Evan",
+            "world_start": "2023-10-06",
+            "world_end": null,
+            "score": 0.0162,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-49_0010_v2",
+            "memory_id": "mem_conv-49_0010",
+            "content": "Evan enjoys a fitness routine that he finds fun and has helped him make healthier lifestyle choices. Evan finds nature calming and believes it acts as a reset button for the mind and body.",
+            "memory_kind": "preference",
+            "subject": "Evan",
+            "world_start": "2023-05-20",
+            "world_end": null,
+            "score": 0.0152,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-49_0030_v1",
+            "memory_id": "mem_conv-49_0030",
+            "content": "Evan recently returned from a vacation in Canada with his new partner, engaging in outdoor activities like hiking and biking.",
+            "memory_kind": "event",
+            "subject": "Evan",
+            "world_start": "2023-08-13",
+            "world_end": null,
+            "score": 0.0146,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-49_0011_v2",
+            "memory_id": "mem_conv-49_0011",
+            "content": "Evan enjoys painting as a way to relieve stress and be creative, finding peace through exploring colors and textures. Evan recommends painting as a relaxing activity and offers to help Sam get started with supplies.",
+            "memory_kind": "preference",
+            "subject": "Evan",
+            "world_start": "2023-05-20",
+            "world_end": null,
+            "score": 0.0145,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-49_0132_v1",
+            "memory_id": "mem_conv-49_0132",
+            "content": "Evan and his partner went snowshoeing this weekend as a new adventure, finding it surprisingly fun.",
+            "memory_kind": "event",
+            "subject": "Evan",
+            "world_start": "2024-01-06",
+            "world_end": "2024-01-07",
+            "score": 0.0141,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-49_0073_v1",
+            "memory_id": "mem_conv-49_0073",
+            "content": "Evan recently finished painting a sunset, which he finds relaxing, and offered to help Sam with kayaking.",
+            "memory_kind": "event",
+            "subject": "Evan",
+            "world_start": "2023-10-14",
+            "world_end": null,
+            "score": 0.0134,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-49_0054_v1",
+            "memory_id": "mem_conv-49_0054",
+            "content": "Evan finds painting to be a calming activity that helps him de-stress and relax.",
+            "memory_kind": "preference",
+            "subject": "Evan",
+            "world_start": "2023-09-11",
+            "world_end": null,
+            "score": 0.0133,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-49_0120_v1",
+            "memory_id": "mem_conv-49_0120",
+            "content": "Evan finds peace and clarity in nature, describing it as a great healer and a source of emotional balance.",
+            "memory_kind": "event",
+            "subject": "Evan",
+            "world_start": "2023-12-27",
+            "world_end": null,
+            "score": 0.0131,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          }
+        ],
+        "returned_version_ids": [
+          "mem_conv-49_0060_v1",
+          "mem_conv-49_0010_v2",
+          "mem_conv-49_0030_v1",
+          "mem_conv-49_0011_v2",
+          "mem_conv-49_0132_v1",
+          "mem_conv-49_0073_v1",
+          "mem_conv-49_0054_v1",
+          "mem_conv-49_0120_v1"
+        ]
+      },
+      {
+        "action_id": "access_conv-49_conv-49_conv-49_qa_0050_a001",
+        "step_index": 1,
+        "action_type": "answer",
+        "request": {
+          "action": "answer",
+          "arguments": {
+            "answer": "watercolor painting, fitness routine, hiking, biking, snowshoeing, kayaking",
+            "evidence_version_ids": [
+              "mem_conv-49_0060_v1",
+              "mem_conv-49_0010_v2",
+              "mem_conv-49_0030_v1",
+              "mem_conv-49_0132_v1",
+              "mem_conv-49_0073_v1"
+            ],
+            "confidence": 0.95
+          },
+          "reason": "The evidence shows Evan engages in watercolor painting, fitness routine, hiking, biking, snowshoeing, and kayaking as hobbies."
+        },
+        "returned_memories": [],
+        "returned_version_ids": []
+      }
+    ],
+    "reason": "The current related memories contain explicit mentions of Evan's hobbies: painting (mem_conv-49_0004_v1), hiking (mem_conv-49_0001_v1, mem_conv-49_0030_v1), reading (mem_conv-49_0020_v1), biking (mem_conv-49_0030_v1), winter sports (mem_conv-49_0045_v1), swimming (mem_conv-49_0048_v1), and camping/kayaking (mem_conv-49_0140_v1). These directly support the reference answer claims.",
+    "skill_trace": {
+      "trace_id": "skilltrace_access_conv-49_conv-49_conv-49_qa_0050",
+      "side": "access",
+      "bank_version": "bank1",
+      "query": "What kind of hobbies does Evan pursue?",
+      "top_k": 2,
+      "disclose_k": 5,
+      "min_score": 0.2,
+      "scored_fields": [
+        "name",
+        "description"
+      ],
+      "scoring_weights": {
+        "semantic": 0.7,
+        "bm25": 0.3
+      },
+      "retrieval_method": "bank1_hybrid_router",
+      "candidate_k": 10,
+      "reranker": "bank1_applicability_router",
+      "reranker_error": "",
+      "selected": [
+        {
+          "skill_id": "sk_access_hobby_activity_retrieval",
+          "version_id": "sk_access_hobby_activity_retrieval_v1",
+          "rank": 1,
+          "score": 0.5306130647659302,
+          "semantic_score": 0.32944726943969727,
+          "lexical_score": 1.0,
+          "name": "Hobby and Activity Retrieval",
+          "description": "Use when a question asks about hobbies, activities, or what someone does to keep busy, relax, or as a hobby, especially during recovery or when the memory uses indirect phrasing.",
+          "content": [
+            "When asked about hobbies or activities, run multiple searches using varied phrasings: 'hobby', 'interested in', 'enjoys', 'wants to try', 'started taking', 'attending class', 'recreation', 'activity', 'keep busy', 'pass the time'.",
+            "Include memory kinds preference, event, and plan; activities are often stored as enjoyed routines, planned sessions, or class attendance rather than as a hobby list.",
+            "If the question involves a recovery or illness period, run a separate hobby-focused search without requiring injury/treatment terms, and do not treat therapy or exercise as leisure unless explicitly asked.",
+            "Merge results across searches; stop once a clear leisure activity is found or no new distinct activities appear."
+          ],
+          "selected": true,
+          "rerank_rank": 1,
+          "rerank_reason": "The question asks about Evan's hobbies, which directly aligns with the purpose of the Hobby and Activity Retrieval Skill."
+        }
+      ],
+      "nearby_not_selected": [
+        {
+          "skill_id": "sk_access_shared_interests",
+          "version_id": "sk_access_shared_interests_v1",
+          "rank": 2,
+          "score": 0.31345683336257935,
+          "semantic_score": 0.2370011955499649,
+          "lexical_score": 0.4918532967567444,
+          "name": "Search per Person for Shared-Interest Questions",
+          "description": "When a question asks what two named people share or have in common (interests, hobbies, preferences), search each person's profile separately and intersect before answering.",
+          "content": [
+            "When a question asks what two people share (common interests, hobbies, preferences), do not settle for one generic query. Run a targeted hybrid search for each person's profile (e.g., \"<name> hobbies\" and \"<name> interests\") and intersect the returned interests.",
+            "Before answering a shared-interest question, confirm that every claimed commonality is supported by evidence from both individuals (e.g., their profile memories). If the initial generic search returns only events or plans, search each person's profile separately before concluding."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_benefit_questions",
+          "version_id": "sk_access_benefit_questions_v1",
+          "rank": 3,
+          "score": 0.30200833082199097,
+          "semantic_score": 0.3259721100330353,
+          "lexical_score": 0.24609285593032837,
+          "name": "Search Interest Profile for Benefit Questions",
+          "description": "Use when a question asks which of a person's activities provides a benefit (escape, imagination, relaxation, creativity).",
+          "content": [
+            "When a question asks which activity gives a person a described benefit, search for the person's profile/hobbies/interests using their name plus terms like 'enjoys', 'hobby', 'interest', 'favorite' in addition to the benefit keywords.",
+            "Before finalizing an answer, if retrieved evidence points to one activity, check whether any interest profile memory lists another activity for the person; if it does, treat that explicit interest as a candidate and compare it with the current evidence.",
+            "Stop after the person's known interests are retrieved and the best-supported candidate is identified; do not exhaustively expand searches."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_alternative_activity_retrieval",
+          "version_id": "sk_access_alternative_activity_retrieval_v1",
+          "rank": 4,
+          "score": 0.2787047028541565,
+          "semantic_score": 0.21803292632102966,
+          "lexical_score": 0.42027223110198975,
+          "name": "Alternative Activity Retrieval",
+          "description": "Use when a question asks what someone did or planned instead of, rather than, or as a supplement to a named activity.",
+          "content": [
+            "When a question asks for an activity done 'instead of', 'rather than', 'as an alternative to', or to 'supplement' a named activity, do not treat that named activity as the sole retrieval anchor.",
+            "After the first search, run at least one follow-up query that omits the superseded or primary activity and adds replacement-oriented terms such as 'alternative', 'plan', 'preference', 'together', 'play', 'instead', 'supplement', 'additional', 'strength', 'fit', or 'workout'.",
+            "In such follow-up searches, explicitly include memory kinds 'profile' and 'relationship', because the alternative may be recorded as a shared preference or interest rather than as an event.",
+            "If all top results still mention the superseded activity, treat that as evidence of over-anchoring and run another query targeting the replacement before answering."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_recommendation_preferences",
+          "version_id": "sk_access_recommendation_preferences_v1",
+          "rank": 5,
+          "score": 0.2610296905040741,
+          "semantic_score": 0.16789287328720093,
+          "lexical_score": 0.47834891080856323,
+          "name": "Infer Recommendations from Preference Memories",
+          "description": "When a question asks what one person recommends or suggests for another, and direct recommendation searches return no explicit evidence, search the recommender's stated preferences, hobbies, and enjoyed items.",
+          "content": [
+            "For 'what does X recommend/suggest for Y' questions, if a search with 'recommend' or 'suggest' finds no memory naming both X and Y, run another hybrid/keyword search combining X with preference verbs ('enjoys', 'likes', 'favorite', 'plays', 'loves') and the item category; additionally try a structured search on subject=X with predicate hobby or preference.",
+            "Use memories of what X enjoys or plays as candidate evidence for X's recommendations when no explicit recommendation memory exists; do not use Y's own activities as X's recommendations.",
+            "Stop after one or two preference-focused search variants if still no evidence; do not expand exhaustively."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_hobby_recommendation_crossref",
+          "version_id": "sk_access_hobby_recommendation_crossref_v1",
+          "rank": 6,
+          "score": 0.2247290015220642,
+          "semantic_score": 0.32104143500328064,
+          "lexical_score": 0.0,
+          "name": "Hobby Recommendation Cross-Reference",
+          "description": "Use when a user asks for a hobby or activity related to a person's interest, dream, or goal.",
+          "content": [
+            "When a question asks for a hobby or activity suited to a person's interest/dream, first search for that interest, then run one or two additional searches pairing the interest with the person's other known activities or hobbies (e.g., interest + writing), using terms from retrieved memories.",
+            "Before answering, inspect retrieved memories for any existing activity that can combine with the interest (e.g., a person who loves travel and writes articles may enjoy travel writing). Use such combined evidence in the answer.",
+            "Stop after the interest has been paired with the most salient activities from the first retrieval; do not exhaustively expand into unrelated topics."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        }
+      ]
+    }
+  },
+  "access_run_id": "access_conv-49_conv-49_conv-49_qa_0050",
+  "claims": [
+    {
+      "claim": "Evan enjoys painting.",
+      "supporting_version_ids": [
+        "mem_conv-49_0004_v1"
+      ],
+      "coverage": null
+    },
+    {
+      "claim": "Evan enjoys hiking.",
+      "supporting_version_ids": [
+        "mem_conv-49_0001_v1",
+        "mem_conv-49_0030_v1"
+      ],
+      "coverage": null
+    },
+    {
+      "claim": "Evan enjoys reading books.",
+      "supporting_version_ids": [
+        "mem_conv-49_0020_v1"
+      ],
+      "coverage": null
+    },
+    {
+      "claim": "Evan enjoys biking.",
+      "supporting_version_ids": [
+        "mem_conv-49_0030_v1"
+      ],
+      "coverage": null
+    },
+    {
+      "claim": "Evan enjoys skiing.",
+      "supporting_version_ids": [
+        "mem_conv-49_0045_v1"
+      ],
+      "coverage": null
+    },
+    {
+      "claim": "Evan enjoys snowboarding.",
+      "supporting_version_ids": [
+        "mem_conv-49_0045_v1"
+      ],
+      "coverage": null
+    },
+    {
+      "claim": "Evan enjoys ice skating.",
+      "supporting_version_ids": [
+        "mem_conv-49_0045_v1"
+      ],
+      "coverage": null
+    },
+    {
+      "claim": "Evan enjoys swimming.",
+      "supporting_version_ids": [
+        "mem_conv-49_0048_v1"
+      ],
+      "coverage": null
+    },
+    {
+      "claim": "Evan enjoys camping.",
+      "supporting_version_ids": [
+        "mem_conv-49_0140_v1"
+      ],
+      "coverage": null
+    },
+    {
+      "claim": "Evan enjoys kayaking.",
+      "supporting_version_ids": [
+        "mem_conv-49_0140_v1"
+      ],
+      "coverage": null
+    }
+  ],
+  "current_related_memories": [
+    {
+      "version_id": "mem_conv-49_0001_v1",
+      "memory_id": "mem_conv-49_0001",
+      "version_no": 1,
+      "content": "Evan and his family went on a trip to the Rockies last week, where they hiked trails and enjoyed amazing views.",
+      "memory_kind": "event",
+      "subject": "Evan",
+      "predicate": "trip",
+      "object_text": "Rockies",
+      "world_start": "2023-05-12",
+      "world_end": null,
+      "update_type": "add"
+    },
+    {
+      "version_id": "mem_conv-49_0004_v1",
+      "memory_id": "mem_conv-49_0004",
+      "version_no": 1,
+      "content": "Evan has been passionate about watercolor painting for a few years and enjoys it as a stress-buster.",
+      "memory_kind": "preference",
+      "subject": "Evan",
+      "predicate": "interest",
+      "object_text": "watercolor painting",
+      "world_start": "2020-05-18",
+      "world_end": null,
+      "update_type": "add"
+    },
+    {
+      "version_id": "mem_conv-49_0020_v1",
+      "memory_id": "mem_conv-49_0020",
+      "version_no": 1,
+      "content": "Evan mentioned he is reading the novel 'The Great Gatsby' and found it gripping. He suggested flavored seltzer water as a low-calorie alternative to soda and recommended pairing it with air-popped popcorn or fruit.",
+      "memory_kind": "event",
+      "subject": "Evan",
+      "predicate": "reading",
+      "object_text": "novel",
+      "world_start": "2023-07-27",
+      "world_end": null,
+      "update_type": "add"
+    },
+    {
+      "version_id": "mem_conv-49_0030_v1",
+      "memory_id": "mem_conv-49_0030",
+      "version_no": 1,
+      "content": "Evan recently returned from a vacation in Canada with his new partner, engaging in outdoor activities like hiking and biking.",
+      "memory_kind": "event",
+      "subject": "Evan",
+      "predicate": "activity",
+      "object_text": "vacation",
+      "world_start": "2023-08-13",
+      "world_end": null,
+      "update_type": "add"
+    },
+    {
+      "version_id": "mem_conv-49_0045_v1",
+      "memory_id": "mem_conv-49_0045",
+      "version_no": 1,
+      "content": "Evan enjoys winter activities such as skiing, snowboarding, and ice skating.",
+      "memory_kind": "event",
+      "subject": "Evan",
+      "predicate": "winter_activities",
+      "object_text": "winter sports",
+      "world_start": "2023-08-19",
+      "world_end": null,
+      "update_type": "add"
+    },
+    {
+      "version_id": "mem_conv-49_0048_v1",
+      "memory_id": "mem_conv-49_0048",
+      "version_no": 1,
+      "content": "Evan plans to attend physical therapy sessions for his knee injury and will continue with low-impact exercises like swimming until then.",
+      "memory_kind": "plan",
+      "subject": "Evan",
+      "predicate": "treatment",
+      "object_text": "physical therapy",
+      "world_start": "2023-08-23",
+      "world_end": null,
+      "update_type": "add"
+    },
+    {
+      "version_id": "mem_conv-49_0140_v1",
+      "memory_id": "mem_conv-49_0140",
+      "version_no": 1,
+      "content": "Evan went on a camping trip last summer where he kayaked and watched a sunset, finding it unforgettable and peaceful.",
+      "memory_kind": "event",
+      "subject": "Evan",
+      "predicate": "outing",
+      "object_text": "camping trip",
+      "world_start": "2024-01-11",
+      "world_end": null,
+      "update_type": "add"
+    }
+  ],
+  "useful_current_version_ids": [
+    "mem_conv-49_0001_v1",
+    "mem_conv-49_0004_v1",
+    "mem_conv-49_0020_v1",
+    "mem_conv-49_0030_v1",
+    "mem_conv-49_0045_v1",
+    "mem_conv-49_0048_v1",
+    "mem_conv-49_0140_v1"
+  ],
+  "retrieved_current_version_ids": [
+    "mem_conv-49_0010_v2",
+    "mem_conv-49_0011_v2",
+    "mem_conv-49_0030_v1",
+    "mem_conv-49_0054_v1",
+    "mem_conv-49_0060_v1",
+    "mem_conv-49_0073_v1",
+    "mem_conv-49_0120_v1",
+    "mem_conv-49_0132_v1"
+  ],
+  "missing_useful_current_version_ids": [
+    "mem_conv-49_0001_v1",
+    "mem_conv-49_0004_v1",
+    "mem_conv-49_0020_v1",
+    "mem_conv-49_0045_v1",
+    "mem_conv-49_0048_v1",
+    "mem_conv-49_0140_v1"
+  ],
+  "search_steps": [
+    {
+      "action_id": "access_conv-49_conv-49_conv-49_qa_0050_a000",
+      "step_index": 0,
+      "action_type": "search_memory",
+      "request": {
+        "action": "search_memory",
+        "arguments": {
+          "strategy": "hybrid",
+          "query": "What hobbies does Evan enjoy?",
+          "query_expansions": [
+            "What activities does Evan like to do?",
+            "What kind of recreation does Evan engage in?",
+            "What hobbies does Evan have?"
+          ],
+          "keywords": [
+            "Evan",
+            "hobby",
+            "activity",
+            "recreation"
+          ],
+          "depth": "standard",
+          "memory_kinds": [
+            "event",
+            "preference",
+            "plan"
+          ],
+          "top_k": 8
+        },
+        "reason": "To identify the hobbies and activities that Evan pursues."
+      },
+      "returned_memories": [
+        {
+          "version_id": "mem_conv-49_0060_v1",
+          "memory_id": "mem_conv-49_0060",
+          "content": "Evan engages in watercolor painting as a hobby, which he finds relaxing and a way to express himself.",
+          "memory_kind": "event",
+          "subject": "Evan",
+          "world_start": "2023-10-06",
+          "world_end": null,
+          "score": 0.0162,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-49_0010_v2",
+          "memory_id": "mem_conv-49_0010",
+          "content": "Evan enjoys a fitness routine that he finds fun and has helped him make healthier lifestyle choices. Evan finds nature calming and believes it acts as a reset button for the mind and body.",
+          "memory_kind": "preference",
+          "subject": "Evan",
+          "world_start": "2023-05-20",
+          "world_end": null,
+          "score": 0.0152,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-49_0030_v1",
+          "memory_id": "mem_conv-49_0030",
+          "content": "Evan recently returned from a vacation in Canada with his new partner, engaging in outdoor activities like hiking and biking.",
+          "memory_kind": "event",
+          "subject": "Evan",
+          "world_start": "2023-08-13",
+          "world_end": null,
+          "score": 0.0146,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-49_0011_v2",
+          "memory_id": "mem_conv-49_0011",
+          "content": "Evan enjoys painting as a way to relieve stress and be creative, finding peace through exploring colors and textures. Evan recommends painting as a relaxing activity and offers to help Sam get started with supplies.",
+          "memory_kind": "preference",
+          "subject": "Evan",
+          "world_start": "2023-05-20",
+          "world_end": null,
+          "score": 0.0145,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-49_0132_v1",
+          "memory_id": "mem_conv-49_0132",
+          "content": "Evan and his partner went snowshoeing this weekend as a new adventure, finding it surprisingly fun.",
+          "memory_kind": "event",
+          "subject": "Evan",
+          "world_start": "2024-01-06",
+          "world_end": "2024-01-07",
+          "score": 0.0141,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-49_0073_v1",
+          "memory_id": "mem_conv-49_0073",
+          "content": "Evan recently finished painting a sunset, which he finds relaxing, and offered to help Sam with kayaking.",
+          "memory_kind": "event",
+          "subject": "Evan",
+          "world_start": "2023-10-14",
+          "world_end": null,
+          "score": 0.0134,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-49_0054_v1",
+          "memory_id": "mem_conv-49_0054",
+          "content": "Evan finds painting to be a calming activity that helps him de-stress and relax.",
+          "memory_kind": "preference",
+          "subject": "Evan",
+          "world_start": "2023-09-11",
+          "world_end": null,
+          "score": 0.0133,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-49_0120_v1",
+          "memory_id": "mem_conv-49_0120",
+          "content": "Evan finds peace and clarity in nature, describing it as a great healer and a source of emotional balance.",
+          "memory_kind": "event",
+          "subject": "Evan",
+          "world_start": "2023-12-27",
+          "world_end": null,
+          "score": 0.0131,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        }
+      ],
+      "returned_version_ids": [
+        "mem_conv-49_0060_v1",
+        "mem_conv-49_0010_v2",
+        "mem_conv-49_0030_v1",
+        "mem_conv-49_0011_v2",
+        "mem_conv-49_0132_v1",
+        "mem_conv-49_0073_v1",
+        "mem_conv-49_0054_v1",
+        "mem_conv-49_0120_v1"
+      ]
+    },
+    {
+      "action_id": "access_conv-49_conv-49_conv-49_qa_0050_a001",
+      "step_index": 1,
+      "action_type": "answer",
+      "request": {
+        "action": "answer",
+        "arguments": {
+          "answer": "watercolor painting, fitness routine, hiking, biking, snowshoeing, kayaking",
+          "evidence_version_ids": [
+            "mem_conv-49_0060_v1",
+            "mem_conv-49_0010_v2",
+            "mem_conv-49_0030_v1",
+            "mem_conv-49_0132_v1",
+            "mem_conv-49_0073_v1"
+          ],
+          "confidence": 0.95
+        },
+        "reason": "The evidence shows Evan engages in watercolor painting, fitness routine, hiking, biking, snowshoeing, and kayaking as hobbies."
+      },
+      "returned_memories": [],
+      "returned_version_ids": []
+    }
+  ]
+}

@@ -1,0 +1,666 @@
+{
+  "batch": {
+    "batch_id": "access_bank1_new_build_0008",
+    "side": "access",
+    "base_bank_version": "v000",
+    "candidates": [
+      {
+        "candidate_id": "cand_access_02cf4975787e",
+        "skill_id": "sk_access_733a606cf2",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Infer enjoyment from genre preferences",
+          "description": "Use when a question asks whether someone would enjoy a named author or creative work, and memory may contain that person's genre or style preferences.",
+          "content": [
+            "When a question asks whether a person would enjoy a specific author, book, movie, or other creative work, first retrieve and review the person's genre and style preferences from memory.",
+            "If the person's preferred genres are visible in memory, identify the genre of the named author/work and match it against those preferences; explicit memories about that exact author or work are not required for a judgment.",
+            "Do not answer 'No information available' when preference evidence exists and the author/work's genre can be reasonably identified; reserve that answer for cases where no preference evidence was found."
+          ]
+        },
+        "solves": "The agent declared 'no information' for a would-enjoy-a-specific-author question despite retrieved genre preferences, because no memory named the author. The rule is to test the candidate work's genre against those preferences and only declare insufficiency when no preference evidence exists. Applies to enjoyment questions for books, films, and music; not factual author queries.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-43_conv-43_qa_0003",
+        "source_failure_id": "access_conv-43_conv-43_qa_0003",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:06:18Z"
+      },
+      {
+        "candidate_id": "cand_access_0ae08a31b7cc",
+        "skill_id": "sk_access_457f2357bd",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Include preference memories when enumerating consumed or favorite items",
+          "description": "When a question asks what a person has read, watched, liked, or consumed, do not restrict the search to event memories; include preference memories too.",
+          "content": [
+            "If the question asks for a list or factual enumeration of a person's read/watched/liked/consumed items (e.g., books, movies, shows, foods, hobbies), run the initial search without a restrictive memory_kind filter, or explicitly include both 'event' and 'preference' memory kinds.",
+            "When the first search only returns vague descriptions or fails to name concrete items, repeat the search with preference memories included and inspect any preference memories returned, since they often hold specific titles and ongoing favorites."
+          ]
+        },
+        "solves": "Access queries that ask what a person has read, watched, liked, or otherwise consumed often fail when the initial search is restricted to event memories only, because preference memories frequently store the concrete item names, ongoing reading/listening details, and favorites. The reusable rule is to include preference (and other relevant) memory kinds in the search before answering such enumeration questions. This applies to any future question about books, movies, media, foods, hobbies, or similar preference-laden facts about a person.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-43_conv-43_qa_0061",
+        "source_failure_id": "access_conv-43_conv-43_qa_0061",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:06:09Z"
+      },
+      {
+        "candidate_id": "cand_access_37f33c81e4ec",
+        "skill_id": "sk_access_6fdf6fd99e",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Include event memories for current-activity queries",
+          "description": "When a query asks what someone is currently reading, doing, working on, or otherwise engaged in, do not restrict memory_kinds to 'state'; search both 'state' and 'event' memories because ongoing activities are often stored as events.",
+          "content": [
+            "If a question asks about a person's current activity (e.g., currently reading, working on, building, studying), set memory_kinds to include both 'state' and 'event', or omit the memory_kinds filter, since ongoing activities are typically stored as event memories.",
+            "If a search restricted to 'state' returns no supporting evidence for an activity question, retry with broader memory_kinds before answering 'no information available'."
+          ]
+        },
+        "solves": "Access failed because the search restricted memory_kinds to 'state', while the requested fact (a current reading activity) was stored as an 'event' memory, so the supporting memory was filtered out and never returned. The reusable rule is to include event memories when a query asks about an ongoing activity, and to broaden the memory-kind filter if a restricted search yields no supporting evidence. This applies to future questions about what a person is currently reading, working on, building, studying, or otherwise engaged in.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-30_conv-30_qa_0065",
+        "source_failure_id": "access_conv-30_conv-30_qa_0065",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:05:22Z"
+      },
+      {
+        "candidate_id": "cand_access_4ec8bba857d0",
+        "skill_id": "sk_access_2ec91ea375",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Retrieve preference memories for ideal/preference questions",
+          "description": "When a question asks what someone thinks an ideal or preferred version of something should be, search for preference-kind memories and use attribute-level query terms before answering.",
+          "content": [
+            "When the question asks for a person's ideal, preferred, or envisioned version of an entity (e.g., ideal studio, dream home, perfect setup), run a structured memory search with memory_kind='preference' in addition to the general hybrid search.",
+            "Use attribute-level query terms in expansions that target concrete features of the entity (e.g., flooring, location, lighting, layout, materials) because preference memories often describe specific attributes rather than the general topic.",
+            "If the initial top-k results contain only event/state memories about the entity and the question targets desired attributes, run at least one additional search with a higher top-k or a preference-focused query before answering."
+          ]
+        },
+        "solves": "The search missed a preference memory that contained the concrete attribute (e.g., flooring) while retrieving only event/state memories about the person's ongoing project, causing an incomplete answer. Future preference/ideal questions require an explicit preference-kind search with attribute-level terms; do not apply to factual or activity questions without preference words.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-30_conv-30_qa_0005",
+        "source_failure_id": "access_conv-30_conv-30_qa_0005",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:05:24Z"
+      },
+      {
+        "candidate_id": "cand_access_89e07a2193a9",
+        "skill_id": "sk_access_eb5770e48a",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Search projects across plan and event memory kinds",
+          "description": "When a question asks about a person's projects, plans, or future intentions, do not restrict search to plan memories alone; include event and other memory kinds that may describe projects or interests.",
+          "content": [
+            "When the question asks about someone's projects, plans, or what they want to do, search across both 'plan' and 'event' memory kinds; projects and intentions are often stored as events with predicate 'project'.",
+            "If a first search with memory_kinds=['plan'] returns only tangential results, rerun with a broader kind set (e.g., plan, event, state) and include keywords from the question's subject and domain before answering."
+          ]
+        },
+        "solves": "Diagnosed a retrieval failure where restricting memory_kinds to 'plan' missed event memories describing the same subject's projects. The rule generalizes to any question about a person's projects, plans, or future intentions: such information can be stored under different memory kinds, so the agent must not over-constrain by kind and should re-search more broadly before answering.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-48_conv-48_qa_0093",
+        "source_failure_id": "access_conv-48_conv-48_qa_0093",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:07:04Z"
+      },
+      {
+        "candidate_id": "cand_access_a5d6b506aedb",
+        "skill_id": "sk_access_05768d79cf",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Include preference memories for favorite/attribute queries",
+          "description": "When a question asks about someone's favorite, preference, or personal attribute, do not restrict search to event memories; include preference memories before answering.",
+          "content": [
+            "When retrieving evidence for questions about someone's favorite, preferred, or personal attribute (e.g., favorite recipe, food, hobby), include the 'preference' memory kind in the search; do not limit memory_kinds to 'event'.",
+            "If the first result set lacks explicit preference statements, issue a follow-up search using memory_kinds containing 'preference' and, when available, structured filters on the subject or predicate before concluding evidence is insufficient."
+          ]
+        },
+        "solves": "The diagnosed failure was restricting retrieval to event memories, so an explicit preference memory was missed and the agent answered from a less specific event. This rule applies to any future question asking about a person's favorite, preferred, or other personal attribute, where the answer may live in a preference memory rather than an event. It does not apply when the question explicitly asks about an event or action.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-44_conv-44_qa_0079",
+        "source_failure_id": "access_conv-44_conv-44_qa_0079",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:06:41Z"
+      },
+      {
+        "candidate_id": "cand_access_b836131c3833",
+        "skill_id": "sk_access_ba24be399b",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Entity-name questions: retry with attribute-free query",
+          "description": "When a question asks to identify an entity by descriptive attributes and a date, and the direct search with those attributes fails to return a memory naming the entity, retry a minimal query before answering.",
+          "content": [
+            "When the question asks to name an entity (e.g., a game, movie, book) from descriptive attributes and a date, and the initial hybrid or keyword search does not return any memory containing a plausible entity of that type, retry with a minimal query containing only the subject, the entity type, and the date/date range (e.g., 'game' + date), omitting the descriptive adjectives that may not appear verbatim in stored memories.",
+            "If the fallback returns a memory that mentions several activities or titles for that period, inspect it and select the entity whose type matches the question, even if the memory describes the activity as 'mentioned', 'enjoyed', or 'watched' rather than with the question's exact wording."
+          ]
+        },
+        "solves": "When a user asks to name an entity (game, movie, book, etc.) from descriptive attributes and a date, the memory holding the answer often stores the entity name without those literal attribute words, so keyword and semantic searches using the attributes miss it. This skill triggers when an initial attribute-based search yields no entity-naming candidate; it applies to any future entity-identification question regardless of topic, and should not be used when the attributes already appear verbatim in retrieved memories.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-42_conv-42_qa_0164",
+        "source_failure_id": "access_conv-42_conv-42_qa_0164",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:06:10Z"
+      },
+      {
+        "candidate_id": "cand_access_c2de10e5bc70",
+        "skill_id": "sk_access_b8c97e9977",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Search plan and event kinds for future-plan questions",
+          "description": "When answering questions about future events, planned activities, or what someone is planning for an upcoming time, include plan memories in retrieval; do not restrict memory_kinds to event only.",
+          "content": [
+            "If the question asks about a future event, plan, or upcoming activity, search with memory_kinds covering both 'plan' and 'event' (for example [\"plan\", \"event\"]).",
+            "Do not filter memory_kinds to only 'event' for forward-looking questions; planned future events are often stored as 'plan' memories.",
+            "Before answering, check whether an additional retrieval over 'plan' memories could supply direct evidence, especially when initial results contain only related context."
+          ]
+        },
+        "solves": "When a user asks about a future event or activity, such as what someone is planning for an upcoming season, retrieval that restricts memory_kinds to only 'event' can miss the relevant memory because forward-looking information may be stored as a 'plan'. This rule applies to future-plan questions: include both 'plan' and 'event' memory kinds during retrieval instead of narrowing to event-only searches.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-49_conv-49_qa_0134",
+        "source_failure_id": "access_conv-49_conv-49_qa_0134",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:07:59Z"
+      },
+      {
+        "candidate_id": "cand_access_c3bebaeffe57",
+        "skill_id": "sk_access_1cff3e8d83",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Relational-role to meeting-event retrieval",
+          "description": "When a question asks when a subject first met a person identified only by a relational role (future wife, fiancée, partner, spouse) and direct role-based hits are missing, apply this retrieval pattern.",
+          "content": [
+            "Before answering 'no information,' when the question uses a relational role label for a person, expand searches to include meeting/encounter verbs (met, met up, went on a trip/date with) and descriptive terms from other memories that could identify that person (nationality, names, attributes).",
+            "If a later relationship memory is found (marriage, engagement, pregnancy, partner status), use it to identify the person, then search for the earliest meeting or trip event before that memory's date and report that event's time as the meeting.",
+            "Only a memory that explicitly describes the meeting or first encounter can establish the meeting time; do not infer it from the later relationship event alone."
+          ]
+        },
+        "solves": "When a question identifies a person only by a relational role (future wife, spouse) and direct role-based retrieval fails, stored memories may describe the meeting by other attributes (nationality, trip partner). Expand retrieval to meeting/encounter terms and person descriptors, then chain from later relationship events to the earliest meeting. Do not infer meeting time from later relationship events alone.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-49_conv-49_qa_0022",
+        "source_failure_id": "access_conv-49_conv-49_qa_0022",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:07:42Z"
+      },
+      {
+        "candidate_id": "cand_access_dfca3d884771",
+        "skill_id": "sk_access_323e08fd2a",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Include plan memory kind for future-planning questions",
+          "description": "When a question asks when or whether someone is planning, intending, or scheduling something in the future, search with memory_kinds including 'plan' and 'event' rather than 'event' only.",
+          "content": [
+            "When the question asks about future plans (e.g., 'when is X planning...', 'does X plan/intend to...', 'what is X planning...'), do not restrict memory_kinds to ['event']; include 'plan' so planned future dates are retrieved.",
+            "If a retrieved 'plan' memory specifies the time of the planned activity, prefer it as evidence over a loosely matching 'event' (e.g., a get-together) when the question describes the planned event."
+          ]
+        },
+        "solves": "Diagnosed cause: search restricted memory_kinds to 'event' and missed the 'plan' memory holding the planned reunion date. Future pattern: questions about planned/future activities ('planning', 'plans', 'scheduled', 'intends') should include 'plan' in memory_kinds and prefer a matching plan over a similar event. Does not apply to questions about past/completed events, where 'event' kind suffices.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-49_conv-49_qa_0073",
+        "source_failure_id": "access_conv-49_conv-49_qa_0073",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:07:50Z"
+      },
+      {
+        "candidate_id": "cand_access_e1b984cf9b4f",
+        "skill_id": "sk_access_d0f162ba15",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "PersonalAttributeLifeStageInference",
+          "description": "When asked about a person's age or other personal attribute and direct memory lacks the answer, use life-stage cues in retrieved or additional searches (education, work, relationship) to give a bounded uncertain inference instead of replying 'no information'.",
+          "content": [
+            "When a user asks for a personal attribute (age, occupation, marital status) and no memory directly states it, run additional searches using related life-stage terms (e.g., for age: school, study, classes, finals, internship, graduate; for occupation: work, job, career; for marital status: partner, married, spouse).",
+            "Treat life-stage cues found in retrieved memories (e.g., attending classes, studying for finals, interning) as evidence for a bounded inference about the attribute, and express the uncertainty explicitly (e.g., 'likely in her 20s or early 30s, since she is in school').",
+            "Only answer 'no information available' after both direct and indirect life-stage searches fail to surface any relevant evidence."
+          ]
+        },
+        "solves": "Direct attribute questions (e.g., age) fail because the agent stops after a literal keyword search and ignores implicit life-stage evidence in retrieved memories (student, intern, studying). The abstract mechanism is failing to map an attribute question to indirect evidence cues and to make a clearly-uncertain bounded inference. This applies to any future question about a personal attribute where memory contains contextual life-stage facts.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-48_conv-48_qa_0036",
+        "source_failure_id": "access_conv-48_conv-48_qa_0036",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:07:07Z"
+      },
+      {
+        "candidate_id": "cand_access_e590c09bc788",
+        "skill_id": "sk_access_18a2a4b0c1",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Search both plan and event kinds for scheduled activities",
+          "description": "When a question asks what someone planned or will do on a specific date, search both plan and event memory kinds; do not restrict memory_kinds to plan only.",
+          "content": [
+            "When searching for what someone planned or scheduled to do on a specific date, set memory_kinds to include both 'plan' and 'event' because plans may be stored as events, especially after rescheduling or when involving other people.",
+            "If a first search with a narrow memory_kinds filter returns only low-relevance results, broaden the filter to include 'event' before concluding the memory is absent.",
+            "When memory_kinds is not essential to disambiguate, prefer omitting the filter or including all plausible kinds instead of defaulting to a single kind."
+          ]
+        },
+        "solves": "Questions that ask what people planned to do on a specific date can fail when retrieval restricts memory_kinds to 'plan' while the relevant memory is stored under 'event' (e.g., after rescheduling). This rule applies whenever the memory schema allows the same real-world plan to be recorded under multiple kinds; it is unnecessary if the store guarantees one canonical kind for all plans.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-44_conv-44_qa_0115",
+        "source_failure_id": "access_conv-44_conv-44_qa_0115",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:06:45Z"
+      },
+      {
+        "candidate_id": "cand_access_eb614481e81b",
+        "skill_id": "sk_access_471828442e",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Broaden memory kinds for ownership-duration questions",
+          "description": "When a question asks how long a person has had, owned, or possessed something, include profile and relationship memory kinds; do not restrict search to event memories only.",
+          "content": [
+            "If the question asks how long someone has had/owned/possessed something (duration, since when, for how many years), run at least one search that includes memory_kinds profile and relationship in addition to event; ownership durations are often stored as profile facts.",
+            "If the first search returns only activity/event memories, broaden memory_kinds to include profile and relationship before concluding the fact is absent."
+          ]
+        },
+        "solves": "When a question asks how long someone has had, owned, or possessed something, retrieval limited to event memories misses the ownership-duration fact stored as a profile or relationship memory. This skill guides the access agent to broaden memory kinds so duration/possession facts are retrieved. It applies to any future possession-duration or attribute-age question, not to event-recall questions about when a specific acquisition happened.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-42_conv-42_qa_0100",
+        "source_failure_id": "access_conv-42_conv-42_qa_0100",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:05:33Z"
+      },
+      {
+        "candidate_id": "cand_access_fd03d6350769",
+        "skill_id": "sk_access_35ff08893b",
+        "version": 1,
+        "side": "access",
+        "payload": {
+          "name": "Include event memories when searching for projects or plans",
+          "description": "When a question asks about a person's projects, plans, or goals for an upcoming period, retrieve memories with kind 'event' or 'plan' and do not filter solely on memory_kind 'plan'.",
+          "content": [
+            "Before searching for a person's plans or projects, do not restrict memory_kinds to only 'plan'. Include 'event' memories because projects and aspirations are often stored as events with predicate 'project'.",
+            "If the question targets future or upcoming activities, do not exclude memories based on narrow time windows; verify against world_start within the relevant period and consider memories without explicit end dates."
+          ]
+        },
+        "solves": "When a user asks what projects or plans a person has for a future period, retrieval may fail because the search restricts memory_kind to 'plan' while the target memories are stored as 'event' with predicate 'project'. The rule is to include both 'event' and 'plan' kinds and optionally filter on predicate 'project' when searching for projects or goals. This applies to any question about a person's future projects, plans, or aspirations.",
+        "related_existing_skill_ids": [],
+        "source_diagnosis_id": "access_conv-48_conv-48_qa_0061",
+        "source_failure_id": "access_conv-48_conv-48_qa_0061",
+        "target_first_break": null,
+        "parent_version_id": null,
+        "status": "staged",
+        "created_at": "2026-08-02T11:06:55Z"
+      }
+    ],
+    "retrieved_skill_ids": [],
+    "relations": []
+  },
+  "plan": {
+    "transaction_id": "tx_access_bank1_new_build_0008",
+    "side": "access",
+    "base_bank_version": "v000",
+    "candidate_resolutions": [
+      {
+        "candidate_id": "cand_access_02cf4975787e",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_enjoyment_genre"
+        ],
+        "reason": "No existing Skill covers inferring enjoyment from genre preferences."
+      },
+      {
+        "candidate_id": "cand_access_0ae08a31b7cc",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_include_preference_enumeration"
+        ],
+        "reason": "No existing Skill covers including preference memories for enumeration questions."
+      },
+      {
+        "candidate_id": "cand_access_37f33c81e4ec",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_current_activity_kinds"
+        ],
+        "reason": "No existing Skill covers including event memories for current-activity queries."
+      },
+      {
+        "candidate_id": "cand_access_4ec8bba857d0",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_preference_attribute_search"
+        ],
+        "reason": "No existing Skill covers preference-kind search with attribute-level terms for ideal/preference questions."
+      },
+      {
+        "candidate_id": "cand_access_89e07a2193a9",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_access_project_plan_event_kinds"
+        ],
+        "reason": "Merged with cand_access_fd03d6350769 because both repair the same mechanism of searching projects across plan and event kinds."
+      },
+      {
+        "candidate_id": "cand_access_a5d6b506aedb",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_access_preference_attribute_search"
+        ],
+        "reason": "Merged with cand_access_4ec8bba857d0 because both repair the same mechanism of including preference memories for preference/attribute queries."
+      },
+      {
+        "candidate_id": "cand_access_b836131c3833",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_entity_name_retry"
+        ],
+        "reason": "No existing Skill covers retrying with attribute-free query for entity-name questions."
+      },
+      {
+        "candidate_id": "cand_access_c2de10e5bc70",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_access_future_plan_kinds"
+        ],
+        "reason": "Merged with cand_access_dfca3d884771 because both repair the same mechanism of including plan memories for future-plan questions."
+      },
+      {
+        "candidate_id": "cand_access_c3bebaeffe57",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_relational_role_meeting"
+        ],
+        "reason": "No existing Skill covers relational-role to meeting-event retrieval."
+      },
+      {
+        "candidate_id": "cand_access_dfca3d884771",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_future_plan_kinds"
+        ],
+        "reason": "Creates one merged Skill for future-plan retrieval."
+      },
+      {
+        "candidate_id": "cand_access_e1b984cf9b4f",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_life_stage_inference"
+        ],
+        "reason": "No existing Skill covers life-stage inference for personal attributes."
+      },
+      {
+        "candidate_id": "cand_access_e590c09bc788",
+        "resolution": "MERGED_INTO_CANDIDATE",
+        "target_skill_ids": [
+          "sk_access_future_plan_kinds"
+        ],
+        "reason": "Merged with cand_access_dfca3d884771 because both repair the same mechanism of including plan and event kinds for scheduled activities."
+      },
+      {
+        "candidate_id": "cand_access_eb614481e81b",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_ownership_duration_kinds"
+        ],
+        "reason": "No existing Skill covers broadening memory kinds for ownership-duration questions."
+      },
+      {
+        "candidate_id": "cand_access_fd03d6350769",
+        "resolution": "CREATED",
+        "target_skill_ids": [
+          "sk_access_project_plan_event_kinds"
+        ],
+        "reason": "Creates one merged Skill for project/plan retrieval across event and plan kinds."
+      }
+    ],
+    "operations": [
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_enjoyment_genre",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Infer enjoyment from genre preferences",
+        "description": "Use when a question asks whether someone would enjoy a named author or creative work, and memory may contain that person's genre or style preferences.",
+        "content": [
+          "When a question asks whether a person would enjoy a specific author, book, movie, or other creative work, first retrieve and review the person's genre and style preferences from memory.",
+          "If the person's preferred genres are visible in memory, identify the genre of the named author/work and match it against those preferences; explicit memories about that exact author or work are not required for a judgment.",
+          "Do not answer 'No information available' when preference evidence exists and the author/work's genre can be reasonably identified; reserve that answer for cases where no preference evidence was found."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_02cf4975787e"
+        ],
+        "reason": "Creating new Skill for enjoyment inference from genre preferences.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_include_preference_enumeration",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Include preference memories when enumerating consumed or favorite items",
+        "description": "When a question asks what a person has read, watched, liked, or consumed, do not restrict the search to event memories; include preference memories too.",
+        "content": [
+          "If the question asks for a list or factual enumeration of a person's read/watched/liked/consumed items (e.g., books, movies, shows, foods, hobbies), run the initial search without a restrictive memory_kind filter, or explicitly include both 'event' and 'preference' memory kinds.",
+          "When the first search only returns vague descriptions or fails to name concrete items, repeat the search with preference memories included and inspect any preference memories returned, since they often hold specific titles and ongoing favorites."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_0ae08a31b7cc"
+        ],
+        "reason": "Creating new Skill for including preference memories in enumeration queries.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_current_activity_kinds",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Include event memories for current-activity queries",
+        "description": "When a query asks what someone is currently reading, doing, working on, or otherwise engaged in, do not restrict memory_kinds to 'state'; search both 'state' and 'event' memories because ongoing activities are often stored as events.",
+        "content": [
+          "If a question asks about a person's current activity (e.g., currently reading, working on, building, studying), set memory_kinds to include both 'state' and 'event', or omit the memory_kinds filter, since ongoing activities are typically stored as event memories.",
+          "If a search restricted to 'state' returns no supporting evidence for an activity question, retry with broader memory_kinds before answering 'no information available'."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_37f33c81e4ec"
+        ],
+        "reason": "Creating new Skill for current-activity queries.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_preference_attribute_search",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Retrieve preference memories for ideal/preference questions",
+        "description": "When a question asks what someone thinks an ideal or preferred version of something should be, search for preference-kind memories and use attribute-level query terms before answering.",
+        "content": [
+          "When the question asks for a person's ideal, preferred, or favorite version of an entity (e.g., ideal studio, dream home, favorite recipe), run a structured memory search with memory_kind='preference' in addition to the general hybrid search.",
+          "Use attribute-level query terms in expansions that target concrete features of the entity (e.g., flooring, location, lighting, layout, materials) because preference memories often describe specific attributes rather than the general topic.",
+          "If the initial top-k results contain only event/state memories about the entity and the question targets desired attributes, run at least one additional search with a higher top-k or a preference-focused query before answering."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_4ec8bba857d0",
+          "cand_access_a5d6b506aedb"
+        ],
+        "reason": "Creating merged Skill for preference/attribute retrieval.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_entity_name_retry",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Entity-name questions: retry with attribute-free query",
+        "description": "When a question asks to identify an entity by descriptive attributes and a date, and the direct search with those attributes fails to return a memory naming the entity, retry a minimal query before answering.",
+        "content": [
+          "When the question asks to name an entity (e.g., a game, movie, book) from descriptive attributes and a date, and the initial hybrid or keyword search does not return any memory containing a plausible entity of that type, retry with a minimal query containing only the subject, the entity type, and the date/date range (e.g., 'game' + date), omitting the descriptive adjectives that may not appear verbatim in stored memories.",
+          "If the fallback returns a memory that mentions several activities or titles for that period, inspect it and select the entity whose type matches the question, even if the memory describes the activity as 'mentioned', 'enjoyed', or 'watched' rather than with the question's exact wording."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_b836131c3833"
+        ],
+        "reason": "Creating new Skill for entity-name retrieval fallback.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_future_plan_kinds",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Search plan and event kinds for future-plan questions",
+        "description": "When answering questions about future events, planned activities, or what someone is planning for an upcoming time, include plan memories in retrieval; do not restrict memory_kinds to event only.",
+        "content": [
+          "If the question asks about a future event, plan, or upcoming activity, search with memory_kinds covering both 'plan' and 'event' (for example [\"plan\", \"event\"]).",
+          "Do not filter memory_kinds to only 'event' for forward-looking questions; planned future events are often stored as 'plan' memories.",
+          "Before answering, check whether an additional retrieval over 'plan' memories could supply direct evidence, especially when initial results contain only related context."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_c2de10e5bc70",
+          "cand_access_dfca3d884771",
+          "cand_access_e590c09bc788"
+        ],
+        "reason": "Creating merged Skill for future-plan retrieval.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_relational_role_meeting",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Relational-role to meeting-event retrieval",
+        "description": "When a question asks when a subject first met a person identified only by a relational role (future wife, fiancée, partner, spouse) and direct role-based hits are missing, apply this retrieval pattern.",
+        "content": [
+          "Before answering 'no information,' when the question uses a relational role label for a person, expand searches to include meeting/encounter verbs (met, met up, went on a trip/date with) and descriptive terms from other memories that could identify that person (nationality, names, attributes).",
+          "If a later relationship memory is found (marriage, engagement, pregnancy, partner status), use it to identify the person, then search for the earliest meeting or trip event before that memory's date and report that event's time as the meeting.",
+          "Only a memory that explicitly describes the meeting or first encounter can establish the meeting time; do not infer it from the later relationship event alone."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_c3bebaeffe57"
+        ],
+        "reason": "Creating new Skill for relational-role meeting retrieval.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_life_stage_inference",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "PersonalAttributeLifeStageInference",
+        "description": "When asked about a person's age or other personal attribute and direct memory lacks the answer, use life-stage cues in retrieved or additional searches (education, work, relationship) to give a bounded uncertain inference instead of replying 'no information'.",
+        "content": [
+          "When a user asks for a personal attribute (age, occupation, marital status) and no memory directly states it, run additional searches using related life-stage terms (e.g., for age: school, study, classes, finals, internship, graduate; for occupation: work, job, career; for marital status: partner, married, spouse).",
+          "Treat life-stage cues found in retrieved memories (e.g., attending classes, studying for finals, interning) as evidence for a bounded inference about the attribute, and express the uncertainty explicitly (e.g., 'likely in her 20s or early 30s, since she is in school').",
+          "Only answer 'no information available' after both direct and indirect life-stage searches fail to surface any relevant evidence."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_e1b984cf9b4f"
+        ],
+        "reason": "Creating new Skill for life-stage inference.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_ownership_duration_kinds",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Broaden memory kinds for ownership-duration questions",
+        "description": "When a question asks how long a person has had, owned, or possessed something, include profile and relationship memory kinds; do not restrict search to event memories only.",
+        "content": [
+          "If the question asks how long someone has had/owned/possessed something (duration, since when, for how many years), run at least one search that includes memory_kinds profile and relationship in addition to event; ownership durations are often stored as profile facts.",
+          "If the first search returns only activity/event memories, broaden memory_kinds to include profile and relationship before concluding the fact is absent."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_eb614481e81b"
+        ],
+        "reason": "Creating new Skill for ownership-duration retrieval.",
+        "hard_delete": false
+      },
+      {
+        "operation": "add_skill",
+        "skill_id": "sk_access_project_plan_event_kinds",
+        "target_skill_id": "",
+        "expected_skill_version": null,
+        "name": "Search projects across plan and event memory kinds",
+        "description": "When a question asks about a person's projects, plans, or future intentions, do not restrict search to plan memories alone; include event and other memory kinds that may describe projects or interests.",
+        "content": [
+          "When the question asks about someone's projects, plans, or what they want to do, search across both 'plan' and 'event' memory kinds; projects and intentions are often stored as events with predicate 'project'.",
+          "If a first search with memory_kinds=['plan'] returns only tangential results, rerun with a broader kind set (e.g., plan, event, state) and include keywords from the question's subject and domain before answering."
+        ],
+        "content_index": null,
+        "expected_content": null,
+        "new_content": "",
+        "side": "access",
+        "source_candidate_ids": [
+          "cand_access_89e07a2193a9",
+          "cand_access_fd03d6350769"
+        ],
+        "reason": "Creating merged Skill for project/plan retrieval.",
+        "hard_delete": false
+      }
+    ]
+  },
+  "status": "planned"
+}

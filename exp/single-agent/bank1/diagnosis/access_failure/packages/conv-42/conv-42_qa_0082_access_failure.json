@@ -1,0 +1,720 @@
+{
+  "schema_version": "access_diagnosis_v3",
+  "diagnosis_id": "access_conv-42_conv-42_qa_0082",
+  "diagnosis_type": "ACCESS_FAILURE",
+  "status": "completed",
+  "judge_run_id": "judge",
+  "diagnosis_run_id": "bank1_train_flash",
+  "source_runtime_run": "conv-42",
+  "conversation_id": "conv-42",
+  "qa_id": "conv-42_qa_0082",
+  "snapshot_commit_id": 29,
+  "question": "What recipes has Nate made?",
+  "reference_answer": "coconut milk icecream, chocolate and vanilla swirl",
+  "problem_found": true,
+  "reason": "The reference answer states two specific recipes: coconut milk ice cream and chocolate and vanilla swirl ice cream. The current memory versions mem_conv-42_0014_v1 and mem_conv-42_0018_v1 directly support these claims, respectively. Other memories mention related items but do not directly support the exact claims.",
+  "confidence": 1.0,
+  "review_required": false,
+  "skill_trace": {
+    "trace_id": "skilltrace_access_conv-42_conv-42_conv-42_qa_0082",
+    "side": "access",
+    "bank_version": "bank1",
+    "query": "What recipes has Nate made?",
+    "top_k": 2,
+    "disclose_k": 5,
+    "min_score": 0.2,
+    "scored_fields": [
+      "name",
+      "description"
+    ],
+    "scoring_weights": {
+      "semantic": 0.7,
+      "bm25": 0.3
+    },
+    "retrieval_method": "bank1_hybrid_router",
+    "candidate_k": 10,
+    "reranker": "bank1_applicability_router",
+    "reranker_error": "",
+    "selected": [],
+    "nearby_not_selected": [
+      {
+        "skill_id": "sk_access_duration_questions",
+        "version_id": "sk_access_duration_questions_v1",
+        "rank": 1,
+        "score": 0.26322314143180847,
+        "semantic_score": -0.052538372576236725,
+        "lexical_score": 1.0,
+        "name": "Duration questions search profile and state memories",
+        "description": "When a question asks how long a person has had, owned, or possessed something (e.g., 'how long has X had Y?'), search profile and state memories as well as event memories.",
+        "content": [
+          "When a question asks how long a subject has had, owned, or possessed an item (e.g., 'how long has Nate had his turtles?'), interpret it as asking for a duration, not a specific acquisition date.",
+          "Do not restrict the search to event memories for such duration/tenure questions; include profile and state memory kinds because ownership duration is commonly stored as a profile or state fact.",
+          "If a profile or state memory directly states the duration, stop searching and answer with that duration; do not substitute a recent event date."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_event_preference_retrieval",
+        "version_id": "sk_access_event_preference_retrieval_v1",
+        "rank": 2,
+        "score": 0.25852230191230774,
+        "semantic_score": -0.01625688001513481,
+        "lexical_score": 0.8996737003326416,
+        "name": "Event-Based Preference Retrieval",
+        "description": "When a question asks about a person's favorite or preferred items, use this to also retrieve event memories where the person made/tried and liked items, and attribute evidence to the correct person.",
+        "content": [
+          "When a question asks about a person's favorite or preferred items, run a supplementary hybrid memory search combining the person's name with terms like 'made', 'tried', 'enjoyed', 'loved', or 'found delicious' to surface event memories that may support the preference.",
+          "Treat an event memory where the subject themselves made or tried an item and expressed positive sentiment as evidence for that subject's preference; do not use another person's enjoyment or reaction as evidence of the subject's preference.",
+          "When answering with a list of favorites, enumerate each distinct item or flavor explicitly stated in eligible supporting memories, and stop when no retrieved memory supports an additional item."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_creative_work_retrieval",
+        "version_id": "sk_access_creative_work_retrieval_v1",
+        "rank": 3,
+        "score": 0.19382023811340332,
+        "semantic_score": 0.12655377388000488,
+        "lexical_score": 0.3507753014564514,
+        "name": "Creative Work Retrieval",
+        "description": "Use when asked what a person's creative work (screenplay, book, film, project) is about or its theme.",
+        "content": [
+          "Before answering what a creative work is about, search using generic descriptors (project, work, piece, story, theme, about) alongside the specific type (screenplay, book, film).",
+          "When the specific work is referenced by order or completion (e.g., third screenplay, finished script), also retrieve memories of completed/achieved works using verbs like completed, finished, wrote, premiered and look for event/achievement memories that state the theme even if they do not name the work type.",
+          "After retrieval, verify the returned memory actually describes the requested instance (e.g., its ordinal or completion status); if it only gives a title or a plan, inspect related versions or broaden the search before answering."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_multi_kind_item_lists",
+        "version_id": "sk_access_multi_kind_item_lists_v1",
+        "rank": 4,
+        "score": 0.17227396368980408,
+        "semantic_score": -0.06091092899441719,
+        "lexical_score": 0.716372013092041,
+        "name": "Search All Memory Kinds for Item Lists",
+        "description": "When a question asks for a list of items a person has read, watched, listened to, or used, use this to ensure retrieval covers preference and event memories.",
+        "content": [
+          "Before answering a list-type question about items a person has read, watched, listened to, or used, run at least one search without restricting memory_kind to a single kind; include both 'event' and 'preference' (and 'state' when relevant).",
+          "Preference memories often store the concrete named items (titles, names) and enriched versions may add more; inspect any returned preference memories for named items even when event memories give only vague descriptions.",
+          "Stop after the unrestricted search has surfaced the relevant preferences and events; do not add exhaustive extra searches unless evidence is still insufficient."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      },
+      {
+        "skill_id": "sk_access_alternative_activity_retrieval",
+        "version_id": "sk_access_alternative_activity_retrieval_v1",
+        "rank": 5,
+        "score": 0.15656444430351257,
+        "semantic_score": 0.08289985358715057,
+        "lexical_score": 0.32844844460487366,
+        "name": "Alternative Activity Retrieval",
+        "description": "Use when a question asks what someone did or planned instead of, rather than, or as a supplement to a named activity.",
+        "content": [
+          "When a question asks for an activity done 'instead of', 'rather than', 'as an alternative to', or to 'supplement' a named activity, do not treat that named activity as the sole retrieval anchor.",
+          "After the first search, run at least one follow-up query that omits the superseded or primary activity and adds replacement-oriented terms such as 'alternative', 'plan', 'preference', 'together', 'play', 'instead', 'supplement', 'additional', 'strength', 'fit', or 'workout'.",
+          "In such follow-up searches, explicitly include memory kinds 'profile' and 'relationship', because the alternative may be recorded as a shared preference or interest rather than as an event.",
+          "If all top results still mention the superseded activity, treat that as evidence of over-anchoring and run another query targeting the replacement before answering."
+        ],
+        "selected": false,
+        "rerank_rank": null,
+        "rerank_reason": ""
+      }
+    ]
+  },
+  "repair_package": {
+    "question": "What recipes has Nate made?",
+    "reference_answer": "coconut milk icecream, chocolate and vanilla swirl",
+    "missing_useful_current_memories": [
+      {
+        "version_id": "mem_conv-42_0014_v1",
+        "memory_id": "mem_conv-42_0014",
+        "version_no": 1,
+        "content": "Nate made coconut milk ice cream and found it to be rich and creamy, expressing pride in his creation and planning to experiment with different flavors and toppings.",
+        "memory_kind": "event",
+        "subject": "Nate",
+        "predicate": "activity",
+        "object_text": "coconut milk ice cream",
+        "world_start": "2022-02-07",
+        "world_end": null,
+        "update_type": "add"
+      }
+    ],
+    "retrieved_current_version_ids": [
+      "mem_conv-42_0016_v1",
+      "mem_conv-42_0018_v1",
+      "mem_conv-42_0040_v3",
+      "mem_conv-42_0047_v2",
+      "mem_conv-42_0086_v1",
+      "mem_conv-42_0107_v1",
+      "mem_conv-42_0145_v1",
+      "mem_conv-42_0156_v1"
+    ],
+    "search_steps": [
+      {
+        "action_id": "access_conv-42_conv-42_conv-42_qa_0082_a000",
+        "step_index": 0,
+        "action_type": "search_memory",
+        "request": {
+          "action": "search_memory",
+          "arguments": {
+            "strategy": "hybrid",
+            "query": "recipes made by Nate",
+            "query_expansions": [
+              "what dishes has Nate cooked",
+              "which meals did Nate prepare"
+            ],
+            "keywords": [
+              "Nate",
+              "recipe",
+              "made"
+            ],
+            "depth": "standard",
+            "top_k": 8
+          },
+          "reason": "to find the recipes that Nate has made"
+        },
+        "returned_memories": [
+          {
+            "version_id": "mem_conv-42_0047_v2",
+            "memory_id": "mem_conv-42_0047",
+            "content": "Joanna plans to check out the book series recommended by Nate and intends to share her thoughts on it. She also requested the recipe for Nate's vegan ice cream on June 24, 2022, and agreed to make it for her family this weekend.",
+            "memory_kind": "plan",
+            "subject": "Joanna",
+            "world_start": "2022-04-21",
+            "world_end": null,
+            "score": 0.0159,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0018_v1",
+            "memory_id": "mem_conv-42_0018",
+            "content": "Nate made chocolate and vanilla swirl ice cream for his friend, who loved it. He offered to share a dairy-free recipe using coconut milk.",
+            "memory_kind": "event",
+            "subject": "Nate",
+            "world_start": "2022-02-25",
+            "world_end": null,
+            "score": 0.0158,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0040_v3",
+            "memory_id": "mem_conv-42_0040",
+            "content": "Nate made a dairy-free ice cream using coconut milk, vanilla extract, sugar, and a pinch of salt, and shared the recipe with Joanna. Nate shared a recipe for coconut milk ice cream with Joanna, offering to send it to her and inviting her to try it. He made colorful bowls of coconut milk ice cream with mix-ins, describing the recipe as jazzing up the flavor.",
+            "memory_kind": "event",
+            "subject": "Nate",
+            "world_start": "2022-11-11",
+            "world_end": null,
+            "score": 0.0154,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0016_v1",
+            "memory_id": "mem_conv-42_0016",
+            "content": "Nate made a dairy-free chocolate cake with berries and suggested it to Joanna as a potential treat.",
+            "memory_kind": "event",
+            "subject": "Nate",
+            "world_start": "2022-02-07",
+            "world_end": null,
+            "score": 0.015,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0156_v1",
+            "memory_id": "mem_conv-42_0156",
+            "content": "Nate tried out cooking and made homemade coconut ice cream with sprinkles, which slightly changed the color.",
+            "memory_kind": "event",
+            "subject": "Nate",
+            "world_start": "2022-11-09",
+            "world_end": null,
+            "score": 0.015,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0145_v1",
+            "memory_id": "mem_conv-42_0145",
+            "content": "Nate made lactose-free dessert using coconut milk and invited Joanna over to try it, with plans for them to share recipes tomorrow.",
+            "memory_kind": "event",
+            "subject": "Nate",
+            "world_start": "2022-11-04",
+            "world_end": null,
+            "score": 0.0148,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0086_v1",
+            "memory_id": "mem_conv-42_0086",
+            "content": "Nate made vegan ice cream on June 19, 2022, and shared it with some people in his vegan diet group.",
+            "memory_kind": "event",
+            "subject": "Nate",
+            "world_start": "2022-06-19",
+            "world_end": null,
+            "score": 0.0146,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          },
+          {
+            "version_id": "mem_conv-42_0107_v1",
+            "memory_id": "mem_conv-42_0107",
+            "content": "Nate and Joanna share a friendly connection, with Nate offering advice on dairy-free baking and expressing interest in collaborating on recipes.",
+            "memory_kind": "relationship",
+            "subject": "Nate",
+            "world_start": "2022-09-05",
+            "world_end": null,
+            "score": 0.0142,
+            "paths": [
+              "semantic",
+              "bm25",
+              "keyword",
+              "structured"
+            ]
+          }
+        ],
+        "returned_version_ids": [
+          "mem_conv-42_0047_v2",
+          "mem_conv-42_0018_v1",
+          "mem_conv-42_0040_v3",
+          "mem_conv-42_0016_v1",
+          "mem_conv-42_0156_v1",
+          "mem_conv-42_0145_v1",
+          "mem_conv-42_0086_v1",
+          "mem_conv-42_0107_v1"
+        ]
+      },
+      {
+        "action_id": "access_conv-42_conv-42_conv-42_qa_0082_a001",
+        "step_index": 1,
+        "action_type": "answer",
+        "request": {
+          "action": "answer",
+          "arguments": {
+            "answer": "vegan ice cream, dairy-free ice cream, coconut milk ice cream, dairy-free chocolate cake with berries, coconut ice cream with sprinkles, lactose-free dessert",
+            "evidence_version_ids": [
+              "mem_conv-42_0047_v2",
+              "mem_conv-42_0018_v1",
+              "mem_conv-42_0040_v3",
+              "mem_conv-42_0016_v1",
+              "mem_conv-42_0156_v1",
+              "mem_conv-42_0145_v1",
+              "mem_conv-42_0086_v1"
+            ],
+            "confidence": 0.95
+          },
+          "reason": "The evidence shows that Nate has made several recipes including vegan ice cream, dairy-free ice cream, coconut milk ice cream, dairy-free chocolate cake with berries, coconut ice cream with sprinkles, and lactose-free dessert."
+        },
+        "returned_memories": [],
+        "returned_version_ids": []
+      }
+    ],
+    "reason": "The reference answer states two specific recipes: coconut milk ice cream and chocolate and vanilla swirl ice cream. The current memory versions mem_conv-42_0014_v1 and mem_conv-42_0018_v1 directly support these claims, respectively. Other memories mention related items but do not directly support the exact claims.",
+    "skill_trace": {
+      "trace_id": "skilltrace_access_conv-42_conv-42_conv-42_qa_0082",
+      "side": "access",
+      "bank_version": "bank1",
+      "query": "What recipes has Nate made?",
+      "top_k": 2,
+      "disclose_k": 5,
+      "min_score": 0.2,
+      "scored_fields": [
+        "name",
+        "description"
+      ],
+      "scoring_weights": {
+        "semantic": 0.7,
+        "bm25": 0.3
+      },
+      "retrieval_method": "bank1_hybrid_router",
+      "candidate_k": 10,
+      "reranker": "bank1_applicability_router",
+      "reranker_error": "",
+      "selected": [],
+      "nearby_not_selected": [
+        {
+          "skill_id": "sk_access_duration_questions",
+          "version_id": "sk_access_duration_questions_v1",
+          "rank": 1,
+          "score": 0.26322314143180847,
+          "semantic_score": -0.052538372576236725,
+          "lexical_score": 1.0,
+          "name": "Duration questions search profile and state memories",
+          "description": "When a question asks how long a person has had, owned, or possessed something (e.g., 'how long has X had Y?'), search profile and state memories as well as event memories.",
+          "content": [
+            "When a question asks how long a subject has had, owned, or possessed an item (e.g., 'how long has Nate had his turtles?'), interpret it as asking for a duration, not a specific acquisition date.",
+            "Do not restrict the search to event memories for such duration/tenure questions; include profile and state memory kinds because ownership duration is commonly stored as a profile or state fact.",
+            "If a profile or state memory directly states the duration, stop searching and answer with that duration; do not substitute a recent event date."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_event_preference_retrieval",
+          "version_id": "sk_access_event_preference_retrieval_v1",
+          "rank": 2,
+          "score": 0.25852230191230774,
+          "semantic_score": -0.01625688001513481,
+          "lexical_score": 0.8996737003326416,
+          "name": "Event-Based Preference Retrieval",
+          "description": "When a question asks about a person's favorite or preferred items, use this to also retrieve event memories where the person made/tried and liked items, and attribute evidence to the correct person.",
+          "content": [
+            "When a question asks about a person's favorite or preferred items, run a supplementary hybrid memory search combining the person's name with terms like 'made', 'tried', 'enjoyed', 'loved', or 'found delicious' to surface event memories that may support the preference.",
+            "Treat an event memory where the subject themselves made or tried an item and expressed positive sentiment as evidence for that subject's preference; do not use another person's enjoyment or reaction as evidence of the subject's preference.",
+            "When answering with a list of favorites, enumerate each distinct item or flavor explicitly stated in eligible supporting memories, and stop when no retrieved memory supports an additional item."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_creative_work_retrieval",
+          "version_id": "sk_access_creative_work_retrieval_v1",
+          "rank": 3,
+          "score": 0.19382023811340332,
+          "semantic_score": 0.12655377388000488,
+          "lexical_score": 0.3507753014564514,
+          "name": "Creative Work Retrieval",
+          "description": "Use when asked what a person's creative work (screenplay, book, film, project) is about or its theme.",
+          "content": [
+            "Before answering what a creative work is about, search using generic descriptors (project, work, piece, story, theme, about) alongside the specific type (screenplay, book, film).",
+            "When the specific work is referenced by order or completion (e.g., third screenplay, finished script), also retrieve memories of completed/achieved works using verbs like completed, finished, wrote, premiered and look for event/achievement memories that state the theme even if they do not name the work type.",
+            "After retrieval, verify the returned memory actually describes the requested instance (e.g., its ordinal or completion status); if it only gives a title or a plan, inspect related versions or broaden the search before answering."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_multi_kind_item_lists",
+          "version_id": "sk_access_multi_kind_item_lists_v1",
+          "rank": 4,
+          "score": 0.17227396368980408,
+          "semantic_score": -0.06091092899441719,
+          "lexical_score": 0.716372013092041,
+          "name": "Search All Memory Kinds for Item Lists",
+          "description": "When a question asks for a list of items a person has read, watched, listened to, or used, use this to ensure retrieval covers preference and event memories.",
+          "content": [
+            "Before answering a list-type question about items a person has read, watched, listened to, or used, run at least one search without restricting memory_kind to a single kind; include both 'event' and 'preference' (and 'state' when relevant).",
+            "Preference memories often store the concrete named items (titles, names) and enriched versions may add more; inspect any returned preference memories for named items even when event memories give only vague descriptions.",
+            "Stop after the unrestricted search has surfaced the relevant preferences and events; do not add exhaustive extra searches unless evidence is still insufficient."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        },
+        {
+          "skill_id": "sk_access_alternative_activity_retrieval",
+          "version_id": "sk_access_alternative_activity_retrieval_v1",
+          "rank": 5,
+          "score": 0.15656444430351257,
+          "semantic_score": 0.08289985358715057,
+          "lexical_score": 0.32844844460487366,
+          "name": "Alternative Activity Retrieval",
+          "description": "Use when a question asks what someone did or planned instead of, rather than, or as a supplement to a named activity.",
+          "content": [
+            "When a question asks for an activity done 'instead of', 'rather than', 'as an alternative to', or to 'supplement' a named activity, do not treat that named activity as the sole retrieval anchor.",
+            "After the first search, run at least one follow-up query that omits the superseded or primary activity and adds replacement-oriented terms such as 'alternative', 'plan', 'preference', 'together', 'play', 'instead', 'supplement', 'additional', 'strength', 'fit', or 'workout'.",
+            "In such follow-up searches, explicitly include memory kinds 'profile' and 'relationship', because the alternative may be recorded as a shared preference or interest rather than as an event.",
+            "If all top results still mention the superseded activity, treat that as evidence of over-anchoring and run another query targeting the replacement before answering."
+          ],
+          "selected": false,
+          "rerank_rank": null,
+          "rerank_reason": ""
+        }
+      ]
+    }
+  },
+  "access_run_id": "access_conv-42_conv-42_conv-42_qa_0082",
+  "claims": [
+    {
+      "claim": "Nate made coconut milk ice cream.",
+      "supporting_version_ids": [
+        "mem_conv-42_0014_v1"
+      ],
+      "coverage": null
+    },
+    {
+      "claim": "Nate made chocolate and vanilla swirl ice cream.",
+      "supporting_version_ids": [
+        "mem_conv-42_0018_v1"
+      ],
+      "coverage": null
+    }
+  ],
+  "current_related_memories": [
+    {
+      "version_id": "mem_conv-42_0014_v1",
+      "memory_id": "mem_conv-42_0014",
+      "version_no": 1,
+      "content": "Nate made coconut milk ice cream and found it to be rich and creamy, expressing pride in his creation and planning to experiment with different flavors and toppings.",
+      "memory_kind": "event",
+      "subject": "Nate",
+      "predicate": "activity",
+      "object_text": "coconut milk ice cream",
+      "world_start": "2022-02-07",
+      "world_end": null,
+      "update_type": "add"
+    },
+    {
+      "version_id": "mem_conv-42_0018_v1",
+      "memory_id": "mem_conv-42_0018",
+      "version_no": 1,
+      "content": "Nate made chocolate and vanilla swirl ice cream for his friend, who loved it. He offered to share a dairy-free recipe using coconut milk.",
+      "memory_kind": "event",
+      "subject": "Nate",
+      "predicate": "action",
+      "object_text": "making ice cream",
+      "world_start": "2022-02-25",
+      "world_end": null,
+      "update_type": "add"
+    }
+  ],
+  "useful_current_version_ids": [
+    "mem_conv-42_0014_v1",
+    "mem_conv-42_0018_v1"
+  ],
+  "retrieved_current_version_ids": [
+    "mem_conv-42_0016_v1",
+    "mem_conv-42_0018_v1",
+    "mem_conv-42_0040_v3",
+    "mem_conv-42_0047_v2",
+    "mem_conv-42_0086_v1",
+    "mem_conv-42_0107_v1",
+    "mem_conv-42_0145_v1",
+    "mem_conv-42_0156_v1"
+  ],
+  "missing_useful_current_version_ids": [
+    "mem_conv-42_0014_v1"
+  ],
+  "search_steps": [
+    {
+      "action_id": "access_conv-42_conv-42_conv-42_qa_0082_a000",
+      "step_index": 0,
+      "action_type": "search_memory",
+      "request": {
+        "action": "search_memory",
+        "arguments": {
+          "strategy": "hybrid",
+          "query": "recipes made by Nate",
+          "query_expansions": [
+            "what dishes has Nate cooked",
+            "which meals did Nate prepare"
+          ],
+          "keywords": [
+            "Nate",
+            "recipe",
+            "made"
+          ],
+          "depth": "standard",
+          "top_k": 8
+        },
+        "reason": "to find the recipes that Nate has made"
+      },
+      "returned_memories": [
+        {
+          "version_id": "mem_conv-42_0047_v2",
+          "memory_id": "mem_conv-42_0047",
+          "content": "Joanna plans to check out the book series recommended by Nate and intends to share her thoughts on it. She also requested the recipe for Nate's vegan ice cream on June 24, 2022, and agreed to make it for her family this weekend.",
+          "memory_kind": "plan",
+          "subject": "Joanna",
+          "world_start": "2022-04-21",
+          "world_end": null,
+          "score": 0.0159,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0018_v1",
+          "memory_id": "mem_conv-42_0018",
+          "content": "Nate made chocolate and vanilla swirl ice cream for his friend, who loved it. He offered to share a dairy-free recipe using coconut milk.",
+          "memory_kind": "event",
+          "subject": "Nate",
+          "world_start": "2022-02-25",
+          "world_end": null,
+          "score": 0.0158,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0040_v3",
+          "memory_id": "mem_conv-42_0040",
+          "content": "Nate made a dairy-free ice cream using coconut milk, vanilla extract, sugar, and a pinch of salt, and shared the recipe with Joanna. Nate shared a recipe for coconut milk ice cream with Joanna, offering to send it to her and inviting her to try it. He made colorful bowls of coconut milk ice cream with mix-ins, describing the recipe as jazzing up the flavor.",
+          "memory_kind": "event",
+          "subject": "Nate",
+          "world_start": "2022-11-11",
+          "world_end": null,
+          "score": 0.0154,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0016_v1",
+          "memory_id": "mem_conv-42_0016",
+          "content": "Nate made a dairy-free chocolate cake with berries and suggested it to Joanna as a potential treat.",
+          "memory_kind": "event",
+          "subject": "Nate",
+          "world_start": "2022-02-07",
+          "world_end": null,
+          "score": 0.015,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0156_v1",
+          "memory_id": "mem_conv-42_0156",
+          "content": "Nate tried out cooking and made homemade coconut ice cream with sprinkles, which slightly changed the color.",
+          "memory_kind": "event",
+          "subject": "Nate",
+          "world_start": "2022-11-09",
+          "world_end": null,
+          "score": 0.015,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0145_v1",
+          "memory_id": "mem_conv-42_0145",
+          "content": "Nate made lactose-free dessert using coconut milk and invited Joanna over to try it, with plans for them to share recipes tomorrow.",
+          "memory_kind": "event",
+          "subject": "Nate",
+          "world_start": "2022-11-04",
+          "world_end": null,
+          "score": 0.0148,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0086_v1",
+          "memory_id": "mem_conv-42_0086",
+          "content": "Nate made vegan ice cream on June 19, 2022, and shared it with some people in his vegan diet group.",
+          "memory_kind": "event",
+          "subject": "Nate",
+          "world_start": "2022-06-19",
+          "world_end": null,
+          "score": 0.0146,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        },
+        {
+          "version_id": "mem_conv-42_0107_v1",
+          "memory_id": "mem_conv-42_0107",
+          "content": "Nate and Joanna share a friendly connection, with Nate offering advice on dairy-free baking and expressing interest in collaborating on recipes.",
+          "memory_kind": "relationship",
+          "subject": "Nate",
+          "world_start": "2022-09-05",
+          "world_end": null,
+          "score": 0.0142,
+          "paths": [
+            "semantic",
+            "bm25",
+            "keyword",
+            "structured"
+          ]
+        }
+      ],
+      "returned_version_ids": [
+        "mem_conv-42_0047_v2",
+        "mem_conv-42_0018_v1",
+        "mem_conv-42_0040_v3",
+        "mem_conv-42_0016_v1",
+        "mem_conv-42_0156_v1",
+        "mem_conv-42_0145_v1",
+        "mem_conv-42_0086_v1",
+        "mem_conv-42_0107_v1"
+      ]
+    },
+    {
+      "action_id": "access_conv-42_conv-42_conv-42_qa_0082_a001",
+      "step_index": 1,
+      "action_type": "answer",
+      "request": {
+        "action": "answer",
+        "arguments": {
+          "answer": "vegan ice cream, dairy-free ice cream, coconut milk ice cream, dairy-free chocolate cake with berries, coconut ice cream with sprinkles, lactose-free dessert",
+          "evidence_version_ids": [
+            "mem_conv-42_0047_v2",
+            "mem_conv-42_0018_v1",
+            "mem_conv-42_0040_v3",
+            "mem_conv-42_0016_v1",
+            "mem_conv-42_0156_v1",
+            "mem_conv-42_0145_v1",
+            "mem_conv-42_0086_v1"
+          ],
+          "confidence": 0.95
+        },
+        "reason": "The evidence shows that Nate has made several recipes including vegan ice cream, dairy-free ice cream, coconut milk ice cream, dairy-free chocolate cake with berries, coconut ice cream with sprinkles, and lactose-free dessert."
+      },
+      "returned_memories": [],
+      "returned_version_ids": []
+    }
+  ]
+}
