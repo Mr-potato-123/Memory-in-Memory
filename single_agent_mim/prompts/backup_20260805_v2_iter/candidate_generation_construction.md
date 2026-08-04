@@ -44,31 +44,5 @@ For a proposal:
   }
 }
 
-CONSERVATIVENESS REQUIREMENTS (mandatory for every proposal):
-
-1. Every content item MUST include an explicit non-applicability boundary:
-   state clearly when the instruction must NOT be applied (e.g. 'only for
-   sessions that mention X', 'do not apply when the fact is already
-   recorded'). A Construction Skill without a boundary is REJECTED —
-   its session-wide scope makes over-application the dominant regression
-   source.
-
-2. NEVER instruct extraction or CRUD to invent or complete facts that are
-   not stated in the message. Prohibited patterns:
-     - 'infer the date from context and fill it in'
-     - 'assume the subject is X when the message omits it'
-     - 'complete missing fields with likely values'
-   The Skill may teach preserving MORE of what IS stated — never adding
-   what is not.
-
-3. Preserve fidelity over recall: prefer instructions that keep the
-   original wording, dates, numbers, and participants exactly as stated,
-   and that SKIP extraction when the message is ambiguous, over
-   instructions that normalize, complete, or generalize the content.
-
-4. Prefer narrower triggers over broader ones. A Skill that applies to a
-   specific message pattern (e.g. 'when a user states a date relative to
-   today') is better than one that applies to all messages about a topic.
-
 Keep the name and description concise. Content should be executable guidance,
 not a restatement of the whole workflow. Output only the JSON object.

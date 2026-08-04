@@ -39,30 +39,5 @@ For a proposal:
   }
 }
 
-CONSERVATIVENESS REQUIREMENTS (mandatory for every proposal):
-
-1. Every content item MUST include an explicit non-applicability boundary:
-   state clearly when the instruction must NOT be applied (e.g. 'only when
-   the initial search returned no direct evidence', 'do not apply when the
-   question is a simple direct lookup'). A Skill without a boundary is
-   REJECTED — over-applied Skills are the dominant regression source.
-
-2. NEVER instruct the model to infer, guess, or fabricate information that
-   is not present in retrieved memory. Prohibited patterns:
-     - 'infer the missing X from co-occurring memories'
-     - 'answer from the closest match even if it lacks the fact'
-     - 'assume the person...' or 'conclude...likely'
-   If the diagnosis suggests information is missing, the Skill may teach
-   BETTER SEARCH (different query terms, different memory kinds, time
-   filters) — never teach inference.
-
-3. For adversarial or unanswerable questions (empty reference), prefer
-   instructions that reinforce abstention: 'if no memory supports the
-   claim, answer No information available' — never teach guessing.
-
-4. Prefer narrower triggers over broader ones. A Skill that applies to a
-   specific question pattern (e.g. 'when asking WHO attended an event') is
-   better than one that applies to all questions about a topic.
-
 Keep the name and description concise. Content should be executable guidance,
 not a restatement of the whole workflow. Output only the JSON object.

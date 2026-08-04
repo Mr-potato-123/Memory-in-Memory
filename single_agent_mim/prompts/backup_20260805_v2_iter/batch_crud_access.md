@@ -19,21 +19,6 @@ comes from the same topic or cluster. Merge only when the operational retrieval
 steps are genuinely equivalent; otherwise create a separate narrowly-triggered
 Skill.
 
-QUALITY BAR FOR EVERY RESOLVED SKILL (official or merged):
-
-- Every content item MUST contain an explicit non-applicability boundary
-  (when NOT to apply). Reject or strip content items that lack one.
-- REJECT any candidate or content that instructs inference, guessing, or
-  fabrication of facts absent from retrieved memory (e.g. 'infer the
-  missing X', 'answer from the closest match', 'assume ... likely').
-  Such instructions are the dominant regression source in bank updates.
-- REJECT candidates whose trigger is so broad it would apply to most
-  questions of a topic; narrow the trigger or reject.
-- Prefer fewer, conservative Skills over many aggressive ones: when in
-  doubt whether a merge or an add is safer, keep the narrower option.
-- Never weaken an existing official Skill's boundary during an update;
-  updates may only add or sharpen boundaries, never remove them.
-
 Available operations:
 - add_skill
 - rename_skill

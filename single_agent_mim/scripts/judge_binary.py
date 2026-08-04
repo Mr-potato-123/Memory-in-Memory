@@ -245,7 +245,10 @@ def judge_batch(
                 reason = str(j.get("reason", "")).strip()
                 if not reason:
                     raise ValueError("Empty reason")
-                if len(reason.split()) > 24:
+                # The binary prompt does not constrain reason length; keep a
+                # generous bound to catch degenerate outputs without rejecting
+                # legitimate verbose reasons.
+                if len(reason.split()) > 60:
                     raise ValueError(
                         f"Reason too long ({len(reason.split())} words): "
                         f"{reason[:80]}..."

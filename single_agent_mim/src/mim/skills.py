@@ -178,7 +178,9 @@ class LLMSkillApplicabilityReranker:
         side_guidance = (
             "Select a Skill only when its procedure is specifically useful for "
             "planning this question's memory search. Topic overlap is not enough. "
-            "A direct lookup normally needs no Skill."
+            "A direct lookup normally needs no Skill. Never select a Skill for "
+            "questions that are unanswerable or adversarial (no memory supports "
+            "the claim): Skills must not encourage guessing or inference."
             if side == Side.ACCESS
             else
             "Select a Skill only when the session contains its trigger and its "

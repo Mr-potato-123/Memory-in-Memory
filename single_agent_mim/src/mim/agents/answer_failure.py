@@ -82,7 +82,7 @@ class AnswerFailureAgent:
                     bool(result.get("retrieved_context_supports_abstention"))
                     and not contradiction
                 )
-            problem = case.judge_label in {"P", "I"} and sufficient
+            problem = case.judge_label in {"P", "I", "W"} and sufficient
 
             report.claims = claims
             report.unresolved_material_contradiction = contradiction

@@ -334,7 +334,9 @@ def _build_work_items(
     judge_by_qa = {
         str(row["qa_id"]): row
         for row in judge_rows
-        if row.get("qa_id") and row.get("label") in {"P", "I"}
+        # Accept both the legacy three-way labels (P/I) and the community-
+        # standard binary judge labels (W = WRONG). Both mean "not correct".
+        if row.get("qa_id") and row.get("label") in {"P", "I", "W"}
     }
     _, questions_by_conversation = load_dataset(config.dataset.path)
     question_by_id = {

@@ -149,10 +149,20 @@ class ConsFailureAgent:
                 result.get("review_required", False)
             )
 
-            if raw_support != "SUPPORTED":
+            if raw_support == "INVALID":
+                # Evidence is unusable (missing/contradictory at the source):
+                # no construction error can be attributed. Drop the case.
                 report.status = DiagnosisStatus.DATA_ERROR
                 report.review_required = True
                 return report
+            if raw_support != "SUPPORTED":
+                # PARTIAL / CONTRADICTORY: the raw evidence only partially
+                # supports (or conflicts with) the reference. The trace stage
+                # still inspects construction history, so keep diagnosing but
+                # flag the case for human review — a PARTIAL verdict often
+                # masks an extraction/date-resolution bug that IS a genuine
+                # construction error (e.g. 'yesterday' → wrong date).
+                report.review_required = True
 
             construction_problem = bool(
                 result.get("construction_problem", True)
@@ -183,7 +193,11 @@ class ConsFailureAgent:
             report.first_error = first_error
             report.affected_memory_ids = affected_memory_ids
             report.construction_history = construction_history
-            if not report.review_required:
+            # A valid first-error attribution always yields a repair package.
+            # review_required only flags confidence for later human review —
+            # it must not discard a diagnosis that already located the
+            # construction error (e.g. PARTIAL raw_support cases).
+            if first_error.get("stage"):
                 report.repair_package = {
                     "question": case.question,
                     "reference_answer": case.reference_answer,

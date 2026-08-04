@@ -98,8 +98,12 @@ def _parse_cluster_summary(
 ) -> tuple[list[SkillCandidate], list[dict[str, str]]]:
     skills = data.get("skills")
     rejected = data.get("rejected_candidates", [])
-    if not isinstance(skills, list) or not 1 <= len(skills) <= 5:
-        raise ValueError("skills must contain between 1 and 5 draft Skills")
+    # An empty skills list is legal when the summarizer rejects the whole
+    # cluster (conservative prompt can legitimately decline every candidate).
+    # Coverage is then verified below: every candidate must be accounted for
+    # either as a draft's source or as a rejected candidate.
+    if not isinstance(skills, list) or not 0 <= len(skills) <= 5:
+        raise ValueError("skills must contain between 0 and 5 draft Skills")
     if not isinstance(rejected, list):
         raise ValueError("rejected_candidates must be a list")
 
