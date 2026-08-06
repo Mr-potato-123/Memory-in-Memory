@@ -30,6 +30,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from mim.agents.skill_learning import CandidateSkillAgent
 from mim.config import load_config
 from mim.llm import create_client
+from mim.skill_maker.success_examples import SuccessfulSkillExampleIndex
 from mim.skill_maker import SkillRepository
 
 
@@ -64,11 +65,20 @@ def main() -> int:
     parser.add_argument("--config", default="configs/qwen3_8b_dashscope.yaml")
     parser.add_argument("--diagnosis-root", required=True)
     parser.add_argument("--skills-dir", required=True)
+    parser.add_argument("--success-examples",
+                        help="JSONL of Judge-C skill-use trajectories; "
+                             "one matched example is attached per diagnosis "
+                             "for scope calibration.")
     parser.add_argument("--workers", type=int, default=8)
     parser.add_argument("--max-items", type=int, default=0)
     args = parser.parse_args()
 
     config = load_config(args.config)
+    success_index = (
+        SuccessfulSkillExampleIndex.load(Path(args.success_examples))
+        if args.success_examples
+        else None
+    )
     packages = _collect_packages(Path(args.diagnosis_root))
     if args.max_items > 0:
         packages = packages[: args.max_items]
@@ -94,6 +104,7 @@ def main() -> int:
                 if side == "access"
                 else config.prompts.skill_candidate_generation_construction
             ),
+            success_examples=success_index,
         )
         report = item["report"]
         diag_id = str(report.get("diagnosis_id") or report.get("qa_id"))

@@ -283,7 +283,29 @@ def _generate_drafts(
 
         for future in as_completed(pending):
             index, cluster_id, artifact = pending[future]
-            drafts, rejected, raw = future.result()
+            try:
+                drafts, rejected, raw = future.result()
+            except ValueError as exc:
+                # A cluster that the summarizer cannot produce a valid
+                # summary for is dropped wholesale: its candidates are
+                # skipped rather than crashing the whole bank build.
+                print(f"[warn] {cluster_id} summary failed after retries: "
+                      f"{exc}; dropping cluster candidates", flush=True)
+                _atomic_json(
+                    artifact,
+                    {
+                        "cluster_id": cluster_id,
+                        "source_candidate_ids": [
+                            candidate.candidate_id for candidate in clusters[index]
+                        ],
+                        "drafts": [],
+                        "rejected_candidates": [],
+                        "raw_summary": {},
+                        "error": str(exc)[:200],
+                    },
+                )
+                results[index] = ([], [])
+                continue
             _atomic_json(
                 artifact,
                 {
@@ -665,6 +687,12 @@ def main() -> None:
                 config.prompts.skill_batch_crud_access
                 if side == "access"
                 else config.prompts.skill_batch_crud_construction
+            )
+            # Inject the current official skill count so the CRUD agent can
+            # enforce the scale limit (fewer new Skills when the bank grows).
+            crud_prompt = crud_prompt.replace(
+                "{official_skill_count}",
+                str(len(initial_by_side[side])),
             )
             future = pool.submit(
                 _process_side,

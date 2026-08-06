@@ -269,6 +269,40 @@ class AccessAgent:
 
             action = self._parse_action(resp.text)
             if action is None:
+                # One repair retry: some providers (e.g. DeepSeek without
+                # thinking) occasionally emit text that is not valid JSON.
+                # Ask for a strict JSON-only retry before giving up on the QA.
+                repair_messages = list(messages)
+                repair_messages.append(
+                    {"role": "assistant", "content": resp.text}
+                )
+                repair_messages.append(
+                    {
+                        "role": "user",
+                        "content": (
+                            "Your previous output was not valid JSON. Reply "
+                            "with exactly one JSON object containing only the "
+                            '"action" and "arguments" keys, no prose, no '
+                            "markdown fences."
+                        ),
+                    }
+                )
+                try:
+                    repair_resp = self._model.generate(
+                        repair_messages,
+                        temperature=0.0,
+                        max_tokens=1200,
+                        json_mode=True,
+                    )
+                except Exception:
+                    repair_resp = None
+                if repair_resp is not None:
+                    repaired = self._parse_action(repair_resp.text)
+                    if repaired is not None:
+                        resp = repair_resp
+                        action = repaired
+
+            if action is None:
                 error = f"Protocol error at step {step}: could not parse JSON"
                 self._emit(
                     "access_protocol_error",

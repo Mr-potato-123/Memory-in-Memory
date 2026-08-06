@@ -193,21 +193,24 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default=str(CONFIG))
     parser.add_argument("--output-root", default="outputs/v2_iter")
+    parser.add_argument("--initial-bank", default=str(BANK1_PUBLISHED),
+                        help="Starting published Skill Bank for this iteration.")
     parser.add_argument("--qa-workers", type=int, default=6)
     parser.add_argument("--smoke-qa", type=int, default=0)
     parser.add_argument("--max-convs", type=int, default=0)
     args = parser.parse_args()
 
     root = Path(args.output_root)
+    initial_bank = Path(args.initial_bank)
     train_convs = TRAIN_CONVS[: args.max_convs] if args.max_convs else TRAIN_CONVS
     val_convs = VAL_CONVS[: args.max_convs] if args.max_convs else VAL_CONVS
 
-    # ── 1. Train with existing Bank1 (23A+26C) ─────────────────
+    # ── 1. Train with the starting Bank ─────────────────────────
     run_or_skip(
-        train_cmd("train", root / "train", skill_bank=BANK1_PUBLISHED,
+        train_cmd("train", root / "train", skill_bank=initial_bank,
                   qa_workers=args.qa_workers, smoke_qa=args.smoke_qa,
                   max_convs=args.max_convs),
-        root / "train" / "summary.json", "train (Bank1)",
+        root / "train" / "summary.json", "train (initial bank)",
     )
     # ── 2. Judge ───────────────────────────────────────────────
     pred_files = [root / "train" / cid / "locomo_predictions.jsonl"
@@ -243,19 +246,19 @@ def main() -> int:
     )
     # ── 5. Drop unused Skills; keep used ones for CRUD ─────────
     used_access, used_cons = analyse_used_skills(root / "train")
-    filtered_bank = root / "bank1_filtered"
+    filtered_bank = root / "filtered_bank"
     marker = filtered_bank / "filter_report.json"
     if not marker.exists():
         print(f"[run ] usage stats: access={len(used_access)} "
               f"construction={len(used_cons)}", flush=True)
-        filter_bank(BANK1_PUBLISHED, used_access, used_cons, filtered_bank)
+        filter_bank(initial_bank, used_access, used_cons, filtered_bank)
     else:
         report = json.loads(marker.read_text(encoding="utf-8"))
         print(f"[skip] skill filter already done: "
               f"access kept={report['access']['kept']}, "
               f"construction kept={report['construction']['kept']}", flush=True)
 
-    # ── 6. V2 pipeline: drafts CRUD against filtered Bank1 ─────
+    # ── 6. V2 pipeline: drafts CRUD against filtered bank ──────
     run_or_skip(
         pipeline_cmd(root / "skills" / "candidates", "bank2",
                      root, filtered_bank),

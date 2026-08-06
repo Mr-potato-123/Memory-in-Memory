@@ -38,24 +38,6 @@ QUALITY BAR FOR EVERY RESOLVED SKILL (official or merged):
 - Never weaken an existing official Skill's boundary during an update;
   updates may only add or sharpen boundaries, never remove them.
 
-SCALE LIMIT (mandatory): the official Bank already contains
-{official_skill_count} Skills. Skill-bank size directly drives retrieval
-noise: larger banks make the reranker select the wrong Skill more often.
-Enforce these limits:
-
-- If official_skill_count >= 50: NO new add_skill operations. Every
-  candidate must be MERGED_INTO_EXISTING, MERGED_INTO_CANDIDATE,
-  ALREADY_COVERED, or REJECTED. Extend an existing Skill's content only
-  when the new mechanism is genuinely operational (same trigger family);
-  otherwise REJECT.
-- If official_skill_count >= 35: add_skill is allowed only for mechanisms
-  that are NOT covered by any existing Skill and cannot be merged; at
-  most 3 add_skill per batch. Prefer updating the closest existing Skill
-  with a narrowed boundary instead.
-- Always prefer a MERGE that keeps both mechanisms over an ADD: adding a
-  content item to an existing Skill (with a boundary that limits the new
-  item's trigger) is safer than a new Skill.
-
 Available operations:
 - add_skill
 - rename_skill
