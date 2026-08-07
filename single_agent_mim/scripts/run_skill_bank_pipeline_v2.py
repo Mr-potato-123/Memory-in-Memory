@@ -688,12 +688,6 @@ def main() -> None:
                 if side == "access"
                 else config.prompts.skill_batch_crud_construction
             )
-            # Inject the current official skill count so the CRUD agent can
-            # enforce the scale limit (fewer new Skills when the bank grows).
-            crud_prompt = crud_prompt.replace(
-                "{official_skill_count}",
-                str(len(initial_by_side[side])),
-            )
             future = pool.submit(
                 _process_side,
                 side=side,

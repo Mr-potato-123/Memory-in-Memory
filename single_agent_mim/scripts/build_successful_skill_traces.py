@@ -154,7 +154,7 @@ def _access_example(
         "selected_skills": selected,
         "question": prediction.get("question"),
         "execution_trace": actions,
-        "final_evidence_ids": prediction.get("evidence", []),
+        "final_evidence_ids": prediction.get("evidence", prediction.get("evidence_ids", [])),
         "answer": prediction.get("prediction"),
         "reference_answer": prediction.get("answer"),
         "attribution_note": (
@@ -168,7 +168,7 @@ def _construction_example(
     conn: sqlite3.Connection,
     prediction: dict[str, Any],
 ) -> dict[str, Any] | None:
-    for version_id in prediction.get("evidence", []):
+    for version_id in prediction.get("evidence", prediction.get("evidence_ids", [])):
         memory = conn.execute(
             """SELECT version_id, content, memory_kind, subject, predicate,
                       world_start, world_end, system_from_commit,
@@ -227,7 +227,7 @@ def _construction_example(
                 )
             },
             "downstream_question": prediction.get("question"),
-            "final_evidence_ids": prediction.get("evidence", []),
+            "final_evidence_ids": prediction.get("evidence", prediction.get("evidence_ids", [])),
             "answer": prediction.get("prediction"),
             "reference_answer": prediction.get("answer"),
             "attribution_note": (
