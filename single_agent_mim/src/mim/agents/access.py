@@ -641,23 +641,22 @@ class AccessAgent:
         else:
             skill_text = "(No access skills. Use default retrieval strategy.)"
 
-        # Skills are advisory references, not commands.  The model must weigh
-        # them against question difficulty and actual evidence; a simple
-        # direct lookup keeps the default strategy even when a Skill's topic
-        # overlaps, while complex questions may combine construction and
-        # access guidance as needed.  Evidence always beats Skill instructions.
+        # Skills are learned priors distilled from earlier runtime experience.
+        # They can guide the first action when their observable trigger matches,
+        # while system invariants and current evidence remain authoritative.
         skills_section = (
-            "## Access Skills (advisory references, not commands)\n"
-            "Below are reference strategies. Judge applicability against the "
-            "question's actual difficulty and the evidence you find:\n"
-            "- Simple direct questions: keep the default retrieval strategy; "
-            "do not follow a Skill just because its topic overlaps.\n"
-            "- Complex questions (multi-hop, lists, indirect evidence, broad "
-            "temporal ranges): a Skill may guide extra searches, but never at "
-            "the cost of skipping standard retrieval or ignoring evidence.\n"
-            "- Evidence and basic retrieval always override Skill "
-            "instructions. If a Skill's procedure does not fit the situation, "
-            "ignore it.\n\n"
+            "## Access Skills (learned behavioral priors)\n"
+            "These strategies internalize reusable experience from earlier "
+            "runs. A Skill may guide the first retrieval or answering action "
+            "when its observable `When` trigger matches the current question "
+            "or evidence state; no prior failed attempt is required.\n"
+            "- Match the complete trigger, not shared nouns or topic overlap.\n"
+            "- Apply only the matching instruction; combine Skills only when "
+            "their triggers and actions are compatible.\n"
+            "- System rules, tool constraints, and current evidence always "
+            "override a Skill. Never invent facts or skip evidence checks.\n"
+            "- If a trigger does not match, or later evidence contradicts the "
+            "Skill's premise, ignore it and use the general workflow.\n\n"
             + skill_text
         )
 

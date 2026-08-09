@@ -212,6 +212,12 @@ class MiMConfig(BaseModel):
         with open(path, "r", encoding="utf-8") as f:
             raw = yaml.safe_load(f)
         raw = _resolve_env(raw)
+        # A structural smoke run can bypass heavyweight local transformer
+        # initialization without copying configs (and their local credentials).
+        # Normal experiments leave this unset and retain the YAML model.
+        embedding_override = os.environ.get("MIM_EMBEDDING_MODEL", "").strip()
+        if embedding_override:
+            raw.setdefault("embedding", {})["model"] = embedding_override
         return cls(**raw)
 
     def to_resolved_dict(self) -> dict:

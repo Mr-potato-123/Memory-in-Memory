@@ -1,4 +1,4 @@
-"""Record-only diagnosis of errors made with sufficient retrieved context."""
+"""Diagnosis of answer errors made with sufficient retrieved context."""
 
 from __future__ import annotations
 
@@ -98,6 +98,28 @@ class AnswerFailureAgent:
             report.review_required = bool(
                 result.get("review_required", False)
             )
+            if problem and not report.review_required:
+                # Answer behaviour belongs to the Access & Answer Agent. Keep
+                # this package small: the full report remains the audit
+                # artifact, while candidate generation sees only the evidence
+                # needed to internalize a reusable answering rule.
+                report.repair_package = {
+                    "schema_version": "standard_answer_failure_v1",
+                    "source_mode": "standard",
+                    "side": "access",
+                    "stage": "answer",
+                    "question": case.question,
+                    "reference_answer": case.reference_answer,
+                    "runtime_prediction": case.prediction,
+                    "retrieved_context_sufficient": True,
+                    "essential_reference_claims": [
+                        claim.model_dump(mode="json") for claim in claims
+                    ],
+                    "retrieved_version_ids": sorted(allowed_ids),
+                    "search_steps": exact_search_steps,
+                    "unresolved_material_contradiction": contradiction,
+                    "reason": report.reason,
+                }
         except Exception as exc:
             report.status = DiagnosisStatus.MODEL_ERROR
             report.reason = f"Answer diagnosis failed: {exc}"

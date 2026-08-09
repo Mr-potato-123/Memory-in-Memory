@@ -91,10 +91,9 @@ class DiagnosisArtifactStore:
             and diagnosis_type == DiagnosisType.ANSWER_FAILURE.value
         ):
             self._append_jsonl(self.answer_failures_path, data)
-            return
 
         if (
-            self.component in {"access", "cons"}
+            self.component in {"answer", "access", "cons"}
             and bool(data.get("problem_found"))
             and data.get("repair_package") is not None
         ):

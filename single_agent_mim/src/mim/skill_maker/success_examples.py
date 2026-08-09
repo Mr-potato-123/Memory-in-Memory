@@ -115,6 +115,97 @@ class SuccessfulSkillExampleIndex:
         }
 
 
+class NoSkillSuccessIndex:
+    """Judge-correct questions answered by the DEFAULT policy (no Skill).
+
+    These are the positive examples the candidate generator must not break:
+    a question pattern answered correctly without any Skill is evidence that
+    the default behaviour is sufficient for that pattern, so proposed Skills
+    must be conditioned on the default policy having failed first.
+    """
+
+    def __init__(self, examples: list[dict[str, Any]]):
+        self._examples: list[dict[str, Any]] = []
+        for example in examples:
+            if str(example.get("judge_label", "")).upper() != "C":
+                continue
+            if example.get("skill_ids"):
+                # Skill usage means this is not a default-policy example.
+                continue
+            question = str(example.get("question", "")).strip()
+            if not question:
+                continue
+            self._examples.append(dict(example))
+        self._examples.sort(
+            key=lambda item: (
+                str(item.get("conversation_id", "")),
+                str(item.get("qa_id", "")),
+            )
+        )
+
+    @classmethod
+    def load(cls, path: str | Path) -> "NoSkillSuccessIndex":
+        source = Path(path)
+        if not source.is_file():
+            raise FileNotFoundError(
+                f"Default-policy success index not found: {source}"
+            )
+        rows = []
+        for line_no, line in enumerate(
+            source.read_text(encoding="utf-8").splitlines(), start=1
+        ):
+            if not line.strip():
+                continue
+            value = json.loads(line)
+            if not isinstance(value, dict):
+                raise ValueError(
+                    f"Expected JSON object at {source}:{line_no}"
+                )
+            rows.append(value)
+        return cls(rows)
+
+    def count(self) -> int:
+        return len(self._examples)
+
+    def select(self, diagnosis: dict[str, Any]) -> dict[str, Any] | None:
+        """Return the most similar default-policy success, or None."""
+        question = str(diagnosis.get("question", "")).strip()
+        if not question or not self._examples:
+            return None
+        query_tokens = _tokenize(question)
+        if not query_tokens:
+            return None
+        best: dict[str, Any] | None = None
+        best_score = 0.0
+        for example in self._examples:
+            tokens = _tokenize(str(example.get("question", "")))
+            overlap = len(query_tokens & tokens)
+            if not overlap:
+                continue
+            score = overlap / max(len(query_tokens | tokens), 1)
+            if score > best_score:
+                best_score = score
+                best = example
+        if best is None or best_score < 0.15:
+            return None
+        return {
+            "relationship_to_diagnosis": "default_policy_success",
+            "similarity": round(best_score, 3),
+            "qa_id": best.get("qa_id"),
+            "conversation_id": best.get("conversation_id"),
+            "question": best.get("question"),
+            "category": best.get("category"),
+            "prediction": best.get("prediction"),
+            "reference_answer": best.get("reference_answer"),
+        }
+
+
+def _tokenize(text: str) -> set[str]:
+    import re
+
+    return set(re.findall(r"[a-z0-9]+", str(text).lower()))
+
+
 def _trace_skill_ids(trace: Any) -> tuple[set[str], set[str]]:
     selected: set[str] = set()
     nearby: set[str] = set()

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import runpy
 import sqlite3
 import sys
 from pathlib import Path
@@ -49,7 +50,7 @@ def _mock(*objects: dict) -> MockClient:
     return model
 
 
-def test_answer_failure_is_record_only_when_retrieved_context_is_sufficient():
+def test_answer_failure_builds_access_package_when_context_is_sufficient():
     agent = AnswerFailureAgent(
         _mock({
             "essential_reference_claims": [{
@@ -78,7 +79,11 @@ def test_answer_failure_is_record_only_when_retrieved_context_is_sufficient():
     assert report.diagnosis_type == DiagnosisType.ANSWER_FAILURE
     assert report.problem_found is True
     assert report.retrieved_context_sufficient is True
-    assert report.repair_package is None
+    assert report.repair_package is not None
+    assert report.repair_package["side"] == "access"
+    assert report.repair_package["stage"] == "answer"
+    assert report.repair_package["retrieved_context_sufficient"] is True
+    assert report.repair_package["retrieved_version_ids"] == ["mem_v1"]
 
 
 def test_answer_failure_handles_empty_unanswerable_reference():
@@ -341,7 +346,9 @@ def test_cons_candidate_loads_history_and_reports_first_error():
     assert report.repair_package is not None
 
 
-def test_answer_artifact_never_creates_a_package(tmp_path: Path):
+def test_answer_artifact_keeps_audit_log_and_creates_access_package(
+    tmp_path: Path,
+):
     report = AnswerFailureAgent(
         _mock({
             "essential_reference_claims": [{
@@ -372,4 +379,41 @@ def test_answer_artifact_never_creates_a_package(tmp_path: Path):
     store.publish(report)
 
     assert store.answer_failures_path.exists()
-    assert not store.packages_root.exists()
+    package_path = store.packages_root / "conv" / "qa_answer_failure.json"
+    assert package_path.exists()
+    package = json.loads(package_path.read_text(encoding="utf-8"))
+    assert package["repair_package"]["stage"] == "answer"
+
+
+def test_candidate_collector_routes_answer_and_access_to_access_side(
+    tmp_path: Path,
+):
+    for component, problem_found in (
+        ("answer_failure", True),
+        ("access_failure", True),
+        ("cons_failure", True),
+        ("answer_failure_ignored", False),
+    ):
+        actual_component = component.removesuffix("_ignored")
+        package_dir = tmp_path / actual_component / "packages" / component
+        package_dir.mkdir(parents=True, exist_ok=True)
+        (package_dir / "report.json").write_text(
+            json.dumps({
+                "diagnosis_id": component,
+                "problem_found": problem_found,
+                "repair_package": {"stage": "answer"},
+            }),
+            encoding="utf-8",
+        )
+
+    script = Path(__file__).resolve().parents[1] / "scripts" / (
+        "run_candidates_from_diagnosis.py"
+    )
+    collect = runpy.run_path(str(script))["_collect_packages"]
+    rows = collect(tmp_path)
+
+    assert [(row["report"]["diagnosis_id"], row["side"]) for row in rows] == [
+        ("answer_failure", "access"),
+        ("access_failure", "access"),
+        ("cons_failure", "construction"),
+    ]

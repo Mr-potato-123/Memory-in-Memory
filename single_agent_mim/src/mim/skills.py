@@ -176,9 +176,9 @@ class LLMSkillApplicabilityReranker:
         if not candidates or max_selected <= 0:
             return SkillRerankResult([], {})
         side_guidance = (
-            "Select a Skill only when its procedure is specifically useful for "
-            "planning this question's memory search. Topic overlap is not enough. "
-            "A direct lookup normally needs no Skill. Never select a Skill for "
+            "Select a Skill when its observable trigger matches this question "
+            "and its learned procedure is specifically useful for retrieval or "
+            "answering. Topic overlap alone is not enough. Never select a Skill for "
             "questions that are unanswerable or adversarial (no memory supports "
             "the claim): Skills must not encourage guessing or inference."
             if side == Side.ACCESS
@@ -202,7 +202,8 @@ class LLMSkillApplicabilityReranker:
 {side_guidance}
 
 Rules:
-1. Select zero to {max_selected} Skills. Abstain when default behavior is enough.
+1. Select zero to {max_selected} Skills. A matching learned Skill may guide the
+   first action; abstain only when no candidate's observable trigger applies.
 2. Judge procedural applicability, not shared nouns or broad semantic similarity.
 3. Reject redundant, conflicting, over-broad, or merely topical Skills.
 4. Do not answer the question and do not invent a new Skill.

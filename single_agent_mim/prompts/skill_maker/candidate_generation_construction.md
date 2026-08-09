@@ -38,6 +38,19 @@ was later cited by a Judge-correct answer. Use it for scope calibration:
   calendar dates, never for relative references like 'recently' or 'last
   year'), and never instruct filling in or shifting dates.
 
+A DEFAULT_POLICY_SUCCESS_EXAMPLE is attached when available: a real
+Judge-correct question answered by the DEFAULT policy (no Skill selected).
+Calibrate with it:
+- If it matches this diagnosis's pattern, the default extraction/CRUD policy
+  already suffices. Return NO_CHANGE_NOT_A_SKILL_PROBLEM, or propose a Skill
+  whose trigger is explicitly conditioned on the default policy having
+  FAILED first. Never propose a Skill that changes extraction or CRUD
+  behaviour for sessions the default policy already handles correctly.
+- Construction Skills that alter extraction volume, merge/update frequency,
+  or temporal metadata on broad triggers are the dominant regression source:
+  a DEFAULT_POLICY_SUCCESS_EXAMPLE is direct evidence that the default
+  behaviour must be preserved for that pattern.
+
 Return exactly one JSON object.
 
 For no change:

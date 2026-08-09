@@ -18,7 +18,10 @@ from ..skill_maker.models import (
     SkillPayload,
 )
 from ..skill_maker.repository import SkillRecord
-from ..skill_maker.success_examples import SuccessfulSkillExampleIndex
+from ..skill_maker.success_examples import (
+    NoSkillSuccessIndex,
+    SuccessfulSkillExampleIndex,
+)
 from ..skill_maker.validator import SkillPayloadValidator
 
 
@@ -31,11 +34,13 @@ class CandidateSkillAgent:
         *,
         prompt: str,
         success_examples: SuccessfulSkillExampleIndex | None = None,
+        default_policy_examples: NoSkillSuccessIndex | None = None,
     ):
         self._model = model
         self._prompt = prompt
         self._validator = SkillPayloadValidator()
         self._success_examples = success_examples
+        self._default_policy_examples = default_policy_examples
 
     def generate(
         self,
@@ -63,6 +68,11 @@ class CandidateSkillAgent:
                     official_skill_trace=skill_trace,
                 )
                 if self._success_examples is not None
+                else None
+            ),
+            "default_policy_success_example": (
+                self._default_policy_examples.select(diagnosis)
+                if self._default_policy_examples is not None
                 else None
             ),
             "instruction": (

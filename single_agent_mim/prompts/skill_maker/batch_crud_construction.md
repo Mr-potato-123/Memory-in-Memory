@@ -1,42 +1,29 @@
-You maintain the Construction side of the official Skill Bank. The input
-contains a batch of candidate Construction Skills, each short solves paragraph,
-a candidate-to-bank similarity table, and the related official Construction
-Skills. Diagnosis packages and Runtime traces are not provided.
+You maintain the Construction side of the official Skill Bank. Inputs are
+concise candidate Construction Skills distilled from standard or contrastive
+experience, a candidate-to-bank similarity table, and related official
+Construction Skills. Diagnosis packages and runtime traces are intentionally
+not provided.
 
-Resolve every candidate exactly once. Candidates with the same reusable
-extraction or CRUD rule may be merged. A batch may create, update, rename,
-merge, or delete several official Skills. Do not create a case-specific rule
-when an existing Skill already covers it.
+Resolve every candidate exactly once. Candidates may encode REPAIR, ADOPT, or
+PRESERVE_AVOID, but the official runtime Skill remains only `name`,
+`description`, and `content`. Merge candidates only when their reusable
+extraction or CRUD actions are operationally equivalent. Topic or cluster
+overlap alone is insufficient.
 
-Construction Skills have broad side effects — one Skill affects all future
-memory building in a session. Prefer conservative merging: fewer,
-tightly-scoped Skills. When merging extraction guidance, preserve operational
-specificity; avoid creating overly broad triggers that activate on unrelated
-sessions. A Skill that triggers too often and changes extraction behavior across
-the board is worse than a narrowly-scoped Skill that fires rarely but correctly.
+Construction Skills affect future memory building, so prefer fewer, precise
+Skills. Do not create case-specific rules, and do not duplicate behavior
+already covered by an official Skill.
 
-Each candidate is already one deliberately separated mechanism produced by a
-semantic-cluster summarizer. Do not merge it merely because another candidate
-comes from the same topic or cluster. Merge only when the extraction or update
-action is genuinely equivalent; otherwise create a separate narrowly-triggered
-Skill.
+QUALITY BAR:
 
-QUALITY BAR FOR EVERY RESOLVED SKILL (official or merged):
-
-- Every content item MUST contain an explicit non-applicability boundary
-  (when NOT to apply). Reject or strip content items that lack one.
-- REJECT any candidate or content that instructs extraction or CRUD to
-  invent or complete facts absent from the message (e.g. 'infer the date',
-  'assume the subject', 'fill in missing fields with likely values').
-  Preserve fidelity: keep wording, dates, numbers, and participants as
-  stated; SKIP when ambiguous. Such instructions are the dominant
-  regression source in bank updates.
-- REJECT candidates whose trigger is so broad it would activate on most
-  sessions; narrow the trigger or reject.
-- Prefer fewer, conservative Skills over many aggressive ones: when in
-  doubt whether a merge or an add is safer, keep the narrower option.
-- Never weaken an existing official Skill's boundary during an update;
-  updates may only add or sharpen boundaries, never remove them.
+- `description` must contain one observable session trigger and its
+  applicability boundary. Do not require every content item to repeat it.
+- `content` must contain only concise executable extraction or CRUD actions.
+- Reject instructions to invent, infer, or complete facts absent from source
+  messages. Preserve stated wording, dates, numbers, and participants.
+- Narrow or reject a broad topic trigger that would activate indiscriminately.
+- Preserve or sharpen existing boundaries during updates; never silently widen
+  them.
 
 Available operations:
 - add_skill
@@ -64,15 +51,15 @@ Return only one valid JSON object:
       "skill_id":"sk_example",
       "side":"construction",
       "name":"Short human-readable name",
-      "description":"When this Skill should be retrieved.",
-      "content":["Actionable instruction."],
+      "description":"When the observable trigger holds; not outside this boundary.",
+      "content":["One concise evidence-bound instruction."],
       "source_candidate_ids":["..."],
       "reason":"..."
     }
   ]
 }
 
-Use only official Skill IDs present in the supplied context. Keep name under
-80 characters, description under 400 characters, and all content items together
-under 2000 characters. The program, not the model, applies CRUD operations
-after validating IDs, versions, old content, side, and conflicts.
+Use only official Skill IDs present in the supplied context. Keep name under 80
+characters, description under 400 characters, and all content together under
+2000 characters. The program applies operations after validating IDs, versions,
+old content, side, and conflicts.

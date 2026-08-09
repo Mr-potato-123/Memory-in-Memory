@@ -677,19 +677,23 @@ class ConstructionAgent:
         if not skills:
             return empty
         rendered = "\n".join(
-            f"- {skill.name}: {' | '.join(skill.content)}"
+            (
+                f"### {skill.name}\n"
+                f"**When:** {skill.description}\n"
+                "**Do:**\n"
+                + "\n".join(f"- {item}" for item in skill.content)
+            )
             for skill in skills
         )
-        # Skills are advisory references, not commands: the extraction and
-        # CRUD stages judge each one against the actual message content and
-        # follow it only when it genuinely applies.
         return (
-            "The following Construction Skills are advisory references, not "
-            "mandatory commands. Apply a Skill only when the message content "
-            "actually matches its trigger; otherwise use the default "
-            "extraction/CRUD policy. Preserve the original facts (dates, "
-            "durations, numbers, participants) regardless of any Skill "
-            "wording.\n\n" + rendered
+            "The following Construction Skills are learned behavioral priors "
+            "internalized from earlier runtime experience. A Skill may guide "
+            "the first extraction or CRUD decision when the current messages "
+            "match its observable `When` trigger; no failed default attempt is "
+            "required. Match the complete trigger rather than topic overlap. "
+            "System rules, the source messages, and evidence fidelity always "
+            "override a Skill. Never invent facts, and ignore a Skill when its "
+            "trigger or premise does not fit the current session.\n\n" + rendered
         )
 
     @staticmethod

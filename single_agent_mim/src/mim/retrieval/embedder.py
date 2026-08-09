@@ -9,6 +9,7 @@ Supports:
 from __future__ import annotations
 
 import hashlib
+import threading
 import numpy as np
 
 
@@ -28,6 +29,7 @@ class Embedder:
         self._batch_size = batch_size
         self._model = None
         self._dim: int | None = None
+        self._load_lock = threading.Lock()
         self._hash_fallback = model_name in {"hash", "mock", "deterministic-hash"}
         self._load_error: str | None = None
 
@@ -36,24 +38,32 @@ class Embedder:
             if self._dim is None:
                 self._dim = 384
             return
-        try:
-            from sentence_transformers import SentenceTransformer
+        # Full runs share one Embedder across conversation workers.  Guard the
+        # lazy initializer so those workers do not load six transformer copies
+        # concurrently on their first store access.
+        with self._load_lock:
+            if self._model is not None or self._hash_fallback:
+                if self._dim is None:
+                    self._dim = 384
+                return
             try:
-                self._model = SentenceTransformer(
-                    self._model_name, device=self._device,
-                    trust_remote_code=True, local_files_only=True,
-                )
-            except (OSError, ValueError):
-                self._model = SentenceTransformer(
-                    self._model_name, device=self._device,
-                    trust_remote_code=True,
-                )
-            test_vec = self._model.encode(["test"], show_progress_bar=False)
-            self._dim = test_vec.shape[1]
-        except (ImportError, OSError) as exc:
-            self._hash_fallback = True
-            self._load_error = str(exc)
-            self._dim = 384
+                from sentence_transformers import SentenceTransformer
+                try:
+                    self._model = SentenceTransformer(
+                        self._model_name, device=self._device,
+                        trust_remote_code=True, local_files_only=True,
+                    )
+                except (OSError, ValueError):
+                    self._model = SentenceTransformer(
+                        self._model_name, device=self._device,
+                        trust_remote_code=True,
+                    )
+                test_vec = self._model.encode(["test"], show_progress_bar=False)
+                self._dim = test_vec.shape[1]
+            except (ImportError, OSError) as exc:
+                self._hash_fallback = True
+                self._load_error = str(exc)
+                self._dim = 384
 
     @property
     def dim(self) -> int:

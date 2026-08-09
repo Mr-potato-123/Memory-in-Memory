@@ -76,7 +76,7 @@ class BaseDiagnosisReport(BaseModel):
 
 
 class AnswerDiagnosisReport(BaseDiagnosisReport):
-    """Record-only judgment of the context actually seen by the answer model."""
+    """Judgment of the context actually seen by the answer model."""
 
     schema_version: str = "answer_diagnosis_v3"
     prediction: str = ""

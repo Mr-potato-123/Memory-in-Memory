@@ -41,6 +41,8 @@ class AnswerDiagnosisWorkflow:
             if callable(trace_loader)
             else {}
         )
+        if report.repair_package is not None:
+            report.repair_package["skill_trace"] = report.skill_trace
         return report
 
 

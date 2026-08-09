@@ -1,6 +1,6 @@
-"""Generate Skill candidates from V3 Diagnosis repair packages.
+"""Generate Skill candidates from standard Diagnosis repair packages.
 
-Reads ``<diagnosis-root>/<access_failure|cons_failure>/packages/*/*.json``
+Reads ``<diagnosis-root>/<answer_failure|access_failure|cons_failure>/packages/*/*.json``
 (each row is a full V3 report with problem_found=True and a repair_package),
 feeds them to the CandidateSkillAgent, and saves candidates into a
 ``SkillRepository`` layout at ``<skills-dir>/candidates/<side>/<id>/candidate.json``
@@ -30,7 +30,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from mim.agents.skill_learning import CandidateSkillAgent
 from mim.config import load_config
 from mim.llm import create_client
-from mim.skill_maker.success_examples import SuccessfulSkillExampleIndex
+from mim.skill_maker.success_examples import (
+    NoSkillSuccessIndex,
+    SuccessfulSkillExampleIndex,
+)
 from mim.skill_maker import SkillRepository
 
 
@@ -47,13 +50,17 @@ def _read_prompt(path: str) -> str:
 
 def _collect_packages(diagnosis_root: Path) -> list[dict]:
     rows: list[dict] = []
-    for component in ("access_failure", "cons_failure"):
+    for component in ("answer_failure", "access_failure", "cons_failure"):
         packages = diagnosis_root / component / "packages"
         if not packages.exists():
             continue
         for path in sorted(packages.rglob("*.json")):
             report = _load_json(path)
-            side = "access" if component == "access_failure" else "construction"
+            side = (
+                "construction"
+                if component == "cons_failure"
+                else "access"
+            )
             if not report.get("problem_found"):
                 continue
             rows.append({"side": side, "report": report, "path": path})
@@ -69,7 +76,15 @@ def main() -> int:
                         help="JSONL of Judge-C skill-use trajectories; "
                              "one matched example is attached per diagnosis "
                              "for scope calibration.")
+    parser.add_argument("--success-package",
+                        help="JSONL of Judge-C questions answered with NO "
+                             "Skill (default-policy successes); the most "
+                             "similar one is attached per diagnosis as "
+                             "DEFAULT_POLICY_SUCCESS_EXAMPLE.")
     parser.add_argument("--workers", type=int, default=8)
+    parser.add_argument("--max-concurrency", type=int, default=6,
+                        help="Hard cap on parallel candidate generations per "
+                             "process (default 6 = 3 keys x 2).")
     parser.add_argument("--max-items", type=int, default=0)
     args = parser.parse_args()
 
@@ -79,6 +94,17 @@ def main() -> int:
         if args.success_examples
         else None
     )
+    default_policy_index = (
+        NoSkillSuccessIndex.load(Path(args.success_package))
+        if args.success_package
+        else None
+    )
+    if default_policy_index is not None:
+        print(
+            f"Default-policy success examples: "
+            f"{default_policy_index.count()}",
+            flush=True,
+        )
     packages = _collect_packages(Path(args.diagnosis_root))
     if args.max_items > 0:
         packages = packages[: args.max_items]
@@ -92,8 +118,13 @@ def main() -> int:
 
     repository = SkillRepository(Path(args.skills_dir))
     maintenance = config.models["maintenance"]
-    pool_size = min(len(getattr(maintenance, "api_keys", []) or [maintenance]) * 2, args.workers)
+    pool_size = min(
+        len(getattr(maintenance, "api_keys", []) or [maintenance]) * 2,
+        args.workers,
+        args.max_concurrency,
+    )
     pool_size = max(1, pool_size)
+    print(f"Candidate generation concurrency: {pool_size}", flush=True)
 
     def generate_one(item: dict) -> dict:
         side = item["side"]
@@ -105,6 +136,7 @@ def main() -> int:
                 else config.prompts.skill_candidate_generation_construction
             ),
             success_examples=success_index,
+            default_policy_examples=default_policy_index,
         )
         report = item["report"]
         diag_id = str(report.get("diagnosis_id") or report.get("qa_id"))
