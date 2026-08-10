@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import sqlite3
 import sys
 from pathlib import Path
@@ -13,6 +14,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from mim.diagnosis.evidence import DiagnosisEvidenceRepository
+from mim.agents.skill_learning import BatchSkillCrudAgent
 from mim.retrieval.embedder import Embedder
 from mim.schemas import Side
 from mim.skill_maker.batch import BatchSkillRetriever, SkillCrudExecutor
@@ -209,6 +211,57 @@ def test_crud_relation_ids_are_all_llm_visible(tmp_path: Path):
     assert {relation.skill_id for relation in batch.relations} <= set(
         batch.retrieved_skill_ids
     )
+
+
+def test_crud_maps_cluster_provenance_to_current_draft(tmp_path: Path):
+    draft = _candidate(99, side="construction")
+    draft.source_candidate_ids = ["cand_source_a", "cand_source_b"]
+    repository = SkillRepository(tmp_path / "skills")
+    batch = BatchSkillRetriever(Embedder("deterministic-hash")).retrieve(
+        batch_id="cluster_provenance",
+        candidates=[draft],
+        repository=repository,
+    )
+    response = {
+        "transaction_id": "tx_cluster_provenance",
+        "candidate_resolutions": [
+            {
+                "candidate_id": draft.candidate_id,
+                "resolution": "CREATED",
+                "target_skill_ids": [draft.skill_id],
+                "reason": "create",
+            }
+        ],
+        "operations": [
+            {
+                "operation": "add_skill",
+                "skill_id": draft.skill_id,
+                "side": "construction",
+                "name": draft.payload.name,
+                "description": draft.payload.description,
+                "content": draft.payload.content,
+                # This is the model error observed in the full run: it copied
+                # nested provenance instead of the current draft ID.
+                "source_candidate_ids": [
+                    "cand_source_a", "cand_source_b"
+                ],
+                "reason": "create",
+            }
+        ],
+    }
+    model = SimpleNamespace(
+        generate=lambda *args, **kwargs: SimpleNamespace(
+            text=json.dumps(response)
+        )
+    )
+
+    plan = BatchSkillCrudAgent(model, prompt="test").plan(
+        batch=batch,
+        official_records=[],
+    )
+
+    assert plan.operations[0].source_candidate_ids == [draft.candidate_id]
+    SkillCrudExecutor(repository).apply(batch, plan)
 
 
 def test_crud_cannot_mutate_unseen_official_skill(tmp_path: Path):

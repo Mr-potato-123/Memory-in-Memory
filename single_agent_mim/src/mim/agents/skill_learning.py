@@ -326,8 +326,36 @@ class BatchSkillCrudAgent:
         # The operation-level side is redundant with the batch side.  Models
         # occasionally copy the other prompt's literal example; the batch is
         # authoritative and keeps the two physical banks isolated.
+        current_candidate_ids = {
+            candidate.candidate_id for candidate in batch.candidates
+        }
+        provenance_owner: dict[str, set[str]] = {}
+        for candidate in batch.candidates:
+            for source_id in candidate.source_candidate_ids:
+                provenance_owner.setdefault(str(source_id), set()).add(
+                    candidate.candidate_id
+                )
         for operation in operations:
             operation.side = batch.side
+            # Cluster drafts retain diagnosis-level candidate IDs as
+            # provenance.  A model may copy those nested IDs into a CRUD
+            # operation even though the atomic transaction is over the draft.
+            # Remap only explicit, unique ownership; genuinely unknown IDs
+            # remain untouched for the executor's strict validator to reject.
+            normalized_sources: list[str] = []
+            for source_id in operation.source_candidate_ids:
+                source_id = str(source_id)
+                if source_id in current_candidate_ids:
+                    normalized_sources.append(source_id)
+                    continue
+                owners = provenance_owner.get(source_id, set())
+                if len(owners) == 1:
+                    normalized_sources.extend(owners)
+                else:
+                    normalized_sources.append(source_id)
+            operation.source_candidate_ids = list(
+                dict.fromkeys(normalized_sources)
+            )
         plan = SkillBatchPlan(
             transaction_id=str(
                 data.get("transaction_id")
