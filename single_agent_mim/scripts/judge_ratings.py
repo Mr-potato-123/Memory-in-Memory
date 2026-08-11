@@ -119,11 +119,12 @@ def build_client(config_path: str, judge_model: str):
     config = load_config(config_path)
     maintenance = config.models["maintenance"]
     values = maintenance.model_dump()
+    values["api_keys"] = list(maintenance.api_keys)
     values["model"] = judge_model
     values["temperature"] = 0.0
     values["max_tokens"] = 3000
     values["supports_json_mode"] = True
-    values["extra_body"] = {}
+    values["extra_body"] = {"thinking": {"type": "disabled"}}
     values["reasoning_effort"] = None
     values["reject_reasoning_output"] = False
     return create_client(ModelConfig(**values)), config

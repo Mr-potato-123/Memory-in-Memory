@@ -154,12 +154,17 @@ def build_client(config_path: str, judge_model: str):
     config = load_config(config_path)
     maintenance = config.models["maintenance"]
     values = maintenance.model_dump()
+    # api_keys is excluded from model_dump; restore the complete pool so the
+    # Judge can round-robin across all configured credentials.
+    values["api_keys"] = list(maintenance.api_keys)
     values["model"] = judge_model
     values["temperature"] = 0.0
     values["max_tokens"] = 3000
     values["supports_json_mode"] = True
     # Judge uses json_mode which is incompatible with thinking tokens
-    values["extra_body"] = {}
+    # DeepSeek V4 ignores temperature while thinking mode is enabled. Force
+    # the documented disabled-thinking mode for deterministic binary judging.
+    values["extra_body"] = {"thinking": {"type": "disabled"}}
     values["reasoning_effort"] = None
     values["reject_reasoning_output"] = False
 

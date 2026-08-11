@@ -279,7 +279,11 @@ class MiMRuntime:
                     query=session_text,
                     side=Side.CONSTRUCTION,
                     embedding_index=self._embedder,  # type: ignore[arg-type]
-                    top_k=min(1, self._cfg.construction.skill_top_k),
+                    # Top-3 reranker experiment: allow up to three
+                    # independently applicable Construction Skills.  The
+                    # config remains the upper bound so this is reversible
+                    # through the experiment config.
+                    top_k=min(3, self._cfg.construction.skill_top_k),
                     candidate_k=self._cfg.construction.skill_candidate_k,
                     disclose_k=self._cfg.construction.skill_disclose_k,
                     min_score=self._cfg.construction.skill_min_score,
@@ -432,9 +436,9 @@ class MiMRuntime:
                 query=query,
                 side=Side.ACCESS,
                 embedding_index=self._embedder,  # type: ignore[arg-type]
-                # One recovery mechanism at a time avoids composition of
-                # individually narrow but jointly conflicting policies.
-                top_k=min(1, self._cfg.access.skill_top_k),
+                # Top-3 reranker experiment: allow up to three independently
+                # applicable Access Skills after the first default search.
+                top_k=min(3, self._cfg.access.skill_top_k),
                 candidate_k=self._cfg.access.skill_candidate_k,
                 disclose_k=self._cfg.access.skill_disclose_k,
                 min_score=self._cfg.access.skill_min_score,
