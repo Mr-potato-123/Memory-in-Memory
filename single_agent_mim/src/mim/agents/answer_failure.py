@@ -13,6 +13,7 @@ from ..diagnosis.model_io import (
 )
 from ..diagnosis.schemas import (
     AnswerDiagnosisReport,
+    ClaimCoverage,
     ClaimSupport,
     DiagnosisCase,
     DiagnosisStatus,
@@ -74,7 +75,11 @@ class AnswerFailureAgent:
             if case.reference_answer.strip():
                 sufficient = (
                     bool(claims)
-                    and all(claim.supporting_version_ids for claim in claims)
+                    and all(
+                        claim.coverage == ClaimCoverage.FULL
+                        and claim.supporting_version_ids
+                        for claim in claims
+                    )
                     and not contradiction
                 )
             else:
@@ -149,10 +154,24 @@ class AnswerFailureAgent:
                 raise InvalidModelOutput("Each claim must contain text.")
             version_ids = unique_strings(item.get(id_key))
             require_known_ids(version_ids, allowed_ids, id_key)
+            raw_coverage = item.get("coverage")
+            if raw_coverage is None or not str(raw_coverage).strip():
+                raise InvalidModelOutput(
+                    "Each answer claim must declare coverage as "
+                    "FULL, PARTIAL, MISSING, or INCORRECT."
+                )
+            try:
+                coverage = ClaimCoverage(str(raw_coverage).strip().upper())
+            except ValueError as exc:
+                raise InvalidModelOutput(
+                    "Claim coverage must be FULL, PARTIAL, MISSING, "
+                    "or INCORRECT."
+                ) from exc
             claims.append(
                 ClaimSupport(
                     claim=claim,
                     supporting_version_ids=version_ids,
+                    coverage=coverage,
                 )
             )
         return claims

@@ -56,6 +56,7 @@ def test_answer_failure_builds_access_package_when_context_is_sufficient():
             "essential_reference_claims": [{
                 "claim": "Alice lives in Seattle.",
                 "supporting_retrieved_version_ids": ["mem_v1"],
+                "coverage": "FULL",
             }],
             "unresolved_material_contradiction": False,
             "reason": "The returned memory directly states the answer.",
@@ -110,6 +111,42 @@ def test_answer_failure_handles_empty_unanswerable_reference():
     assert report.diagnosis_type == DiagnosisType.ANSWER_FAILURE
     assert report.problem_found is True
     assert report.retrieved_context_sufficient is True
+
+
+def test_answer_failure_rejects_partial_claim_support():
+    agent = AnswerFailureAgent(
+        _mock({
+            "essential_reference_claims": [{
+                "claim": "Jean and John both visited Rome.",
+                "supporting_retrieved_version_ids": ["mem_v1"],
+                "coverage": "PARTIAL",
+            }],
+            "unresolved_material_contradiction": False,
+            "reason": "Only John's visit is visible.",
+            "confidence": 0.95,
+            "review_required": False,
+        }),
+        prompt="answer prompt",
+    )
+
+    report = agent.diagnose(
+        _case().model_copy(update={
+            "question": "Which city did Jean and John both visit?",
+            "reference_answer": "Rome",
+        }),
+        exact_search_steps=[{
+            "step_index": 0,
+            "returned_version_ids": ["mem_v1"],
+            "returned_memories": [{
+                "version_id": "mem_v1",
+                "content": "John visited Rome.",
+            }],
+        }],
+    )
+
+    assert report.retrieved_context_sufficient is False
+    assert report.problem_found is False
+    assert report.repair_package is None
 
 
 def test_access_failure_uses_set_difference_over_current_memory():
@@ -354,6 +391,7 @@ def test_answer_artifact_keeps_audit_log_and_creates_access_package(
             "essential_reference_claims": [{
                 "claim": "Alice lives in Seattle.",
                 "supporting_retrieved_version_ids": ["mem_v1"],
+                "coverage": "FULL",
             }],
             "unresolved_material_contradiction": False,
             "reason": "Enough context.",
