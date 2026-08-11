@@ -188,6 +188,10 @@ class NoSkillSuccessIndex:
                 best = example
         if best is None or best_score < 0.15:
             return None
+        # Failure-side calibration stays compact. Complete V2 packages are
+        # consumed directly by the independent positive-learning path; copying
+        # a multi-kilobyte trajectory into every failure prompt adds latency
+        # without changing this guardrail's purpose.
         return {
             "relationship_to_diagnosis": "default_policy_success",
             "similarity": round(best_score, 3),

@@ -196,6 +196,9 @@ class AccessAgent:
         snapshot_commit_id: int,
         skills: list[SkillRecord],
         access_run_id: str | None = None,
+        recovery_skill_loader: Callable[
+            [dict[str, Any]], list[SkillRecord]
+        ] | None = None,
     ) -> AccessResult:
         """Run the full Access & Answer loop."""
         access_run_id = access_run_id or f"access_{uuid.uuid4().hex[:12]}"
@@ -218,6 +221,7 @@ class AccessAgent:
         final_evidence: list[str] = []
         answer_prompt_hash = ""
         error: Optional[str] = None
+        recovery_skills_loaded = False
 
         t0 = time.time()
         self._emit(
@@ -439,6 +443,59 @@ class AccessAgent:
                     observation,
                     self._max_steps - step - 1,
                 )
+                # Learned Access Skills are recovery policies.  The first
+                # retrieval is always executed by the default policy so a
+                # broad Skill cannot perturb simple lookups that already
+                # work.  Only after observing that first result may Runtime
+                # retrieve and disclose a narrowly applicable Skill.
+                if recovery_skill_loader is not None and not recovery_skills_loaded:
+                    recovery_skills_loaded = True
+                    recovery_context = {
+                        "question": question.question,
+                        "first_search": {
+                            "strategy": observation.get("strategy"),
+                            "query": observation.get("query"),
+                            "keywords": observation.get("keywords", []),
+                            "hit_count": len(observation.get("hits", [])),
+                            "hits": [
+                                {
+                                    "memory_kind": hit.get("memory_kind"),
+                                    "subject": hit.get("subject"),
+                                    "content": hit.get("content"),
+                                    "world_start": hit.get("world_start"),
+                                    "world_end": hit.get("world_end"),
+                                }
+                                for hit in observation.get("hits", [])[:8]
+                            ],
+                        },
+                    }
+                    try:
+                        learned = recovery_skill_loader(recovery_context)
+                    except Exception as exc:
+                        learned = []
+                        self._emit(
+                            "access_recovery_skill_error",
+                            conversation_id=conversation_id,
+                            qa_id=question.qa_id,
+                            error=str(exc),
+                        )
+                    if learned:
+                        for skill in learned:
+                            version_id = f"{skill.skill_id}_v{skill.version}"
+                            if version_id not in chain.used_skill_ids:
+                                chain.used_skill_ids.append(version_id)
+                        messages.append({
+                            "role": "user",
+                            "content": (
+                                "Post-search recovery guidance:\n"
+                                + self._render_skill_text(learned)
+                                + "\nApply a Skill only if the first default "
+                                "search shown above is insufficient for the "
+                                "question. If it already directly supports a "
+                                "complete answer, ignore all recovery Skills "
+                                "and answer now."
+                            ),
+                        })
 
             elif action.action == "inspect_memory":
                 if inspect_count >= self._max_inspect:
@@ -631,25 +688,17 @@ class AccessAgent:
 
     def _build_system(self, skills: list[SkillRecord]) -> str:
         if skills:
-            skill_text = "\n".join(
-                (
-                    f"### {s.name}\n**When:** {s.description}\n**Do:**\n"
-                    + "\n".join(f"- {item}" for item in s.content)
-                )
-                for s in skills
-            )
+            skill_text = self._render_skill_text(skills)
         else:
             skill_text = "(No access skills. Use default retrieval strategy.)"
 
-        # Skills are learned priors distilled from earlier runtime experience.
-        # They can guide the first action when their observable trigger matches,
-        # while system invariants and current evidence remain authoritative.
+        # The normal full-iteration Runtime starts with no Access Skills and
+        # discloses recovery guidance only after the first default search.
+        # ``skills`` remains supported for explicit replay/backward compatibility.
         skills_section = (
             "## Access Skills (learned behavioral priors)\n"
-            "These strategies internalize reusable experience from earlier "
-            "runs. A Skill may guide the first retrieval or answering action "
-            "when its observable `When` trigger matches the current question "
-            "or evidence state; no prior failed attempt is required.\n"
+            "These strategies internalize reusable runtime experience. In the "
+            "normal workflow they are disclosed only after one default search.\n"
             "- Match the complete trigger, not shared nouns or topic overlap.\n"
             "- Apply only the matching instruction; combine Skills only when "
             "their triggers and actions are compatible.\n"
@@ -671,6 +720,16 @@ class AccessAgent:
                 "The question arrives separately as the first user message."
             ),
             max_steps=str(self._max_steps),
+        )
+
+    @staticmethod
+    def _render_skill_text(skills: list[SkillRecord]) -> str:
+        return "\n".join(
+            (
+                f"### {skill.name}\n**When:** {skill.description}\n**Do:**\n"
+                + "\n".join(f"- {item}" for item in skill.content)
+            )
+            for skill in skills
         )
 
     @staticmethod

@@ -14,10 +14,11 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from mim.diagnosis.evidence import DiagnosisEvidenceRepository
-from mim.agents.skill_learning import BatchSkillCrudAgent
+from mim.agents.skill_learning import BatchSkillCrudAgent, DirectCaseCrudAgent
 from mim.retrieval.embedder import Embedder
 from mim.schemas import Side
 from mim.skill_maker.batch import BatchSkillRetriever, SkillCrudExecutor
+from mim.skill_maker.models import SkillOperation
 from mim.skill_maker.cluster_v2 import cluster_v2
 from mim.skill_maker.models import (
     CandidateResolution,
@@ -262,6 +263,59 @@ def test_crud_maps_cluster_provenance_to_current_draft(tmp_path: Path):
 
     assert plan.operations[0].source_candidate_ids == [draft.candidate_id]
     SkillCrudExecutor(repository).apply(batch, plan)
+
+
+def test_direct_case_crud_uses_case_provenance_and_answer_side(tmp_path: Path):
+    repository = SkillRepository(tmp_path / "skills")
+    batch = BatchSkillRetriever(Embedder("deterministic-hash")).retrieve(
+        batch_id="direct_answer",
+        candidates=[_candidate(77, side="access")],
+        repository=repository,
+    )
+    case_id = batch.candidates[0].candidate_id
+    response = {
+        "transaction_id": "tx_direct",
+        "decision": "APPLY",
+        "reason": "Learn an evidence-bound abstention rule.",
+        "operations": [
+            {
+                "operation": "add_skill",
+                "skill_id": "sk_access_abstain",
+                "side": "construction",
+                "name": "Evidence-bound abstention",
+                "description": "When no retrieved evidence supports the asked claim; not when direct support exists.",
+                "content": ["Abstain instead of substituting a related entity or event."],
+                "source_candidate_ids": ["trace_id_that_must_not_escape"],
+            }
+        ],
+    }
+    model = SimpleNamespace(
+        generate=lambda *args, **kwargs: SimpleNamespace(text=json.dumps(response))
+    )
+
+    plan = DirectCaseCrudAgent(model, prompt="test").plan(
+        case_id=case_id,
+        side="access",
+        direction="C2W",
+        diagnosis={"stage": "answer"},
+        batch=batch,
+        official_records=[],
+    )
+
+    assert plan.side == "access"
+    assert plan.operations[0].side == "access"
+    assert plan.operations[0].source_candidate_ids == [case_id]
+    SkillCrudExecutor(repository).apply(batch, plan)
+
+
+def test_skill_operation_accepts_null_new_content_for_retryable_model_output():
+    operation = SkillOperation(
+        operation="update_content",
+        skill_id="sk_access_example",
+        new_content=None,
+    )
+    assert operation.new_content == ""
+    assert operation.expected_content is None
 
 
 def test_crud_cannot_mutate_unseen_official_skill(tmp_path: Path):

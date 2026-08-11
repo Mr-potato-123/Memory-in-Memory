@@ -239,3 +239,41 @@ def test_candidate_skill_repairs_length_without_broadening():
     assert "Compress wording instead of broadening scope" in (
         model.seen_messages[1][-1]["content"]
     )
+
+
+def test_w2w_candidate_keeps_maintenance_lineage_outside_skill_payload():
+    model = _CapturingMock()
+    model.set_script([model._make_resp(json.dumps({
+        "decision": "PROPOSE_SKILL",
+        "maintenance_intent": "REVISE",
+        "why_previous_round_failed": "The selected rule did not enforce coverage.",
+        "solves": "Repairs a repeated evidence-coverage failure.",
+        "related_existing_skill_ids": ["sk_access_existing"],
+        "skill": {
+            "name": "Verify unresolved evidence gap",
+            "description": "Use when the first search lacks one required claim; not when all claims are directly supported.",
+            "content": [
+                "Search once for the missing claim; do not apply when the first result already supports the complete answer."
+            ],
+        },
+    }))])
+
+    candidate = CandidateSkillAgent(model, prompt="Return JSON.").generate(
+        diagnosis={
+            "diagnosis_id": "persistent_case_access",
+            "transition": "W2W",
+            "failure_age": 3,
+            "maintenance_intent_hint": "REVISE",
+            "failure_to_repair": {
+                "why_previous_round_failed": "The selected rule did not enforce coverage."
+            },
+        },
+        side="access",
+    )
+
+    assert candidate is not None
+    assert candidate.transition == "W2W"
+    assert candidate.failure_age == 3
+    assert candidate.maintenance_intent == "REVISE"
+    assert candidate.why_previous_round_failed
+    assert "previous" not in candidate.payload.description.lower()

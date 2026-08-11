@@ -120,6 +120,7 @@ class CandidateSkillAgent:
                         data=data,
                         side=side,
                         diagnosis_id=diagnosis_id,
+                        diagnosis=diagnosis,
                     )
                 except ValueError as exc:
                     last_error = str(exc)
@@ -158,6 +159,7 @@ class CandidateSkillAgent:
         data: dict[str, Any],
         side: Literal["access", "construction"],
         diagnosis_id: str,
+        diagnosis: dict[str, Any],
     ) -> SkillCandidate:
         skill = data.get("skill")
         if not isinstance(skill, dict):
@@ -167,6 +169,27 @@ class CandidateSkillAgent:
             for skill_id in data.get("related_existing_skill_ids", [])
             if str(skill_id)
         ]
+        transition = str(
+            diagnosis.get("transition")
+            or (diagnosis.get("flip") or {}).get("direction")
+            or ""
+        ).upper()
+        intent = str(
+            data.get("maintenance_intent")
+            or diagnosis.get("maintenance_intent_hint")
+            or ""
+        ).upper()
+        if intent not in {"ADD", "REVISE", "REMOVE", "PRESERVE"}:
+            if transition == "W2C":
+                intent = "PRESERVE"
+            elif transition in {"C2W", "W2W"} and related:
+                intent = "REVISE"
+            else:
+                intent = "ADD"
+        failure_to_repair = diagnosis.get("failure_to_repair")
+        failure_to_repair = (
+            failure_to_repair if isinstance(failure_to_repair, dict) else {}
+        )
         candidate = SkillCandidate(
             candidate_id=f"cand_{side}_{uuid.uuid4().hex[:12]}",
             skill_id=f"sk_{side}_{uuid.uuid4().hex[:10]}",
@@ -180,10 +203,36 @@ class CandidateSkillAgent:
             related_existing_skill_ids=list(dict.fromkeys(related)),
             source_diagnosis_id=diagnosis_id,
             source_failure_id=diagnosis_id,
+            transition=transition,
+            failure_age=max(0, int(diagnosis.get("failure_age") or 0)),
+            maintenance_intent=intent,
+            why_previous_round_failed=str(
+                data.get("why_previous_round_failed")
+                or failure_to_repair.get("why_previous_round_failed")
+                or ""
+            ).strip(),
             created_at=time.strftime(
                 "%Y-%m-%dT%H:%M:%SZ", time.gmtime()
             ),
         )
+        # Models frequently miss a hard character limit by a few characters
+        # despite the bounded repair turn.  Deterministically compress only
+        # over-limit prose at a word/punctuation boundary; never broaden or
+        # synthesize a mechanism.  The strict validator remains the final gate.
+        candidate.payload.description = self._compact_text(
+            candidate.payload.description, 200
+        )
+        candidate.payload.content = [
+            self._compact_text(item, 200)
+            for item in candidate.payload.content[:3]
+        ]
+        while len(candidate.payload.content_text()) > 600 and candidate.payload.content:
+            candidate.payload.content[-1] = self._compact_text(
+                candidate.payload.content[-1],
+                max(1, 600 - len("\n".join(candidate.payload.content[:-1])) - 1),
+            )
+            if len(candidate.payload.content_text()) > 600 and len(candidate.payload.content) > 1:
+                candidate.payload.content.pop()
         valid, errors = self._validator.validate(
             candidate.payload,
             side=side,
@@ -199,6 +248,20 @@ class CandidateSkillAgent:
                 "Invalid generated candidate Skill: " + "; ".join(errors)
             )
         return candidate
+
+    @staticmethod
+    def _compact_text(value: str, limit: int) -> str:
+        text = str(value or "").strip()
+        if len(text) <= limit:
+            return text
+        clipped = text[: max(1, limit - 1)]
+        boundary = max(
+            clipped.rfind("."), clipped.rfind(";"), clipped.rfind(":"),
+            clipped.rfind(" "),
+        )
+        if boundary >= max(20, limit // 2):
+            clipped = clipped[:boundary].rstrip()
+        return clipped + "…"
 
     @staticmethod
     def _parse_json(text: str) -> dict[str, Any]:
@@ -370,3 +433,162 @@ class BatchSkillCrudAgent:
             operations=operations,
         )
         return plan
+
+
+class DirectCaseCrudAgent:
+    """Plan one evidence-grounded CRUD transaction without a Skill candidate.
+
+    The diagnosis package and the small set of retrieved official Skills are
+    shown together.  Candidate generation, clustering, and draft
+    summarization are deliberately absent from this path.
+    """
+
+    def __init__(self, model: ModelClient, *, prompt: str):
+        self._model = model
+        self._prompt = prompt
+
+    def plan(
+        self,
+        *,
+        case_id: str,
+        side: Literal["access", "construction"],
+        direction: str,
+        diagnosis: dict[str, Any],
+        batch: SkillCandidateBatch,
+        official_records: list[SkillRecord],
+        validation_feedback: str = "",
+    ) -> SkillBatchPlan:
+        allowed_ids = set(batch.retrieved_skill_ids)
+        payload: dict[str, Any] = {
+            "case_id": case_id,
+            "side": side,
+            "direction": direction,
+            "diagnosis": diagnosis,
+            "retrieved_official_skills": [
+                record.to_dict()
+                for record in official_records
+                if record.skill_id in allowed_ids
+            ],
+            "bank_version": batch.base_bank_version,
+        }
+        if validation_feedback:
+            payload["previous_validation_error"] = validation_feedback
+        response = self._model.generate(
+            [
+                {"role": "system", "content": self._prompt},
+                {
+                    "role": "user",
+                    "content": json.dumps(payload, ensure_ascii=False, indent=2),
+                },
+            ],
+            temperature=0.0,
+            max_tokens=8000,
+            json_mode=True,
+        )
+        data = CandidateSkillAgent._parse_json(response.text)
+        operations: list[SkillOperation] = []
+        for item in data.get("operations", []):
+            if not isinstance(item, dict):
+                continue
+            # A missing add payload is not a valid CREATE proposal.  Treat it
+            # as NOOP rather than allowing a malformed model row to abort an
+            # otherwise resumable per-question stream.
+            if (
+                str(item.get("operation", "")) == "add_skill"
+                and (
+                    not str(item.get("name", "")).strip()
+                    or not str(item.get("description", "")).strip()
+                )
+            ):
+                continue
+            if (
+                str(item.get("operation", "")) in {"rename_skill", "update_description"}
+                and not str(item.get("description", "") or item.get("name", "")).strip()
+            ):
+                continue
+            if (
+                str(item.get("operation", "")) == "update_content"
+                and not str(item.get("new_content", "") or "").strip()
+            ):
+                continue
+            operation = SkillOperation(**item)
+            if operation.operation.value in {"add_skill", "add_content"}:
+                if len("\n".join(operation.content)) > 2400:
+                    continue
+            if operation.operation.value == "update_content" and len(operation.new_content) > 2400:
+                continue
+            operations.append(operation)
+        for operation in operations:
+            operation.side = side
+            if len(operation.content) > 8:
+                # Keep the Skill validator's compactness contract when a JSON
+                # model emits many tiny bullets.  One joined instruction is
+                # still auditable and can be revised atomically later.
+                operation.content = [" ".join(operation.content)]
+            if (
+                operation.operation.value == "add_skill"
+                and len("\n".join(operation.content)) > 2400
+            ):
+                continue
+            # The provenance unit is the contrastive case, never a generated
+            # Candidate Skill or a nested trace identifier.
+            operation.source_candidate_ids = [case_id]
+        visible_by_id = {record.skill_id: record for record in official_records}
+        seen_content_targets: set[tuple[str, str]] = set()
+        filtered_operations: list[SkillOperation] = []
+        for operation in operations:
+            if operation.name and len(operation.name) > 80:
+                continue
+            if operation.description and len(operation.description) > 400:
+                continue
+            if operation.expected_content is not None:
+                key = (operation.skill_id, operation.expected_content)
+                if key in seen_content_targets:
+                    continue
+                seen_content_targets.add(key)
+                record = visible_by_id.get(operation.skill_id)
+                if record is None or operation.expected_content not in record.payload.content:
+                    continue
+            record = visible_by_id.get(operation.skill_id)
+            if record is not None:
+                current_content = list(record.payload.content)
+                if operation.operation.value == "add_content":
+                    current_content.extend(operation.content)
+                elif operation.operation.value == "update_content":
+                    if operation.expected_content in current_content:
+                        index = current_content.index(operation.expected_content)
+                        current_content[index] = operation.new_content
+                if len("\n".join(current_content)) > 2400 or len(current_content) > 8:
+                    continue
+            filtered_operations.append(operation)
+        operations = filtered_operations
+        decision = str(data.get("decision", "APPLY" if operations else "NOOP")).upper()
+        if decision == "NOOP":
+            operations = []
+        resolution = (
+            "CREATED"
+            if any(item.operation.value == "add_skill" for item in operations)
+            else "MERGED_INTO_EXISTING"
+            if operations
+            else "ALREADY_COVERED"
+        )
+        target_ids = list(
+            dict.fromkeys(item.skill_id for item in operations if item.skill_id)
+        )
+        return SkillBatchPlan(
+            transaction_id=str(
+                data.get("transaction_id")
+                or f"tx_direct_{case_id}_{side}_{uuid.uuid4().hex[:8]}"
+            ),
+            side=side,
+            base_bank_version=batch.base_bank_version,
+            candidate_resolutions=[
+                CandidateResolution(
+                    candidate_id=case_id,
+                    resolution=resolution,
+                    target_skill_ids=target_ids,
+                    reason=str(data.get("reason", "")).strip(),
+                )
+            ],
+            operations=operations,
+        )

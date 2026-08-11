@@ -16,15 +16,17 @@ class SkillPayloadValidator:
 
     def __init__(
         self,
-        name_max_chars: int = 100,
-        description_max_chars: int = 400,
-        content_max_chars: int = 2500,
-        content_max_items: int = 8,
+        name_max_chars: int = 60,
+        description_max_chars: int = 200,
+        content_max_chars: int = 600,
+        content_max_items: int = 3,
+        content_item_max_chars: int = 200,
     ):
         self._name_max = name_max_chars
         self._desc_max = description_max_chars
         self._content_max = content_max_chars
         self._content_max_items = max(1, content_max_items)
+        self._content_item_max = content_item_max_chars
 
         # Patterns that must NOT appear in any Skill
         self._id_pattern = re.compile(
@@ -68,6 +70,12 @@ class SkillPayloadValidator:
                 f"content too many items: {len(payload.content)} > "
                 f"{self._content_max_items}"
             )
+        for index, item in enumerate(payload.content):
+            if len(item) > self._content_item_max:
+                errors.append(
+                    f"content item {index} too long: {len(item)} > "
+                    f"{self._content_item_max}"
+                )
 
         # No system IDs
         combined = f"{payload.name} {payload.description} {content_text}"

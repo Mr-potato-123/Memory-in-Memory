@@ -16,7 +16,7 @@ from mim.config import ModelConfig
 from mim.llm.mock_client import MockClient
 from mim.retrieval.embedder import Embedder
 from mim.retrieval.hybrid import HybridRetriever
-from mim.schemas import AgentAction, Question
+from mim.schemas import AgentAction, Question, Side, SkillRecord
 from mim.storage.sqlite_store import (
     MemoryCandidate,
     MemoryHit,
@@ -272,6 +272,46 @@ def test_access_may_answer_after_one_search_when_model_judges_full(
 
     assert result.answer == "three"
     assert result.steps == 2
+
+
+def test_access_loads_recovery_skill_only_after_first_default_search(
+    tmp_path: Path,
+):
+    store, embedder, retriever = _components(tmp_path)
+    _insert(store, embedder, 1, "James has three dogs.", subject="James")
+    model = MockClient(ModelConfig(provider="mock", model="mock"))
+    model.set_script([
+        model._make_resp(json.dumps({
+            "action": "search_memory",
+            "arguments": {"strategy": "hybrid", "query": "James pets",
+                          "keywords": ["James"], "top_k": 3},
+            "reason": "Run the default lookup.",
+        })),
+        model._make_resp(json.dumps({
+            "action": "answer",
+            "arguments": {"answer": "three",
+                          "evidence_version_ids": ["mem_conv_0001_v1"]},
+            "reason": "The first result is complete.",
+        })),
+    ])
+    calls = []
+    skill = SkillRecord(
+        skill_id="skill_recovery", version=1, side=Side.ACCESS,
+        name="Recover a missing count",
+        description="When the first result omits the requested count.",
+        content=["Search for an explicit quantity."],
+    )
+
+    result = AccessAgent(model, store, retriever, max_steps=3).answer(
+        Question(qa_id="qa_recovery", question="How many pets?",
+                 reference_answer="three", category=1),
+        conversation_id="conv", snapshot_commit_id=0, skills=[],
+        recovery_skill_loader=lambda context: calls.append(context) or [skill],
+    )
+
+    assert len(calls) == 1
+    assert calls[0]["first_search"]["hit_count"] == 1
+    assert result.used_skill_ids == ["skill_recovery_v1"]
 
 
 def test_access_normalizes_empty_answer_to_unanswerable(tmp_path: Path):

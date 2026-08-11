@@ -8,7 +8,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from mim.agents.flip_failure import FlipDiagnosisAgent
+from mim.agents.flip_failure import (
+    FlipDiagnosisAgent,
+    PersistentFailureDiagnosisAgent,
+)
 from mim.config import ModelConfig
 from mim.llm.mock_client import MockClient
 
@@ -133,3 +136,107 @@ def test_pure_answer_projects_to_access_generator():
     assert projection["side"] == "access"
     assert projection["diagnosis_type"] == "ACCESS_FAILURE"
     assert projection["repair_package"]["claim_evidence_parity"] is True
+
+
+def test_empty_reference_abstention_projects_to_access_generator():
+    payload = _payload()
+    payload["reference_answer"] = ""
+    payload["correct_side"]["answer"] = ""
+    payload["wrong_side"]["answer"] = "Unsupported guess"
+    result = {
+        "claims": [],
+        "attribution": {
+            "construction": False,
+            "access": False,
+            "answer": True,
+            "learnable": True,
+            "reason": "The wrong side failed to abstain.",
+        },
+        "mechanisms": {"answer": {"subtype": "ABSTENTION"}},
+    }
+
+    report = _agent(result).diagnose(payload)
+
+    assert report["core"]["attribution"]["answer"] is True
+    assert [item["stage"] for item in report["projections"]] == ["answer"]
+    assert report["projections"][0]["side"] == "access"
+
+
+def test_w2w_persistent_failure_projects_with_iteration_metadata():
+    model = MockClient(ModelConfig(provider="mock", model="mock"))
+    result = {
+        "claims": [{
+            "claim_id": "claim_01",
+            "claim": "B happened",
+            "prior_side": {
+                "memory_coverage": "FULL",
+                "supporting_current_version_ids": ["prior_v1"],
+                "retrieval_coverage": "NONE",
+                "retrieved_supporting_version_ids": [],
+                "answer_coverage": "MISSING",
+            },
+            "current_side": {
+                "memory_coverage": "FULL",
+                "supporting_current_version_ids": ["current_v1"],
+                "retrieval_coverage": "NONE",
+                "retrieved_supporting_version_ids": [],
+                "answer_coverage": "MISSING",
+            },
+            "failure": {
+                "construction": False,
+                "access": True,
+                "answer": False,
+                "persisted": True,
+            },
+        }],
+        "attribution": {
+            "construction": False,
+            "access": True,
+            "answer": False,
+            "learnable": True,
+            "confidence": 0.9,
+            "reason": "The useful memory remained unretrieved.",
+        },
+        "failure_to_repair": {
+            "type": "SKILL_NOT_RETRIEVED",
+            "why_previous_round_failed": "The prior rule never routed.",
+        },
+        "mechanisms": {"access": {}},
+    }
+    model.set_script([model._make_resp(json.dumps(result))])
+    payload = {
+        "qa_id": "conv-1_qa-1",
+        "conversation_id": "conv-1",
+        "question": "What happened?",
+        "reference_answer": "B",
+        "transition": {"chain": "b0_to_b1", "direction": "W2W"},
+        "failure_age": 2,
+        "gold_answer_path": {"source_messages": [{"content": "B happened"}]},
+        "repair_lineage": {"current_selected_skill_ids": []},
+        "prior_side": {
+            "answer": "A",
+            "current_memories": [{"version_id": "prior_v1"}],
+            "visible_memories": [],
+            "final_evidence_ids": [],
+            "skill_trace": {"selected": []},
+        },
+        "current_side": {
+            "answer": "A",
+            "current_memories": [{"version_id": "current_v1"}],
+            "visible_memories": [],
+            "final_evidence_ids": [],
+            "skill_trace": {"selected": []},
+        },
+    }
+
+    report = PersistentFailureDiagnosisAgent(
+        model, prompt="persistent prompt"
+    ).diagnose(payload)
+
+    assert report["core"]["schema_version"] == "persistent_failure_core_v1"
+    projection = report["projections"][0]
+    assert projection["source_mode"] == "iteration"
+    assert projection["transition"] == "W2W"
+    assert projection["failure_age"] == 2
+    assert projection["learning_polarity"] == "REPAIR_UNRESOLVED"
+    assert projection["maintenance_intent_hint"] == "ADD"

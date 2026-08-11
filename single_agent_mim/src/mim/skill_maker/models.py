@@ -61,6 +61,15 @@ class SkillCandidate(BaseModel):
     source_cluster_id: str = ""
     source_diagnosis_id: str = ""
     source_failure_id: str = ""
+    # Iteration-only maintenance metadata stays outside the Runtime-visible
+    # Skill payload.  This lets W2W/C2W carry rich lineage without making the
+    # final Skill longer or case-specific.
+    transition: str = ""
+    failure_age: int = 0
+    maintenance_intent: Literal[
+        "ADD", "REVISE", "REMOVE", "PRESERVE"
+    ] = "ADD"
+    why_previous_round_failed: str = ""
     target_first_break: str | None = None
     parent_version_id: str | None = None
     status: CandidateStatus = CandidateStatus.DRAFT
@@ -107,15 +116,27 @@ class SkillOperation(BaseModel):
             return [str(item).strip() for item in value if str(item).strip()]
         raise TypeError("operation content must be a string or list of strings")
 
-    @field_validator("new_content", "expected_content", mode="before")
+    @field_validator("new_content", mode="before")
     @classmethod
-    def normalize_single_content(cls, value: Any) -> str | None:
+    def normalize_new_content(cls, value: Any) -> str:
         if value is None:
-            return None
+            # A malformed model response must not make the whole direct CRUD
+            # run unresumable.  The executor will validate the resulting
+            # payload and the planner can retry with the surfaced error.
+            return ""
         if isinstance(value, list):
             # Some JSON-mode models emit a one-item array for a field whose
             # schema is scalar.  Joining preserves all text while keeping the
             # atomic update_content contract deterministic.
+            return "\n".join(str(item).strip() for item in value if str(item).strip())
+        return str(value).strip()
+
+    @field_validator("expected_content", mode="before")
+    @classmethod
+    def normalize_expected_content(cls, value: Any) -> str | None:
+        if value is None:
+            return None
+        if isinstance(value, list):
             return "\n".join(str(item).strip() for item in value if str(item).strip())
         return str(value).strip()
 

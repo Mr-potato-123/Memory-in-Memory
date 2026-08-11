@@ -1,8 +1,8 @@
 """Run the full contrastive half of the two-segment MiM training loop.
 
 Input is a completed empty-Bank full iteration (Bank1).  This script reruns
-the full train split with Bank1, builds C2W/W2C pairs, diagnoses both wrong
-sides with the standard pipeline, emits one contrastive core plus routed
+the full train split with Bank1, builds C2W/W2C/W2W iteration cases (C2C is
+counted only), diagnoses wrong and persistently-wrong cases, emits routed
 Access/Answer/Construction projections, updates Bank1 to Bank2, and evaluates
 Bank2 on the configured validation and test splits.
 """
@@ -176,7 +176,7 @@ def main() -> int:
             "--from-run", "empty_train", "--to-run", "bank1_train",
             "--output", str(pairs),
         ],
-        pairs, "build C2W/W2C pairs",
+        pairs, "build C2W/W2C/W2W iteration cases",
     )
 
     packages = out / "contrastive_packages"
@@ -233,7 +233,7 @@ def main() -> int:
         )
 
     summary = {
-        "schema_version": "two_segment_contrastive_iter_v1",
+        "schema_version": "two_segment_iteration_v2",
         "phase1_root": str(phase1),
         "bank1": str(bank1),
         "bank2": str(bank2),

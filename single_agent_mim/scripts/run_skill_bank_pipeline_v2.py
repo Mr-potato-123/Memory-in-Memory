@@ -159,6 +159,30 @@ def _parse_cluster_summary(
             "solves": solves,
         }
         digest = _stable_digest(draft_key)
+        source_candidates = [
+            candidate
+            for candidate in candidates
+            if candidate.candidate_id in source_ids
+        ]
+        transitions = sorted({
+            candidate.transition
+            for candidate in source_candidates
+            if candidate.transition
+        })
+        intents = {
+            candidate.maintenance_intent for candidate in source_candidates
+        }
+        # A semantic cluster may combine add/revise evidence.  Escalating a
+        # mixed cluster to REMOVE would be unsafe, so mixed intent is carried
+        # forward as REVISE for the CRUD planner to adjudicate atomically.
+        maintenance_intent = (
+            next(iter(intents)) if len(intents) == 1 else "REVISE"
+        )
+        why_previous = list(dict.fromkeys(
+            candidate.why_previous_round_failed
+            for candidate in source_candidates
+            if candidate.why_previous_round_failed
+        ))
         drafts.append(
             SkillCandidate(
                 candidate_id=f"draft_{side}_{digest}",
@@ -169,6 +193,13 @@ def _parse_cluster_summary(
                 source_candidate_ids=source_ids,
                 source_cluster_id=cluster_id,
                 source_failure_id="cluster_summary",
+                transition=",".join(transitions),
+                failure_age=max(
+                    (candidate.failure_age for candidate in source_candidates),
+                    default=0,
+                ),
+                maintenance_intent=maintenance_intent,
+                why_previous_round_failed=" | ".join(why_previous)[:600],
                 created_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             )
         )
@@ -412,7 +443,7 @@ def _process_side(
                     }
                     try:
                         executor.apply(batch, plan)
-                    except ValueError as apply_error:
+                    except (ValueError, RuntimeError) as apply_error:
                         # A merge that would exceed the deterministic payload
                         # limit is not a reason to lose this candidate.  Keep
                         # the candidate as its own narrowly-scoped Skill.  The
@@ -428,6 +459,8 @@ def _process_side(
                             "description too long",
                             "name is empty",
                             "content is empty",
+                            "expected content is no longer present",
+                            "overlapping edits",
                         )
                         if not any(marker in error_text for marker in fallback_errors):
                             raise
@@ -441,8 +474,9 @@ def _process_side(
                                     resolution="CREATED",
                                     target_skill_ids=[],
                                     reason=(
-                                        "Created separately because merging "
-                                        "would exceed the Skill content limit."
+                                        "Created separately because the CRUD "
+                                        "plan was not safely applicable to the "
+                                        "current Bank snapshot."
                                     ),
                                 )
                             ],

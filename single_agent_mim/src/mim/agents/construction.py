@@ -687,10 +687,10 @@ class ConstructionAgent:
         )
         return (
             "The following Construction Skills are learned behavioral priors "
-            "internalized from earlier runtime experience. A Skill may guide "
-            "the first extraction or CRUD decision when the current messages "
-            "match its observable `When` trigger; no failed default attempt is "
-            "required. Match the complete trigger rather than topic overlap. "
+            "internalized from earlier runtime experience. At most one Skill "
+            "may guide extraction or CRUD, and only when the current messages "
+            "contain direct evidence for its complete observable `When` trigger. "
+            "A shared topic, entity type, or activity word is not a trigger. "
             "System rules, the source messages, and evidence fidelity always "
             "override a Skill. Never invent facts, and ignore a Skill when its "
             "trigger or premise does not fit the current session.\n\n" + rendered

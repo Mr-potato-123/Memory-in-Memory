@@ -279,7 +279,7 @@ class MiMRuntime:
                     query=session_text,
                     side=Side.CONSTRUCTION,
                     embedding_index=self._embedder,  # type: ignore[arg-type]
-                    top_k=self._cfg.construction.skill_top_k,
+                    top_k=min(1, self._cfg.construction.skill_top_k),
                     candidate_k=self._cfg.construction.skill_candidate_k,
                     disclose_k=self._cfg.construction.skill_disclose_k,
                     min_score=self._cfg.construction.skill_min_score,
@@ -416,26 +416,36 @@ class MiMRuntime:
         if not self._conversation_id:
             raise RuntimeError("No conversation ingested. Call ingest() first.")
 
-        # Retrieve Access Skills
+        # Access Skills are deliberately not retrieved before the first
+        # search.  AccessAgent runs one default-policy retrieval, then invokes
+        # this loader with the observed evidence state.
         skills: list = []
         access_skill_trace = None
-        if self._mode == "mim" and self._skill_bank:
-            skills, access_skill_trace = self._skill_bank.retrieve_with_trace(
-                query=self._skill_query_builder.for_access(
-                    question.question
-                ),
+        recovery_skills: list = []
+
+        def load_recovery_skills(context: dict) -> list:
+            nonlocal access_skill_trace, recovery_skills
+            if self._mode != "mim" or not self._skill_bank:
+                return []
+            query = self._skill_query_builder.for_access_recovery(context)
+            selected, access_skill_trace = self._skill_bank.retrieve_with_trace(
+                query=query,
                 side=Side.ACCESS,
                 embedding_index=self._embedder,  # type: ignore[arg-type]
-                top_k=self._cfg.access.skill_top_k,
+                # One recovery mechanism at a time avoids composition of
+                # individually narrow but jointly conflicting policies.
+                top_k=min(1, self._cfg.access.skill_top_k),
                 candidate_k=self._cfg.access.skill_candidate_k,
                 disclose_k=self._cfg.access.skill_disclose_k,
                 min_score=self._cfg.access.skill_min_score,
                 reranker=self._skill_reranker,
                 trace_id=(
-                    f"skilltrace_access_{self._run_id}_"
+                    f"skilltrace_access_recovery_{self._run_id}_"
                     f"{self._conversation_id}_{question.qa_id}"
                 ),
             )
+            recovery_skills = selected
+            return selected
 
         at = AccessTrace(
             conversation_id=self._conversation_id,
@@ -459,8 +469,15 @@ class MiMRuntime:
             access_run_id=(
                 f"access_{self._run_id}_{self._conversation_id}_{question.qa_id}"
             ),
+            recovery_skill_loader=load_recovery_skills,
         )
         result.skill_trace = access_skill_trace
+        at.skill_ids = [skill.skill_id for skill in recovery_skills]
+        at.skill_trace = (
+            access_skill_trace.model_dump(mode="json")
+            if access_skill_trace
+            else {}
+        )
 
         gold_message_ids = [
             evidence[-1]

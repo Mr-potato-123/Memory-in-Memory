@@ -211,7 +211,9 @@ def test_two_stage_runtime_retrieval_uses_applicability_reranker(
     reranker = LLMSkillApplicabilityReranker(
         _RouterModel(
             '{"selected":[{"skill_id":"sk_access_list",'
-            '"reason":"The question requires exhaustive list coverage."}]}'
+            '"reason":"The first result covers only one requested item.",'
+            '"trigger_evidence":"The question asks for activities, plural.",'
+            '"unresolved_gap":"Other supported activities are missing."}]}'
         )
     )
 
@@ -229,7 +231,7 @@ def test_two_stage_runtime_retrieval_uses_applicability_reranker(
     assert trace.reranker == "bank1_applicability_router"
     assert trace.candidate_k == 10
     assert trace.selected[0].rerank_rank == 1
-    assert "exhaustive" in trace.selected[0].rerank_reason
+    assert "first result" in trace.selected[0].rerank_reason
 
 
 def test_two_stage_runtime_retrieval_can_reranker_abstain(tmp_path: Path):

@@ -57,9 +57,10 @@ Return only one valid JSON object:
   ]
 }
 
-Use only official Skill IDs present in the supplied context. Keep name under 80
-characters, description under 400 characters, and all content together under
-2000 characters. In every operation, `source_candidate_ids` may contain only
+Use only official Skill IDs present in the supplied context. Keep name at most
+60 characters, description at most 200 characters, each content item at most
+200 characters, no more than 3 items, and all content together at most 600
+characters. In every operation, `source_candidate_ids` may contain only
 the current candidate IDs shown at the top level of `candidate_batch`; never
 copy provenance IDs nested inside a candidate's own `source_candidate_ids`.
 The program applies operations after validating IDs, versions, old content,

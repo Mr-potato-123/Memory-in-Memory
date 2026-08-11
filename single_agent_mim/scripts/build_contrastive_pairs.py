@@ -1,8 +1,8 @@
-"""Build train-only C2W/W2C pairs from two deterministic Judge runs.
+"""Build train-only iterative cases from two deterministic Judge runs.
 
-The output remains compatible with ``run_flip_diagnosis.py`` while making the
-run names and Bank transition explicit instead of relying on hand-written
-JSON.  Only label flips are emitted; stable C2C/W2W rows are summarized.
+The learnable case set is C2W, W2C, and W2W.  C2C is counted only: stable
+successes are neither diagnosis targets nor Candidate sources.  W2W carries a
+failure age so repeated failures remain visible across Bank iterations.
 """
 
 from __future__ import annotations
@@ -40,11 +40,14 @@ def build_pairs(
     to_bank: str,
     from_run: str,
     to_run: str,
+    prior_failure_ages: dict[str, int] | None = None,
 ) -> dict[str, Any]:
+    prior_failure_ages = prior_failure_ages or {}
     shared = sorted(before.keys() & after.keys())
     c2w: list[dict[str, str]] = []
     w2c: list[dict[str, str]] = []
-    stable = {"C2C": 0, "W2W": 0}
+    w2w: list[dict[str, Any]] = []
+    c2c = 0
     for qa_id in shared:
         transition = (
             str(before[qa_id]["label"]).upper()
@@ -59,29 +62,58 @@ def build_pairs(
             w2c.append(
                 {"qa_id": qa_id, "ok_run": to_run, "wrong_run": from_run}
             )
-        else:
-            stable[transition] += 1
+        elif transition == "W2W":
+            w2w.append({
+                "qa_id": qa_id,
+                "before_run": from_run,
+                "after_run": to_run,
+                "failure_age": max(1, int(prior_failure_ages.get(qa_id, 0)) + 1),
+            })
+        elif transition == "C2C":
+            c2c += 1
     return {
-        "schema_version": "contrastive_pairs_v2",
+        "schema_version": "iteration_cases_v3",
         chain_id: {
             "name": chain_id,
             "from": from_bank,
             "to": to_bank,
+            "from_run": from_run,
+            "to_run": to_run,
             "correct_side": from_run,
             "wrong_side_c2w": to_run,
             "wrong_side_w2c": from_run,
             "C2W": c2w,
             "W2C": w2c,
+            "W2W": w2w,
             "summary": {
                 "shared": len(shared),
                 "C2W": len(c2w),
                 "W2C": len(w2c),
-                **stable,
+                "W2W": len(w2w),
+                "C2C": c2c,
+                "learnable_cases": len(c2w) + len(w2c) + len(w2w),
                 "before_only": len(before.keys() - after.keys()),
                 "after_only": len(after.keys() - before.keys()),
             },
         },
     }
+
+
+def _load_prior_failure_ages(path: Path | None) -> dict[str, int]:
+    """Load the latest W2W age per QA from a prior iteration-case file."""
+    if path is None:
+        return {}
+    value = json.loads(path.read_text(encoding="utf-8"))
+    ages: dict[str, int] = {}
+    for name, chain in value.items():
+        if name == "schema_version" or not isinstance(chain, dict):
+            continue
+        for row in chain.get("W2W", []):
+            if not isinstance(row, dict) or not row.get("qa_id"):
+                continue
+            qa_id = str(row["qa_id"])
+            ages[qa_id] = max(ages.get(qa_id, 0), int(row.get("failure_age", 1)))
+    return ages
 
 
 def main() -> int:
@@ -93,6 +125,10 @@ def main() -> int:
     parser.add_argument("--to-bank", required=True)
     parser.add_argument("--from-run", required=True)
     parser.add_argument("--to-run", required=True)
+    parser.add_argument(
+        "--prior-cases",
+        help="Optional prior iteration_cases_v3 JSON used to increment W2W age.",
+    )
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
 
@@ -104,6 +140,9 @@ def main() -> int:
         to_bank=args.to_bank,
         from_run=args.from_run,
         to_run=args.to_run,
+        prior_failure_ages=_load_prior_failure_ages(
+            Path(args.prior_cases) if args.prior_cases else None
+        ),
     )
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)

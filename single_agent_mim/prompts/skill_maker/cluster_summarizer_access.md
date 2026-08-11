@@ -14,12 +14,13 @@ CRITICAL RULES:
    - name: at most 60 characters;
    - description: at most 200 characters, beginning with `When` and containing
      the observable trigger plus its applicability boundary;
-   - content: 1-3 executable items, each at most 250 characters.
+   - content: 1-3 executable items, each at most 200 characters.
    Put boundaries in `description`; do not repeat one in every content item.
    `solves` is maintenance metadata, not part of the runtime Skill.
 
-3. ABSTRACTION: Merge candidates only when their actions and learning polarity
-   are compatible. Topics may differ. Keep distinct retrieval and answer
+3. ABSTRACTION: Merge candidates only when their post-search evidence gap,
+   recovery action, and learning polarity are all compatible. Semantic or
+   topical similarity alone is never sufficient. Keep retrieval and answer
    mechanisms separate when their operational actions differ.
 
 4. SAFETY: Never introduce inference or fabrication of conversation facts.

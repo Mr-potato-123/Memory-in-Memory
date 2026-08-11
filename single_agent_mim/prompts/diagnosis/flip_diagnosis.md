@@ -12,7 +12,9 @@ The wrong side may also include standard diagnosis records as supporting
 evidence. Treat them as hints, not ground truth.
 
 First decompose the reference answer exactly once into the smallest material
-claims. For every claim assess each side independently:
+claims. If the reference answer is empty, emit no factual claims and compare
+whether each side correctly abstains instead of inventing or misbinding an
+unsupported answer. For every non-empty claim assess each side independently:
 - memory_coverage: FULL, PARTIAL, MISSING, or INCORRECT in current_memories
 - retrieval_coverage: FULL, PARTIAL, or NONE in visible_memories/actions
 - answer_coverage: CORRECT, INCORRECT, or MISSING in the final answer
@@ -26,8 +28,11 @@ Attribution rules:
    process fails to retrieve, inspect, select, or use it. ACCESS and
    CONSTRUCTION may both apply, including on different claims.
 3. ANSWER applies only when every necessary claim is fully present and
-   retrieved on both sides, yet the wrong side answers incorrectly. ANSWER is
-   exclusive: never mark it together with ACCESS or CONSTRUCTION.
+   retrieved on both sides, yet the wrong side answers incorrectly. For an
+   empty reference, ANSWER also applies when the correct side abstains and the
+   wrong side gives an answer unsupported by the supplied memories, provided
+   there is no upstream Access or Construction difference. ANSWER is exclusive:
+   never mark it together with ACCESS or CONSTRUCTION.
 4. If the trace cannot establish a reusable behavioral difference, set
    learnable=false. Do not force an attribution for judge/model variance,
    missing traces, equivalent behavior, or luck.

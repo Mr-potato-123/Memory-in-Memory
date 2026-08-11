@@ -49,7 +49,7 @@ def _read_prompt(path: str) -> str:
 
 
 def _collect_packages(diagnosis_root: Path) -> list[dict]:
-    rows: list[dict] = []
+    by_qa: dict[str, list[dict]] = {}
     for component in ("answer_failure", "access_failure", "cons_failure"):
         packages = diagnosis_root / component / "packages"
         if not packages.exists():
@@ -63,8 +63,68 @@ def _collect_packages(diagnosis_root: Path) -> list[dict]:
             )
             if not report.get("problem_found"):
                 continue
-            rows.append({"side": side, "report": report, "path": path})
+            qa_id = str(report.get("qa_id") or report.get("diagnosis_id") or path)
+            by_qa.setdefault(qa_id, []).append(
+                {"side": side, "component": component,
+                 "report": report, "path": path, "kind": "failure"}
+            )
+
+    # Answer diagnoses are standalone. If answer evidence was sufficient,
+    # suppress retrieval/construction learning for the same QA. Access and
+    # Construction diagnoses may still coexist.
+    rows: list[dict] = []
+    for qa_id in sorted(by_qa):
+        items = by_qa[qa_id]
+        answer = [item for item in items if item["component"] == "answer_failure"]
+        rows.extend(answer if answer else items)
+    component_order = {
+        "answer_failure": 0,
+        "access_failure": 1,
+        "cons_failure": 2,
+    }
+    rows.sort(key=lambda item: (
+        component_order[item["component"]],
+        str(item["report"].get("qa_id") or item["report"].get("diagnosis_id") or ""),
+        str(item["path"]),
+    ))
     return rows
+
+
+def _load_success_packages(path: Path | None) -> list[dict]:
+    if path is None:
+        return []
+    rows: list[dict] = []
+    for line_no, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        if not line.strip():
+            continue
+        row = json.loads(line)
+        if not isinstance(row, dict):
+            raise ValueError(f"Expected object at {path}:{line_no}")
+        if (
+            str(row.get("judge_label", "")).upper() == "C"
+            and _has_nontrivial_positive_path(row)
+        ):
+            rows.append({"side": "access", "kind": "success",
+                         "report": row, "path": path})
+    return rows
+
+
+def _has_nontrivial_positive_path(row: dict) -> bool:
+    """Keep successes with an observed decision beyond the default lookup.
+
+    Single-search successes remain in NoSkillSuccessIndex as preservation
+    evidence, but the system prompt already teaches their default behaviour.
+    Positive Skill generation is reserved for alternate searches or explicit
+    memory inspection that can yield a reusable post-search decision.
+    """
+    actions = (row.get("trajectory") or {}).get("search_actions") or []
+    searches = sum(
+        1 for action in actions if action.get("action") == "search_memory"
+    )
+    inspections = sum(
+        1 for action in actions if action.get("action") == "inspect_memory"
+    )
+    return searches > 1 or inspections > 0
 
 
 def main() -> int:
@@ -86,6 +146,18 @@ def main() -> int:
                         help="Hard cap on parallel candidate generations per "
                              "process (default 6 = 3 keys x 2).")
     parser.add_argument("--max-items", type=int, default=0)
+    parser.add_argument(
+        "--package-source", choices=("both", "failure", "success"),
+        default="both", help="Generate one source shard or the joint set.",
+    )
+    parser.add_argument(
+        "--failure-side", choices=("all", "access", "construction"),
+        default="all", help="Further shard failure packages by Skill side.",
+    )
+    parser.add_argument(
+        "--retry-errors-from",
+        help="Only regenerate QA IDs whose prior generation summary has status=error.",
+    )
     args = parser.parse_args()
 
     config = load_config(args.config)
@@ -105,11 +177,42 @@ def main() -> int:
             f"{default_policy_index.count()}",
             flush=True,
         )
-    packages = _collect_packages(Path(args.diagnosis_root))
+    packages = (
+        _collect_packages(Path(args.diagnosis_root))
+        if args.package_source in {"both", "failure"}
+        else []
+    )
+    if args.failure_side != "all":
+        packages = [
+            item for item in packages if item.get("side") == args.failure_side
+        ]
+    failure_count = len(packages)
+    success_packages = (
+        _load_success_packages(
+            Path(args.success_package) if args.success_package else None
+        )
+        if args.package_source in {"both", "success"}
+        else []
+    )
+    packages.extend(success_packages)
+    if args.retry_errors_from:
+        prior = json.loads(Path(args.retry_errors_from).read_text(encoding="utf-8"))
+        retry_ids = {
+            str(row.get("qa_id"))
+            for row in prior.get("rows", [])
+            if row.get("status") == "error" and row.get("qa_id")
+        }
+        packages = [
+            item for item in packages
+            if str(item["report"].get("qa_id")) in retry_ids
+        ]
+        print(f"Retrying prior errors: {len(packages)}", flush=True)
     if args.max_items > 0:
         packages = packages[: args.max_items]
-    print(f"Repair packages: {len(packages)} "
-          f"(access={sum(1 for p in packages if p['side']=='access')}, "
+    print(f"Learning packages: {len(packages)} "
+          f"(failures_after_adjudication={failure_count}, "
+          f"success={len(success_packages)}, "
+          f"access={sum(1 for p in packages if p['side']=='access')}, "
           f"construction={sum(1 for p in packages if p['side']=='construction')})",
           flush=True)
     if not packages:
@@ -118,27 +221,46 @@ def main() -> int:
 
     repository = SkillRepository(Path(args.skills_dir))
     maintenance = config.models["maintenance"]
-    pool_size = min(
-        len(getattr(maintenance, "api_keys", []) or [maintenance]) * 2,
-        args.workers,
-        args.max_concurrency,
-    )
+    # The provider may expose one API key while still permitting multiple
+    # in-flight requests.  The old key-count cap silently reduced every run
+    # to two workers.  Concurrency is now an explicit operator choice; the
+    # caller can lower it when the provider returns rate-limit errors.
+    pool_size = min(args.workers, args.max_concurrency)
     pool_size = max(1, pool_size)
     print(f"Candidate generation concurrency: {pool_size}", flush=True)
 
     def generate_one(item: dict) -> dict:
         side = item["side"]
+        kind = item.get("kind", "failure")
         agent = CandidateSkillAgent(
             create_client(copy.deepcopy(maintenance)),
             prompt=_read_prompt(
-                config.prompts.skill_candidate_generation_access
+                "prompts/skill_maker/candidate_generation_success_access.md"
+                if kind == "success"
+                else config.prompts.skill_candidate_generation_access
                 if side == "access"
                 else config.prompts.skill_candidate_generation_construction
             ),
-            success_examples=success_index,
-            default_policy_examples=default_policy_index,
+            success_examples=success_index if kind == "failure" else None,
+            default_policy_examples=(
+                default_policy_index if kind == "failure" else None
+            ),
         )
         report = item["report"]
+        original_qa_id = report.get("qa_id")
+        if kind == "success":
+            report = {
+                "diagnosis_id": f"success_{original_qa_id}",
+                "qa_id": original_qa_id,
+                "source_mode": "success",
+                "stage": "post_search_recovery",
+                "question": report.get("question"),
+                "positive_runtime_example": report,
+                "instruction": (
+                    "Internalize only a non-trivial reusable Access decision "
+                    "that remains useful after a default first search."
+                ),
+            }
         diag_id = str(report.get("diagnosis_id") or report.get("qa_id"))
         try:
             candidate = agent.generate(
@@ -147,24 +269,28 @@ def main() -> int:
             )
         except Exception as exc:
             return {"status": "error", "qa_id": report.get("qa_id"),
-                    "side": side, "error": str(exc)[:300]}
+                    "side": side, "source": kind, "error": str(exc)[:300]}
         if candidate is None:
             return {"status": "no_change", "qa_id": report.get("qa_id"),
-                    "side": side}
+                    "side": side, "source": kind}
         repository.save_candidate(candidate)
         return {"status": "ok", "qa_id": report.get("qa_id"), "side": side,
+                "source": kind,
                 "candidate_id": candidate.candidate_id,
                 "skill_id": candidate.skill_id,
                 "diagnosis_id": diag_id}
 
-    summary = {"ok": 0, "no_change": 0, "error": 0, "rows": []}
+    summary = {"ok": 0, "no_change": 0, "error": 0,
+               "failure_packages": failure_count,
+               "success_packages": len(success_packages), "rows": []}
     with ThreadPoolExecutor(max_workers=pool_size) as pool:
         futures = {pool.submit(generate_one, item): item for item in packages}
         for future in as_completed(futures):
             outcome = future.result()
             summary[outcome["status"]] += 1
             summary["rows"].append(outcome)
-            print(f"[{outcome['status']:8s}] {outcome.get('side','?'):12s} "
+            print(f"[{outcome['status']:8s}] {outcome.get('source','?'):7s} "
+                  f"{outcome.get('side','?'):12s} "
                   f"{outcome.get('qa_id','?')} {outcome.get('candidate_id','')}",
                   flush=True)
 

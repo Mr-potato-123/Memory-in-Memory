@@ -176,9 +176,11 @@ class LLMSkillApplicabilityReranker:
         if not candidates or max_selected <= 0:
             return SkillRerankResult([], {})
         side_guidance = (
-            "Select a Skill when its observable trigger matches this question "
-            "and its learned procedure is specifically useful for retrieval or "
-            "answering. Topic overlap alone is not enough. Never select a Skill for "
+            "The task includes a question and its FIRST DEFAULT SEARCH result. "
+            "Select a Skill only when that result is demonstrably incomplete "
+            "and the Skill's full trigger identifies the missing recovery action. "
+            "If the result directly supports a complete answer, select nothing. "
+            "Topic overlap alone is not enough. Never select a Skill for "
             "questions that are unanswerable or adversarial (no memory supports "
             "the claim): Skills must not encourage guessing or inference."
             if side == Side.ACCESS
@@ -203,11 +205,14 @@ class LLMSkillApplicabilityReranker:
 
 Rules:
 1. Select zero to {max_selected} Skills. A matching learned Skill may guide the
-   first action; abstain only when no candidate's observable trigger applies.
+   next recovery action; it never replaces the first default search.
 2. Judge procedural applicability, not shared nouns or broad semantic similarity.
 3. Reject redundant, conflicting, over-broad, or merely topical Skills.
 4. Do not answer the question and do not invent a new Skill.
-5. Return JSON only: {{"selected":[{{"skill_id":"...","reason":"..."}}]}}.
+5. Every selection requires a short quote/paraphrase from the task proving
+   both the trigger and the unresolved evidence gap.
+6. Return JSON only: {{"selected":[{{"skill_id":"...","reason":"...",
+   "trigger_evidence":"...","unresolved_gap":"..."}}]}}.
 
 Side: {side.value}
 Task/session:
@@ -242,9 +247,25 @@ Candidates:
                 elif isinstance(raw, dict):
                     skill_id = str(raw.get("skill_id") or "")
                     reason = str(raw.get("reason") or "").strip()
+                    trigger_evidence = str(
+                        raw.get("trigger_evidence") or ""
+                    ).strip()
+                    unresolved_gap = str(raw.get("unresolved_gap") or "").strip()
                 else:
                     continue
-                if skill_id not in allowed or skill_id in selected_ids:
+                if (
+                    skill_id not in allowed
+                    or skill_id in selected_ids
+                    or not reason
+                    or not trigger_evidence
+                    or (side == Side.ACCESS and not unresolved_gap)
+                    or re.search(
+                        r"\b(?:does not|doesn't|not applicable|no gap|already "
+                        r"complete|fully supports)\b",
+                        " ".join([reason, trigger_evidence, unresolved_gap]),
+                        re.IGNORECASE,
+                    )
+                ):
                     continue
                 selected_ids.append(skill_id)
                 reasons[skill_id] = reason
@@ -252,13 +273,9 @@ Candidates:
                     break
             return SkillRerankResult(selected_ids, reasons)
         except Exception as exc:
-            # Retrieval must remain available when the optional router fails.
-            # A conservative single-Skill fallback avoids restoring noisy Top-3.
-            fallback = [
-                item.record.skill_id
-                for item in candidates[:1]
-                if item.score >= 0.45
-            ]
+            # Router failure must not inject learned behaviour. The default
+            # policy remains available, so abstention is the safe fallback.
+            fallback: list[str] = []
             return SkillRerankResult(
                 fallback,
                 {
@@ -631,6 +648,13 @@ class RuntimeSkillQueryBuilder:
     def for_access(self, question: str) -> str:
         """Access Skills are triggered by the exact QA question."""
         return question.strip()
+
+    def for_access_recovery(self, context: dict) -> str:
+        """Route only after the first default search is observable."""
+        return (
+            "Question and first default-search observation:\n"
+            + json.dumps(context, ensure_ascii=False, sort_keys=True)
+        )
 
     def for_construction(self, messages: list[dict]) -> str:
         """Construction Skills are triggered by the complete incoming session."""

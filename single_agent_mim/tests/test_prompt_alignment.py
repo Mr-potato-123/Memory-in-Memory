@@ -33,7 +33,7 @@ def test_access_runtime_treats_skill_as_triggered_learned_prior():
     system = agent._build_system([_skill(Side.ACCESS)])
 
     assert "learned behavioral priors" in system
-    assert "no prior failed attempt is required" in system
+    assert "only after one default search" in system
     assert "When an explicit old-to-new state transition" in system
     assert "default behaviour has failed" not in system
 
@@ -47,7 +47,8 @@ def test_construction_runtime_renders_description_as_trigger():
     assert "learned behavioral priors" in rendered
     assert "**When:** When an explicit old-to-new state transition" in rendered
     assert "**Do:**" in rendered
-    assert "no failed default attempt is required" in rendered
+    assert "At most one Skill" in rendered
+    assert "shared topic" in rendered
     assert "default policy would fail" not in rendered
 
 
