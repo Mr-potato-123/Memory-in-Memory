@@ -680,7 +680,16 @@ def main() -> None:
         flush=True,
     )
 
-    summarizer_model = create_client(config.models["maintenance"])
+    # Cluster summarization is a strict JSON task just like CRUD.  DeepSeek
+    # V4 does not honor temperature while thinking is enabled, and its
+    # reasoning tokens can consume the response budget before the draft is
+    # emitted.  Use the same explicit disabled-thinking contract as the
+    # diagnosis/Judge path.
+    summarizer_config = copy.deepcopy(config.models["maintenance"])
+    summarizer_config.extra_body = {"thinking": {"type": "disabled"}}
+    summarizer_config.reasoning_effort = None
+    summarizer_config.max_tokens = min(summarizer_config.max_tokens, 3000)
+    summarizer_model = create_client(summarizer_config)
     drafts: dict[str, list[SkillCandidate]] = {}
     rejected: dict[str, list[dict[str, str]]] = {}
     for side in ("access", "construction"):
