@@ -27,7 +27,7 @@ def main() -> int:
     a=p.parse_args(); cfg=load_config(a.config); run=RunDir(a.run_id,a.output_dir)
     convs, questions=load_dataset(cfg.dataset.path); qas=questions[a.conversation_id]
     if a.qa_ids_file:
-        wanted={x.strip() for x in Path(a.qa_ids_file).read_text(encoding='utf-8').splitlines() if x.strip()}
+        wanted={x.strip() for x in Path(a.qa_ids_file).read_text(encoding='utf-8-sig').splitlines() if x.strip()}
         qas=[q for q in qas if q.qa_id in wanted]
     if a.max_per_category is not None:
         if a.max_per_category < 1:
@@ -50,7 +50,7 @@ def main() -> int:
         rows.sort(key=lambda x:x['qa_id']); run.write_jsonl('qa_results.jsonl',rows)
         groups=defaultdict(list)
         for r in rows: groups[str(r['category'])].append(r['f1'])
-        run.write_json('summary.json',{'mode':'exported_existing_memory','conversation_id':a.conversation_id,'total_qa':len(rows),'overall_f1':sum(r['f1'] for r in rows)/len(rows),'category_f1':{k:sum(v)/len(v) for k,v in groups.items()},'protocol_errors':0})
+        run.write_json('summary.json',{'mode':'exported_existing_memory','conversation_id':a.conversation_id,'total_qa':len(rows),'overall_f1':sum(r['f1'] for r in rows)/len(rows) if rows else 0.0,'category_f1':{k:sum(v)/len(v) for k,v in groups.items()},'protocol_errors':0})
         print(a.conversation_id,'export',len(rows),flush=True); return 0
     model=create_client(cfg.models['runtime']); emb=Embedder(cfg.embedding.model,cfg.embedding.device,cfg.embedding.normalize,cfg.embedding.batch_size)
     bank=None; mode='base'
@@ -72,7 +72,7 @@ def main() -> int:
     run.write_jsonl('qa_results.jsonl',rows)
     groups=defaultdict(list)
     for r in rows: groups[str(r['category'])].append(r['f1'])
-    run.write_json('summary.json',{'mode':mode,'conversation_id':a.conversation_id,'total_qa':len(rows),'overall_f1':sum(r['f1'] for r in rows)/len(rows),'category_f1':{k:sum(v)/len(v) for k,v in groups.items()},'protocol_errors':sum(bool(r['error']) for r in rows),'avg_access_steps':sum(r['access_steps'] for r in rows)/len(rows)})
+    run.write_json('summary.json',{'mode':mode,'conversation_id':a.conversation_id,'total_qa':len(rows),'overall_f1':sum(r['f1'] for r in rows)/len(rows) if rows else 0.0,'category_f1':{k:sum(v)/len(v) for k,v in groups.items()},'protocol_errors':sum(bool(r['error']) for r in rows),'avg_access_steps':sum(r['access_steps'] for r in rows)/len(rows) if rows else 0.0})
     print(a.conversation_id, mode, len(rows), sum(r['f1'] for r in rows)/len(rows), flush=True)
     return 0
 if __name__=='__main__': raise SystemExit(main())
