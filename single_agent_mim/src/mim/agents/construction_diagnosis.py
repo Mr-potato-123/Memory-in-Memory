@@ -1,4 +1,4 @@
-"""Memory-construction diagnosis for one failed QA.
+"""Append-only memory-extraction diagnosis for one failed QA.
 
 The agent receives only annotated raw evidence (plus explicitly resolved local
 context when supplied) and a deterministic chronological construction history.
@@ -57,30 +57,28 @@ Do not invent IDs.
 
 
 class ConstructionDiagnosisAgent:
-    """Locate the earliest incorrect construction operation."""
+    """Locate the earliest extraction or deterministic persistence error."""
 
     _STAGE_TO_EDGE = {
         "ingestion": "message_to_construction",
-        "extraction": "message_to_candidate",
-        "wrong_candidate": "message_to_candidate",
-        "wrong_skip": "candidate_to_decision",
+        "extraction_omission": "message_to_candidate",
+        "extraction_distortion": "message_to_candidate",
+        "temporal_metadata": "message_to_candidate",
         "persistence": "decision_to_version",
-        "initial_memory": "decision_to_version",
-        "update_loss": "version_to_version",
-        "wrong_merge": "version_to_version",
-        "correction_failure": "version_to_version",
         "provenance_missing": "source_to_version_trace",
     }
     _STAGE_ALIASES = {
-        "candidate_generation": "extraction",
-        "candidate": "extraction",
-        "message_to_candidate": "extraction",
-        "memory_update": "update_loss",
-        "update": "update_loss",
-        "version_update": "update_loss",
-        "merge": "wrong_merge",
-        "decision": "wrong_skip",
-        "candidate_decision": "wrong_skip",
+        "candidate_generation": "extraction_omission",
+        "candidate": "extraction_omission",
+        "message_to_candidate": "extraction_omission",
+        "extraction": "extraction_omission",
+        "wrong_candidate": "extraction_distortion",
+        "initial_memory": "persistence",
+    }
+    _LEARNABLE_STAGES = {
+        "extraction_omission",
+        "extraction_distortion",
+        "temporal_metadata",
     }
 
     def __init__(
@@ -214,9 +212,15 @@ class ConstructionDiagnosisAgent:
                 + " The reported first-error stage was not recognized."
             ).strip()
 
-        if report.problem_found and not report.review_required:
+        if (
+            report.problem_found
+            and not report.review_required
+            and stage in self._LEARNABLE_STAGES
+        ):
             report.recommended_route = LearningRoute.CONSTRUCTION_SKILL_MAKER
             report.repair_package = {
+                "schema_version": "append_only_extraction_repair_v1",
+                "learnable_stage": stage,
                 "question": question,
                 "source_messages": source_messages,
                 "first_error": first_error,
@@ -225,6 +229,9 @@ class ConstructionDiagnosisAgent:
                     construction_history, first_error
                 ),
             }
+        elif report.problem_found and stage not in self._LEARNABLE_STAGES:
+            report.status = DiagnosisStatus.ENGINEERING_ISSUE
+            report.recommended_route = LearningRoute.ENGINEERING_ISSUE
         return report
 
     @staticmethod

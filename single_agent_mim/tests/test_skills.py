@@ -321,3 +321,18 @@ def test_payload_validator_rejects_unsupported_construction_contract():
 
     assert not valid
     assert any("unsupported memory kind" in error for error in errors)
+
+
+def test_payload_validator_rejects_construction_storage_mutation():
+    payload = SkillPayload(
+        name="Rewrite related memory",
+        description="When a later statement changes a preference.",
+        content=["Update the existing memory record with the new value."],
+    )
+
+    valid, errors = SkillPayloadValidator().validate(
+        payload, side="construction"
+    )
+
+    assert not valid
+    assert any("forbidden storage mutation" in error for error in errors)

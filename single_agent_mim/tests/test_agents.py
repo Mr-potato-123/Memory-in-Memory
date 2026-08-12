@@ -127,23 +127,23 @@ def test_access_conflict_without_missing_memory_is_not_repair_route():
     assert result.conflicting_returned_version_ids == ["mem_v2"]
 
 
-def test_construction_stage_alias_is_canonicalized():
+def test_construction_extraction_distortion_is_learnable():
     model = _mock()
     model.set_script([model._make_resp(json.dumps({
         "raw_support": "SUPPORTED",
         "construction_problem": True,
-        "subtype": "update_loss",
+        "subtype": "extraction_distortion",
         "first_error": {
-            "stage": "update",
+            "stage": "extraction_distortion",
             "message_ids": ["msg_1"],
-            "candidate_id": None,
+            "candidate_id": "candidate_1",
             "decision_id": "decision_1",
             "commit_id": 2,
-            "operation": "UPDATE",
-            "before_version_ids": ["mem_v1"],
-            "after_version_id": "mem_v2",
+            "operation": "ADD",
+            "before_version_ids": [],
+            "after_version_id": None,
         },
-        "reason": "The update lost the answer-bearing detail.",
+        "reason": "The candidate changed an answer-bearing detail.",
         "confidence": 0.95,
         "review_required": False,
     }))])
@@ -174,11 +174,48 @@ def test_construction_stage_alias_is_canonicalized():
             "snapshot_memories": [{"version_id": "mem_v2"}],
         },
     )
-    assert result.first_error["stage"] == "update_loss"
-    assert result.first_broken_edge == "version_to_version"
+    assert result.first_error["stage"] == "extraction_distortion"
+    assert result.first_broken_edge == "message_to_candidate"
     assert result.review_required is False
     assert result.recommended_route == LearningRoute.CONSTRUCTION_SKILL_MAKER
     assert result.repair_package
+
+
+def test_construction_persistence_failure_is_engineering_issue():
+    model = _mock()
+    model.set_script([model._make_resp(json.dumps({
+        "raw_support": "SUPPORTED",
+        "construction_problem": True,
+        "subtype": "persistence",
+        "first_error": {
+            "stage": "persistence",
+            "message_ids": ["msg_1"],
+            "candidate_id": "candidate_1",
+            "decision_id": "decision_1",
+            "commit_id": 2,
+            "operation": "ADD",
+            "before_version_ids": [],
+            "after_version_id": None,
+        },
+        "reason": "A faithful candidate was not persisted.",
+        "confidence": 0.95,
+        "review_required": False,
+    }))])
+    result = ConstructionDiagnosisAgent(model).diagnose(
+        failure_id="failure", run_id="run", conversation_id="conv",
+        qa_id="qa", snapshot_commit_id=2, question="Where?",
+        prediction="wrong", reference_answer="right",
+        raw_message_ids=["msg_1"],
+        source_messages=[{"message_id": "msg_1", "content": "right"}],
+        construction_history={
+            "processed_commits": [{"message_id": "msg_1", "commit_id": 1}],
+            "candidates": [{"candidate_id": "candidate_1",
+                            "decision_id": "decision_1", "commit_id": 2}],
+            "change_events": [], "snapshot_memories": [],
+        },
+    )
+    assert result.recommended_route == LearningRoute.ENGINEERING_ISSUE
+    assert result.repair_package == {}
 
 
 def test_failure_semantic_json_fallback_is_conservative():

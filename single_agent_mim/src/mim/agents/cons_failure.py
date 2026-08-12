@@ -1,4 +1,4 @@
-"""Two-stage diagnosis of the earliest memory-construction failure."""
+"""Two-stage diagnosis for the minimal append-only construction runtime."""
 
 from __future__ import annotations
 
@@ -24,25 +24,26 @@ from ..llm.base import ModelClient
 
 
 class ConsFailureAgent:
-    """Screen current memory first, then trace only confirmed candidates."""
+    """Screen current memory, then attribute only extraction or persistence."""
 
     _STAGE_ALIASES = {
-        "candidate_generation": "extraction",
-        "candidate": "extraction",
-        "wrong_candidate": "extraction",
-        "wrong_skip": "decision",
-        "persistence": "initial_memory",
-        "update_loss": "update",
-        "wrong_merge": "update",
-        "correction_failure": "update",
-        "merge": "update",
+        "candidate_generation": "extraction_omission",
+        "candidate": "extraction_omission",
+        "extraction": "extraction_omission",
+        "wrong_candidate": "extraction_distortion",
+        "initial_memory": "persistence",
     }
     _VALID_STAGES = {
         "ingestion",
-        "extraction",
-        "decision",
-        "initial_memory",
-        "update",
+        "extraction_omission",
+        "extraction_distortion",
+        "temporal_metadata",
+        "persistence",
+    }
+    _LEARNABLE_STAGES = {
+        "extraction_omission",
+        "extraction_distortion",
+        "temporal_metadata",
     }
 
     def __init__(
@@ -193,12 +194,13 @@ class ConsFailureAgent:
             report.first_error = first_error
             report.affected_memory_ids = affected_memory_ids
             report.construction_history = construction_history
-            # A valid first-error attribution always yields a repair package.
-            # review_required only flags confidence for later human review —
-            # it must not discard a diagnosis that already located the
-            # construction error (e.g. PARTIAL raw_support cases).
-            if first_error.get("stage"):
+            # Only extraction behavior is configurable through a Construction
+            # Skill. Ingestion and persistence failures remain auditable but
+            # are routed away from Skill generation.
+            if first_error.get("stage") in self._LEARNABLE_STAGES:
                 report.repair_package = {
+                    "schema_version": "append_only_extraction_repair_v1",
+                    "learnable_stage": first_error["stage"],
                     "question": case.question,
                     "reference_answer": case.reference_answer,
                     "affected_reference_claim": str(
@@ -287,19 +289,11 @@ class ConsFailureAgent:
             for item in source_messages
             if item.get("message_id")
         }
-        # A gold-supported memory may have been modified later by other
-        # messages. Those history-linked messages are valid provenance and
-        # are essential for locating an update-time loss.
+        # Candidate and snapshot provenance may contain the same source
+        # message, but no later rewrite path is part of this runtime.
         for candidate in construction_history.get("candidates", []):
             if candidate.get("message_id"):
                 valid_message_ids.add(str(candidate["message_id"]))
-        for change in construction_history.get("change_events", []):
-            valid_message_ids.update(
-                str(message_id)
-                for field in ("direct_message_ids", "affected_message_ids")
-                for message_id in change.get(field, [])
-                if message_id
-            )
         for memory in construction_history.get("snapshot_memories", []):
             valid_message_ids.update(
                 str(message_id)
@@ -367,26 +361,6 @@ class ConsFailureAgent:
             valid_version_ids,
             "after_version_id",
         )
-        if stage == "update" and change_id:
-            matching_change = next(
-                (
-                    item
-                    for item in construction_history.get("change_events", [])
-                    if str(item.get("change_id", "")) == change_id
-                ),
-                None,
-            )
-            if matching_change is not None:
-                if not before_ids:
-                    before_ids = [
-                        str(item["version_id"])
-                        for item in matching_change.get("before_versions", [])
-                        if item.get("version_id")
-                    ]
-                if not after_version_id:
-                    after = matching_change.get("after_version")
-                    if isinstance(after, dict) and after.get("version_id"):
-                        after_version_id = str(after["version_id"])
         commit_id = value.get("commit_id")
         if commit_id is not None:
             try:
@@ -397,9 +371,9 @@ class ConsFailureAgent:
                 raise InvalidModelOutput(
                     f"commit_id was not supplied: {commit_id}"
                 )
-        if stage == "update" and (not before_ids or not after_version_id):
+        if before_ids or after_version_id or change_id:
             raise InvalidModelOutput(
-                "An update error requires verified before and after versions."
+                "Append-only diagnosis must not attribute a version rewrite."
             )
 
         return {

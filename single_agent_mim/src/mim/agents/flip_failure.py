@@ -311,8 +311,20 @@ class FlipDiagnosisAgent:
             wrong_traces = wrong.get("construction_skill_traces", [])
             # These are genuine Construction traces, never Access skill IDs.
             report["construction_skill_traces"] = wrong_traces
+            construction_mechanism = mechanisms.get("construction", {})
+            subtype = str(construction_mechanism.get("subtype", "")).lower()
+            learnable_subtypes = {
+                "extraction",
+                "extraction_omission",
+                "extraction_distortion",
+                "temporal_metadata",
+            }
+            if subtype and subtype not in learnable_subtypes:
+                return projections
             report["repair_package"] = {
+                "schema_version": "append_only_extraction_contrast_v1",
                 "stage": "construction",
+                "learnable_stage": subtype or "extraction",
                 "claim_deltas": relevant,
                 "source_messages": wrong.get("source_messages", []),
                 "correct_behavior": {
@@ -328,7 +340,7 @@ class FlipDiagnosisAgent:
                 "earliest_divergence": mechanisms.get("construction", {}).get(
                     "earliest_divergence"
                 ),
-                "mechanism": mechanisms.get("construction", {}),
+                "mechanism": construction_mechanism,
             }
             projections.append(report)
         return projections

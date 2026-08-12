@@ -1,19 +1,19 @@
-You perform Stage B of memory-construction diagnosis.
+You perform Stage B of append-only memory-extraction diagnosis.
 
 Stage A has already found that current memory is incomplete or incorrect. You
 receive the annotated raw evidence, current related memories, and the complete
 chronological construction history for the implicated messages.
 
 First verify that the raw evidence supports the reference answer. Then inspect
-the path in order:
+the short path in order:
 
-raw evidence availability -> extraction candidate -> construction decision ->
-first persisted memory -> every later update/delete/merge
+raw evidence availability -> extraction candidate -> deterministic ADD or
+exact-duplicate SKIP -> persisted memory
 
 Report only the earliest point where the required fact was omitted,
-incorrectly skipped, incorrectly written, lost, or corrupted. Do not diagnose
-retrieval. Do not report a later loss when an earlier error already explains
-the current state.
+distorted, assigned incorrect temporal metadata, or failed to persist. There
+is no model-driven UPDATE, MERGE, DELETE, target selection, or later memory
+rewrite in this runtime. Do not diagnose retrieval.
 
 Return exactly one JSON object:
 
@@ -22,9 +22,9 @@ Return exactly one JSON object:
   "construction_problem": true,
   "affected_reference_claim": "the fact that was lost or corrupted",
   "affected_memory_ids": [],
-  "subtype": "ingestion|extraction|decision|initial_memory|update",
+  "subtype": "ingestion|extraction_omission|extraction_distortion|temporal_metadata|persistence",
   "first_error": {
-    "stage": "ingestion|extraction|decision|initial_memory|update",
+    "stage": "ingestion|extraction_omission|extraction_distortion|temporal_metadata|persistence",
     "message_ids": [],
     "candidate_id": null,
     "decision_id": null,
@@ -34,15 +34,26 @@ Return exactly one JSON object:
     "before_version_ids": [],
     "after_version_id": null
   },
-  "reason": "Explain what the raw evidence said, what memory should have preserved, the first bad step, any before/after change, and why that step caused the current failure.",
+  "reason": "Explain what the raw evidence said, what candidate or persisted memory exists, and the first mismatch.",
   "confidence": 0.0,
   "review_required": false
 }
 
-Copy every ID exactly from the supplied data. A message ID may come from the
-annotated raw evidence or from candidate/change/snapshot provenance in the
-chronological history, because later messages can modify an earlier memory.
-Never invent provenance. Use JSON null, not an empty string, for an unavailable
-optional ID. If raw
-evidence does not support the reference answer, say so through raw_support
-instead of inventing a construction failure.
+Stage rules:
+
+- `ingestion`: the annotated message was never processed. This is an
+  engineering issue, not a Skill source.
+- `extraction_omission`: no candidate preserved a supported durable claim.
+- `extraction_distortion`: a candidate changed an entity, relation, polarity,
+  quantity, name, or other material stated detail.
+- `temporal_metadata`: candidate content or world_start/world_end lost or
+  invented material temporal information.
+- `persistence`: a faithful candidate was ADDed but no equivalent active
+  memory was persisted. This is an engineering issue, not a Skill source.
+
+Only the three extraction stages are learnable Construction Skill sources.
+Copy every ID exactly from the supplied data. Never invent provenance. Use
+JSON null for unavailable optional IDs. `before_version_ids` and
+`after_version_id` should remain empty/null because the append-only runtime has
+no version rewrite path. If raw evidence does not support the reference, say
+so through raw_support instead of inventing a construction failure.

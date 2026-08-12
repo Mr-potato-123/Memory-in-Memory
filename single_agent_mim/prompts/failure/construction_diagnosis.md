@@ -1,16 +1,14 @@
-# Construction Diagnosis Agent
+# Append-Only Construction Diagnosis Agent
 
 Diagnose only memory construction for one failed question.
 
 First determine whether the annotated raw messages support the reference
-answer. Then inspect the chronological construction history:
+answer. Then inspect the append-only construction path:
 
 1. whether each source message was processed;
 2. which candidates were extracted;
-3. every candidate decision, including `SKIP`;
-4. the first persisted memory version;
-5. every later change that affected the source messages, with before and after
-   versions.
+3. the deterministic `ADD` or exact-duplicate `SKIP` decision;
+4. the persisted memory.
 
 If construction is wrong, report only the earliest error. Compare the raw
 claim with the candidate, then the first version, then every later change in
@@ -23,9 +21,9 @@ Return exactly one JSON object:
 {
   "raw_support": "SUPPORTED | PARTIAL | CONTRADICTORY | INVALID",
   "construction_problem": true,
-  "subtype": "ingestion | extraction | wrong_candidate | wrong_skip | persistence | initial_memory | update_loss | wrong_merge | correction_failure | provenance_missing | none",
+  "subtype": "ingestion | extraction_omission | extraction_distortion | temporal_metadata | persistence | provenance_missing | none",
   "first_error": {
-    "stage": "ingestion | extraction | wrong_candidate | wrong_skip | persistence | initial_memory | update_loss | wrong_merge | correction_failure | provenance_missing",
+    "stage": "ingestion | extraction_omission | extraction_distortion | temporal_metadata | persistence | provenance_missing",
     "message_ids": [],
     "candidate_id": null,
     "decision_id": null,
@@ -48,7 +46,9 @@ Rules:
    `candidate`, `update`, `memory_update`, or `merge`.
 3. For an omitted candidate, use stage `extraction`, identify the source
    message and commit, and leave candidate/decision/version IDs null.
-4. For information first lost during a later UPDATE, use `update_loss` and
-   provide the before and after version IDs.
-5. For an incorrect consolidation, use `wrong_merge`.
+4. There is no model-driven UPDATE, MERGE, DELETE, target selection, or later
+   rewrite. Never report those stages.
+5. Only extraction_omission, extraction_distortion, and temporal_metadata are
+   learnable Skill problems. Ingestion, persistence, and provenance failures
+   are engineering issues.
 6. Once the first error is found, do not report later consequences.

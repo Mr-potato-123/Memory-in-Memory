@@ -141,11 +141,9 @@ class SkillPayloadValidator:
                    for word in ["when", "if", "use", "apply", "before", "during"]):
             errors.append("description lacks trigger condition wording")
 
-        # Side contracts are deterministic and must survive both candidate
-        # generation and batch CRUD.  Round 1 published instructions that
-        # asked Construction to emit unsupported memory kinds or perform CRUD
-        # from the extraction stage; those instructions cannot be executed by
-        # the Runtime regardless of model quality.
+        # Side contracts are deterministic and must survive candidate
+        # generation and publication. Construction is extraction-only; the
+        # program owns append/dedup behavior.
         normalized_side = (side or "").lower()
         if normalized_side == "construction":
             unsupported_kind = re.search(
@@ -168,6 +166,19 @@ class SkillPayloadValidator:
             ):
                 errors.append(
                     "construction Skill permits unsupported factual inference"
+                )
+            if re.search(
+                r"\b(?:update|merge|delete|overwrite|replace|retract|"
+                r"supersede|target)\b[^.\n]{0,80}\b(?:memory|memories|"
+                r"memory_id|version|record|database)\b|"
+                r"\b(?:memory|memories|memory_id|version|record|database)\b"
+                r"[^.\n]{0,80}\b(?:update|merge|delete|overwrite|replace|"
+                r"retract|supersede|target)\b",
+                combined,
+                re.IGNORECASE,
+            ):
+                errors.append(
+                    "construction Skill requests forbidden storage mutation"
                 )
 
         if normalized_side == "access" and re.search(

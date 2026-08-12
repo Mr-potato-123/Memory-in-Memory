@@ -22,7 +22,7 @@ unsupported answer. For every non-empty claim assess each side independently:
 
 Attribution rules:
 1. CONSTRUCTION applies to a claim when the wrong-side current memory is
-   missing, partial, or incorrect and a durable extraction/CRUD difference can
+   missing, partial, or incorrect and a durable extraction difference can
    explain the contrast.
 2. ACCESS applies when useful memory exists on the wrong side but the access
    process fails to retrieve, inspect, select, or use it. ACCESS and
@@ -42,6 +42,13 @@ mechanisms. It may mention subtype, difference, reusable_pattern, and
 non_applicable_boundary. Construction may additionally contain
 earliest_divergence. Never copy case-specific names, dates, IDs, or answers
 into reusable_pattern. Never infer unstated facts.
+
+Construction is append-only. Attribute a reusable Construction mechanism only
+to extraction omission, extraction distortion, or temporal metadata. Never
+propose UPDATE, MERGE, DELETE, target selection, consolidation, or another
+database operation. A persistence/ingestion difference is an engineering
+issue and must set learnable=false unless another extraction difference is
+independently established.
 
 Return exactly one JSON object:
 {

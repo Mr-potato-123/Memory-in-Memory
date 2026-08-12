@@ -351,9 +351,9 @@ def test_cons_candidate_loads_history_and_reports_first_error():
                 "construction_problem": True,
                 "affected_reference_claim": "Alice lives in Seattle.",
                 "affected_memory_ids": [],
-                "subtype": "extraction",
+                "subtype": "extraction_omission",
                 "first_error": {
-                    "stage": "extraction",
+                    "stage": "extraction_omission",
                     "message_ids": ["msg_1"],
                     "candidate_id": None,
                     "decision_id": None,
@@ -377,7 +377,7 @@ def test_cons_candidate_loads_history_and_reports_first_error():
     ).run(_case())
 
     assert report.diagnosis_type == DiagnosisType.CONS_FAILURE
-    assert report.first_error["stage"] == "extraction"
+    assert report.first_error["stage"] == "extraction_omission"
     assert evidence.source_calls == 1
     assert evidence.history_calls == 1
     assert report.repair_package is not None
