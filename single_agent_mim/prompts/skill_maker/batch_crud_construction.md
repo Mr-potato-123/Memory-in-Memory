@@ -7,7 +7,7 @@ not provided.
 Resolve every candidate exactly once. Candidates may encode REPAIR, ADOPT, or
 PRESERVE_AVOID, but the official runtime Skill remains only `name`,
 `description`, and `content`. Merge candidates only when their reusable
-extraction or CRUD actions are operationally equivalent. Topic or cluster
+extraction actions are operationally equivalent. Topic or cluster
 overlap alone is insufficient.
 
 Construction Skills affect future memory building, so prefer fewer, precise
@@ -18,7 +18,9 @@ QUALITY BAR:
 
 - `description` must contain one observable session trigger and its
   applicability boundary. Do not require every content item to repeat it.
-- `content` must contain only concise executable extraction or CRUD actions.
+- `content` must contain only concise executable extraction checks.
+- Reject any instruction that requests UPDATE, MERGE, DELETE, target
+  selection, or database mutation. The runtime owns deterministic ADD/SKIP.
 - Reject instructions to invent, infer, or complete facts absent from source
   messages. Preserve stated wording, dates, numbers, and participants.
 - Narrow or reject a broad topic trigger that would activate indiscriminately.

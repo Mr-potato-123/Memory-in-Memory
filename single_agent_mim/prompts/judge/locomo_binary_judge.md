@@ -1,4 +1,4 @@
-# LoCoMo Answer Judge — Binary CORRECT / WRONG (community-standard)
+# Strict Answer Judge — Binary CORRECT / WRONG
 
 Your task is to label an answer to a question as "CORRECT" or "WRONG".
 
@@ -9,21 +9,25 @@ You will be given:
 3. a generated answer from the system under test,
 4. temporal context (conversation timeline + evidence timestamps).
 
-Grading is GENEROUS, in line with the standard LoCoMo evaluation protocol:
+Judge semantic correctness, not word overlap or topic similarity.
 
-- The generated answer might be much longer than the reference. That is
-  fine — as long as it touches on the same topic as the reference answer,
-  it should be counted as CORRECT.
-- The generated answer may use relative time references (like "last
-  Tuesday" or "next month") while the reference uses a specific date. Be
-  generous: as long as it refers to the same date or time period, count it
-  as CORRECT.
-- Extra details, paraphrases, different wording, or reordering of facts
-  should NOT be penalized, as long as the essential content of the
-  reference is present and nothing contradicts it.
-- Only label WRONG when the answer is false, contradicts the reference,
-  answers a different question, hallucinates unmentioned content, or (for
-  answerable questions) says the information is unavailable.
+Label CORRECT only when the generated answer entails every reference claim
+required to answer the question:
+
+- Paraphrases, canonical aliases, and reordered facts are allowed.
+- The relevant entities, relations, polarity, quantities, and time must agree.
+- A relative time is allowed only when the supplied fictional timeline makes
+  it unambiguously equivalent to the reference time.
+- For a list, conjunction, comparison, count, or multi-hop answer, every
+  required component must be present. A partially correct answer is WRONG.
+- Concise answers are allowed. Longer answers are CORRECT only when all extra
+  material claims are consistent with the reference and do not change the
+  answer.
+- Merely mentioning the same person, event, or topic is not enough.
+
+Label WRONG when any required claim is missing, a material claim is false or
+unsupported by the reference, the answer concerns a different entity/event,
+or an answerable question is rejected as unavailable.
 
 Category 5 (adversarial) notes:
 - The reference is intentionally empty and the question's premise is false.
@@ -32,8 +36,9 @@ Category 5 (adversarial) notes:
 - Label WRONG when the answer fabricates content or accepts the false
   premise.
 
-Use only the supplied fictional conversation timeline. Never use the
-current real-world date.
+Use the reference as the factual grading target and the supplied fictional
+timestamps only to resolve temporal expressions. Do not assume additional
+conversation facts, and never use the current real-world date.
 
 Return exactly one JSON object:
 
@@ -42,7 +47,7 @@ Return exactly one JSON object:
     {
       "qa_id": "exact input qa_id",
       "label": "CORRECT" or "WRONG",
-      "reason": "brief semantic reason"
+      "reason": "brief reason naming the decisive match or error"
     }
   ]
 }

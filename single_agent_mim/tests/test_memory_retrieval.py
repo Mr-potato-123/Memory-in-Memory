@@ -423,7 +423,7 @@ class _CountingMock(MockClient):
         return super().generate(messages, **kwargs)
 
 
-def test_construction_manager_decides_complete_batch_in_one_call(tmp_path: Path):
+def test_construction_plan_is_deterministic_and_needs_no_model_call(tmp_path: Path):
     store, embedder, _ = _components(tmp_path)
     model = _CountingMock()
     candidates = [
@@ -446,28 +446,6 @@ def test_construction_manager_decides_complete_batch_in_one_call(tmp_path: Path)
             ["James went bowling.", "James scored two strikes."], 1
         )
     ]
-    model.set_script(
-        [
-            model._make_resp(
-                json.dumps(
-                    {
-                        "decisions": [
-                            {
-                                "candidate_id": candidate.candidate_id,
-                                "action": "ADD",
-                                "update_type": "add",
-                                "merged_content": candidate.content,
-                                "source_message_ids": (
-                                    candidate.source_message_ids
-                                ),
-                            }
-                            for candidate in candidates
-                        ]
-                    }
-                )
-            )
-        ]
-    )
     agent = ConstructionAgent(model, store, embedder)
 
     plan = agent.build_plan(
@@ -477,9 +455,45 @@ def test_construction_manager_decides_complete_batch_in_one_call(tmp_path: Path)
         skills=[],
     )
 
-    assert model.calls == 1
+    assert model.calls == 0
     assert len(plan.decisions) == 2
     assert all(decision.action == "ADD" for decision in plan.decisions)
+
+
+def test_construction_plan_skips_only_exact_active_duplicate(
+    tmp_path: Path,
+    monkeypatch,
+):
+    store, embedder, _ = _components(tmp_path)
+    model = _CountingMock()
+    candidate = MemoryCandidate(
+        candidate_id="cand_exact",
+        memory_kind="preference",
+        subject="James",
+        predicate="likes",
+        object_text="bowling",
+        content="James likes bowling.",
+        world_start=None,
+        world_end=None,
+        source_message_ids=["conv:D1:1"],
+        entities=["James", "bowling"],
+        keywords=["bowling"],
+        embedding=embedder.encode(["James likes bowling."])[0],
+    )
+    exact = MemoryHit(
+        memory_id="mem_james",
+        version_id="mem_james_v1",
+        content=candidate.content,
+        matched_paths=["exact"],
+    )
+    agent = ConstructionAgent(model, store, embedder)
+    monkeypatch.setattr(agent, "_related_memories", lambda **_: [exact])
+
+    plan = agent.build_plan(0, "conv", [candidate], [])
+
+    assert plan.decisions[0].action == "SKIP"
+    assert "already active" in plan.decisions[0].reason
+    assert model.calls == 0
 
 
 def test_construction_crud_gate_rejects_same_topic_but_different_memory(
@@ -548,7 +562,7 @@ def test_construction_crud_gate_rejects_same_topic_but_different_memory(
     assert agent._is_crud_compatible(candidate, same_logical_event)
 
 
-def test_construction_batch_allows_each_target_only_once(
+def test_construction_plan_does_not_mutate_similar_existing_memory(
     tmp_path: Path,
     monkeypatch,
 ):
@@ -588,29 +602,6 @@ def test_construction_batch_allows_each_target_only_once(
         score=0.95,
         matched_paths=["semantic"],
     )
-    model.set_script(
-        [
-            model._make_resp(
-                json.dumps(
-                    {
-                        "decisions": [
-                            {
-                                "candidate_id": candidate.candidate_id,
-                                "action": "UPDATE",
-                                "target_memory_id": "mem_james",
-                                "update_type": "enrichment",
-                                "merged_content": candidate.content,
-                                "source_message_ids": (
-                                    candidate.source_message_ids
-                                ),
-                            }
-                            for candidate in candidates
-                        ]
-                    }
-                )
-            )
-        ]
-    )
     agent = ConstructionAgent(model, store, embedder)
     monkeypatch.setattr(
         agent,
@@ -625,9 +616,6 @@ def test_construction_batch_allows_each_target_only_once(
         skills=[],
     )
 
-    assert [decision.action for decision in plan.decisions] == [
-        "UPDATE",
-        "ADD",
-    ]
-    assert plan.decisions[1].target_memory_id is None
-    assert "already claimed" in plan.decisions[1].reason
+    assert [decision.action for decision in plan.decisions] == ["ADD", "ADD"]
+    assert all(decision.target_memory_id is None for decision in plan.decisions)
+    assert model.calls == 0

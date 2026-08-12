@@ -209,11 +209,7 @@ class MiMRuntime:
         # Pre compute prompt hash
         import hashlib
         prompt_hash = hashlib.sha256(
-            (
-                self._construction_agent._extraction_prompt
-                + "\n---CRUD---\n"
-                + self._construction_agent._decision_prompt
-            ).encode("utf-8")
+            self._construction_agent._extraction_prompt.encode("utf-8")
         ).hexdigest()[:16]
 
         for s_idx, session in enumerate(conversation.sessions):
@@ -317,6 +313,7 @@ class MiMRuntime:
                     session_messages=msgs,
                     session_time=session.time,
                     skills=skills,
+                    base_commit_id=self._latest_commit_id,
                 )
                 self._last_construction_steps += 1
                 ct.candidates_count = len(candidates)
@@ -327,16 +324,14 @@ class MiMRuntime:
                     candidate_count=len(candidates),
                 )
 
-                # Stage B: Build plan
+                # Stage B is deterministic ADD/SKIP; there is no second LLM
+                # call and Skills never issue storage mutations directly.
                 plan = self._construction_agent.build_plan(
                     base_commit_id=self._latest_commit_id,
                     conversation_id=conversation.conversation_id,
                     candidates=candidates,
                     skills=skills,
                 )
-                # Construction V2 makes one batched CRUD call for the complete
-                # session rather than one model call per candidate.
-                self._last_construction_steps += 1
                 ct.decisions = [
                     {"candidate_id": d.candidate_id, "action": d.action,
                      "target_memory_id": d.target_memory_id, "update_type": d.update_type,

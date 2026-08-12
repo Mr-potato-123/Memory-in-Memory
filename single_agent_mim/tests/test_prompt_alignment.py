@@ -47,7 +47,8 @@ def test_construction_runtime_renders_description_as_trigger():
     assert "learned behavioral priors" in rendered
     assert "**When:** When an explicit old-to-new state transition" in rendered
     assert "**Do:**" in rendered
-    assert "At most one Skill" in rendered
+    assert "guide extraction only" in rendered
+    assert "cannot request UPDATE, MERGE, DELETE" in rendered
     assert "shared topic" in rendered
     assert "default policy would fail" not in rendered
 

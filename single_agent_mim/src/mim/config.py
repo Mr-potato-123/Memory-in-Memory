@@ -88,8 +88,8 @@ class ConstructionConfig(BaseModel):
     max_candidates_per_session: int = 30
     related_memory_limit: int = 10
     max_related_pool: int = 24
-    # Kept for old configs. Construction V2 uses one batched related-memory
-    # pass and does not expose SEARCH_MORE inside the CRUD stage.
+    # Legacy compatibility knobs. The minimal runtime uses one extraction
+    # call followed by deterministic ADD/SKIP and exposes no CRUD search loop.
     max_search_more_calls: int = 0
     # Runtime Skill retrieval is two-stage: hybrid candidate generation,
     # followed by a strict applicability reranker that may abstain.

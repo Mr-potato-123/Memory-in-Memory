@@ -5,7 +5,7 @@ around versioned, source-traceable memory.
 
 ## Agents
 
-- Construction Agent: extracts and consolidates durable memories.
+- Construction Agent: one-call extraction plus deterministic ADD/exact-SKIP.
 - Access & Answer Agent: searches, reads, and answers in one ReAct context.
 - Access Diagnosis Agent: finds necessary available memories missed by search.
 - Construction Diagnosis Agent: locates the earliest construction error.
@@ -17,6 +17,10 @@ around versioned, source-traceable memory.
 Runtime and maintenance models are configured separately. The current
 experiment uses Qwen3-8B non-thinking for Runtime and `deepseek-v4-flash` for
 Diagnosis and Skill-Maker.
+
+The runtime is intentionally a minimal plugin demo: Construction Skills are
+optional extraction references, Access Skills are optional retrieval/answer
+references, and neither can bypass evidence or issue storage mutations.
 
 ## Quick check
 

@@ -32,7 +32,7 @@ content[]         # 简短可执行指令
 | 侧 | 作用 |
 |---|---|
 | Access Skill | 指导首次默认检索之后的恢复检索、证据组合、核验和回答策略；Answer failure 也映射到 Access Skill |
-| Construction Skill | 指导会话记忆的提取和 ADD/UPDATE/MERGE/DELETE/SKIP；作用域是整段 session，因此比 Access Skill 更容易产生广泛副作用 |
+| Construction Skill | 仅作为会话记忆提取的可选参考；运行时固定采用 ADD/精确重复 SKIP，不允许 Skill 发出存储 CRUD |
 
 Runtime 使用 qwen3-8b；Judge、诊断、Candidate 生成和 CRUD 维护主要使用 deepseek-v4-flash。数据集是 LoCoMo swap split：
 
@@ -296,7 +296,7 @@ e47f3b6 完善诊断学习流程并保留Bank1实验链路
 |---|---|
 | Runtime 总编排、首次默认搜索后再取 Skill | `src/mim/workflows/use.py` |
 | Access ReAct、证据约束和 Skill 注入 | `src/mim/agents/access.py`、`prompts/access.md` |
-| Construction 提取与 CRUD | `src/mim/agents/construction.py`、`prompts/construction_extraction.md`、`prompts/construction_decision.md` |
+| Construction 单次提取与确定性 ADD/SKIP | `src/mim/agents/construction.py`、`prompts/construction_extraction.md`；`construction_decision.md` 仅保留配置兼容 |
 | Published Bank 加载、混合召回和 applicability reranker | `src/mim/skills.py` |
 | 标准 Answer/Access/Construction 诊断 | `src/mim/agents/{answer_failure,access_failure,cons_failure}.py`、`prompts/diagnosis/` |
 | C→W/W→C 和 W→W 诊断 | `src/mim/agents/flip_failure.py`、`scripts/run_flip_diagnosis.py` |

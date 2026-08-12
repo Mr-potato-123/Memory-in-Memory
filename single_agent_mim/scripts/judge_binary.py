@@ -1,4 +1,4 @@
-"""LoCoMo binary Judge — community-standard CORRECT/WRONG, generous grading.
+"""Strict semantic binary Judge — CORRECT/WRONG.
 
 Uses DeepSeek V4 Flash through the maintenance API configuration. Evaluates
 every prediction with C/P/I labels. Never uses Token-F1 or the current date.
@@ -27,7 +27,9 @@ from mim.llm import create_client
 JUDGE_PROMPT_PATH = "prompts/judge/locomo_binary_judge.md"
 JUDGE_PROMPT_VERSION = "locomo_binary_judge_v1"
 VALID_LABELS = {"C", "W"}
-BATCH_SIZE = 4
+# Canonical scoring keeps one independent QA per request. Concurrency is
+# supplied by workers, not by mixing unrelated decisions in one context.
+BATCH_SIZE = 1
 MAX_RETRIES = 3
 
 

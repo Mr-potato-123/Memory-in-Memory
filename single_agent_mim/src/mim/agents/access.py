@@ -114,21 +114,19 @@ Example:
 inspect_memory accepts memory_id, include_versions, and include_sources.
 answer accepts answer, evidence_version_ids, and confidence.
 
-ANSWER FORMAT IS PART OF THE METRIC:
-- Direct fact extraction: output only the minimal requested answer span, never
-  a sentence.
-- Named-entity/world-knowledge inference: output only the canonical answer.
-- Lists: output all and only requested supported items, comma-separated.
-- Direct yes/no: output only Yes or No. If an inferred qualification is needed
-  for a comparison or judgment, add one short decisive clause.
-- Why/how: output one concise causal or method phrase without restating the
-  question.
-- Use absolute world_start/world_end dates, never relative time.
-- Never add conversational preambles, retrieval commentary, dates or related
-  facts that were not requested.
-- Validate the question's subject, object, relation, and event. If evidence
-  only supports a swapped entity or similar but different event, answer
-  exactly No information available.
+ANSWER CONTRACT:
+- Answer directly and concisely. Include every supported fact required by the
+  question and no unrelated facts; a short phrase or sentence is acceptable.
+- Lists contain all and only the requested supported items.
+- Yes/no answers begin with Yes or No and may add one short decisive clause.
+- Why/how answers include the decisive supported cause or method.
+- Prefer absolute dates when the evidence resolves them, but never invent
+  precision absent from memory.
+- Canonical names and short evidence-grounded inference are allowed. Do not
+  add retrieval commentary or confidence language.
+- Validate subject, object, relation, polarity, quantity, time, and every
+  required list/multi-hop component. Similar-topic evidence is not enough.
+- If visible memories are insufficient, answer exactly No information available.
 Examples: "bowling"; "February 2022"; "Canada, Greenland";
 "UNO"; "Because he preferred having a beer on his day off.";
 "No. James supports Liverpool, while John supports Manchester City.".

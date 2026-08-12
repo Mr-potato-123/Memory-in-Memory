@@ -213,7 +213,7 @@ def test_evaluate_runs_frozen_runtime_without_maintenance(tmp_path: Path):
     assert report.total_qa == 1
     assert report.overall_f1 == 1.0
     assert report.protocol_errors == 0
-    assert report.avg_construction_steps == 2.0
+    assert report.avg_construction_steps == 1.0
 
 
 def test_failure_workflow_returns_independent_reports_and_search_steps(

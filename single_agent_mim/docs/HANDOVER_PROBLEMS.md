@@ -22,7 +22,7 @@
 ### 0.3 核心概念
 
 - **Skill**:三字段 `name` + `description`(触发条件)+ `content[]`(指令),分 access/construction 两侧。运行时检索 = 混合检索(0.7 语义 + 0.3 BM25,只匹配 name+description)+ LLM 适用性路由;注入哲学是 **"advisory references, not commands"**(证据优先,默认策略优先)。
-- **记忆**:SQLite 存储,版本化(memory_versions + 版本链),构建侧两阶段(提取候选 → 批量 CRUD 决策),访问侧 ReAct 循环(search 6 种策略 + inspect + answer,证据验证 + 预算兜底)。
+- **记忆**:SQLite 存储和来源追踪；构建侧为单次 evidence-bound 提取 → 程序确定性 ADD/精确重复 SKIP，状态变化按时间追加；访问侧为 ReAct 检索 + answer。
 - **诊断**:错误 → 三阶段(answer→access→cons)定位根源,产出 repair_package;近年新增**翻转配对诊断**(双侧对比)。
 - **成功经验包**:无 skill 也能答对的 C 题索引,用于校准候选生成——"默认策略已足够的问题模式,skill 不得破坏"。
 - **Skill Bank 迭代**:train 上学习(诊断→候选→聚类→CRUD)→ 发布新档 → val/test 客观评测。

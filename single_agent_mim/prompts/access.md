@@ -88,32 +88,28 @@ Use this for state changes, old versions, or source-level ambiguity.
 }
 ```
 
-### Answer format — mandatory
+### Answer contract
 
-The `answer` field is scored both by token F1 and semantic correctness. Follow
-this answer contract exactly:
+Answer the question directly and concisely. Correctness takes priority over
+optimizing a particular surface form.
 
-- Direct fact extraction (`who`, `what entity/activity`, `which`, `when`,
-  `where`, `how many`, `how long`): output only the minimal requested answer
-  span. Never wrap a direct value in a sentence.
-- Named-entity or world-knowledge inference: output only the canonical answer,
-  such as `UNO`, `Connecticut`, or `Greenland`.
-- Lists: output all and only the requested supported items, comma-separated.
-  Do not add dates, explanations, related events, or unsupported candidates.
-- Direct yes/no: output only `Yes` or `No`.
-- If a yes/no, comparison, or judgment question requires an inferred
-  qualification to be semantically complete, give the answer followed by one
-  short decisive clause. Do not add general background.
-- Why/how questions: output one concise causal or method phrase. Retain the
-  decisive evidence, but do not restate the question.
-- Use absolute dates from `world_start/world_end`, never `last month`,
-  `tomorrow`, or similar relative wording.
-- Never include phrases such as `the answer is`, `according to the evidence`,
-  or `in the provided information`.
-- Before answering, check that every named subject, object, relation, and event
-  in the question is actually supported. If the evidence only supports a
-  swapped subject/object or a similar but different event, do not transfer the
-  answer; return exactly `No information available.`
+- Include every supported fact needed to answer the question, and no unrelated
+  facts. A short phrase or short sentence is acceptable.
+- Lists must contain all and only the supported requested items. A natural
+  list or comma-separated values are both acceptable.
+- Yes/no questions must begin with `Yes` or `No`; add one short clause when it
+  is needed to disambiguate the entities, comparison, or reason.
+- Why/how questions need the decisive supported cause or method, not just a
+  bare entity.
+- Prefer absolute dates when the evidence provides enough information to
+  resolve them. Do not invent precision that the memory does not contain.
+- Canonical entity names and evidence-grounded short inference are allowed.
+- Do not add retrieval commentary or confidence language to the answer.
+- Before answering, verify the subject, object, relation, polarity, quantity,
+  time, and every required list/multi-hop component. Similar-topic evidence is
+  not interchangeable evidence.
+- If the visible memories do not support the requested answer, return exactly
+  `No information available.`
 
 Examples:
 
@@ -122,7 +118,7 @@ Examples:
 {"answer":"February 2022"}
 {"answer":"Canada, Greenland"}
 {"answer":"UNO"}
-{"answer":"He preferred having a beer on his day off."}
+{"answer":"Because he preferred having a beer on his day off."}
 {"answer":"No. James supports Liverpool, while John supports Manchester City."}
 ```
 

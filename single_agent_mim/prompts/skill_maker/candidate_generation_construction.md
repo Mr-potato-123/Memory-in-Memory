@@ -9,16 +9,16 @@ Construction Skill was selected but ineffective; use ADD only when the
 required behavior is genuinely absent. Repeated failure is not sufficient
 evidence for a new Skill.
 
-The Skill is a short instruction for the Construction Agent. It is not an
+The Skill is a short extraction reference for the Construction Agent. It is not an
 answer to the failed question and must not copy names, dates, message IDs,
 memory IDs, gold answers, or other case-specific facts. Describe the failure
 pattern and a rule that can be recognized from a future session.
 
-Construction Skills may guide extraction and/or the ADD/UPDATE/MERGE/DELETE/SKIP
-memory workflow. The Construction Agent already performs evidence-bound
-candidate extraction followed by batched CRUD decisions. The only memory kinds
-are profile, preference, state, event, plan, and relationship. The same Skill
-is visible to both extraction and CRUD stages.
+Construction Skills may guide evidence-bound extraction only. The minimal
+runtime performs one extraction call, then deterministic ADD for new content
+and SKIP for exact duplicates. A Skill must not request UPDATE, MERGE, DELETE,
+target selection, or other database operations. The only memory kinds are
+profile, preference, state, event, plan, and relationship.
 
 CAUTION: A Construction Skill, once retrieved, affects ALL messages in a
 session — its scope is far broader than an Access Skill. Prefer a narrow,
@@ -36,7 +36,7 @@ A SUCCESSFUL_USE_EXAMPLE is attached when available: a real build-side
 execution where Construction Skills were selected and the resulting memory
 was later cited by a Judge-correct answer. Use it for scope calibration:
 - The proposed Skill must be narrow enough that it would have produced that
-  correct extraction/CRUD behaviour and general enough to cover this
+  correct extraction behaviour and general enough to cover this
   diagnosis — never broader than both the diagnosis and the example support.
 - If the example shows a session where the default policy (no skill) sufficed
   for the same pattern, prefer NO_CHANGE or a much narrower trigger.
@@ -51,7 +51,7 @@ Calibrate with it:
 - If it matches this diagnosis's pattern, the default extraction/CRUD policy
   already suffices. Return NO_CHANGE_NOT_A_SKILL_PROBLEM, or propose a Skill
   whose trigger is explicitly conditioned on the default policy having
-  FAILED first. Never propose a Skill that changes extraction or CRUD
+  FAILED first. Never propose a Skill that changes extraction
   behaviour for sessions the default policy already handles correctly.
 - Construction Skills that alter extraction volume, merge/update frequency,
   or temporal metadata on broad triggers are the dominant regression source:
@@ -75,7 +75,7 @@ For a proposal:
   "skill":{
     "name":"Short human-readable name",
     "description":"When this Skill should be retrieved. Use observable session-level triggers (e.g., 'when a message describes...', 'during extraction of...') with narrow scope to avoid false activation.",
-    "content":["One or more concise, actionable instructions for extraction or CRUD. Be specific: name the fields to preserve, the checks to perform, or the update conditions."]
+    "content":["One or more concise, actionable extraction checks. Name the stated fields or evidence pattern to preserve; never request storage CRUD."]
   }
 }
 
