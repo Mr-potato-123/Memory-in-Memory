@@ -5,7 +5,6 @@ import argparse, json, sqlite3
 from collections import defaultdict
 from pathlib import Path
 import sys
-import shutil
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from mim.artifacts import RunDir
@@ -23,8 +22,23 @@ def main() -> int:
     p.add_argument('--output-dir',required=True); p.add_argument('--conversation-id',required=True)
     p.add_argument('--skill-bank-dir'); p.add_argument('--question-retries',type=int,default=3)
     p.add_argument('--export-only',action='store_true')
+    p.add_argument('--qa-ids-file', help='Optional newline-delimited QA ids to answer')
+    p.add_argument('--max-per-category', type=int, help='Keep the first N questions per category')
     a=p.parse_args(); cfg=load_config(a.config); run=RunDir(a.run_id,a.output_dir)
     convs, questions=load_dataset(cfg.dataset.path); qas=questions[a.conversation_id]
+    if a.qa_ids_file:
+        wanted={x.strip() for x in Path(a.qa_ids_file).read_text(encoding='utf-8').splitlines() if x.strip()}
+        qas=[q for q in qas if q.qa_id in wanted]
+    if a.max_per_category is not None:
+        if a.max_per_category < 1:
+            raise ValueError('--max-per-category must be positive')
+        counts=defaultdict(int)
+        selected=[]
+        for q in qas:
+            if counts[q.category] < a.max_per_category:
+                selected.append(q)
+                counts[q.category] += 1
+        qas=selected
     if a.export_only:
         db=sqlite3.connect(run.path/'state'/'memory.sqlite3')
         qrows={r[0]:r for r in db.execute('select qa_id,category,question,reference_answer from qa_cases')}
