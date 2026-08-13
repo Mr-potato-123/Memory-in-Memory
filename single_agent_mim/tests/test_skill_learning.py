@@ -14,10 +14,20 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from mim.diagnosis.evidence import DiagnosisEvidenceRepository
-from mim.agents.skill_learning import BatchSkillCrudAgent, DirectCaseCrudAgent
+from mim.agents.skill_learning import (
+    BatchSkillCrudAgent,
+    CandidateSkillAgent,
+    DirectCaseCrudAgent,
+)
 from mim.retrieval.embedder import Embedder
+from mim.config import ModelConfig
+from mim.llm.mock_client import MockClient
 from mim.schemas import Side
-from mim.skill_maker.batch import BatchSkillRetriever, SkillCrudExecutor
+from mim.skill_maker.batch import (
+    BatchSkillRetriever,
+    CandidateClusterer,
+    SkillCrudExecutor,
+)
 from mim.skill_maker.models import SkillOperation
 from mim.skill_maker.cluster_v2 import cluster_v2
 from mim.skill_maker.models import (
@@ -29,6 +39,8 @@ from mim.skill_maker.models import (
 )
 from mim.skill_maker.success_examples import SuccessfulSkillExampleIndex
 from mim.skill_maker.repository import SkillRepository
+from mim.skill_maker.pipeline import SkillBankPipeline
+from mim.skill_maker.validator import SkillPayloadValidator
 from mim.skills import SkillBank
 from mim.storage.sqlite_store import SQLiteMemoryStore
 
@@ -98,6 +110,139 @@ def test_empty_official_bank_keeps_candidates_physically_separate(
         )
     )
 
+
+def test_diagnosis_candidate_crud_publish_and_runtime_load_end_to_end(
+    tmp_path: Path,
+):
+    """A completed diagnosis must become a loadable official Skill."""
+    diagnosis = {
+        "diagnosis_id": "diag_access_e2e",
+        "diagnosis_type": "ACCESS_FAILURE",
+        "status": "completed",
+        "problem_found": True,
+        "review_required": False,
+        "stage": "A1",
+        "failure_to_repair": {
+            "mechanism": "The original wording omitted an explicit time scope."
+        },
+    }
+    candidate_response = {
+        "decision": "PROPOSE_SKILL",
+        "maintenance_intent": "ADD",
+        "related_existing_skill_ids": [],
+        "skill": {
+            "name": "Restore explicit time scope",
+            "description": (
+                "Use when a question asks about a dated period but the "
+                "initial query omits that period."
+            ),
+            "content": [
+                "In A1, include the stated period in one supplemental query."
+            ],
+        },
+        "solves": "Prevents retrieval from mixing events across time periods.",
+    }
+    model = SimpleNamespace(
+        generate=lambda *args, **kwargs: SimpleNamespace(
+            text=json.dumps(candidate_response)
+        )
+    )
+    candidate = CandidateSkillAgent(model, prompt="test").generate(
+        diagnosis=diagnosis,
+        side="access",
+    )
+    assert candidate is not None
+    valid, errors = SkillPayloadValidator().validate(
+        candidate.payload, side="access"
+    )
+    assert valid, errors
+
+    repository = SkillRepository(tmp_path / "skills")
+    repository.save_candidate(candidate)
+
+    class _CreateCrudAgent:
+        @staticmethod
+        def plan(*, batch, official_records):
+            draft = batch.candidates[0]
+            return SkillBatchPlan(
+                transaction_id="tx_access_e2e",
+                side="access",
+                base_bank_version=batch.base_bank_version,
+                candidate_resolutions=[CandidateResolution(
+                    candidate_id=draft.candidate_id,
+                    resolution="CREATED",
+                    target_skill_ids=[draft.skill_id],
+                )],
+                operations=[SkillOperation(
+                    operation="add_skill",
+                    skill_id=draft.skill_id,
+                    side="access",
+                    name=draft.payload.name,
+                    description=draft.payload.description,
+                    content=draft.payload.content,
+                    source_candidate_ids=[draft.candidate_id],
+                )],
+            )
+
+    embedder = Embedder("deterministic-hash")
+    outcome = SkillBankPipeline(
+        repository=repository,
+        clusterer=CandidateClusterer(embedder),
+        retriever=BatchSkillRetriever(embedder),
+        executor=SkillCrudExecutor(repository),
+        run_id="e2e",
+    ).consolidate(side="access", batch_crud_agent=_CreateCrudAgent())
+
+    assert outcome["published"] is True
+    assert outcome["new_version"] == "v001"
+    bank = SkillBank.from_repository(repository)
+    selected, trace = bank.retrieve_with_trace(
+        "What happened during that dated period?",
+        Side.ACCESS,
+        embedder,
+        top_k=1,
+        disclose_k=1,
+        trace_id="trace_e2e",
+    )
+    assert [skill.skill_id for skill in selected] == [candidate.skill_id]
+    assert trace.selected[0].version_id.endswith("_v1")
+
+
+def test_candidate_agent_repairs_overlong_instruction_without_truncation():
+    overlong = {
+        "decision": "PROPOSE_SKILL",
+        "skill": {
+            "name": "Time scope",
+            "description": "Use when a dated query omits its time scope.",
+            "content": ["Keep the instruction complete. " * 12],
+        },
+        "solves": "Prevents time-scope retrieval errors.",
+    }
+    repaired = {
+        "decision": "PROPOSE_SKILL",
+        "skill": {
+            "name": "Time scope",
+            "description": "Use when a dated query omits its time scope.",
+            "content": ["Include the stated period in the supplemental query."],
+        },
+        "solves": "Prevents time-scope retrieval errors.",
+    }
+    model = MockClient(ModelConfig(provider="mock", model="mock"))
+    model.set_script([
+        model._make_resp(json.dumps(overlong)),
+        model._make_resp(json.dumps(repaired)),
+    ])
+
+    candidate = CandidateSkillAgent(model, prompt="test").generate(
+        diagnosis={"diagnosis_id": "diag_retry"},
+        side="access",
+    )
+
+    assert candidate is not None
+    assert candidate.payload.content == [
+        "Include the stated period in the supplemental query."
+    ]
+    assert not candidate.payload.content[0].endswith("…")
 
 def test_one_crud_transaction_can_create_multiple_official_skills(
     tmp_path: Path,

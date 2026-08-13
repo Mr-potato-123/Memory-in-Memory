@@ -143,6 +143,7 @@ class ConstructionAgent:
         max_candidates_per_session: int = 30,
         related_memory_limit: int = 10,
         max_related_pool: int = 24,
+        max_decisions_per_call: int = 10,
     ):
         self._model = model
         self._store = store
@@ -152,7 +153,9 @@ class ConstructionAgent:
         self._max_candidates = max_candidates_per_session
         self._related_limit = related_memory_limit
         self._max_related_pool = max_related_pool
+        self._max_decisions_per_call = max(1, max_decisions_per_call)
         self._applied_skill_version_ids: list[str] = []
+        self._last_decision_call_count = 0
 
     def extract_candidates(
         self,
@@ -275,6 +278,7 @@ class ConstructionAgent:
     ) -> ConstructionPlan:
         """C2: judge duplication and semantic change against bounded old memory."""
         skills = self._usable_skills(skills)
+        self._last_decision_call_count = 0
         if not candidates:
             return ConstructionPlan(
                 base_commit_id=base_commit_id, candidates=[], decisions=[]
@@ -291,40 +295,73 @@ class ConstructionAgent:
             related_by_candidate[candidate.candidate_id] = related
             pool.update({hit.version_id: hit for hit in related})
 
-        selected_pool = self._select_related_pool(
-            candidates, related_by_candidate, pool
-        )
-        visible_version_ids = {hit.version_id for hit in selected_pool}
-        visible_related_by_candidate = {
-            candidate_id: [
-                hit for hit in hits if hit.version_id in visible_version_ids
-            ]
-            for candidate_id, hits in related_by_candidate.items()
-        }
         skill_text = self._render_skills(
             skills,
             "(No construction skills. Use the default change-linking policy.)",
         )
+        decisions: list[ConstructionDecision] = []
+        applied_ids = list(self._applied_skill_version_ids)
+        for offset in range(0, len(candidates), self._max_decisions_per_call):
+            batch = candidates[offset: offset + self._max_decisions_per_call]
+            batch_pool = {
+                hit.version_id: hit
+                for candidate in batch
+                for hit in related_by_candidate[candidate.candidate_id]
+            }
+            selected_pool = self._select_related_pool(
+                batch, related_by_candidate, batch_pool
+            )
+            visible_ids = {hit.version_id for hit in selected_pool}
+            visible_related = {
+                candidate.candidate_id: [
+                    hit for hit in related_by_candidate[candidate.candidate_id]
+                    if hit.version_id in visible_ids
+                ]
+                for candidate in batch
+            }
+            batch_decisions, batch_skill_ids = self._decide_batch(
+                batch=batch,
+                selected_pool=selected_pool,
+                visible_related=visible_related,
+                skills=skills,
+                skill_text=skill_text,
+                batch_number=(offset // self._max_decisions_per_call) + 1,
+            )
+            self._last_decision_call_count += 1
+            decisions.extend(batch_decisions)
+            applied_ids.extend(batch_skill_ids)
+        self._applied_skill_version_ids = list(dict.fromkeys(applied_ids))
+        return ConstructionPlan(
+            base_commit_id=base_commit_id,
+            candidates=candidates,
+            decisions=decisions,
+        )
+
+    def _decide_batch(
+        self,
+        *,
+        batch: list[MemoryCandidate],
+        selected_pool: list[MemoryHit],
+        visible_related: dict[str, list[MemoryHit]],
+        skills: list[SkillRecord],
+        skill_text: str,
+        batch_number: int,
+    ) -> tuple[list[ConstructionDecision], list[str]]:
+        """Run one bounded C2 protocol call without changing C2 semantics."""
         prompt = _safe_format(
             self._decision_prompt,
             skills_section=skill_text,
-            candidates_json=json.dumps(
-                [
-                    self._candidate_payload(
-                        candidate,
-                        visible_related_by_candidate[candidate.candidate_id],
-                    )
-                    for candidate in candidates
-                ],
-                ensure_ascii=False,
-                indent=2,
-            ),
+            candidates_json=json.dumps([
+                self._candidate_payload(
+                    candidate, visible_related[candidate.candidate_id]
+                )
+                for candidate in batch
+            ], ensure_ascii=False, indent=2),
             related_memories=self._render_related_pool(
-                selected_pool,
-                visible_related_by_candidate,
+                selected_pool, visible_related
             ),
         )
-        expected_ids = {candidate.candidate_id for candidate in candidates}
+        expected_ids = {candidate.candidate_id for candidate in batch}
 
         def validate_c2(value: dict) -> str | None:
             items = value.get("decisions")
@@ -350,40 +387,21 @@ class ConstructionAgent:
             ],
             max_tokens=5000,
             validate=validate_c2,
-            stage="Construction C2",
+            stage=f"Construction C2 batch {batch_number}",
         )
-        self._applied_skill_version_ids = list(dict.fromkeys([
-            *self._applied_skill_version_ids,
-            *self._validated_applied_skills(data, skills),
-        ]))
-        raw_decisions = data.get("decisions")
-        assert isinstance(raw_decisions, list)
+        raw_decisions = data["decisions"]
         raw_by_id = {
             str(item.get("candidate_id")): item
-            for item in raw_decisions
-            if isinstance(item, dict) and item.get("candidate_id")
-        }
-        raw_ids = [
-            str(item.get("candidate_id"))
             for item in raw_decisions if isinstance(item, dict)
-        ]
-        if set(raw_ids) != expected_ids or len(raw_ids) != len(expected_ids):
-            raise RuntimeError(
-                "Construction C2 must return exactly one decision per candidate."
-            )
-        decisions = [
+        }
+        return ([
             self._normalize_decision(
-                raw_by_id.get(candidate.candidate_id, {}),
+                raw_by_id[candidate.candidate_id],
                 candidate,
-                visible_related_by_candidate[candidate.candidate_id],
+                visible_related[candidate.candidate_id],
             )
-            for candidate in candidates
-        ]
-        return ConstructionPlan(
-            base_commit_id=base_commit_id,
-            candidates=candidates,
-            decisions=decisions,
-        )
+            for candidate in batch
+        ], self._validated_applied_skills(data, skills))
 
     def _generate_valid_json(
         self,
@@ -652,6 +670,10 @@ class ConstructionAgent:
     @property
     def applied_skill_version_ids(self) -> list[str]:
         return list(self._applied_skill_version_ids)
+
+    @property
+    def last_decision_call_count(self) -> int:
+        return self._last_decision_call_count
 
     @staticmethod
     def _validated_applied_skills(data: dict, skills: list[SkillRecord]) -> list[str]:

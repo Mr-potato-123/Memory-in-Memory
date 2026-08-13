@@ -88,6 +88,8 @@ class ConstructionConfig(BaseModel):
     max_candidates_per_session: int = 30
     related_memory_limit: int = 10
     max_related_pool: int = 24
+    # Bound C2 structured output size without changing its semantic stage.
+    max_decisions_per_call: int = 10
     # Skill candidate routing is deterministic; C1/C2 decide applicability.
     skill_candidate_k: int = 10
     skill_top_k: int = 2

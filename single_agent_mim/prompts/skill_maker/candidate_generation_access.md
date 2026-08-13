@@ -19,6 +19,13 @@ grounded sufficiency. It must not prescribe a specific answer, inject names/
 dates/IDs, demand arbitrary repeated searches, or turn missing evidence into
 an unsupported conclusion.
 
+Generalize the failure mechanism, not the training topic. Triggers must be
+observable from query or evidence structure (for example, explicit time scope,
+comparison, list coverage, or a missing bridge), not from a combination of
+case-specific occupations, activities, places, relationships, or events. If
+the rule cannot be expressed without those topic details, return
+`NO_CHANGE_NOT_A_SKILL_PROBLEM`.
+
 Prefer revising a relevant ineffective selected Skill over adding overlap.
 Remove or narrow a Skill implicated in regression. Preserve when the failure
 does not reveal a reusable procedural rule.

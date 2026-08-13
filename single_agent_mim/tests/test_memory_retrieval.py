@@ -504,6 +504,67 @@ def test_construction_c2_adds_new_candidates_in_one_model_call(tmp_path: Path):
     assert all(decision.action == "ADD" for decision in plan.decisions)
 
 
+def test_construction_c2_deterministically_batches_large_sessions(
+    tmp_path: Path,
+):
+    store, embedder, _ = _components(tmp_path)
+    model = _CountingMock()
+    candidates = [
+        MemoryCandidate(
+            candidate_id=f"cand_{index}",
+            memory_kind="event",
+            subject="James",
+            predicate=None,
+            object_text=None,
+            content=f"James recorded durable event {index}.",
+            world_start=None,
+            world_end=None,
+            source_message_ids=[f"conv:D1:{index}"],
+            entities=["James"],
+            keywords=[],
+            embedding=embedder.encode([f"event {index}"])[0],
+        )
+        for index in range(21)
+    ]
+    skill = SkillRecord(
+        skill_id="sk_cons_batch",
+        version=2,
+        side="construction",
+        name="Preserve numbered events",
+        description="Use when several independently numbered events occur.",
+        content=["Keep each independently supported event distinct."],
+    )
+    scripted = []
+    for batch_index, start in enumerate(range(0, 21, 10)):
+        end = min(start + 10, 21)
+        scripted.append(model._make_resp(json.dumps({
+            "decisions": [
+                {"candidate_id": f"cand_{index}", "action": "ADD", "relations": []}
+                for index in range(start, end)
+            ],
+            "applied_skill_ids": (
+                ["sk_cons_batch_v2"] if batch_index == 1 else []
+            ),
+        })))
+    model.set_script(scripted)
+
+    agent = ConstructionAgent(model, store, embedder)
+    plan = agent.build_plan(
+        base_commit_id=None,
+        conversation_id="conv",
+        candidates=candidates,
+        skills=[skill],
+    )
+
+    assert model.calls == 3
+    assert [decision.candidate_id for decision in plan.decisions] == [
+        f"cand_{index}" for index in range(21)
+    ]
+    assert len({decision.candidate_id for decision in plan.decisions}) == 21
+    assert agent.applied_skill_version_ids == ["sk_cons_batch_v2"]
+    assert agent.last_decision_call_count == 3
+
+
 def test_construction_plan_skips_only_exact_active_duplicate(
     tmp_path: Path,
     monkeypatch,

@@ -215,24 +215,9 @@ class CandidateSkillAgent:
                 "%Y-%m-%dT%H:%M:%SZ", time.gmtime()
             ),
         )
-        # Models frequently miss a hard character limit by a few characters
-        # despite the bounded repair turn.  Deterministically compress only
-        # over-limit prose at a word/punctuation boundary; never broaden or
-        # synthesize a mechanism.  The strict validator remains the final gate.
-        candidate.payload.description = self._compact_text(
-            candidate.payload.description, 200
-        )
-        candidate.payload.content = [
-            self._compact_text(item, 200)
-            for item in candidate.payload.content[:3]
-        ]
-        while len(candidate.payload.content_text()) > 600 and candidate.payload.content:
-            candidate.payload.content[-1] = self._compact_text(
-                candidate.payload.content[-1],
-                max(1, 600 - len("\n".join(candidate.payload.content[:-1])) - 1),
-            )
-            if len(candidate.payload.content_text()) > 600 and len(candidate.payload.content) > 1:
-                candidate.payload.content.pop()
+        # Do not truncate model prose into an incomplete instruction.  The
+        # strict validator surfaces exact limits and the bounded repair turn
+        # asks the model to produce a complete, shorter Skill instead.
         valid, errors = self._validator.validate(
             candidate.payload,
             side=side,
@@ -248,20 +233,6 @@ class CandidateSkillAgent:
                 "Invalid generated candidate Skill: " + "; ".join(errors)
             )
         return candidate
-
-    @staticmethod
-    def _compact_text(value: str, limit: int) -> str:
-        text = str(value or "").strip()
-        if len(text) <= limit:
-            return text
-        clipped = text[: max(1, limit - 1)]
-        boundary = max(
-            clipped.rfind("."), clipped.rfind(";"), clipped.rfind(":"),
-            clipped.rfind(" "),
-        )
-        if boundary >= max(20, limit // 2):
-            clipped = clipped[:boundary].rstrip()
-        return clipped + "…"
 
     @staticmethod
     def _parse_json(text: str) -> dict[str, Any]:

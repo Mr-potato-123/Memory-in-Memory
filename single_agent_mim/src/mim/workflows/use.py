@@ -143,6 +143,9 @@ class MiMRuntime:
             max_candidates_per_session=getattr(config.construction, 'max_candidates_per_session', 30),
             related_memory_limit=getattr(config.construction, 'related_memory_limit', 10),
             max_related_pool=getattr(config.construction, 'max_related_pool', 24),
+            max_decisions_per_call=getattr(
+                config.construction, 'max_decisions_per_call', 10
+            ),
         )
 
         # Access Agent
@@ -270,8 +273,8 @@ class MiMRuntime:
                     query=session_text,
                     side=Side.CONSTRUCTION,
                     embedding_index=self._embedder,  # type: ignore[arg-type]
-                    # Deterministic routing keeps C1/C2 at exactly two model
-                    # calls; each stage decides whether guidance applies.
+                    # Deterministic routing keeps fixed C1/C2 stages; C2 may
+                    # use bounded batches for large candidate sets.
                     top_k=min(3, self._cfg.construction.skill_top_k),
                     candidate_k=self._cfg.construction.skill_candidate_k,
                     disclose_k=self._cfg.construction.skill_disclose_k,
@@ -321,15 +324,25 @@ class MiMRuntime:
                     candidate_count=len(candidates),
                 )
 
-                # C2 is the fixed second model call. It judges ADD/SKIP and
-                # append-only relations; Skills never mutate storage directly.
+                # C2 is the fixed second stage. It judges ADD/SKIP and
+                # append-only relations in bounded batches; Skills never
+                # mutate storage directly.
                 plan = self._construction_agent.build_plan(
                     base_commit_id=self._latest_commit_id,
                     conversation_id=conversation.conversation_id,
                     candidates=candidates,
                     skills=skills,
                 )
-                self._last_construction_steps += 1
+                self._last_construction_steps += (
+                    self._construction_agent.last_decision_call_count
+                )
+                # C2 may apply a routed Skill that C1 did not use. Refresh
+                # after both stages so provenance and later attribution see
+                # the complete, truthful set.
+                applied_construction_skill_ids = (
+                    self._construction_agent.applied_skill_version_ids
+                )
+                ct.skill_ids = applied_construction_skill_ids
                 ct.decisions = [
                     {"candidate_id": d.candidate_id, "action": d.action,
                      "target_memory_id": d.target_memory_id, "update_type": d.update_type,

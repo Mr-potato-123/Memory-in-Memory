@@ -13,6 +13,13 @@ duplicate judgment, or recognition of support/contradiction/supersession/
 refinement. It may not invent facts, copy case entities/dates/answers/IDs, or
 request UPDATE, MERGE, DELETE, overwrite, database targets, or extra loops.
 
+Generalize the first-break mechanism, not the training topic. The observable
+trigger should describe discourse or evidence structure (for example, a
+contrast, correction, causal transition, or several independently asserted
+facts), not a combination of domain nouns from this case. If no mechanism can
+be stated without the case's occupations, activities, places, relationships,
+or events, return `NO_CHANGE_NOT_A_SKILL_PROBLEM`.
+
 Prefer revising a relevant ineffective selected Skill over creating overlap.
 Remove or narrow a Skill implicated in regression. Do not create Skills for
 ingestion, persistence, malformed output, or other engineering failures.
