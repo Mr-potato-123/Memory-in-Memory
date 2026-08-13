@@ -38,6 +38,9 @@ def eval_one_conversation(
         runtime_model=runtime_model,
         embedder=embedder,
         phase=split_name,
+        # Fail loudly on a construction protocol error so baseline and Bank1
+        # are compared on the same, fully-built memory snapshot.
+        strict_construction=True,
     )
     runtime.ingest(conversation)
     def ask_one(question):
