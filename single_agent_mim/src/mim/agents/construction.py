@@ -394,32 +394,37 @@ class ConstructionAgent:
         stage: str,
     ) -> dict:
         """Retry malformed protocol only; never algorithmically alter facts."""
-        conversation = list(messages)
+        base_messages = list(messages)
         last_error = "invalid JSON"
+        last_response = ""
         for attempt in range(3):
+            conversation = list(base_messages)
+            if attempt:
+                conversation.append({
+                    "role": "user",
+                    "content": (
+                        "The previous response violated the JSON protocol: "
+                        f"{last_error}. Retry the original task from scratch. "
+                        "Do not add, remove, or reinterpret facts. Return one "
+                        "complete JSON object only."
+                    ),
+                })
             response = self._model.generate(
                 conversation,
                 temperature=0.0,
                 max_tokens=max_tokens,
                 json_mode=True,
             )
+            last_response = response.text
             data = self._parse_json(response.text)
             last_error = validate(data) or ""
             if not last_error:
                 return data
-            if attempt < 2:
-                conversation.extend([
-                    {"role": "assistant", "content": response.text},
-                    {
-                        "role": "user",
-                        "content": (
-                            "Repair only this JSON protocol error; do not add, "
-                            "remove, or reinterpret facts. Return one complete "
-                            f"JSON object only. Error: {last_error}"
-                        ),
-                    },
-                ])
-        raise RuntimeError(f"{stage} protocol failed after 3 attempts: {last_error}")
+        preview = re.sub(r"\s+", " ", last_response)[:240]
+        raise RuntimeError(
+            f"{stage} protocol failed after 3 attempts: {last_error}; "
+            f"last_response={preview!r}"
+        )
 
     def _related_memories(
         self,
