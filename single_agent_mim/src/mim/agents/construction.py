@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import re
+from typing import Callable
 import numpy as np
 
 from ..llm.base import ModelClient
@@ -184,7 +185,7 @@ class ConstructionAgent:
             session_messages=message_text,
             existing_memories="[]",
         )
-        response = self._model.generate(
+        data = self._generate_valid_json(
             [
                 {"role": "system", "content": prompt},
                 {
@@ -195,18 +196,16 @@ class ConstructionAgent:
                     ),
                 },
             ],
-            temperature=0.0,
             max_tokens=8000,
-            json_mode=True,
+            validate=lambda value: (
+                None if isinstance(value.get("candidates"), list)
+                else "candidates must be a JSON array"
+            ),
+            stage=f"Construction C1 for {session_id}",
         )
-        data = self._parse_json(response.text)
         self._applied_skill_version_ids = self._validated_applied_skills(data, skills)
         raw_candidates = data.get("candidates")
-        if not isinstance(raw_candidates, list):
-            raise RuntimeError(
-                f"Candidate extraction returned invalid schema for {session_id}: "
-                f"{response.text[:1200]!r}"
-            )
+        assert isinstance(raw_candidates, list)
 
         allowed_sources = {
             str(message["message_id"])
@@ -325,29 +324,45 @@ class ConstructionAgent:
                 visible_related_by_candidate,
             ),
         )
-        response = self._model.generate(
+        expected_ids = {candidate.candidate_id for candidate in candidates}
+
+        def validate_c2(value: dict) -> str | None:
+            items = value.get("decisions")
+            if not isinstance(items, list):
+                return "decisions must be a JSON array"
+            ids = [
+                str(item.get("candidate_id"))
+                for item in items if isinstance(item, dict)
+            ]
+            if set(ids) != expected_ids or len(ids) != len(expected_ids):
+                return "return exactly one decision for every supplied candidate_id"
+            if any(
+                str(item.get("action") or "").upper() not in ALLOWED_ACTIONS
+                for item in items if isinstance(item, dict)
+            ):
+                return "every action must be ADD or SKIP"
+            return None
+
+        data = self._generate_valid_json(
             [
                 {"role": "system", "content": prompt},
                 {"role": "user", "content": "Judge every candidate. Return JSON only."},
             ],
-            temperature=0.0,
             max_tokens=5000,
-            json_mode=True,
+            validate=validate_c2,
+            stage="Construction C2",
         )
-        data = self._parse_json(response.text)
         self._applied_skill_version_ids = list(dict.fromkeys([
             *self._applied_skill_version_ids,
             *self._validated_applied_skills(data, skills),
         ]))
         raw_decisions = data.get("decisions")
-        if not isinstance(raw_decisions, list):
-            raise RuntimeError("Construction C2 returned an invalid decisions schema.")
+        assert isinstance(raw_decisions, list)
         raw_by_id = {
             str(item.get("candidate_id")): item
             for item in raw_decisions
             if isinstance(item, dict) and item.get("candidate_id")
         }
-        expected_ids = {candidate.candidate_id for candidate in candidates}
         raw_ids = [
             str(item.get("candidate_id"))
             for item in raw_decisions if isinstance(item, dict)
@@ -369,6 +384,42 @@ class ConstructionAgent:
             candidates=candidates,
             decisions=decisions,
         )
+
+    def _generate_valid_json(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        max_tokens: int,
+        validate: Callable[[dict], str | None],
+        stage: str,
+    ) -> dict:
+        """Retry malformed protocol only; never algorithmically alter facts."""
+        conversation = list(messages)
+        last_error = "invalid JSON"
+        for attempt in range(3):
+            response = self._model.generate(
+                conversation,
+                temperature=0.0,
+                max_tokens=max_tokens,
+                json_mode=True,
+            )
+            data = self._parse_json(response.text)
+            last_error = validate(data) or ""
+            if not last_error:
+                return data
+            if attempt < 2:
+                conversation.extend([
+                    {"role": "assistant", "content": response.text},
+                    {
+                        "role": "user",
+                        "content": (
+                            "Repair only this JSON protocol error; do not add, "
+                            "remove, or reinterpret facts. Return one complete "
+                            f"JSON object only. Error: {last_error}"
+                        ),
+                    },
+                ])
+        raise RuntimeError(f"{stage} protocol failed after 3 attempts: {last_error}")
 
     def _related_memories(
         self,
