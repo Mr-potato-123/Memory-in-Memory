@@ -115,7 +115,12 @@ def collect_eligible_packages(
     cons: list[dict] = []
     seen_diagnosis_ids: set[str] = set()
 
-    for side, suffix in [("access", "access_failure"), ("cons", "cons_failure")]:
+    package_sources = [
+        ("access", "answer_failure", {"ANSWER_FAILURE"}),
+        ("access", "access_failure", {"ACCESS_FAILURE"}),
+        ("cons", "cons_failure", {"CONS_FAILURE"}),
+    ]
+    for side, suffix, accepted_types in package_sources:
         packages_dir = diagnosis_root / suffix / "packages"
         if not packages_dir.is_dir():
             continue
@@ -129,10 +134,7 @@ def collect_eligible_packages(
                     continue
 
                 # ── Gate checks ──────────────────────────────────
-                if pkg.get("diagnosis_type") not in {
-                    "ACCESS_FAILURE",
-                    "CONS_FAILURE",
-                }:
+                if pkg.get("diagnosis_type") not in accepted_types:
                     continue
                 if pkg.get("status") != "completed":
                     continue
@@ -151,7 +153,9 @@ def collect_eligible_packages(
                 pkg["_source_sha256"] = _sha256_file(pkg_file)
                 pkg["_side"] = side
 
-                if pkg["diagnosis_type"] == "ACCESS_FAILURE":
+                if pkg["diagnosis_type"] in {
+                    "ANSWER_FAILURE", "ACCESS_FAILURE",
+                }:
                     access.append(pkg)
                 else:
                     cons.append(pkg)

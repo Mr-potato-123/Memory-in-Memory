@@ -8,15 +8,15 @@ do not reduce it to the reference answer. Construction history is causal
 context only: positive examples may produce Access Skills, never Construction
 Skills.
 
-Runtime always executes one default search before retrieving learned Access
-Skills. A proposed Skill must therefore describe a post-search recovery or
-evidence-composition decision. Return NO_CHANGE when the example succeeded by
+Runtime always executes an original-question search, A1 planning with at most
+one supplemental retrieval round, and A2 evidence selection/composition. A
+proposed Skill must fit A1 or A2. Return NO_CHANGE when the example succeeded by
 a simple direct lookup, merely followed the system policy, or exposes no
 reusable decision beyond the default workflow.
 
 Propose only when the trajectory demonstrates a concrete mechanism such as a
-materially different second query, targeted history inspection, missing-hop
-completion, evidence conflict resolution, or correct evidence-bound abstention.
+materially useful supplemental query, targeted history scope, missing-hop
+completion, evidence coverage, or conflict resolution.
 The future trigger must name an observable gap in the first search result and
 an explicit non-applicability boundary. Never copy names, dates, answers,
 message IDs, memory IDs, or case-specific facts.

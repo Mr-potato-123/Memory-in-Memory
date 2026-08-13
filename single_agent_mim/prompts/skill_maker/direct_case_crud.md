@@ -4,11 +4,9 @@ Skills most related to it. Directly decide whether those official Skills need
 CRUD. There is no Candidate Skill, clustering stage, or later summarizer.
 
 The target side is supplied as `side`:
-- access covers retrieval, evidence selection, abstention, and composing the
-  final answer from retrieved memory. An Answer diagnosis therefore updates
-  the Access Skill Bank.
-- construction covers extracting and maintaining durable memory from source
-  messages.
+- access covers A1 bounded retrieval planning and A2 evidence selection and
+  composition. An Answer diagnosis therefore updates the Access Skill Bank.
+- construction covers C1 extraction and C2 append-only relation judgment.
 
 The diagnosis direction matters:
 - C2W: preserve the correct behavior and remove or narrow the Bank behavior
@@ -26,6 +24,10 @@ actions. Do not infer facts absent from evidence. Prefer one conceptual change
 and at most three primitive operations. Never mutate a Skill not supplied in
 `retrieved_official_skills`. Use NOOP when the contrast is not a Skill problem,
 is already covered, or cannot justify a reusable rule.
+
+Topology boundary: Access Skills cannot introduce agent loops, standalone
+reranking, or repeated retrieval rounds. Construction Skills cannot request
+UPDATE, MERGE, DELETE, overwrite, or database targets.
 
 Available operations:
 - add_skill

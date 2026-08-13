@@ -30,16 +30,6 @@ from mim.schemas import DatasetSplit
 from mim.skills import SkillBank
 from mim.workflows.use import MiMRuntime
 
-FROZEN_TRAIN = [
-    "conv-30",
-    "conv-42",
-    "conv-43",
-    "conv-44",
-    "conv-48",
-    "conv-49",
-]
-
-
 def arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -50,7 +40,7 @@ def arguments() -> argparse.Namespace:
     parser.add_argument(
         "--conversation-id",
         required=True,
-        help="Train conversation: conv-30/42/43/44/48/49.",
+        help="One conversation listed in the configured frozen train split.",
     )
     parser.add_argument(
         "--resume",
@@ -206,12 +196,6 @@ def main() -> int:
         )
 
     # ── Validate conversation-id ─────────────────────────────────
-    if args.conversation_id not in FROZEN_TRAIN:
-        raise ValueError(
-            f"{args.conversation_id!r} is not in the frozen train split. "
-            f"Allowed: {FROZEN_TRAIN}"
-        )
-
     dataset_path = Path(config.dataset.path)
     split_path = Path(config.dataset.split)
     split = DatasetSplit(**json.loads(split_path.read_text(encoding="utf-8")))
@@ -273,7 +257,8 @@ def main() -> int:
         monitor(
             {
                 "event": "prompt_hashes",
-                "access": _prompt_sha256(config.prompts.access),
+                "access_plan": _prompt_sha256(config.prompts.access_plan),
+                "access_answer": _prompt_sha256(config.prompts.access_answer),
                 "construction_extraction": _prompt_sha256(
                     config.prompts.construction_extraction
                 ),
@@ -455,7 +440,8 @@ def main() -> int:
         conversation_id=args.conversation_id,
         dataset_sha256=split.dataset_sha256,
         split_sha256=sha256_file(split_path),
-        access_prompt_sha256=_prompt_sha256(config.prompts.access),
+        access_plan_prompt_sha256=_prompt_sha256(config.prompts.access_plan),
+        access_answer_prompt_sha256=_prompt_sha256(config.prompts.access_answer),
         construction_extraction_prompt_sha256=_prompt_sha256(
             config.prompts.construction_extraction
         ),

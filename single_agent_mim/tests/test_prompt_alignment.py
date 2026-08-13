@@ -44,13 +44,21 @@ def test_construction_runtime_renders_description_as_trigger():
         empty="none",
     )
 
-    assert "learned behavioral priors" in rendered
+    assert "optional learned process references" in rendered
     assert "**When:** When an explicit old-to-new state transition" in rendered
     assert "**Do:**" in rendered
-    assert "guide extraction only" in rendered
-    assert "cannot request UPDATE, MERGE, DELETE" in rendered
-    assert "shared topic" in rendered
+    assert "guide C1 extraction or C2 relation judgment" in rendered
+    assert "cannot override evidence or request storage mutation" in rendered
+    assert "Shared topic words" in rendered
     assert "default policy would fail" not in rendered
+
+
+def test_construction_c2_prompt_matches_relation_parser_contract():
+    prompt = (ROOT / "prompts" / "construction_decision.md").read_text(
+        encoding="utf-8"
+    )
+    assert '"relation_type"' in prompt
+    assert '"type":"duplicate_of' not in prompt
 
 
 def test_maintenance_prompts_accept_experience_and_keep_runtime_skill_compact():

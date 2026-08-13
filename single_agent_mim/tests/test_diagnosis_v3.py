@@ -455,3 +455,39 @@ def test_candidate_collector_routes_answer_and_access_to_access_side(
         ("access_failure", "access"),
         ("cons_failure", "construction"),
     ]
+
+
+def test_formal_bank_pipeline_collects_answer_access_and_cons_packages(
+    tmp_path: Path,
+):
+    cases = (
+        ("answer_failure", "ANSWER_FAILURE", "answer_1"),
+        ("access_failure", "ACCESS_FAILURE", "access_1"),
+        ("cons_failure", "CONS_FAILURE", "cons_1"),
+    )
+    for directory, diagnosis_type, diagnosis_id in cases:
+        package_dir = tmp_path / directory / "packages" / "conv-30"
+        package_dir.mkdir(parents=True, exist_ok=True)
+        (package_dir / f"{diagnosis_id}.json").write_text(
+            json.dumps({
+                "diagnosis_id": diagnosis_id,
+                "diagnosis_type": diagnosis_type,
+                "status": "completed",
+                "problem_found": True,
+                "review_required": False,
+                "conversation_id": "conv-30",
+                "repair_package": {"stage": directory},
+            }),
+            encoding="utf-8",
+        )
+
+    script = Path(__file__).resolve().parents[1] / "scripts" / (
+        "run_skill_bank_pipeline.py"
+    )
+    collect = runpy.run_path(str(script))["collect_eligible_packages"]
+    access, cons = collect(tmp_path, ["conv-30"])
+
+    assert [item["diagnosis_id"] for item in access] == [
+        "answer_1", "access_1",
+    ]
+    assert [item["diagnosis_id"] for item in cons] == ["cons_1"]

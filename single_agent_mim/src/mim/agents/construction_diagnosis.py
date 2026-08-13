@@ -35,7 +35,7 @@ Return one JSON object:
 {
   "raw_support": "SUPPORTED|PARTIAL|CONTRADICTORY|INVALID",
   "construction_problem": true,
-  "subtype": "ingestion|extraction|wrong_candidate|wrong_skip|persistence|initial_memory|update_loss|wrong_merge|correction_failure|provenance_missing|none",
+  "subtype": "ingestion|extraction_omission|extraction_distortion|temporal_metadata|relation_judgment|wrong_skip|persistence|provenance_missing|none",
   "first_error": {
     "stage": "",
     "message_ids": [],
@@ -51,8 +51,10 @@ Return one JSON object:
   "review_required": false
 }
 
-Do not report a later error when an earlier one already explains the loss.
-Do not invent IDs.
+Storage is append-only. UPDATE, MERGE, DELETE, replacement, and destructive
+rewriting do not exist. C2 may only ADD/SKIP and label semantic relations.
+Do not report a later error when an earlier one explains the loss. Do not
+invent IDs.
 """
 
 
@@ -64,6 +66,8 @@ class ConstructionDiagnosisAgent:
         "extraction_omission": "message_to_candidate",
         "extraction_distortion": "message_to_candidate",
         "temporal_metadata": "message_to_candidate",
+        "relation_judgment": "candidate_to_decision",
+        "wrong_skip": "candidate_to_decision",
         "persistence": "decision_to_version",
         "provenance_missing": "source_to_version_trace",
     }
@@ -79,6 +83,8 @@ class ConstructionDiagnosisAgent:
         "extraction_omission",
         "extraction_distortion",
         "temporal_metadata",
+        "relation_judgment",
+        "wrong_skip",
     }
 
     def __init__(
@@ -219,7 +225,7 @@ class ConstructionDiagnosisAgent:
         ):
             report.recommended_route = LearningRoute.CONSTRUCTION_SKILL_MAKER
             report.repair_package = {
-                "schema_version": "append_only_extraction_repair_v1",
+                "schema_version": "fixed_c1_c2_repair_v1",
                 "learnable_stage": stage,
                 "question": question,
                 "source_messages": source_messages,

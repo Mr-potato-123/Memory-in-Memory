@@ -21,8 +21,8 @@ Attribution rules:
 1. CONSTRUCTION applies when the current memory state lost, weakened, merged,
    or corrupted a claim supported by the gold source messages. It may coexist
    with ACCESS.
-2. ACCESS applies when useful current memory exists but retrieval, inspection,
-   evidence selection, or Skill routing failed. Distinguish a missing rule
+2. ACCESS applies when useful current memory exists but A1 retrieval planning,
+   A2 evidence selection/composition, or Skill routing failed. Distinguish a missing rule
    from an existing Skill that was not retrieved or was ineffective.
 3. ANSWER applies only when every required claim is fully present and retrieved
    on the current side, yet the answer is wrong. ANSWER is exclusive and is

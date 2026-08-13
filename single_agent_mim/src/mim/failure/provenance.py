@@ -202,9 +202,22 @@ class ProvenanceService:
             ],
         ).fetchall()
 
+        candidates: list[dict[str, Any]] = []
+        for row in candidate_rows:
+            item = dict(row)
+            relation_rows = self._conn.execute(
+                """SELECT relation_type, target_version_id, source_version_id
+                   FROM construction_relation_edges
+                   WHERE decision_id=?
+                   ORDER BY relation_type, target_version_id""",
+                (row["decision_id"],),
+            ).fetchall() if row["decision_id"] else []
+            item["relations"] = [dict(relation) for relation in relation_rows]
+            candidates.append(item)
+
         return {
             "processed_commits": [dict(row) for row in processed_rows],
-            "candidates": [dict(row) for row in candidate_rows],
+            "candidates": candidates,
             "change_events": change_events,
             "snapshot_memories": [dict(row) for row in snapshot_rows],
         }

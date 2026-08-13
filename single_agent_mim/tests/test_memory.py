@@ -193,6 +193,88 @@ def test_store_rejects_snapshot_from_a_different_embedding_space(tmp_path: Path)
         SQLiteMemoryStore(path, embedding_dim=32, embedding_model="new-model")
 
 
+def test_add_persists_append_only_memory_relation(tmp_path: Path):
+    path = tmp_path / "memory.sqlite3"
+    store = SQLiteMemoryStore(path, embedding_dim=32, embedding_model="test-hash")
+    _save_input(store, "conv_a", "s1", "conv_a:D1:1", "Alice lived in Boston.", 0)
+    old = _candidate("cand_old", "conv_a:D1:1", "Alice lived in Boston.", "Boston")
+    first = store.apply_construction_plan(
+        "conv_a", "s1", None,
+        ConstructionPlan(base_commit_id=None, candidates=[old], decisions=[
+            ConstructionDecision(
+                candidate_id="cand_old", action="ADD",
+                merged_content=old.content, source_message_ids=old.source_message_ids,
+            )
+        ]),
+        "run", "mock", "p1", [], input_message_ids=old.source_message_ids,
+    )
+    old_version = store.load_snapshot("conv_a", first.commit_id)[0].version_id
+    _save_input(store, "conv_a", "s2", "conv_a:D2:1", "Alice moved to Seattle.", 1)
+    new = _candidate("cand_new", "conv_a:D2:1", "Alice moved to Seattle.", "Seattle")
+    from mim.storage.sqlite_store import MemoryRelation
+    second = store.apply_construction_plan(
+        "conv_a", "s2", first.commit_id,
+        ConstructionPlan(base_commit_id=first.commit_id, candidates=[new], decisions=[
+            ConstructionDecision(
+                candidate_id="cand_new", action="ADD",
+                merged_content=new.content, source_message_ids=new.source_message_ids,
+                relations=[MemoryRelation("supersedes", old_version)],
+            )
+        ]),
+        "run", "mock", "p2", [], input_message_ids=new.source_message_ids,
+    )
+
+    assert len(store.load_snapshot("conv_a", second.commit_id)) == 2
+    with store.open_read_connection() as conn:
+        edge = conn.execute(
+            "SELECT target_version_id, relation_type FROM memory_relation_edges"
+        ).fetchone()
+    assert tuple(edge) == (old_version, "supersedes")
+
+
+def test_skip_persists_duplicate_relation_for_diagnosis(tmp_path: Path):
+    path = tmp_path / "memory.sqlite3"
+    store = SQLiteMemoryStore(path, embedding_dim=32, embedding_model="test-hash")
+    _save_input(store, "conv_a", "s1", "conv_a:D1:1", "Alice lives in Boston.", 0)
+    old = _candidate("cand_old", "conv_a:D1:1", "Alice lives in Boston.", "Boston")
+    first = store.apply_construction_plan(
+        "conv_a", "s1", None,
+        ConstructionPlan(base_commit_id=None, candidates=[old], decisions=[
+            ConstructionDecision(
+                candidate_id="cand_old", action="ADD", merged_content=old.content,
+                source_message_ids=old.source_message_ids,
+            )
+        ]),
+        "run", "mock", "p1", [], input_message_ids=old.source_message_ids,
+    )
+    old_version = store.load_snapshot("conv_a", first.commit_id)[0].version_id
+    _save_input(store, "conv_a", "s2", "conv_a:D2:1", "Alice lives in Boston.", 1)
+    duplicate = _candidate(
+        "cand_duplicate", "conv_a:D2:1", "Alice lives in Boston.", "Boston"
+    )
+    from mim.storage.sqlite_store import MemoryRelation
+    store.apply_construction_plan(
+        "conv_a", "s2", first.commit_id,
+        ConstructionPlan(
+            base_commit_id=first.commit_id,
+            candidates=[duplicate],
+            decisions=[ConstructionDecision(
+                candidate_id="cand_duplicate", action="SKIP",
+                source_message_ids=duplicate.source_message_ids,
+                relations=[MemoryRelation("duplicate_of", old_version)],
+            )],
+        ),
+        "run", "mock", "p2", [], input_message_ids=duplicate.source_message_ids,
+    )
+
+    with store.open_read_connection() as conn:
+        edge = conn.execute(
+            """SELECT source_version_id, target_version_id, relation_type
+               FROM construction_relation_edges"""
+        ).fetchone()
+    assert tuple(edge) == (None, old_version, "duplicate_of")
+
+
 def test_update_preserves_old_version_and_inherited_message_lineage(tmp_path: Path):
     store = _store(tmp_path)
     _save_input(store, "conv_a", "s1", "conv_a:D1:1", "I live in Boston.", 0)

@@ -1,16 +1,8 @@
-"""Minimal, append-only Construction Agent.
+"""Fixed-topology, model-driven, append-only memory construction.
 
-One model call turns a session into self-contained memories.  A small set of
-relevant existing memories is shown only to avoid restating facts that are
-already stored.  The program then applies two deterministic operations:
-
-* ADD a genuinely new extracted memory;
-* SKIP an exact duplicate.
-
-State changes are appended with their event time instead of asking an LLM to
-rewrite history.  This deliberately small write contract gives Construction
-Skills one clear extension point: they may change evidence-bound extraction,
-but they never issue database CRUD commands.
+C1 extracts evidence-bound facts. C2 compares each candidate with a bounded
+old-memory pool and decides ADD/SKIP plus semantic relations. Storage remains
+append-only: neither stage can overwrite or delete history.
 """
 
 from __future__ import annotations
@@ -27,6 +19,7 @@ from ..storage.sqlite_store import (
     ConstructionPlan,
     MemoryCandidate,
     MemoryHit,
+    MemoryRelation,
     SQLiteMemoryStore,
 )
 
@@ -40,6 +33,10 @@ ALLOWED_MEMORY_KINDS = {
     "relationship",
 }
 ALLOWED_ACTIONS = {"ADD", "SKIP"}
+ALLOWED_RELATIONS = {
+    "duplicate_of", "supports", "contradicts", "supersedes", "refines",
+    "unrelated",
+}
 
 
 def _safe_format(template: str, **kwargs: str) -> str:
@@ -72,10 +69,11 @@ Principles:
 8. Copy source_message_ids exactly from the input. A synthesized memory may
    cite multiple messages.
 
-Return one JSON object with a candidates array. Each candidate has:
+Return one JSON object with a candidates array and applied_skill_ids. Each candidate has:
 memory_kind, subject, predicate (short optional retrieval label), object_text
 (optional), content (1-3 complete sentences), world_start, world_end,
 source_message_ids, entities, keywords, importance, confidence.
+List a supplied Skill version ID only if its guidance materially changed C1.
 
 Construction Skills:
 {skills_section}
@@ -88,40 +86,37 @@ Messages:
 
 
 BATCH_DECISION_SYSTEM = """\
-You are a long-term Memory Manager. This is the CRUD/consolidation stage of a
-Mem0-style memory pipeline. Review all new candidates together with the
-retrieved existing-memory pool and return exactly one decision per candidate.
+You are the C2 change-linking stage of an append-only long-term memory system.
+For every new candidate, compare only with its bounded related old memories.
 
 Actions:
-- ADD: genuinely new memory.
-- UPDATE: revise one logical memory while keeping its memory_id.
-- MERGE: consolidate a candidate into one overlapping logical memory.
-- DELETE: retract an existing memory when new evidence shows it is false and
-  there is no useful replacement. Prefer UPDATE when a replacement exists.
-- SKIP: duplicate, transient, unsupported, or already fully represented.
+- ADD: append the candidate as a new memory version.
+- SKIP: do not append it, only when an old memory already expresses the same
+  durable fact. A SKIP decision must include a duplicate_of relation.
+
+Relations describe meaning; they never mutate old memories:
+- duplicate_of: materially the same fact.
+- supports: compatible evidence for the same proposition.
+- contradicts: incompatible claims whose temporal ordering is insufficient.
+- supersedes: a later state or corrected value replaces an earlier one.
+- refines: a narrower or more detailed compatible fact.
+- unrelated: retrieved context is not meaningfully related.
 
 Rules:
-1. Preserve the candidate_id exactly.
-2. UPDATE, MERGE, and DELETE require target_memory_id copied from that
-   candidate's allowed_target_memory_ids. Never use a version_id as the target.
-   An empty list means only ADD or SKIP is allowed.
-3. For UPDATE/MERGE, merged_content must be a standalone 1-3 sentence memory
-   containing all still-valid details from both old and new evidence.
-4. Use state_change when an old state was once true; correction when it was
-   wrong; enrichment when adding compatible detail; merge for consolidation;
-   retraction for DELETE.
-5. Do not create separate fragments for details that belong to the same
-   entity, event, preference, list, or ongoing plan.
-6. Do not alter source IDs. The runtime computes inherited provenance.
-7. Retrieval similarity does not mean identity. Never UPDATE a general profile
-   merely because a new event involves the same person or broad topic.
-8. Each existing memory_id may be targeted by at most one candidate in this
-   batch.
-9. Return JSON only:
-{"decisions":[{"candidate_id":"...","action":"ADD|UPDATE|MERGE|DELETE|SKIP",
-"target_memory_id":null,"update_type":"add|state_change|correction|enrichment|merge|retraction",
-"reason":"short operational reason","merged_content":"...",
-"world_start":null,"world_end":null,"source_message_ids":["..."]}]}
+1. Return exactly one decision for each candidate_id and no extra decisions.
+2. Use only ADD or SKIP. Never rewrite, merge, update, delete, or target storage.
+3. Relation targets must be version_ids listed in that candidate's
+   allowed_related_version_ids. Do not invent IDs.
+4. Prefer ADD plus supersedes/contradicts/refines for changed information, so
+   history remains auditable. Use SKIP only for a true duplicate.
+5. Similar topic, entity, or embedding score alone does not prove a relation.
+6. Skills are optional process references. Report a Skill ID in
+   applied_skill_ids only when it materially changed this judgment.
+7. Return JSON only:
+{"decisions":[{"candidate_id":"...","action":"ADD|SKIP",
+"reason":"brief evidence-based reason","relations":[{"relation_type":
+"duplicate_of|supports|contradicts|supersedes|refines|unrelated",
+"target_version_id":"..."}]}],"applied_skill_ids":[]}
 
 Construction Skills:
 {skills_section}
@@ -135,7 +130,7 @@ Relevant Existing Memory Pool:
 
 
 class ConstructionAgent:
-    """Session-level extraction followed by deterministic ADD/SKIP."""
+    """C1 extraction followed by C2 change/link judgment."""
 
     def __init__(
         self,
@@ -147,23 +142,16 @@ class ConstructionAgent:
         max_candidates_per_session: int = 30,
         related_memory_limit: int = 10,
         max_related_pool: int = 24,
-        max_search_more_calls: int = 0,
-        semantic_crud_threshold: float = 0.88,
     ):
         self._model = model
         self._store = store
         self._embedder = embedder
         self._extraction_prompt = extraction_prompt
-        # Kept only so older configs/extensions can still instantiate the
-        # class.  The minimal runtime never sends this prompt to a model.
         self._decision_prompt = decision_prompt
         self._max_candidates = max_candidates_per_session
         self._related_limit = related_memory_limit
         self._max_related_pool = max_related_pool
-        self._semantic_crud_threshold = semantic_crud_threshold
-        # Retained in the signature for config/backward compatibility. The new
-        # manager performs one deterministic related-memory gathering pass.
-        self._max_search_more = max_search_more_calls
+        self._applied_skill_version_ids: list[str] = []
 
     def extract_candidates(
         self,
@@ -174,7 +162,9 @@ class ConstructionAgent:
         skills: list[SkillRecord],
         base_commit_id: int | None = None,
     ) -> list[MemoryCandidate]:
-        """Extract dense memories in one call, with bounded dedup context."""
+        """C1: extract durable facts from only the current session evidence."""
+        self._applied_skill_version_ids = []
+        skills = self._usable_skills(skills)
         skill_text = self._render_skills(
             skills, "(No construction skills. Use the default extraction policy.)"
         )
@@ -187,19 +177,12 @@ class ConstructionAgent:
             )
             for message in session_messages
         )
-        existing_memories = self._relevant_existing_for_session(
-            conversation_id=conversation_id,
-            base_commit_id=base_commit_id,
-            session_text=message_text,
-        )
         prompt = _safe_format(
             self._extraction_prompt,
             skills_section=skill_text,
             session_time=session_time or "unknown",
             session_messages=message_text,
-            existing_memories=json.dumps(
-                existing_memories, ensure_ascii=False, indent=2
-            ),
+            existing_memories="[]",
         )
         response = self._model.generate(
             [
@@ -217,6 +200,7 @@ class ConstructionAgent:
             json_mode=True,
         )
         data = self._parse_json(response.text)
+        self._applied_skill_version_ids = self._validated_applied_skills(data, skills)
         raw_candidates = data.get("candidates")
         if not isinstance(raw_candidates, list):
             raise RuntimeError(
@@ -290,87 +274,101 @@ class ConstructionAgent:
         candidates: list[MemoryCandidate],
         skills: list[SkillRecord],
     ) -> ConstructionPlan:
-        """Create an ADD/SKIP plan without a second model call.
-
-        ``skills`` remains in the signature for extension compatibility.  It
-        has already influenced extraction and cannot mutate storage directly.
-        """
+        """C2: judge duplication and semantic change against bounded old memory."""
+        skills = self._usable_skills(skills)
         if not candidates:
             return ConstructionPlan(
                 base_commit_id=base_commit_id, candidates=[], decisions=[]
             )
 
-        decisions: list[ConstructionDecision] = []
+        related_by_candidate: dict[str, list[MemoryHit]] = {}
+        pool: dict[str, MemoryHit] = {}
         for candidate in candidates:
             related = self._related_memories(
                 conversation_id=conversation_id,
                 base_commit_id=base_commit_id,
                 candidate=candidate,
             )
-            exact_duplicate = next(
-                (hit for hit in related if "exact" in hit.matched_paths),
-                None,
+            related_by_candidate[candidate.candidate_id] = related
+            pool.update({hit.version_id: hit for hit in related})
+
+        selected_pool = self._select_related_pool(
+            candidates, related_by_candidate, pool
+        )
+        visible_version_ids = {hit.version_id for hit in selected_pool}
+        visible_related_by_candidate = {
+            candidate_id: [
+                hit for hit in hits if hit.version_id in visible_version_ids
+            ]
+            for candidate_id, hits in related_by_candidate.items()
+        }
+        skill_text = self._render_skills(
+            skills,
+            "(No construction skills. Use the default change-linking policy.)",
+        )
+        prompt = _safe_format(
+            self._decision_prompt,
+            skills_section=skill_text,
+            candidates_json=json.dumps(
+                [
+                    self._candidate_payload(
+                        candidate,
+                        visible_related_by_candidate[candidate.candidate_id],
+                    )
+                    for candidate in candidates
+                ],
+                ensure_ascii=False,
+                indent=2,
+            ),
+            related_memories=self._render_related_pool(
+                selected_pool,
+                visible_related_by_candidate,
+            ),
+        )
+        response = self._model.generate(
+            [
+                {"role": "system", "content": prompt},
+                {"role": "user", "content": "Judge every candidate. Return JSON only."},
+            ],
+            temperature=0.0,
+            max_tokens=5000,
+            json_mode=True,
+        )
+        data = self._parse_json(response.text)
+        self._applied_skill_version_ids = list(dict.fromkeys([
+            *self._applied_skill_version_ids,
+            *self._validated_applied_skills(data, skills),
+        ]))
+        raw_decisions = data.get("decisions")
+        if not isinstance(raw_decisions, list):
+            raise RuntimeError("Construction C2 returned an invalid decisions schema.")
+        raw_by_id = {
+            str(item.get("candidate_id")): item
+            for item in raw_decisions
+            if isinstance(item, dict) and item.get("candidate_id")
+        }
+        expected_ids = {candidate.candidate_id for candidate in candidates}
+        raw_ids = [
+            str(item.get("candidate_id"))
+            for item in raw_decisions if isinstance(item, dict)
+        ]
+        if set(raw_ids) != expected_ids or len(raw_ids) != len(expected_ids):
+            raise RuntimeError(
+                "Construction C2 must return exactly one decision per candidate."
             )
-            decisions.append(ConstructionDecision(
-                candidate_id=candidate.candidate_id,
-                action="SKIP" if exact_duplicate else "ADD",
-                update_type="add",
-                reason=(
-                    "Exact content is already active."
-                    if exact_duplicate
-                    else "New evidence-bound memory."
-                ),
-                merged_content=candidate.content,
-                world_start=candidate.world_start,
-                world_end=candidate.world_end,
-                source_message_ids=candidate.source_message_ids,
-            ))
+        decisions = [
+            self._normalize_decision(
+                raw_by_id.get(candidate.candidate_id, {}),
+                candidate,
+                visible_related_by_candidate[candidate.candidate_id],
+            )
+            for candidate in candidates
+        ]
         return ConstructionPlan(
             base_commit_id=base_commit_id,
             candidates=candidates,
             decisions=decisions,
         )
-
-    def _relevant_existing_for_session(
-        self,
-        *,
-        conversation_id: str,
-        base_commit_id: int | None,
-        session_text: str,
-    ) -> list[dict]:
-        """Return a bounded, read-only snapshot context for deduplication."""
-        if base_commit_id is None:
-            return []
-        version_ids, matrix = self._store.get_embeddings_for_snapshot(
-            conversation_id, base_commit_id
-        )
-        if not version_ids or matrix.shape[0] != len(version_ids):
-            return []
-        encode_queries = getattr(self._embedder, "encode_queries", None)
-        query = (
-            encode_queries([session_text])[0]
-            if callable(encode_queries)
-            else self._embedder.encode([session_text])[0]
-        )
-        scores = np.dot(matrix, query)
-        best = np.argsort(scores)[::-1][: self._related_limit]
-        snapshot = {
-            hit.version_id: hit
-            for hit in self._store.load_snapshot(conversation_id, base_commit_id)
-        }
-        return [
-            {
-                "memory_kind": hit.memory_kind,
-                "subject": hit.subject,
-                "content": hit.content,
-                "world_start": hit.world_start,
-                "world_end": hit.world_end,
-            }
-            for index in best
-            if float(scores[index]) > 0
-            for hit in [snapshot.get(version_ids[int(index)])]
-            if hit is not None
-        ]
 
     def _related_memories(
         self,
@@ -379,7 +377,7 @@ class ConstructionAgent:
         base_commit_id: int | None,
         candidate: MemoryCandidate,
     ) -> list[MemoryHit]:
-        """Return exact active duplicates; similarity never authorizes writes."""
+        """Retrieve a bounded comparison set; it never authorizes mutation."""
         if base_commit_id is None:
             return []
         gathered = self._store.find_related_for_construction(
@@ -388,60 +386,31 @@ class ConstructionAgent:
             as_of_commit=base_commit_id,
             limit=self._related_limit,
         )
-        return [
-            hit for hit in gathered if "exact" in hit.matched_paths
-        ][: self._related_limit]
-
-    def _is_crud_compatible(
-        self,
-        candidate: MemoryCandidate,
-        hit: MemoryHit,
-    ) -> bool:
-        """Conservatively decide whether a memory may be mutated.
-
-        Retrieval similarity means "useful context", not "same logical
-        memory". Mutation therefore needs a stronger algorithmic gate.
-        """
-        if "exact" in hit.matched_paths:
-            return True
-
-        candidate_subject = self._normalized_key(candidate.subject)
-        hit_subject = self._normalized_key(hit.subject)
-        if not candidate_subject or candidate_subject != hit_subject:
-            return False
-
-        if hit.score >= self._semantic_crud_threshold:
-            return True
-
-        candidate_predicate = self._normalized_key(candidate.predicate)
-        hit_predicate = self._normalized_key(hit.predicate)
-        if not candidate_predicate or candidate_predicate != hit_predicate:
-            return False
-
-        # Stable attributes can use subject+predicate as a logical key.
-        if candidate.memory_kind in {
-            "profile",
-            "preference",
-            "state",
-            "plan",
-            "relationship",
-        }:
-            return True
-
-        # Event predicates such as "activity" or "recreation" are too broad.
-        # Require a shared non-subject entity before mutating an event.
-        subject_key = candidate_subject
-        candidate_entities = {
-            self._normalized_key(entity)
-            for entity in candidate.entities
-            if self._normalized_key(entity) not in {"", subject_key}
-        }
-        hit_entities = {
-            self._normalized_key(entity)
-            for entity in hit.entities
-            if self._normalized_key(entity) not in {"", subject_key}
-        }
-        return bool(candidate_entities & hit_entities)
+        by_id = {hit.version_id: hit for hit in gathered}
+        if candidate.embedding is not None:
+            version_ids, matrix = self._store.get_embeddings_for_snapshot(
+                conversation_id, base_commit_id
+            )
+            if version_ids and matrix.shape[0] == len(version_ids):
+                scores = np.dot(matrix, candidate.embedding)
+                snapshot = {
+                    hit.version_id: hit
+                    for hit in self._store.load_snapshot(conversation_id, base_commit_id)
+                }
+                for index in np.argsort(scores)[::-1][: self._related_limit]:
+                    hit = snapshot.get(version_ids[int(index)])
+                    if hit is None:
+                        continue
+                    hit.score = float(scores[index])
+                    hit.matched_paths = list(
+                        dict.fromkeys([*hit.matched_paths, "semantic"])
+                    )
+                    by_id.setdefault(hit.version_id, hit)
+        return sorted(
+            by_id.values(),
+            key=lambda hit: (len(hit.matched_paths), hit.score),
+            reverse=True,
+        )[: self._related_limit]
 
     def _select_related_pool(
         self,
@@ -471,31 +440,34 @@ class ConstructionAgent:
         candidate: MemoryCandidate,
         related: list[MemoryHit],
     ) -> ConstructionDecision:
-        action = str(raw.get("action") or "ADD").upper()
-        if action == "NONE":
-            action = "SKIP"
+        action = str(raw.get("action") or "").upper()
         if action not in ALLOWED_ACTIONS:
-            action = "ADD"
+            raise RuntimeError(f"Construction C2 returned invalid action: {action!r}")
 
-        target = self._logical_memory_id(raw.get("target_memory_id"), related)
-        allowed_targets = {hit.memory_id for hit in related}
-        if action in {"UPDATE", "MERGE", "DELETE"} and target not in allowed_targets:
+        allowed_versions = {hit.version_id for hit in related}
+        relations: list[MemoryRelation] = []
+        for item in raw.get("relations") or []:
+            if not isinstance(item, dict):
+                continue
+            relation_type = str(
+                item.get("relation_type") or item.get("type") or ""
+            ).strip().lower()
+            target_version_id = str(item.get("target_version_id") or "").strip()
+            if relation_type in ALLOWED_RELATIONS and target_version_id in allowed_versions:
+                relations.append(MemoryRelation(relation_type, target_version_id))
+        relations = list({
+            (relation.relation_type, relation.target_version_id): relation
+            for relation in relations
+        }.values())
+        if action == "SKIP" and not any(
+            relation.relation_type == "duplicate_of" for relation in relations
+        ):
             action = "ADD"
-            target = None
-            fallback_reason = "Invalid or unobserved target; downgraded to ADD."
+            fallback_reason = (
+                "SKIP lacked a validated duplicate_of relation; downgraded to ADD."
+            )
         else:
             fallback_reason = ""
-
-        update_type = str(raw.get("update_type") or "").lower()
-        default_type = {
-            "ADD": "add",
-            "UPDATE": "enrichment",
-            "MERGE": "merge",
-            "DELETE": "retraction",
-            "SKIP": "add",
-        }[action]
-        if update_type not in ALLOWED_UPDATE_TYPES:
-            update_type = default_type
 
         sources = [
             source
@@ -507,8 +479,8 @@ class ConstructionAgent:
         return ConstructionDecision(
             candidate_id=candidate.candidate_id,
             action=action,
-            target_memory_id=target,
-            update_type=update_type,
+            target_memory_id=None,
+            update_type="add",
             reason=" ".join(
                 part
                 for part in [str(raw.get("reason") or "").strip(), fallback_reason]
@@ -524,6 +496,7 @@ class ConstructionAgent:
                 raw.get("world_end", candidate.world_end)
             ),
             source_message_ids=sources or candidate.source_message_ids,
+            relations=relations,
         )
 
     @staticmethod
@@ -543,8 +516,8 @@ class ConstructionAgent:
             "source_message_ids": candidate.source_message_ids,
             "entities": candidate.entities,
             "keywords": candidate.keywords,
-            "allowed_target_memory_ids": list(
-                dict.fromkeys(hit.memory_id for hit in (related or []))
+            "allowed_related_version_ids": list(
+                dict.fromkeys(hit.version_id for hit in (related or []))
             ),
         }
 
@@ -587,7 +560,7 @@ class ConstructionAgent:
             return empty
         rendered = "\n".join(
             (
-                f"### {skill.name}\n"
+                f"### {skill.name} [{skill.skill_id}_v{skill.version}]\n"
                 f"**When:** {skill.description}\n"
                 "**Do:**\n"
                 + "\n".join(f"- {item}" for item in skill.content)
@@ -595,17 +568,44 @@ class ConstructionAgent:
             for skill in skills
         )
         return (
-            "The following Construction Skills are learned behavioral priors "
-            "internalized from earlier runtime experience. A retrieved Skill "
-            "may guide extraction only when the current messages "
-            "contain direct evidence for its complete observable `When` trigger. "
-            "A shared topic, entity type, or activity word is not a trigger. "
-            "System rules, the source messages, and evidence fidelity always "
-            "override a Skill. Skills cannot request UPDATE, MERGE, DELETE, or "
-            "other database operations. Never invent facts, and ignore a Skill "
-            "when its trigger or premise does not fit the current session.\n\n"
+            "The following Construction Skills are optional learned process "
+            "references. Apply one only when its complete observable `When` "
+            "condition is supported by the current input. Shared topic words "
+            "are not enough. Skills may guide C1 extraction or C2 relation "
+            "judgment, but cannot override evidence or request storage "
+            "mutation. Ignore any inapplicable instruction.\n\n"
             + rendered
         )
+
+    @staticmethod
+    def _usable_skills(skills: list[SkillRecord]) -> list[SkillRecord]:
+        forbidden = re.compile(
+            r"\b(update|merge|delete|overwrite|replace|retract)\b[^.\n]{0,80}"
+            r"\b(memory|record|database|version|target)\b|"
+            r"\b(memory|record|database|version|target)\b[^.\n]{0,80}"
+            r"\b(update|merge|delete|overwrite|replace|retract)\b",
+            re.IGNORECASE,
+        )
+        usable: list[SkillRecord] = []
+        for skill in skills:
+            items = [item for item in skill.content if not forbidden.search(item)]
+            if items:
+                usable.append(skill.model_copy(update={"content": items}))
+        return usable
+
+    @property
+    def applied_skill_version_ids(self) -> list[str]:
+        return list(self._applied_skill_version_ids)
+
+    @staticmethod
+    def _validated_applied_skills(data: dict, skills: list[SkillRecord]) -> list[str]:
+        allowed = {f"{skill.skill_id}_v{skill.version}" for skill in skills}
+        values = data.get("applied_skill_ids")
+        if not isinstance(values, list):
+            return []
+        return list(dict.fromkeys(
+            str(value) for value in values if str(value) in allowed
+        ))
 
     @staticmethod
     def _clean_string_list(value: object) -> list[str]:
@@ -630,21 +630,6 @@ class ConstructionAgent:
             return None
         text = str(value).strip()
         return text or None
-
-    @staticmethod
-    def _normalized_key(value: object) -> str:
-        return re.sub(r"[^a-z0-9\u3400-\u9fff]+", "", str(value or "").lower())
-
-    @staticmethod
-    def _logical_memory_id(
-        target_id: str | None,
-        related: list[MemoryHit],
-    ) -> str | None:
-        """Normalize a displayed version ID to its logical memory ID."""
-        for hit in related:
-            if target_id == hit.version_id:
-                return hit.memory_id
-        return target_id
 
     @staticmethod
     def _parse_json(text: str) -> dict:

@@ -141,9 +141,7 @@ class SkillPayloadValidator:
                    for word in ["when", "if", "use", "apply", "before", "during"]):
             errors.append("description lacks trigger condition wording")
 
-        # Side contracts are deterministic and must survive candidate
-        # generation and publication. Construction is extraction-only; the
-        # program owns append/dedup behavior.
+        # Side contracts must survive candidate generation and publication.
         normalized_side = (side or "").lower()
         if normalized_side == "construction":
             unsupported_kind = re.search(
@@ -169,11 +167,11 @@ class SkillPayloadValidator:
                 )
             if re.search(
                 r"\b(?:update|merge|delete|overwrite|replace|retract|"
-                r"supersede|target)\b[^.\n]{0,80}\b(?:memory|memories|"
+                r"target)\b[^.\n]{0,80}\b(?:memory|memories|"
                 r"memory_id|version|record|database)\b|"
                 r"\b(?:memory|memories|memory_id|version|record|database)\b"
                 r"[^.\n]{0,80}\b(?:update|merge|delete|overwrite|replace|"
-                r"retract|supersede|target)\b",
+                r"retract|target)\b",
                 combined,
                 re.IGNORECASE,
             ):
@@ -182,8 +180,19 @@ class SkillPayloadValidator:
                 )
 
         if normalized_side == "access" and re.search(
-            r"\b(return|answer)\s+(?:with\s+)?the\s+(?:known|expected|"
-            r"reference|gold)\s+answer\b",
+            r"\b(?:repeat|retry|continue|loop)\b[^.\n]{0,60}"
+            r"\b(?:search|retriev|tool|step)\b|"
+            r"\b(?:standalone|separate)\s+(?:llm\s+)?rerank",
+            combined,
+            re.IGNORECASE,
+        ):
+            errors.append("access Skill requests a forbidden agent loop or reranker")
+
+        if normalized_side == "access" and re.search(
+            r"\bno information available\b|\babstain\b|"
+            r"\b(?:return|respond|say|state)\s+(?:with\s+)?(?:exactly\s+)?"
+            r"(?:the\s+)?(?:answer|response)\b|"
+            r"\b(?:known|expected|reference|gold)\s+answer\b",
             combined,
             re.IGNORECASE,
         ):

@@ -88,19 +88,13 @@ class ConstructionConfig(BaseModel):
     max_candidates_per_session: int = 30
     related_memory_limit: int = 10
     max_related_pool: int = 24
-    # Legacy compatibility knobs. The minimal runtime uses one extraction
-    # call followed by deterministic ADD/SKIP and exposes no CRUD search loop.
-    max_search_more_calls: int = 0
-    # Runtime Skill retrieval is two-stage: hybrid candidate generation,
-    # followed by a strict applicability reranker that may abstain.
+    # Skill candidate routing is deterministic; C1/C2 decide applicability.
     skill_candidate_k: int = 10
     skill_top_k: int = 2
     skill_disclose_k: int = 5
-    # A Skill is optional guidance, not mandatory context.  Runtime retrieval
-    # may abstain when no trigger description is sufficiently relevant.
+    # A Skill is optional guidance, not mandatory context. Deterministic
+    # routing may return no Skill below this relevance threshold.
     skill_min_score: float = 0.20
-    exact_duplicate_threshold: float = 1.0
-    semantic_duplicate_candidate_threshold: float = 0.88
 
 
 class RetrievalConfig(BaseModel):
@@ -126,20 +120,16 @@ class RetrievalConfig(BaseModel):
 
 
 class AccessConfig(BaseModel):
-    mode: str = "agentic"
-    max_steps: int = 6
-    max_steps_per_question: int = 6
-    max_search_calls: int = 4
-    max_inspect_calls: int = 2
-    memory_top_k: int = 5
+    mode: str = "plan_then_answer"
     skill_candidate_k: int = 10
     skill_top_k: int = 2
     skill_disclose_k: int = 5
     skill_min_score: float = 0.20
-    result_top_k: int = 8
     max_source_messages: int = 8
-    candidate_top_k: int = 60
-    evidence_top_k: int = 16
+    initial_top_k: int = 16
+    supplemental_top_k: int = 12
+    context_top_k: int = 32
+    max_additional_queries: int = 3
 
 
 class TrainingConfig(BaseModel):
@@ -159,8 +149,8 @@ class TrainingConfig(BaseModel):
 class PromptsConfig(BaseModel):
     construction_extraction: str = "prompts/construction_extraction.md"
     construction_decision: str = "prompts/construction_decision.md"
-    access: str = "prompts/access.md"
-    access_v2: str = "prompts/access_v2.md"
+    access_plan: str = "prompts/access_plan.md"
+    access_answer: str = "prompts/access_answer.md"
     diagnosis_answer: str = "prompts/diagnosis/answer_failure.md"
     diagnosis_access: str = "prompts/diagnosis/access_failure.md"
     diagnosis_cons_screening: str = (

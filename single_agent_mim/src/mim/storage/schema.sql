@@ -230,6 +230,39 @@ CREATE TABLE IF NOT EXISTS memory_version_parent_edges (
 CREATE INDEX IF NOT EXISTS idx_memory_parent
 ON memory_version_parent_edges(parent_version_id, child_version_id);
 
+-- Append-only semantic links inferred during Construction C2. These links do
+-- not close, overwrite, or mutate either memory version.
+CREATE TABLE IF NOT EXISTS memory_relation_edges (
+    source_version_id  TEXT NOT NULL,
+    target_version_id  TEXT NOT NULL,
+    relation_type      TEXT NOT NULL,
+    commit_id          INTEGER NOT NULL,
+    decision_id        TEXT NOT NULL,
+    PRIMARY KEY (source_version_id, target_version_id, relation_type),
+    FOREIGN KEY (source_version_id) REFERENCES memory_versions(version_id),
+    FOREIGN KEY (target_version_id) REFERENCES memory_versions(version_id),
+    FOREIGN KEY (commit_id) REFERENCES construction_commits(commit_id),
+    FOREIGN KEY (decision_id) REFERENCES construction_decisions(decision_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_memory_relation_target
+ON memory_relation_edges(target_version_id, relation_type);
+
+-- Every C2 relation is retained, including duplicate relations for SKIP
+-- decisions that intentionally create no source memory version.
+CREATE TABLE IF NOT EXISTS construction_relation_edges (
+    decision_id         TEXT NOT NULL REFERENCES construction_decisions(decision_id),
+    candidate_id        TEXT NOT NULL REFERENCES memory_candidates(candidate_id),
+    source_version_id   TEXT REFERENCES memory_versions(version_id),
+    target_version_id   TEXT NOT NULL REFERENCES memory_versions(version_id),
+    relation_type       TEXT NOT NULL,
+    commit_id           INTEGER NOT NULL REFERENCES construction_commits(commit_id),
+    PRIMARY KEY (decision_id, target_version_id, relation_type)
+);
+
+CREATE INDEX IF NOT EXISTS idx_construction_relation_candidate
+ON construction_relation_edges(candidate_id, relation_type);
+
 -- ── Materialized Lineage Closure ──────────────────────────
 
 CREATE TABLE IF NOT EXISTS memory_lineage_messages (

@@ -26,8 +26,7 @@ You receive:
 1. the question and reference answer;
 2. memory versions that existed at the frozen snapshot and descend from the
    dataset's annotated evidence messages;
-3. every action in the natural search chain and the complete data returned by
-   each action.
+3. the mandatory initial retrieval and the one A1-planned supplemental round.
 
 Do not ask for or infer from raw conversation text. Decide which available
 memory versions are actually necessary for the answer, then check whether each
@@ -50,7 +49,7 @@ defect: judge every useful memory that actually existed.
 
 
 class AccessDiagnosisAgent:
-    """Judge whether useful snapshot memories were returned by the search chain."""
+    """Judge whether useful snapshot memories reached the fixed Access context."""
 
     def __init__(
         self,

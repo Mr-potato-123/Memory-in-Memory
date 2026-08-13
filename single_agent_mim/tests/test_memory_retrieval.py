@@ -216,11 +216,11 @@ def test_access_v2_query_plan_is_deterministic():
     first = StableAccessAgent.build_query_plan(question)
     second = StableAccessAgent.build_query_plan(question)
     assert first == second
-    assert first["answer_type"] == "date"
     assert first["entities"] == ["Evan"]
+    assert first["original_query"] == question
 
 
-def test_access_v2_drops_legacy_abstention_instructions():
+def test_access_v2_filters_case_answering_but_keeps_retrieval_guidance():
     skill = SkillRecord(
         skill_id="legacy", version=1, side=Side.ACCESS,
         name="Legacy subject guard",
@@ -230,9 +230,24 @@ def test_access_v2_drops_legacy_abstention_instructions():
             "If no direct memory exists, answer No information available.",
         ],
     )
-    assert StableAccessAgent._retrieval_guidance(skill) == [
-        "Re-search with the named subject and exact date."
-    ]
+    usable = StableAccessAgent._usable_skills([skill])
+    assert StableAccessAgent._skill_payload(usable) == [{
+        "skill_id": "legacy_v1",
+        "name": "Legacy subject guard",
+        "when": "When subject evidence may be incomplete.",
+        "guidance": ["Re-search with the named subject and exact date."],
+    }]
+
+
+def test_access_v2_counts_only_explicitly_applied_skills():
+    skill = SkillRecord(
+        skill_id="coverage", version=2, side=Side.ACCESS,
+        name="Coverage", description="When a list requires distinct evidence.",
+        content=["Preserve evidence for every distinct item."],
+    )
+    assert StableAccessAgent._applied_skill_ids(
+        {"applied_skill_ids": ["coverage_v2", "unknown_v1"]}, [skill]
+    ) == ["coverage_v2"]
 
 
 def test_access_may_answer_after_one_search_when_model_judges_full(
@@ -448,7 +463,7 @@ class _CountingMock(MockClient):
         return super().generate(messages, **kwargs)
 
 
-def test_construction_plan_is_deterministic_and_needs_no_model_call(tmp_path: Path):
+def test_construction_c2_adds_new_candidates_in_one_model_call(tmp_path: Path):
     store, embedder, _ = _components(tmp_path)
     model = _CountingMock()
     candidates = [
@@ -472,6 +487,10 @@ def test_construction_plan_is_deterministic_and_needs_no_model_call(tmp_path: Pa
         )
     ]
     agent = ConstructionAgent(model, store, embedder)
+    model.set_script([model._make_resp(json.dumps({"decisions": [
+        {"candidate_id": "cand_1", "action": "ADD", "relations": []},
+        {"candidate_id": "cand_2", "action": "ADD", "relations": []},
+    ]}))])
 
     plan = agent.build_plan(
         base_commit_id=None,
@@ -480,7 +499,7 @@ def test_construction_plan_is_deterministic_and_needs_no_model_call(tmp_path: Pa
         skills=[],
     )
 
-    assert model.calls == 0
+    assert model.calls == 1
     assert len(plan.decisions) == 2
     assert all(decision.action == "ADD" for decision in plan.decisions)
 
@@ -513,78 +532,17 @@ def test_construction_plan_skips_only_exact_active_duplicate(
     )
     agent = ConstructionAgent(model, store, embedder)
     monkeypatch.setattr(agent, "_related_memories", lambda **_: [exact])
+    model.set_script([model._make_resp(json.dumps({"decisions": [{
+        "candidate_id": "cand_exact",
+        "action": "SKIP",
+        "relations": [{"type": "duplicate_of", "target_version_id": "mem_james_v1"}],
+    }]}))])
 
     plan = agent.build_plan(0, "conv", [candidate], [])
 
     assert plan.decisions[0].action == "SKIP"
-    assert "already active" in plan.decisions[0].reason
-    assert model.calls == 0
-
-
-def test_construction_crud_gate_rejects_same_topic_but_different_memory(
-    tmp_path: Path,
-):
-    store, embedder, _ = _components(tmp_path)
-    agent = ConstructionAgent(
-        MockClient(ModelConfig(provider="mock", model="mock")),
-        store,
-        embedder,
-        semantic_crud_threshold=0.88,
-    )
-    candidate = MemoryCandidate(
-        candidate_id="cand_instrument",
-        memory_kind="event",
-        subject="James",
-        predicate="recreation",
-        object_text=None,
-        content="James is learning to play an instrument.",
-        world_start=None,
-        world_end=None,
-        source_message_ids=["conv:D1:1"],
-        entities=["James", "instrument"],
-        keywords=["instrument"],
-        embedding=embedder.encode(
-            ["James is learning to play an instrument."]
-        )[0],
-    )
-
-    wrong_person = MemoryHit(
-        memory_id="mem_john",
-        version_id="mem_john_v1",
-        subject="John",
-        predicate="recreation",
-        memory_kind="event",
-        content="John enjoys video games.",
-        entities=["John", "video games"],
-        score=0.99,
-        matched_paths=["semantic"],
-    )
-    broad_same_person = MemoryHit(
-        memory_id="mem_james_games",
-        version_id="mem_james_games_v1",
-        subject="James",
-        predicate="recreation",
-        memory_kind="event",
-        content="James enjoys video games.",
-        entities=["James", "video games"],
-        score=0.70,
-        matched_paths=["key", "semantic"],
-    )
-    same_logical_event = MemoryHit(
-        memory_id="mem_james_instrument",
-        version_id="mem_james_instrument_v1",
-        subject="James",
-        predicate="recreation",
-        memory_kind="event",
-        content="James recently began music practice.",
-        entities=["James", "instrument"],
-        score=0.72,
-        matched_paths=["key"],
-    )
-
-    assert not agent._is_crud_compatible(candidate, wrong_person)
-    assert not agent._is_crud_compatible(candidate, broad_same_person)
-    assert agent._is_crud_compatible(candidate, same_logical_event)
+    assert plan.decisions[0].relations[0].relation_type == "duplicate_of"
+    assert model.calls == 1
 
 
 def test_construction_plan_does_not_mutate_similar_existing_memory(
@@ -633,6 +591,14 @@ def test_construction_plan_does_not_mutate_similar_existing_memory(
         "_related_memories",
         lambda **_: [related],
     )
+    model.set_script([model._make_resp(json.dumps({"decisions": [
+        {"candidate_id": "cand_1", "action": "ADD", "relations": [
+            {"type": "unrelated", "target_version_id": "mem_james_v1"}
+        ]},
+        {"candidate_id": "cand_2", "action": "ADD", "relations": [
+            {"type": "unrelated", "target_version_id": "mem_james_v1"}
+        ]},
+    ]}))])
 
     plan = agent.build_plan(
         base_commit_id=0,
@@ -643,4 +609,4 @@ def test_construction_plan_does_not_mutate_similar_existing_memory(
 
     assert [decision.action for decision in plan.decisions] == ["ADD", "ADD"]
     assert all(decision.target_memory_id is None for decision in plan.decisions)
-    assert model.calls == 0
+    assert model.calls == 1

@@ -6,7 +6,7 @@ Diagnosis packages and runtime traces are intentionally not provided.
 Resolve every candidate exactly once. Candidates may encode REPAIR, ADOPT, or
 PRESERVE_AVOID, but the official runtime Skill remains only `name`,
 `description`, and `content`. Merge candidates only when their reusable
-retrieval, evidence-checking, or answer-composition actions are operationally
+  A1 retrieval-planning or A2 evidence-composition actions are operationally
 equivalent. Topic or cluster overlap alone is insufficient.
 
 Prefer fewer, precise Skills. Do not create case-specific rules, and do not
@@ -19,6 +19,8 @@ QUALITY BAR:
 - `content` must contain only concise executable actions.
 - Reject instructions to infer, guess, or fabricate facts absent from retrieved
   memory. Learned behavior never overrides current evidence or runtime rules.
+- Reject agent loops, standalone reranking instructions, arbitrary repeated
+  searches, and case-specific answers. Skills must fit fixed A1/A2 execution.
 - Narrow or reject a broad topic trigger that would activate indiscriminately.
 - Preserve or sharpen existing boundaries during updates; never silently widen
   them.

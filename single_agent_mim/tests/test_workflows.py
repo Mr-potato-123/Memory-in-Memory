@@ -99,22 +99,19 @@ def _runtime_script(model: MockClient, answer: str = "Seattle") -> None:
             "source_message_ids": ["conv_test:D1:1"],
         }]})),
         model._make_resp(json.dumps({
-            "action": "search_memory",
-            "arguments": {
-                "query": "Alice Seattle residence",
-                "strategy": "hybrid",
-                "top_k": 5,
-            },
-            "reason": "Retrieve residence.",
+            "additional_queries": [],
+            "keywords": [],
+            "entities": [],
+            "include_history": False,
+            "time_mode": "none",
+            "evidence_requirements": ["current residence"],
+            "applied_skill_ids": [],
         })),
         model._make_resp(json.dumps({
-            "action": "answer",
-            "arguments": {
-                "answer": answer,
-                "evidence_version_ids": ["mem_conv_test_0001_v1"],
-                "confidence": 0.9,
-            },
-            "reason": "Visible memory supports the answer.",
+            "answer": answer,
+            "selected_evidence_ids": ["mem_conv_test_0001_v1"],
+            "coverage": [],
+            "applied_skill_ids": [],
         })),
     ])
 
@@ -213,7 +210,7 @@ def test_evaluate_runs_frozen_runtime_without_maintenance(tmp_path: Path):
     assert report.total_qa == 1
     assert report.overall_f1 == 1.0
     assert report.protocol_errors == 0
-    assert report.avg_construction_steps == 1.0
+    assert report.avg_construction_steps == 2.0
 
 
 def test_failure_workflow_returns_independent_reports_and_search_steps(

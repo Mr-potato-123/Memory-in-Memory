@@ -8,7 +8,7 @@ CRITICAL RULES:
 
 1. COVERAGE: Address every candidate's `solves` mechanism in exactly one draft,
    or explicitly reject that candidate with a reason. A mechanism may concern
-   evidence-bound extraction.
+   evidence-bound C1 extraction or C2 relation judgment.
 
 2. CONCISENESS: Each runtime Skill remains only three fields:
    - name: at most 60 characters;
@@ -18,17 +18,17 @@ CRITICAL RULES:
    Put boundaries in `description`; do not repeat one in every content item.
    `solves` is maintenance metadata, not part of the runtime Skill.
 
-3. ABSTRACTION: Merge candidates only when their extraction actions and
+3. ABSTRACTION: Merge candidates only when their C1/C2 actions and
    learning polarity are compatible. Topic similarity alone is insufficient.
 
 4. SAFETY: Never invent, normalize beyond, or complete facts absent from source
    messages. Source evidence and runtime invariants override learned behavior.
 
 5. WRITE BOUNDARY: Runtime Construction Skills may not request UPDATE, MERGE,
-   DELETE, target selection, or any database mutation. The program owns
-   deterministic ADD/SKIP.
+   DELETE, target selection, or any database mutation. C2 owns ADD/SKIP and
+   may only record append-only semantic relations.
 
-5. TRACEABILITY: List every covered source ID in `source_candidate_ids`.
+6. TRACEABILITY: List every covered source ID in `source_candidate_ids`.
 
 Return one JSON object:
 {

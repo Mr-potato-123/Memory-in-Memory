@@ -3,6 +3,7 @@
 from .sqlite_store import (
     SQLiteMemoryStore,
     MemoryCandidate,
+    MemoryRelation,
     ConstructionDecision,
     ConstructionPlan,
     ConstructionCommit,
@@ -16,6 +17,7 @@ from .vector_codec import encode_vector, decode_vector
 __all__ = [
     "SQLiteMemoryStore",
     "MemoryCandidate",
+    "MemoryRelation",
     "ConstructionDecision",
     "ConstructionPlan",
     "ConstructionCommit",

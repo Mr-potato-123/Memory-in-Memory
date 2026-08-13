@@ -24,15 +24,10 @@ from ..schemas import (
 from ..storage.sqlite_store import SQLiteMemoryStore
 from ..retrieval.embedder import Embedder
 from ..retrieval.hybrid import HybridRetriever
-from ..skills import (
-    LLMSkillApplicabilityReranker,
-    RuntimeSkillQueryBuilder,
-    SkillBank,
-)
+from ..skills import RuntimeSkillQueryBuilder, SkillBank
 from ..llm import create_client
 from ..llm.base import ModelClient
 from ..agents.construction import ConstructionAgent
-from ..agents.access import AccessAgent
 from ..agents.access_v2 import StableAccessAgent
 from ..artifacts import RunDir
 from ..tracing import TraceRecorder, ConstructionTrace, AccessTrace
@@ -133,14 +128,10 @@ class MiMRuntime:
             config.prompts.construction_decision,
         )
         access_mode = config.access.mode.casefold()
-        self._access_mode = access_mode
-        if access_mode not in {"agentic", "retrieve_rerank_answer"}:
+        if access_mode != "plan_then_answer":
             raise ValueError(f"Unsupported access.mode: {config.access.mode}")
-        access_prompt = _load_prompt(
-            config.prompts.access_v2
-            if access_mode == "retrieve_rerank_answer"
-            else config.prompts.access,
-        )
+        access_plan_prompt = _load_prompt(config.prompts.access_plan)
+        access_answer_prompt = _load_prompt(config.prompts.access_answer)
 
         # Construction Agent
         self._construction_agent = ConstructionAgent(
@@ -152,43 +143,25 @@ class MiMRuntime:
             max_candidates_per_session=getattr(config.construction, 'max_candidates_per_session', 30),
             related_memory_limit=getattr(config.construction, 'related_memory_limit', 10),
             max_related_pool=getattr(config.construction, 'max_related_pool', 24),
-            max_search_more_calls=getattr(config.construction, 'max_search_more_calls', 0),
-            semantic_crud_threshold=getattr(
-                config.construction,
-                'semantic_duplicate_candidate_threshold',
-                0.88,
-            ),
         )
 
         # Access Agent
-        if access_mode == "retrieve_rerank_answer":
-            self._access_agent = StableAccessAgent(
-                model=self._runtime_model,
-                store=self._store,
-                retriever=self._retriever,
-                prompt_template=access_prompt,
-                candidate_top_k=config.access.candidate_top_k,
-                evidence_top_k=config.access.evidence_top_k,
-                event_sink=event_sink,
-            )
-        else:
-            self._access_agent = AccessAgent(
-                model=self._runtime_model,
-                store=self._store,
-                retriever=self._retriever,
-                prompt_template=access_prompt,
-                max_steps=config.access.max_steps_per_question,
-                max_search_calls=config.access.max_search_calls,
-                max_inspect_calls=config.access.max_inspect_calls,
-                event_sink=event_sink,
-            )
+        self._access_agent = StableAccessAgent(
+            model=self._runtime_model,
+            store=self._store,
+            retriever=self._retriever,
+            planning_prompt=access_plan_prompt,
+            answer_prompt=access_answer_prompt,
+            initial_top_k=config.access.initial_top_k,
+            supplemental_top_k=config.access.supplemental_top_k,
+            context_top_k=config.access.context_top_k,
+            max_additional_queries=config.access.max_additional_queries,
+            event_sink=event_sink,
+        )
 
         # Skill Bank
         self._skill_bank = skill_bank
         self._skill_query_builder = RuntimeSkillQueryBuilder()
-        self._skill_reranker = LLMSkillApplicabilityReranker(
-            self._runtime_model
-        )
 
         # Trace
         self._tracer: Optional[TraceRecorder] = None
@@ -227,7 +200,11 @@ class MiMRuntime:
         # Pre compute prompt hash
         import hashlib
         prompt_hash = hashlib.sha256(
-            self._construction_agent._extraction_prompt.encode("utf-8")
+            (
+                self._construction_agent._extraction_prompt
+                + "\n--- C2 ---\n"
+                + self._construction_agent._decision_prompt
+            ).encode("utf-8")
         ).hexdigest()[:16]
 
         for s_idx, session in enumerate(conversation.sessions):
@@ -293,15 +270,13 @@ class MiMRuntime:
                     query=session_text,
                     side=Side.CONSTRUCTION,
                     embedding_index=self._embedder,  # type: ignore[arg-type]
-                    # Top-3 reranker experiment: allow up to three
-                    # independently applicable Construction Skills.  The
-                    # config remains the upper bound so this is reversible
-                    # through the experiment config.
+                    # Deterministic routing keeps C1/C2 at exactly two model
+                    # calls; each stage decides whether guidance applies.
                     top_k=min(3, self._cfg.construction.skill_top_k),
                     candidate_k=self._cfg.construction.skill_candidate_k,
                     disclose_k=self._cfg.construction.skill_disclose_k,
                     min_score=self._cfg.construction.skill_min_score,
-                    reranker=self._skill_reranker,
+                    reranker=None,
                     query_segments=session_segments,
                     trace_id=(
                         f"skilltrace_construction_{self._run_id}_"
@@ -334,6 +309,10 @@ class MiMRuntime:
                     base_commit_id=self._latest_commit_id,
                 )
                 self._last_construction_steps += 1
+                applied_construction_skill_ids = (
+                    self._construction_agent.applied_skill_version_ids
+                )
+                ct.skill_ids = applied_construction_skill_ids
                 ct.candidates_count = len(candidates)
                 self._emit(
                     "construction_candidates",
@@ -342,18 +321,24 @@ class MiMRuntime:
                     candidate_count=len(candidates),
                 )
 
-                # Stage B is deterministic ADD/SKIP; there is no second LLM
-                # call and Skills never issue storage mutations directly.
+                # C2 is the fixed second model call. It judges ADD/SKIP and
+                # append-only relations; Skills never mutate storage directly.
                 plan = self._construction_agent.build_plan(
                     base_commit_id=self._latest_commit_id,
                     conversation_id=conversation.conversation_id,
                     candidates=candidates,
                     skills=skills,
                 )
+                self._last_construction_steps += 1
                 ct.decisions = [
                     {"candidate_id": d.candidate_id, "action": d.action,
                      "target_memory_id": d.target_memory_id, "update_type": d.update_type,
-                     "reason": d.reason}
+                     "reason": d.reason,
+                     "relations": [
+                         {"type": relation.relation_type,
+                          "target_version_id": relation.target_version_id}
+                         for relation in d.relations
+                     ]}
                     for d in plan.decisions
                 ]
 
@@ -366,9 +351,7 @@ class MiMRuntime:
                     run_id=self._run_id,
                     runtime_model=self._cfg.models["runtime"].model,
                     prompt_hash=prompt_hash,
-                    skill_version_ids=[
-                        f"{s.skill_id}_v{s.version}" for s in skills
-                    ],
+                    skill_version_ids=applied_construction_skill_ids,
                     skill_trace=(
                         construction_skill_trace.model_dump(mode="json")
                         if construction_skill_trace
@@ -449,20 +432,15 @@ class MiMRuntime:
                 query=query,
                 side=Side.ACCESS,
                 embedding_index=self._embedder,  # type: ignore[arg-type]
-                # Top-3 reranker experiment: allow up to three independently
-                # applicable Access Skills after the first default search.
+                # Retrieve at most three candidate Skills after the mandatory
+                # first search. A1/A2 decide whether each is applicable.
                 top_k=min(3, self._cfg.access.skill_top_k),
                 candidate_k=self._cfg.access.skill_candidate_k,
                 disclose_k=self._cfg.access.skill_disclose_k,
                 min_score=self._cfg.access.skill_min_score,
-                # Access V2 is deliberately deterministic up to the evidence
-                # rerank. Use stable first-stage Skill routing there; the
-                # legacy agent loop retains the LLM applicability router.
-                reranker=(
-                    None
-                    if self._access_mode == "retrieve_rerank_answer"
-                    else self._skill_reranker
-                ),
+                # Fixed-topology Access uses deterministic Skill routing; A1
+                # decides applicability inside its one planning call.
+                reranker=None,
                 trace_id=(
                     f"skilltrace_access_recovery_{self._run_id}_"
                     f"{self._conversation_id}_{question.qa_id}"

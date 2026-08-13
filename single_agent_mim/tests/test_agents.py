@@ -53,11 +53,6 @@ def test_access_action_parser_rejects_non_json():
     assert AccessAgent._parse_action("not an action") is None
 
 
-def test_construction_normalizes_version_target_to_logical_memory():
-    related = [SimpleNamespace(version_id="mem_1_v2", memory_id="mem_1")]
-    assert ConstructionAgent._logical_memory_id("mem_1_v2", related) == "mem_1"
-
-
 def test_failure_agent_keeps_blind_reanswer_reference_isolated():
     model = _CapturingMock()
     model.set_script([model._make_resp("Seattle")])

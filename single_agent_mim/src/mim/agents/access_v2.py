@@ -1,8 +1,4 @@
-"""Stable retrieve-rerank-answer access path.
-
-Unlike the legacy agent loop, this path has a deterministic retrieval plan and
-exactly two model decisions: evidence reranking and final answering.
-"""
+"""Fixed-topology Access: initial retrieval, A1 plan, one retrieval round, A2 answer."""
 
 from __future__ import annotations
 
@@ -27,10 +23,11 @@ _STOP = {
     "or", "the", "their", "they", "to", "was", "were", "what", "when",
     "where", "which", "who", "why", "with", "would",
 }
+_TIME_MODES = {"none", "current", "point", "before", "after", "range"}
 
 
 class StableAccessAgent:
-    """Deterministic retrieval followed by one rerank and one answer call."""
+    """Two model decisions with no agent loop and no standalone reranker."""
 
     def __init__(
         self,
@@ -38,49 +35,43 @@ class StableAccessAgent:
         store: SQLiteMemoryStore,
         retriever: HybridRetriever,
         *,
-        prompt_template: str,
-        candidate_top_k: int = 60,
-        evidence_top_k: int = 16,
+        planning_prompt: str,
+        answer_prompt: str,
+        initial_top_k: int = 16,
+        supplemental_top_k: int = 12,
+        context_top_k: int = 32,
+        max_additional_queries: int = 3,
         event_sink: Callable[[dict[str, Any]], None] | None = None,
     ):
         self._model = model
         self._store = store
         self._retriever = retriever
-        self._prompt = prompt_template
-        self._candidate_top_k = max(1, candidate_top_k)
-        self._evidence_top_k = max(1, min(evidence_top_k, candidate_top_k))
+        self._planning_prompt = planning_prompt
+        self._answer_prompt = answer_prompt
+        self._initial_top_k = max(1, initial_top_k)
+        self._supplemental_top_k = max(1, supplemental_top_k)
+        self._context_top_k = max(self._initial_top_k, context_top_k)
+        self._max_additional_queries = max(0, max_additional_queries)
         self._event_sink = event_sink
 
     @staticmethod
-    def build_query_plan(question: str) -> dict[str, Any]:
-        """Build the same plan for the same question without an LLM call."""
-        words = [token for token in _TOKENS.findall(question) if token.casefold() not in _STOP]
-        keywords = list(dict.fromkeys(words))[:12]
-        entities = [
-            value for value in dict.fromkeys(_CAPITALIZED.findall(question))
-            if value.casefold() not in _STOP
-        ][:8]
-        lowered = question.casefold()
-        if lowered.startswith("when"):
-            answer_type = "date"
-        elif lowered.startswith("who"):
-            answer_type = "person"
-        elif lowered.startswith("where"):
-            answer_type = "place"
-        elif "how many" in lowered:
-            answer_type = "count"
-        elif lowered.startswith(("why", "how")):
-            answer_type = "explanation"
-        else:
-            answer_type = "fact"
+    def build_query_profile(question: str) -> dict[str, Any]:
+        """Stable lexical anchors for the mandatory first retrieval."""
+        words = [
+            token for token in _TOKENS.findall(question)
+            if token.casefold() not in _STOP
+        ]
         return {
-            "query": question.strip(),
-            "keywords": keywords,
-            "entities": entities,
-            "answer_type": answer_type,
-            "requires_broad_coverage": answer_type in {"count", "explanation"}
-                or any(term in lowered for term in ("all ", "things", "names", "kinds")),
+            "original_query": question.strip(),
+            "keywords": list(dict.fromkeys(words))[:12],
+            "entities": [
+                value for value in dict.fromkeys(_CAPITALIZED.findall(question))
+                if value.casefold() not in _STOP
+            ][:8],
         }
+
+    # Kept as an alias for old diagnostics/tests.
+    build_query_plan = build_query_profile
 
     def answer(
         self,
@@ -91,32 +82,17 @@ class StableAccessAgent:
         access_run_id: str | None = None,
         recovery_skill_loader: Callable[[dict[str, Any]], list[SkillRecord]] | None = None,
     ) -> AccessResult:
-        access_run_id = access_run_id or f"access_v2_{uuid.uuid4().hex[:12]}"
+        access_run_id = access_run_id or f"access_v3_{uuid.uuid4().hex[:12]}"
         started = time.time()
-        plan = self.build_query_plan(question.question)
-        filters = SearchFilters(
-            conversation_id=conversation_id,
-            as_of_commit=snapshot_commit_id,
-            entities=plan["entities"],
-            include_history=False,
-        )
-        candidates = self._retriever.search(
-            conversation_id=conversation_id,
-            snapshot_commit_id=snapshot_commit_id,
-            query=plan["query"],
-            strategy="hybrid",
-            filters=filters,
-            top_k=self._candidate_top_k,
-            keywords=plan["keywords"],
-            query_expansions=[],
-            depth="deep",
+        profile = self.build_query_profile(question.question)
+        initial = self._search(
+            conversation_id, snapshot_commit_id, profile["original_query"],
+            profile["keywords"], profile["entities"], self._initial_top_k,
         )
         first_observation = {
-            "strategy": "hybrid",
-            "query": plan["query"],
-            "keywords": plan["keywords"],
-            "hit_count": len(candidates),
-            "hits": [self._compact_hit(hit) for hit in candidates[:8]],
+            "query_profile": profile,
+            "hit_count": len(initial),
+            "hits": [self._compact_hit(hit) for hit in initial],
         }
 
         selected_skills = list(skills)
@@ -124,39 +100,62 @@ class StableAccessAgent:
             try:
                 selected_skills.extend(recovery_skill_loader({
                     "question": question.question,
-                    "query_plan": plan,
+                    "query_profile": profile,
                     "first_search": first_observation,
                 }))
             except Exception as exc:
-                self._emit("access_v2_skill_error", qa_id=question.qa_id, error=str(exc))
+                self._emit("access_skill_error", qa_id=question.qa_id, error=str(exc))
         selected_skills = list({skill.skill_id: skill for skill in selected_skills}.values())
-        # A routed legacy Skill is not "used" when all of its content is an
-        # answer/abstention command rejected by the Access V2 adapter.
-        selected_skills = [
-            skill for skill in selected_skills if self._retrieval_guidance(skill)
-        ]
+        selected_skills = self._usable_skills(selected_skills)
 
-        ranked, rerank_response = self._rerank(question, plan, candidates, selected_skills)
-        answer, evidence_ids, answer_response, error = self._answer(question, plan, ranked)
+        plan, planning_response, planning_error, a1_skill_ids = self._plan(
+            question, profile, initial, selected_skills
+        )
+        supplemental: list[MemoryHit] = []
+        retrieval_keywords = list(dict.fromkeys([
+            *profile["keywords"], *plan["keywords"],
+        ]))
+        retrieval_entities = list(dict.fromkeys([
+            *profile["entities"], *plan["entities"],
+        ]))
+        for query in plan["additional_queries"]:
+            supplemental.extend(self._search(
+                conversation_id,
+                snapshot_commit_id,
+                query,
+                retrieval_keywords,
+                retrieval_entities,
+                self._supplemental_top_k,
+                include_history=plan["include_history"],
+                time_mode=plan["time_mode"],
+                target_time=plan["target_time"],
+                target_time_end=plan["target_time_end"],
+            ))
+        context = self._merge_context(initial, supplemental)
+        answer, evidence_ids, answer_response, answer_error, a2_skill_ids = self._answer(
+            question, profile, plan, context, selected_skills
+        )
+        applied_skill_ids = list(dict.fromkeys([*a1_skill_ids, *a2_skill_ids]))
+        errors = [error for error in (planning_error, answer_error) if error]
         token_total = sum(
             (response.prompt_tokens or 0) + (response.completion_tokens or 0)
-            for response in (rerank_response, answer_response)
-            if response is not None
+            for response in (planning_response, answer_response) if response is not None
         )
-        latency_ms = int((time.time() - started) * 1000)
-        search_action = AgentAction(
-            action="search_memory",
-            arguments={
-                "strategy": "hybrid", "query": plan["query"],
-                "keywords": plan["keywords"], "entities": plan["entities"],
-                "depth": "deep", "top_k": self._candidate_top_k,
-            },
-            reason="Deterministic Access V2 candidate retrieval.",
+
+        initial_action = AgentAction(
+            action="initial_search",
+            arguments={"query": profile["original_query"], "top_k": self._initial_top_k},
+            reason="Mandatory retrieval from the unmodified question.",
+        )
+        supplemental_action = AgentAction(
+            action="supplemental_search",
+            arguments=plan,
+            reason="One bounded retrieval round from the A1 plan.",
         )
         answer_action = AgentAction(
-            action="answer",
+            action="select_evidence_and_answer",
             arguments={"answer": answer, "evidence_version_ids": evidence_ids},
-            reason="Single grounded answer over reranked evidence.",
+            reason="A2 jointly selected evidence, composed it, and answered.",
         )
         visible = [
             {
@@ -164,144 +163,227 @@ class StableAccessAgent:
                 "context_index": index,
                 "rendered_text": f"[{hit.version_id}] {hit.memory_kind} | {hit.content}",
             }
-            for index, hit in enumerate(ranked)
+            for index, hit in enumerate(context)
         ]
         actions = [
+            self._action_record(access_run_id, 0, initial_action, initial),
+            self._action_record(access_run_id, 1, supplemental_action, supplemental),
             {
-                "action_id": f"{access_run_id}_a000", "step_index": 0,
-                "action_type": "search_memory",
-                "request": search_action.model_dump(mode="json"),
-                "response": {"status": "ok", "query_plan": plan,
-                             "hits": [self._compact_hit(hit) for hit in candidates]},
-                "retrieval_hits": [self._compact_hit(hit) for hit in candidates],
-            },
-            {
-                "action_id": f"{access_run_id}_a001", "step_index": 1,
-                "action_type": "answer",
+                "action_id": f"{access_run_id}_a002", "step_index": 2,
+                "action_type": "select_evidence_and_answer",
                 "request": answer_action.model_dump(mode="json"),
-                "response": {"status": "accepted" if not error else "error",
-                             "answer": answer, "evidence_version_ids": evidence_ids},
+                "response": {
+                    "status": "accepted" if not answer_error else "error",
+                    "answer": answer, "evidence_version_ids": evidence_ids,
+                },
                 "retrieval_hits": [],
             },
         ]
-        prompt_hash = hashlib.sha256(
-            json.dumps({"question": question.question, "plan": plan,
-                        "evidence": [hit.version_id for hit in ranked]},
-                       sort_keys=True).encode("utf-8")
-        ).hexdigest()
+        prompt_hash = hashlib.sha256(json.dumps({
+            "question": question.question,
+            "profile": profile,
+            "plan": plan,
+            "context": [hit.version_id for hit in context],
+            "skills": applied_skill_ids,
+        }, sort_keys=True).encode()).hexdigest()
         return AccessResult(
             answer=answer,
             evidence_ids=evidence_ids,
-            search_trace=[search_action, answer_action],
-            used_skill_ids=[f"{skill.skill_id}_v{skill.version}" for skill in selected_skills],
+            search_trace=[initial_action, supplemental_action, answer_action],
+            used_skill_ids=applied_skill_ids,
             access_run_id=access_run_id,
             answer_prompt_hash=prompt_hash,
             visible_memories=visible,
             action_records=actions,
             total_tokens=token_total,
-            latency_ms=latency_ms,
-            error=error,
+            latency_ms=int((time.time() - started) * 1000),
+            error="; ".join(errors) or None,
             steps=2,
         )
 
-    def _rerank(self, question, plan, candidates, skills):
-        if not candidates:
-            return [], None
-        skill_policy = [
-            {"name": skill.name, "when": skill.description,
-             "retrieval_guidance": self._retrieval_guidance(skill)}
-            for skill in skills
-            if self._retrieval_guidance(skill)
-        ]
-        payload = {
-            "question": question.question,
-            "query_plan": plan,
-            "retrieval_skills": skill_policy,
-            "candidates": [self._compact_hit(hit) for hit in candidates],
-        }
-        prompt = (
-            "Rerank candidate memories for answering the question. Skills are optional "
-            "retrieval hints only: they may affect evidence ranking, but must never force "
-            "an answer or abstention. Prefer direct subject, time, relation, and list-hop "
-            "coverage. Return JSON {\"ranked_version_ids\":[...]} with at most "
-            f"{self._evidence_top_k} unique IDs from candidates."
+    def _search(
+        self, conversation_id: str, commit_id: int, query: str,
+        keywords: list[str], entities: list[str], top_k: int, *,
+        include_history: bool = False, time_mode: str = "none",
+        target_time: str | None = None, target_time_end: str | None = None,
+    ) -> list[MemoryHit]:
+        return self._retriever.search(
+            conversation_id=conversation_id,
+            snapshot_commit_id=commit_id,
+            query=query,
+            strategy="hybrid",
+            filters=SearchFilters(
+                conversation_id=conversation_id,
+                as_of_commit=commit_id,
+                entities=entities,
+                include_history=include_history,
+                time_mode=time_mode,
+                target_time=target_time,
+                target_time_end=target_time_end,
+            ),
+            top_k=top_k,
+            keywords=keywords,
+            query_expansions=[],
+            depth="standard",
         )
-        response = self._model.generate(
-            [{"role": "system", "content": prompt},
-             {"role": "user", "content": json.dumps(payload, ensure_ascii=False)}],
-            temperature=0.0, max_tokens=1200, json_mode=True,
-        )
-        requested: list[str] = []
-        try:
-            data = json.loads(response.text)
-            values = data.get("ranked_version_ids", [])
-            if isinstance(values, list):
-                requested = [str(value) for value in values]
-        except (json.JSONDecodeError, TypeError, ValueError):
-            requested = []
-        by_id = {hit.version_id: hit for hit in candidates}
-        ordered = [by_id[value] for value in requested if value in by_id]
-        seen = {hit.version_id for hit in ordered}
-        ordered.extend(hit for hit in candidates if hit.version_id not in seen)
-        return ordered[:self._evidence_top_k], response
 
-    @staticmethod
-    def _retrieval_guidance(skill: SkillRecord) -> list[str]:
-        """Drop legacy answer/abstention commands at the adapter boundary."""
-        allowed = re.compile(
-            r"\b(search|re-search|retriev|query|keyword|rank|filter|evidence|"
-            r"subject|time|date|memory kind|candidate)\b",
-            re.IGNORECASE,
-        )
-        forbidden = re.compile(
-            r"\b(no information available|abstain|answer|respond|state that|"
-            r"say that|infer|guess)\b",
-            re.IGNORECASE,
-        )
-        return [
-            instruction
-            for instruction in skill.content
-            if allowed.search(instruction) and not forbidden.search(instruction)
-        ]
-
-    def _answer(self, question, plan, evidence):
-        evidence_payload = [self._compact_hit(hit) for hit in evidence]
+    def _plan(self, question, profile, initial, skills):
         response = self._model.generate(
             [
-                {"role": "system", "content": self._prompt},
+                {"role": "system", "content": self._planning_prompt},
                 {"role": "user", "content": json.dumps({
                     "question": question.question,
-                    "query_plan": plan,
-                    "evidence": evidence_payload,
+                    "query_profile": profile,
+                    "initial_memories": [self._compact_hit(hit) for hit in initial],
+                    "access_skills": self._skill_payload(skills),
+                    "limits": {"max_additional_queries": self._max_additional_queries},
                 }, ensure_ascii=False)},
             ],
-            temperature=0.0, max_tokens=1200, json_mode=True,
+            temperature=0.0, max_tokens=1600, json_mode=True,
+        )
+        error = None
+        try:
+            raw = self._parse_json(response.text)
+            plan = self._normalize_plan(raw)
+            applied = self._applied_skill_ids(raw, skills)
+        except (TypeError, ValueError) as exc:
+            plan = self._normalize_plan({})
+            applied = []
+            error = f"Access A1 protocol error: {exc}"
+        return plan, response, error, applied
+
+    def _normalize_plan(self, raw: dict[str, Any]) -> dict[str, Any]:
+        if not isinstance(raw, dict):
+            raise TypeError("plan must be an object")
+        queries = self._strings(raw.get("additional_queries"))[:self._max_additional_queries]
+        time_mode = str(raw.get("time_mode") or "none").lower()
+        return {
+            "additional_queries": queries,
+            "keywords": self._strings(raw.get("keywords"))[:12],
+            "entities": self._strings(raw.get("entities"))[:8],
+            "include_history": bool(raw.get("include_history", False)),
+            "time_mode": time_mode if time_mode in _TIME_MODES else "none",
+            "target_time": self._optional(raw.get("target_time")),
+            "target_time_end": self._optional(raw.get("target_time_end")),
+            "evidence_requirements": self._strings(raw.get("evidence_requirements"))[:6],
+        }
+
+    def _answer(self, question, profile, plan, context, skills):
+        response = self._model.generate(
+            [
+                {"role": "system", "content": self._answer_prompt},
+                {"role": "user", "content": json.dumps({
+                    "question": question.question,
+                    "query_profile": profile,
+                    "retrieval_plan": plan,
+                    "access_skills": self._skill_payload(skills),
+                    "visible_memories": [self._compact_hit(hit) for hit in context],
+                }, ensure_ascii=False)},
+            ],
+            temperature=0.0, max_tokens=1500, json_mode=True,
         )
         try:
-            data = json.loads(response.text)
+            data = self._parse_json(response.text)
             answer = str(data.get("answer") or "").strip()
-            requested = data.get("evidence_version_ids", [])
-            allowed = {hit.version_id for hit in evidence}
-            evidence_ids = [str(value) for value in requested if str(value) in allowed]
+            allowed = {hit.version_id for hit in context}
+            evidence_ids = [
+                value for value in self._strings(data.get("selected_evidence_ids"))
+                if value in allowed
+            ]
             if not answer:
                 raise ValueError("empty answer")
-            return answer, evidence_ids, response, None
-        except (json.JSONDecodeError, TypeError, ValueError) as exc:
-            return "No information available.", [], response, f"Access V2 answer protocol error: {exc}"
+            applied = self._applied_skill_ids(data, skills)
+            return answer, evidence_ids, response, None, applied
+        except (TypeError, ValueError) as exc:
+            return (
+                "No information available.", [], response,
+                f"Access A2 protocol error: {exc}", [],
+            )
+
+    def _merge_context(self, initial, supplemental):
+        merged: dict[str, MemoryHit] = {}
+        for hit in [*initial, *supplemental]:
+            merged.setdefault(hit.version_id, hit)
+        return list(merged.values())[:self._context_top_k]
+
+    @staticmethod
+    def _skill_payload(skills):
+        return [
+            {
+                "skill_id": f"{skill.skill_id}_v{skill.version}",
+                "name": skill.name,
+                "when": skill.description,
+                "guidance": skill.content,
+            }
+            for skill in skills
+        ]
+
+    @staticmethod
+    def _usable_skills(skills):
+        forbidden = re.compile(
+            r"\bno information available\b|\babstain\b|"
+            r"\b(?:return|respond|say|state)\s+(?:with\s+)?(?:exactly\s+)?"
+            r"(?:the\s+)?(?:answer|response)\b|"
+            r"\b(?:known|expected|reference|gold)\s+answer\b",
+            re.IGNORECASE,
+        )
+        usable = []
+        for skill in skills:
+            items = [item for item in skill.content if not forbidden.search(item)]
+            if items:
+                usable.append(skill.model_copy(update={"content": items}))
+        return usable
+
+    @classmethod
+    def _applied_skill_ids(cls, data, skills):
+        allowed = {f"{skill.skill_id}_v{skill.version}" for skill in skills}
+        return [
+            value for value in cls._strings(data.get("applied_skill_ids"))
+            if value in allowed
+        ]
+
+    @staticmethod
+    def _parse_json(text: str) -> dict[str, Any]:
+        try:
+            value = json.loads(text)
+        except json.JSONDecodeError:
+            match = re.search(r"\{.*\}", text, re.DOTALL)
+            if not match:
+                raise ValueError("response is not JSON")
+            value = json.loads(match.group(0))
+        if not isinstance(value, dict):
+            raise TypeError("response must be an object")
+        return value
+
+    @staticmethod
+    def _strings(value: Any) -> list[str]:
+        if not isinstance(value, list):
+            return []
+        return list(dict.fromkeys(str(item).strip() for item in value if str(item).strip()))
+
+    @staticmethod
+    def _optional(value: Any) -> str | None:
+        text = str(value).strip() if value is not None else ""
+        return text or None
 
     @staticmethod
     def _compact_hit(hit: MemoryHit) -> dict[str, Any]:
         return {
-            "version_id": hit.version_id,
-            "memory_id": hit.memory_id,
-            "content": hit.content,
-            "memory_kind": hit.memory_kind,
-            "subject": hit.subject,
-            "world_start": hit.world_start,
-            "world_end": hit.world_end,
-            "entities": hit.entities,
-            "score": round(float(hit.score), 6),
-            "paths": list(hit.matched_paths),
+            "version_id": hit.version_id, "memory_id": hit.memory_id,
+            "content": hit.content, "memory_kind": hit.memory_kind,
+            "subject": hit.subject, "predicate": hit.predicate,
+            "object_text": hit.object_text, "world_start": hit.world_start,
+            "world_end": hit.world_end, "entities": hit.entities,
+            "score": round(float(hit.score), 6), "paths": list(hit.matched_paths),
+        }
+
+    def _action_record(self, run_id, index, action, hits):
+        return {
+            "action_id": f"{run_id}_a{index:03d}", "step_index": index,
+            "action_type": action.action,
+            "request": action.model_dump(mode="json"),
+            "response": {"status": "ok", "hits": [self._compact_hit(hit) for hit in hits]},
+            "retrieval_hits": [self._compact_hit(hit) for hit in hits],
         }
 
     def _emit(self, event: str, **payload: Any) -> None:

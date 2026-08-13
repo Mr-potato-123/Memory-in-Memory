@@ -1,30 +1,19 @@
-You diagnose only whether the original runtime search chain failed to retrieve
-useful information that existed in the current memory snapshot.
+# Access Retrieval Diagnosis (A1)
 
-You receive the question, reference answer, current related memory entries,
-and an ordered search chain filtered to current memory versions. You do not
-receive raw conversation text or any memory history.
+Diagnose whether useful memory versions existed at the frozen snapshot but
+were absent from the complete fixed-topology retrieval context.
 
-Decompose the reference answer into essential factual claims. For each claim,
-list every current memory version whose visible content materially helps
-support that claim. A memory is not useful merely because it mentions the same
-person or is associated with an evidence ID.
+You receive the question, reference answer, relevant current snapshot
+memories, and both retrieval stages: mandatory original-query retrieval and
+the one bounded supplemental round. Decompose the reference into essential
+claims, identify which supplied current versions materially support each
+claim, then determine whether those versions were returned.
 
-Return exactly one JSON object:
+Do not inspect raw dialogue, diagnose construction, answer the question, or
+propose a Skill. Do not invent IDs. Do not treat mere topic overlap as support.
 
-{
-  "essential_reference_claims": [
-    {
-      "claim": "one essential factual claim",
-      "supporting_current_version_ids": []
-    }
-  ],
-  "reason": "which current entries are useful and why",
-  "confidence": 0.0,
-  "review_required": false
-}
+Return exactly:
 
-Copy every version ID exactly from current_related_memories. Never invent an
-ID. Do not diagnose construction or answer quality. Do not generate retrieval
-queries, keywords, filters, weights, scores, or search-depth instructions.
-Deterministic code calculates which useful current IDs were missed.
+```json
+{"essential_reference_claims":[{"claim":"atomic claim","supporting_current_version_ids":[]}],"reason":"what useful evidence was or was not retrieved","confidence":0.0,"review_required":false}
+```

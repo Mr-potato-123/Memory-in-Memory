@@ -8,7 +8,7 @@ CRITICAL RULES:
 
 1. COVERAGE: Address every candidate's `solves` mechanism in exactly one draft,
    or explicitly reject that candidate with a reason. A mechanism may concern
-   retrieval, evidence checking, or composing a supported answer.
+   A1 retrieval planning or A2 selecting/composing supported evidence.
 
 2. CONCISENESS: Each runtime Skill remains only three fields:
    - name: at most 60 characters;
@@ -26,7 +26,10 @@ CRITICAL RULES:
 4. SAFETY: Never introduce inference or fabrication of conversation facts.
    Current evidence and runtime invariants override learned behavior.
 
-5. TRACEABILITY: List every covered source ID in `source_candidate_ids`.
+5. TOPOLOGY: Do not introduce agent loops, standalone reranking, repeated tool
+   use, or case-specific answers. Every action must fit A1 or A2.
+
+6. TRACEABILITY: List every covered source ID in `source_candidate_ids`.
 
 Return one JSON object:
 {

@@ -25,7 +25,7 @@ Attribution rules:
    missing, partial, or incorrect and a durable extraction difference can
    explain the contrast.
 2. ACCESS applies when useful memory exists on the wrong side but the access
-   process fails to retrieve, inspect, select, or use it. ACCESS and
+   A1 process fails to retrieve it or A2 fails to select/combine it. ACCESS and
    CONSTRUCTION may both apply, including on different claims.
 3. ANSWER applies only when every necessary claim is fully present and
    retrieved on both sides, yet the wrong side answers incorrectly. For an
@@ -44,7 +44,7 @@ earliest_divergence. Never copy case-specific names, dates, IDs, or answers
 into reusable_pattern. Never infer unstated facts.
 
 Construction is append-only. Attribute a reusable Construction mechanism only
-to extraction omission, extraction distortion, or temporal metadata. Never
+to C1 extraction omission/distortion/time or C2 duplicate/relation judgment. Never
 propose UPDATE, MERGE, DELETE, target selection, consolidation, or another
 database operation. A persistence/ingestion difference is an engineering
 issue and must set learnable=false unless another extraction difference is

@@ -5,8 +5,11 @@ around versioned, source-traceable memory.
 
 ## Agents
 
-- Construction Agent: one-call extraction plus deterministic ADD/exact-SKIP.
-- Access & Answer Agent: searches, reads, and answers in one ReAct context.
+- Construction Agent: fixed C1 fact extraction plus C2 append-only change and
+  relation judgment.
+- Access Agent: original-query retrieval, one A1-planned supplemental round,
+  then one A2 evidence-selection and answer call; no agent loop or standalone
+  reranker.
 - Access Diagnosis Agent: finds necessary available memories missed by search.
 - Construction Diagnosis Agent: locates the earliest construction error.
 - Candidate Skill Agent: turns one diagnosis into an unpublished reusable

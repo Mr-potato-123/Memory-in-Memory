@@ -305,7 +305,8 @@ def test_direct_case_crud_uses_case_provenance_and_answer_side(tmp_path: Path):
     assert plan.side == "access"
     assert plan.operations[0].side == "access"
     assert plan.operations[0].source_candidate_ids == [case_id]
-    SkillCrudExecutor(repository).apply(batch, plan)
+    with pytest.raises(ValueError, match="bypasses evidence-grounded retrieval"):
+        SkillCrudExecutor(repository).apply(batch, plan)
 
 
 def test_skill_operation_accepts_null_new_content_for_retryable_model_output():

@@ -45,9 +45,16 @@ class MemoryCandidate:
 
 
 @dataclass
+class MemoryRelation:
+    """Evidence-bound relation from a new candidate to an existing version."""
+    relation_type: str
+    target_version_id: str
+
+
+@dataclass
 class ConstructionDecision:
     candidate_id: str
-    action: str  # ADD | UPDATE | MERGE | DELETE | SKIP
+    action: str  # New runtime: ADD | SKIP. Legacy rows remain readable.
     target_memory_id: str | None = None
     update_type: str = "add"
     reason: str = ""
@@ -55,6 +62,7 @@ class ConstructionDecision:
     world_start: str | None = None
     world_end: str | None = None
     source_message_ids: list[str] = field(default_factory=list)
+    relations: list[MemoryRelation] = field(default_factory=list)
 
 
 @dataclass
@@ -84,6 +92,7 @@ class MemoryHit:
     memory_kind: str = "event"
     subject: str = ""
     predicate: str | None = None
+    object_text: str | None = None
     world_start: str | None = None
     world_end: str | None = None
     entities: list[str] = field(default_factory=list)
@@ -765,6 +774,13 @@ class SQLiteMemoryStore:
                     "world_start": d.world_start,
                     "world_end": d.world_end,
                     "source_message_ids": d.source_message_ids,
+                    "relations": [
+                        {
+                            "type": relation.relation_type,
+                            "target_version_id": relation.target_version_id,
+                        }
+                        for relation in d.relations
+                    ],
                 }
                 for d in plan.decisions
             ],
@@ -866,6 +882,11 @@ class SQLiteMemoryStore:
                             importance=cand.importance,
                             confidence=cand.confidence,
                             created_by_skill_ids=skill_version_ids,
+                            related_memory_ids=[
+                                relation.target_version_id
+                                for relation in dec.relations
+                                if relation.relation_type != "unrelated"
+                            ],
                         )
 
                     elif dec.action == "UPDATE":
@@ -1031,7 +1052,41 @@ class SQLiteMemoryStore:
                         result_version_id=result_version_id,
                     )
 
+                    for relation in dec.relations:
+                        if relation.relation_type == "unrelated":
+                            continue
+                        conn.execute(
+                            """INSERT OR IGNORE INTO construction_relation_edges
+                               (decision_id, candidate_id, source_version_id,
+                                target_version_id, relation_type, commit_id)
+                               VALUES (?, ?, ?, ?, ?, ?)""",
+                            (
+                                decision_id,
+                                dec.candidate_id,
+                                result_version_id or None,
+                                relation.target_version_id,
+                                relation.relation_type,
+                                commit_id,
+                            ),
+                        )
+
                     if result_version_id:
+                        for relation in dec.relations:
+                            if relation.relation_type == "unrelated":
+                                continue
+                            conn.execute(
+                                """INSERT OR IGNORE INTO memory_relation_edges
+                                   (source_version_id, target_version_id, relation_type,
+                                    commit_id, decision_id)
+                                   VALUES (?, ?, ?, ?, ?)""",
+                                (
+                                    result_version_id,
+                                    relation.target_version_id,
+                                    relation.relation_type,
+                                    commit_id,
+                                    decision_id,
+                                ),
+                            )
                         self.record_version_message_edges(
                             conn, result_version_id, direct_sources,
                         )
@@ -1574,6 +1629,7 @@ def _row_to_hit(row: sqlite3.Row | dict) -> MemoryHit:
         memory_kind=d.get("memory_kind", "event"),
         subject=d.get("subject", ""),
         predicate=d.get("predicate"),
+        object_text=d.get("object_text"),
         world_start=d.get("world_start"),
         world_end=d.get("world_end"),
         entities=_parse_json_array(d.get("entities_json", "[]")),

@@ -305,22 +305,24 @@ def _cmd_smoke(args):
             }]
         })),
         runtime_model._make_resp(json.dumps({
-            "action": "search_memory",
-            "arguments": {
-                "query": "Alice residence Seattle",
-                "strategy": "hybrid",
-                "top_k": 5,
-            },
-            "reason": "Find current residence evidence.",
+            "additional_queries": [],
+            "keywords": [],
+            "entities": [],
+            "include_history": False,
+            "time_mode": "current",
+            "target_time": None,
+            "target_time_end": None,
+            "evidence_requirements": ["Alice's current residence"],
+            "applied_skill_ids": [],
         })),
         runtime_model._make_resp(json.dumps({
-            "action": "answer",
-            "arguments": {
-                "answer": "Seattle",
+            "answer": "Seattle",
+            "selected_evidence_ids": [memory_version_id],
+            "coverage": [{
+                "requirement": "Alice's current residence",
                 "evidence_version_ids": [memory_version_id],
-                "confidence": 0.99,
-            },
-            "reason": "The visible state gives the current residence.",
+            }],
+            "applied_skill_ids": [],
         })),
     ])
 

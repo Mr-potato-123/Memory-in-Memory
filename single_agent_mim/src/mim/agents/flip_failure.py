@@ -318,11 +318,13 @@ class FlipDiagnosisAgent:
                 "extraction_omission",
                 "extraction_distortion",
                 "temporal_metadata",
+                "relation_judgment",
+                "wrong_skip",
             }
             if subtype and subtype not in learnable_subtypes:
                 return projections
             report["repair_package"] = {
-                "schema_version": "append_only_extraction_contrast_v1",
+                "schema_version": "fixed_c1_c2_contrast_v1",
                 "stage": "construction",
                 "learnable_stage": subtype or "extraction",
                 "claim_deltas": relevant,

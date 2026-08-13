@@ -1,4 +1,4 @@
-"""Two-stage diagnosis for the minimal append-only construction runtime."""
+"""Two-stage diagnosis for fixed C1/C2 append-only construction."""
 
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ from ..llm.base import ModelClient
 
 
 class ConsFailureAgent:
-    """Screen current memory, then attribute only extraction or persistence."""
+    """Screen current memory, then attribute C1/C2 or engineering failures."""
 
     _STAGE_ALIASES = {
         "candidate_generation": "extraction_omission",
@@ -38,12 +38,16 @@ class ConsFailureAgent:
         "extraction_omission",
         "extraction_distortion",
         "temporal_metadata",
+        "relation_judgment",
+        "wrong_skip",
         "persistence",
     }
     _LEARNABLE_STAGES = {
         "extraction_omission",
         "extraction_distortion",
         "temporal_metadata",
+        "relation_judgment",
+        "wrong_skip",
     }
 
     def __init__(
@@ -194,12 +198,12 @@ class ConsFailureAgent:
             report.first_error = first_error
             report.affected_memory_ids = affected_memory_ids
             report.construction_history = construction_history
-            # Only extraction behavior is configurable through a Construction
-            # Skill. Ingestion and persistence failures remain auditable but
-            # are routed away from Skill generation.
+            # C1/C2 semantic behavior is configurable through Construction
+            # Skills. Ingestion and persistence remain engineering issues.
             if first_error.get("stage") in self._LEARNABLE_STAGES:
                 report.repair_package = {
-                    "schema_version": "append_only_extraction_repair_v1",
+                    "schema_version": "fixed_c1_c2_repair_v1",
+                    "side": "construction",
                     "learnable_stage": first_error["stage"],
                     "question": case.question,
                     "reference_answer": case.reference_answer,

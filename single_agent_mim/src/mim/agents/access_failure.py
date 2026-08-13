@@ -110,6 +110,9 @@ class AccessFailureAgent:
                     if item.get("version_id")
                 }
                 report.repair_package = {
+                    "schema_version": "fixed_access_retrieval_repair_v1",
+                    "side": "access",
+                    "stage": "retrieval",
                     "question": case.question,
                     "reference_answer": case.reference_answer,
                     "missing_useful_current_memories": [
