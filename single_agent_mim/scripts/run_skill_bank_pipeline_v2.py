@@ -387,6 +387,7 @@ def _process_side(
     decisions_dir = working_dir / "decisions"
     processed = 0
     rejected = 0
+    crud_errors: list[dict[str, str]] = []
     current_cluster_id = ""
     cluster_touched_skill_ids: set[str] = set()
 
@@ -512,15 +513,30 @@ def _process_side(
             except Exception as exc:
                 last_error = str(exc)
                 if attempt == 2:
-                    raise RuntimeError(
-                        f"{side} draft {draft.candidate_id} failed CRUD: {last_error}"
-                    ) from exc
+                    # One malformed/over-broad CRUD plan must not abort the
+                    # entire side.  Keep an auditable rejection and continue
+                    # with the remaining drafts; formal release only sees
+                    # successfully applied working-bank records.
+                    error = {
+                        "side": side,
+                        "candidate_id": draft.candidate_id,
+                        "source_cluster_id": draft.source_cluster_id,
+                        "error": last_error[:500],
+                    }
+                    crud_errors.append(error)
+                    _atomic_json(
+                        decisions_dir / f"{transaction_id}.error.json",
+                        error,
+                    )
+                    rejected += 1
+                    break
 
     return {
         "side": side,
         "drafts": len(drafts),
         "processed": processed,
         "rejected": rejected,
+        "errors": crud_errors,
         "working_version": repository.current_version,
         "records": repository.list_active(side),
     }
@@ -746,7 +762,22 @@ def main() -> None:
             future_to_side[future] = side
         for future in as_completed(future_to_side):
             side = future_to_side[future]
-            side_results[side] = future.result()
+            try:
+                side_results[side] = future.result()
+            except Exception as exc:
+                # Preserve the completed side and make a hard failure
+                # explicit; the final summary will refuse publication unless
+                # both sides return a result.
+                side_results[side] = {
+                    "side": side,
+                    "drafts": len(drafts[side]),
+                    "processed": 0,
+                    "rejected": len(drafts[side]),
+                    "errors": [{"side": side, "error": str(exc)[:500]}],
+                    "working_version": "v000",
+                    "records": [],
+                }
+                print(f"[{side}] CRUD side failed: {exc}", flush=True)
             print(
                 f"[{side}] CRUD complete: drafts={side_results[side]['drafts']} "
                 f"skills={len(side_results[side]['records'])} "
@@ -787,6 +818,10 @@ def main() -> None:
         },
         "official_skills": {
             side: len(side_results[side]["records"])
+            for side in ("access", "construction")
+        },
+        "crud_errors": {
+            side: side_results[side].get("errors", [])
             for side in ("access", "construction")
         },
     }

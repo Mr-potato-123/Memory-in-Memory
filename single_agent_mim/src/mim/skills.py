@@ -33,6 +33,12 @@ class EmbedderLike(Protocol):
     def encode(self, texts: list[str]) -> np.ndarray:
         ...
 
+    def encode_queries(self, texts: list[str]) -> np.ndarray:
+        ...
+
+    def encode_documents(self, texts: list[str]) -> np.ndarray:
+        ...
+
 
 @dataclass(frozen=True)
 class RankedSkill:
@@ -131,9 +137,10 @@ def _rank_records(
     ] or [query]
     lexical = _bm25_scores(queries, texts)
     try:
-        vectors = embedder.encode([*queries, *texts])
-        query_vecs = vectors[: len(queries)]
-        doc_vecs = vectors[len(queries):]
+        encode_queries = getattr(embedder, "encode_queries", embedder.encode)
+        encode_documents = getattr(embedder, "encode_documents", embedder.encode)
+        query_vecs = encode_queries(queries)
+        doc_vecs = encode_documents(texts)
         query_norms = np.linalg.norm(query_vecs, axis=1, keepdims=True)
         doc_norms = np.linalg.norm(doc_vecs, axis=1, keepdims=True)
         normalized_queries = query_vecs / np.maximum(query_norms, 1e-12)

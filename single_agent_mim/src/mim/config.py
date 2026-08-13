@@ -126,6 +126,7 @@ class RetrievalConfig(BaseModel):
 
 
 class AccessConfig(BaseModel):
+    mode: str = "agentic"
     max_steps: int = 6
     max_steps_per_question: int = 6
     max_search_calls: int = 4
@@ -137,6 +138,8 @@ class AccessConfig(BaseModel):
     skill_min_score: float = 0.20
     result_top_k: int = 8
     max_source_messages: int = 8
+    candidate_top_k: int = 60
+    evidence_top_k: int = 16
 
 
 class TrainingConfig(BaseModel):
@@ -157,6 +160,7 @@ class PromptsConfig(BaseModel):
     construction_extraction: str = "prompts/construction_extraction.md"
     construction_decision: str = "prompts/construction_decision.md"
     access: str = "prompts/access.md"
+    access_v2: str = "prompts/access_v2.md"
     diagnosis_answer: str = "prompts/diagnosis/answer_failure.md"
     diagnosis_access: str = "prompts/diagnosis/access_failure.md"
     diagnosis_cons_screening: str = (

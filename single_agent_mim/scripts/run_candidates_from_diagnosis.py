@@ -147,6 +147,11 @@ def main() -> int:
                              "process (default 6 = 3 keys x 2).")
     parser.add_argument("--max-items", type=int, default=0)
     parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Skip packages whose source diagnosis already has a saved candidate.",
+    )
+    parser.add_argument(
         "--package-source", choices=("both", "failure", "success"),
         default="both", help="Generate one source shard or the joint set.",
     )
@@ -220,6 +225,24 @@ def main() -> int:
         return 0
 
     repository = SkillRepository(Path(args.skills_dir))
+    existing_source_ids: set[str] = set()
+    if args.resume:
+        for side in ("access", "construction"):
+            for existing in repository.list_candidates(side):
+                if existing.source_diagnosis_id:
+                    existing_source_ids.add(str(existing.source_diagnosis_id))
+        before = len(packages)
+        packages = [
+            item for item in packages
+            if str(
+                item["report"].get("diagnosis_id")
+                or item["report"].get("qa_id")
+            ) not in existing_source_ids
+        ]
+        print(
+            f"Resume: skipped {before - len(packages)} packages with existing candidates.",
+            flush=True,
+        )
     maintenance = config.models["maintenance"]
     # The provider may expose one API key while still permitting multiple
     # in-flight requests.  The old key-count cap silently reduced every run
@@ -273,7 +296,12 @@ def main() -> int:
         if candidate is None:
             return {"status": "no_change", "qa_id": report.get("qa_id"),
                     "side": side, "source": kind}
-        repository.save_candidate(candidate)
+        try:
+            repository.save_candidate(candidate)
+        except Exception as exc:
+            return {"status": "error", "qa_id": report.get("qa_id"),
+                    "side": side, "source": kind,
+                    "error": f"save_candidate: {str(exc)[:300]}"}
         return {"status": "ok", "qa_id": report.get("qa_id"), "side": side,
                 "source": kind,
                 "candidate_id": candidate.candidate_id,
@@ -286,7 +314,17 @@ def main() -> int:
     with ThreadPoolExecutor(max_workers=pool_size) as pool:
         futures = {pool.submit(generate_one, item): item for item in packages}
         for future in as_completed(futures):
-            outcome = future.result()
+            try:
+                outcome = future.result()
+            except Exception as exc:
+                item = futures[future]
+                outcome = {
+                    "status": "error",
+                    "qa_id": item["report"].get("qa_id"),
+                    "side": item["side"],
+                    "source": item.get("kind", "failure"),
+                    "error": f"worker: {str(exc)[:300]}",
+                }
             summary[outcome["status"]] += 1
             summary["rows"].append(outcome)
             print(f"[{outcome['status']:8s}] {outcome.get('source','?'):7s} "

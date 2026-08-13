@@ -57,3 +57,14 @@ JSON null for unavailable optional IDs. `before_version_ids` and
 `after_version_id` should remain empty/null because the append-only runtime has
 no version rewrite path. If raw evidence does not support the reference, say
 so through raw_support instead of inventing a construction failure.
+
+Provenance checklist (mandatory): the `first_error` object is a trace of one
+append-only event, not an edit operation. For every response set
+`before_version_ids` to `[]`, `after_version_id` to `null`, and `change_id` to
+`null`. Do not copy any version ID into those fields, even when a related
+memory is present. Use only a supplied candidate/decision/commit ID when the
+corresponding event is visible in the chronological history; otherwise use
+`null`. The only allowed operations are `ADD`, `SKIP_EXACT_DUPLICATE`, or
+`null`. A response that describes UPDATE, MERGE, DELETE, replacement, or
+rewrite is invalid for this runtime; translate it to the earliest extraction
+omission/distortion/temporal_metadata event instead.

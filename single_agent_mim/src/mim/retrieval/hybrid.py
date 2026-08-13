@@ -188,7 +188,12 @@ class HybridRetriever:
         if not version_ids or matrix.shape[0] == 0:
             return []
         snapshot = self._snapshot_map(filters)
-        query_vector = self._embedder.encode([query])[0]
+        encode_queries = getattr(self._embedder, "encode_queries", None)
+        query_vector = (
+            encode_queries([query])[0]
+            if callable(encode_queries)
+            else self._embedder.encode([query])[0]
+        )
         scores = np.dot(matrix, query_vector)
         indices = np.argsort(scores)[::-1]
         hits: list[MemoryHit] = []

@@ -1,0 +1,88 @@
+seed: 42
+output_dir: outputs
+
+dataset:
+  path: ../LoCoMo/data/locomo10.json
+  split: data/splits/locomo_swap_4_2_2.json
+
+models:
+  runtime:
+    provider: openai_compatible
+    model: deepseek-v4-pro
+    api_key_env: DEEPSEEK_API_KEY
+    base_url: https://api.deepseek.com
+    temperature: 0.0
+    max_tokens: 1500
+    timeout_seconds: 600
+    max_retries: 5
+    supports_json_mode: true
+    reasoning_effort: null
+    extra_body:
+      thinking:
+        type: disabled
+    reject_reasoning_output: true
+  maintenance:
+    provider: openai_compatible
+    model: deepseek-v4-flash
+    api_key_env: DEEPSEEK_API_KEY
+    base_url: https://api.deepseek.com
+    temperature: 0.0
+    max_tokens: 12000
+    timeout_seconds: 600
+    max_retries: 3
+    supports_json_mode: true
+    reasoning_effort: null
+    extra_body:
+      thinking:
+        type: disabled
+    reject_reasoning_output: true
+
+embedding:
+  model: Qwen/Qwen3-Embedding-0.6B
+  device: cpu
+  normalize: true
+  batch_size: 16
+
+storage:
+  backend: sqlite
+  path: state/memory.sqlite3
+  busy_timeout_ms: 5000
+  journal_mode: WAL
+  foreign_keys: true
+
+retrieval:
+  semantic_candidate_k: 40
+  bm25_candidate_k: 40
+  keyword_candidate_k: 30
+  structured_candidate_k: 30
+  result_top_k: 60
+  max_result_top_k: 60
+  max_query_expansions: 0
+  max_depth: 3
+  rrf_k: 60
+  semantic_weight: 0.4
+  bm25_weight: 0.3
+  keyword_weight: 0.15
+  structured_weight: 0.15
+  entity_match_multiplier: 1.1
+  time_valid_multiplier: 1.2
+  current_active_multiplier: 1.05
+  temporal_mismatch_multiplier: 0.5
+  bm25_k1: 1.5
+  bm25_b: 0.75
+
+access:
+  mode: retrieve_rerank_answer
+  candidate_top_k: 60
+  evidence_top_k: 16
+  skill_candidate_k: 10
+  skill_top_k: 2
+  skill_disclose_k: 5
+  skill_min_score: 0.2
+  result_top_k: 16
+
+prompts:
+  construction_extraction: prompts/construction_extraction.md
+  construction_decision: prompts/construction_decision.md
+  access: prompts/access.md
+  access_v2: prompts/access_v2.md

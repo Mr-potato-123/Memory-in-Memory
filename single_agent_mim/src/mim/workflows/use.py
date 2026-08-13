@@ -33,6 +33,7 @@ from ..llm import create_client
 from ..llm.base import ModelClient
 from ..agents.construction import ConstructionAgent
 from ..agents.access import AccessAgent
+from ..agents.access_v2 import StableAccessAgent
 from ..artifacts import RunDir
 from ..tracing import TraceRecorder, ConstructionTrace, AccessTrace
 
@@ -131,8 +132,14 @@ class MiMRuntime:
         construction_decision_prompt = _load_prompt(
             config.prompts.construction_decision,
         )
+        access_mode = config.access.mode.casefold()
+        self._access_mode = access_mode
+        if access_mode not in {"agentic", "retrieve_rerank_answer"}:
+            raise ValueError(f"Unsupported access.mode: {config.access.mode}")
         access_prompt = _load_prompt(
-            config.prompts.access,
+            config.prompts.access_v2
+            if access_mode == "retrieve_rerank_answer"
+            else config.prompts.access,
         )
 
         # Construction Agent
@@ -154,16 +161,27 @@ class MiMRuntime:
         )
 
         # Access Agent
-        self._access_agent = AccessAgent(
-            model=self._runtime_model,
-            store=self._store,
-            retriever=self._retriever,
-            prompt_template=access_prompt,
-            max_steps=config.access.max_steps_per_question,
-            max_search_calls=config.access.max_search_calls,
-            max_inspect_calls=config.access.max_inspect_calls,
-            event_sink=event_sink,
-        )
+        if access_mode == "retrieve_rerank_answer":
+            self._access_agent = StableAccessAgent(
+                model=self._runtime_model,
+                store=self._store,
+                retriever=self._retriever,
+                prompt_template=access_prompt,
+                candidate_top_k=config.access.candidate_top_k,
+                evidence_top_k=config.access.evidence_top_k,
+                event_sink=event_sink,
+            )
+        else:
+            self._access_agent = AccessAgent(
+                model=self._runtime_model,
+                store=self._store,
+                retriever=self._retriever,
+                prompt_template=access_prompt,
+                max_steps=config.access.max_steps_per_question,
+                max_search_calls=config.access.max_search_calls,
+                max_inspect_calls=config.access.max_inspect_calls,
+                event_sink=event_sink,
+            )
 
         # Skill Bank
         self._skill_bank = skill_bank
@@ -437,7 +455,14 @@ class MiMRuntime:
                 candidate_k=self._cfg.access.skill_candidate_k,
                 disclose_k=self._cfg.access.skill_disclose_k,
                 min_score=self._cfg.access.skill_min_score,
-                reranker=self._skill_reranker,
+                # Access V2 is deliberately deterministic up to the evidence
+                # rerank. Use stable first-stage Skill routing there; the
+                # legacy agent loop retains the LLM applicability router.
+                reranker=(
+                    None
+                    if self._access_mode == "retrieve_rerank_answer"
+                    else self._skill_reranker
+                ),
                 trace_id=(
                     f"skilltrace_access_recovery_{self._run_id}_"
                     f"{self._conversation_id}_{question.qa_id}"

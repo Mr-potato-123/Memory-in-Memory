@@ -148,6 +148,7 @@ class SQLiteMemoryStore:
         self._embedding_model = embedding_model
         os.makedirs(self._path.parent, exist_ok=True)
         self._init_db()
+        self._validate_embedding_compatibility()
 
     # ── Init ────────────────────────────────────────────────
 
@@ -185,6 +186,32 @@ class SQLiteMemoryStore:
         if column not in columns:
             conn.execute(
                 f"ALTER TABLE {table} ADD COLUMN {column} {declaration}"
+            )
+
+    def _validate_embedding_compatibility(self) -> None:
+        """Refuse to query a snapshot encoded by a different embedding space."""
+        with self._conn() as conn:
+            rows = conn.execute(
+                """
+                SELECT DISTINCT embedding_dim, embedding_model
+                FROM memory_versions
+                WHERE embedding_blob IS NOT NULL
+                LIMIT 3
+                """
+            ).fetchall()
+        incompatible = [
+            (int(row["embedding_dim"]), str(row["embedding_model"]))
+            for row in rows
+            if int(row["embedding_dim"]) != self._embedding_dim
+            or str(row["embedding_model"]) != self._embedding_model
+        ]
+        if incompatible:
+            found = ", ".join(f"{model} ({dim}d)" for dim, model in incompatible)
+            raise ValueError(
+                "Embedding space mismatch: this snapshot contains "
+                f"{found}, but runtime requests {self._embedding_model} "
+                f"({self._embedding_dim}d). Use a fresh database or explicitly "
+                "re-embed every stored memory before retrieval."
             )
 
     @property

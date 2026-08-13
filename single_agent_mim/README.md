@@ -43,20 +43,11 @@ python main.py smoke
 Do not use `main.py train` for diagnosis-only work because it proceeds into
 candidate generation and batch Skill publication.
 
-## Documentation
-
-- [Project architecture and data layout](docs/PROJECT_GUIDE.md)
-- [Operational runbook](docs/RUNBOOK.md)
-- [Diagnosis rerun requirements for coding agents](docs/DIAGNOSIS_RERUN_REQUIREMENTS.md)
-- [Claude Skill Bank end-to-end execution guide](docs/CLAUDE_SKILL_BANK_END_TO_END_GUIDE.md)
-- [Chinese user-facing diagnosis quality report](reports/diagnosis_package_quality_report_zh.md)
-
 ## Storage rule
 
-- `outputs/`: mutable and resumable run state, including SQLite.
-- `exp_raw_data/`: checked final experiment exports.
-- `docs/`: maintained documentation only.
-- `reports/`: Chinese user-facing reports.
+- `outputs/`: ephemeral mutable run state, including SQLite; contents are not
+  source artifacts and may be deleted between experiments.
+- `data/splits/`: reproducible dataset split definitions used by the runtime.
 - repository root: source entry points only; no logs or temporary artifacts.
 
 All model-facing prompts under `prompts/` must be English.

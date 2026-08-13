@@ -11,6 +11,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from mim.agents.access import AccessAgent, EvidenceWorkspace
+from mim.agents.access_v2 import StableAccessAgent
 from mim.agents.construction import ConstructionAgent
 from mim.config import ModelConfig
 from mim.llm.mock_client import MockClient
@@ -208,6 +209,30 @@ def test_access_exposes_world_time_in_search_results(tmp_path: Path):
     )
 
     assert observation["hits"][0]["world_start"] == "2022-02"
+
+
+def test_access_v2_query_plan_is_deterministic():
+    question = "When did Evan start working out at the gym?"
+    first = StableAccessAgent.build_query_plan(question)
+    second = StableAccessAgent.build_query_plan(question)
+    assert first == second
+    assert first["answer_type"] == "date"
+    assert first["entities"] == ["Evan"]
+
+
+def test_access_v2_drops_legacy_abstention_instructions():
+    skill = SkillRecord(
+        skill_id="legacy", version=1, side=Side.ACCESS,
+        name="Legacy subject guard",
+        description="When subject evidence may be incomplete.",
+        content=[
+            "Re-search with the named subject and exact date.",
+            "If no direct memory exists, answer No information available.",
+        ],
+    )
+    assert StableAccessAgent._retrieval_guidance(skill) == [
+        "Re-search with the named subject and exact date."
+    ]
 
 
 def test_access_may_answer_after_one_search_when_model_judges_full(

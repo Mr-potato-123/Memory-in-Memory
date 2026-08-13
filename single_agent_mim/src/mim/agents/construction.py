@@ -268,7 +268,12 @@ class ConstructionAgent:
             if content_hash in seen_content:
                 continue
             seen_content.add(content_hash)
-            candidate.embedding = self._embedder.encode([candidate.content])[0]
+            encode_documents = getattr(self._embedder, "encode_documents", None)
+            candidate.embedding = (
+                encode_documents([candidate.content])[0]
+                if callable(encode_documents)
+                else self._embedder.encode([candidate.content])[0]
+            )
             candidates.append(candidate)
 
         if raw_candidates and not candidates:
@@ -341,7 +346,12 @@ class ConstructionAgent:
         )
         if not version_ids or matrix.shape[0] != len(version_ids):
             return []
-        query = self._embedder.encode([session_text])[0]
+        encode_queries = getattr(self._embedder, "encode_queries", None)
+        query = (
+            encode_queries([session_text])[0]
+            if callable(encode_queries)
+            else self._embedder.encode([session_text])[0]
+        )
         scores = np.dot(matrix, query)
         best = np.argsort(scores)[::-1][: self._related_limit]
         snapshot = {

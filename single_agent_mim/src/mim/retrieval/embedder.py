@@ -61,9 +61,11 @@ class Embedder:
                 test_vec = self._model.encode(["test"], show_progress_bar=False)
                 self._dim = test_vec.shape[1]
             except (ImportError, OSError) as exc:
-                self._hash_fallback = True
                 self._load_error = str(exc)
-                self._dim = 384
+                raise RuntimeError(
+                    f"Failed to load embedding model {self._model_name!r}; "
+                    "refusing to substitute an unrelated hash embedding."
+                ) from exc
 
     @property
     def dim(self) -> int:
@@ -102,6 +104,40 @@ class Embedder:
         if vecs.dtype != np.float32:
             vecs = vecs.astype(np.float32)
         return vecs  # type: ignore[return-value]
+
+    def encode_queries(self, texts: list[str]) -> np.ndarray:
+        """Encode retrieval queries, using a model's query prompt when present."""
+        self._ensure_model()
+        if not texts or self._hash_fallback:
+            return self.encode(texts)
+        encode_query = getattr(self._model, "encode_query", None)
+        if callable(encode_query):
+            vecs = encode_query(
+                texts,
+                batch_size=self._batch_size,
+                show_progress_bar=False,
+                convert_to_numpy=True,
+                normalize_embeddings=self._normalize,
+            )
+            return vecs.astype(np.float32, copy=False)
+        return self.encode(texts)
+
+    def encode_documents(self, texts: list[str]) -> np.ndarray:
+        """Encode stored memories with the document side of asymmetric models."""
+        self._ensure_model()
+        if not texts or self._hash_fallback:
+            return self.encode(texts)
+        encode_document = getattr(self._model, "encode_document", None)
+        if callable(encode_document):
+            vecs = encode_document(
+                texts,
+                batch_size=self._batch_size,
+                show_progress_bar=False,
+                convert_to_numpy=True,
+                normalize_embeddings=self._normalize,
+            )
+            return vecs.astype(np.float32, copy=False)
+        return self.encode(texts)
 
     def _hash_encode(self, text: str) -> np.ndarray:
         """Dependency-free deterministic embedding used by tests and smoke."""

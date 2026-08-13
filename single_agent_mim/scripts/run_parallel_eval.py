@@ -27,6 +27,7 @@ def eval_one_conversation(
     embedder,
     runtime_model,
     split_name,
+    qa_workers,
 ):
     """Evaluate one conversation in its own runtime."""
     runtime = MiMRuntime(
@@ -39,14 +40,13 @@ def eval_one_conversation(
         phase=split_name,
     )
     runtime.ingest(conversation)
-    results = []
-    for question in questions:
+    def ask_one(question):
         access = runtime.ask(question)
         f1 = (
             compute_f1(access.answer, question.reference_answer, question.category)
             if not access.error else 0.0
         )
-        results.append(QAResult(
+        return QAResult(
             conversation_id=conversation.conversation_id,
             qa_id=question.qa_id,
             category=question.category,
@@ -59,7 +59,17 @@ def eval_one_conversation(
             runtime_tokens=access.total_tokens,
             access_steps=access.steps,
             error=access.error,
-        ))
+        )
+
+    # Construction is serial within a conversation. Once the snapshot is
+    # fixed, QA calls are independent read/answer operations and can run in
+    # parallel. SQLite uses per-operation connections and trace writes are
+    # serialized by TraceRecorder.
+    results = []
+    with ThreadPoolExecutor(max_workers=max(1, qa_workers)) as executor:
+        futures = [executor.submit(ask_one, question) for question in questions]
+        for future in as_completed(futures):
+            results.append(future.result())
     return results, runtime.last_construction_steps
 
 
@@ -71,6 +81,7 @@ def main():
     p.add_argument("--mode", default="mim")
     p.add_argument("--skill-bank-dir")
     p.add_argument("--run-id", required=True)
+    p.add_argument("--qa-workers", type=int, default=4)
     args = p.parse_args()
 
     config = load_config(args.config)
@@ -87,7 +98,12 @@ def main():
     # Load or create runtime model
     runtime_model = create_client(config.models["runtime"])
     from mim.retrieval.embedder import Embedder
-    embedder = Embedder(model_name=config.embedding.model, device=config.embedding.device)
+    embedder = Embedder(
+        model_name=config.embedding.model,
+        device=config.embedding.device,
+        normalize=config.embedding.normalize,
+        batch_size=config.embedding.batch_size,
+    )
 
     # Load bank
     bank = None
@@ -126,6 +142,7 @@ def main():
                 embedder,
                 runtime_model,
                 args.split_name,
+                args.qa_workers,
             )
             futures[future] = conv.conversation_id
 

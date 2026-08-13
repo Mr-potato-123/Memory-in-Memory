@@ -161,6 +161,38 @@ def test_add_persists_complete_construction_trace(tmp_path: Path):
     assert all(value == 1 for value in counts.values())
 
 
+def test_store_rejects_snapshot_from_a_different_embedding_space(tmp_path: Path):
+    path = tmp_path / "memory.sqlite3"
+    store = SQLiteMemoryStore(path, embedding_dim=32, embedding_model="old-model")
+    _save_input(store, "conv_a", "s1", "conv_a:D1:1", "I live in Boston.", 0)
+    candidate = _candidate(
+        "cand_conv_a_s1_000", "conv_a:D1:1", "Alice lives in Boston.", "Boston"
+    )
+    store.apply_construction_plan(
+        conversation_id="conv_a",
+        session_id="s1",
+        base_commit_id=None,
+        plan=ConstructionPlan(
+            base_commit_id=None,
+            candidates=[candidate],
+            decisions=[ConstructionDecision(
+                candidate_id=candidate.candidate_id,
+                action="ADD",
+                merged_content=candidate.content,
+                source_message_ids=candidate.source_message_ids,
+            )],
+        ),
+        run_id="run_test",
+        runtime_model="mock",
+        prompt_hash="prompt",
+        skill_version_ids=[],
+        input_message_ids=candidate.source_message_ids,
+    )
+
+    with pytest.raises(ValueError, match="Embedding space mismatch"):
+        SQLiteMemoryStore(path, embedding_dim=32, embedding_model="new-model")
+
+
 def test_update_preserves_old_version_and_inherited_message_lineage(tmp_path: Path):
     store = _store(tmp_path)
     _save_input(store, "conv_a", "s1", "conv_a:D1:1", "I live in Boston.", 0)

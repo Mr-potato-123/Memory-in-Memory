@@ -18,6 +18,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from dateutil import parser as date_parser
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from mim.config import ModelConfig, load_config
@@ -42,6 +44,14 @@ def _fmt_ts(ts: str | None) -> str:
     return str(ts).strip()
 
 
+def _parse_ts(ts: str) -> datetime | None:
+    """Parse LoCoMo's human-readable timestamps for chronological sorting."""
+    try:
+        return date_parser.parse(ts.replace(" on ", " "), fuzzy=True)
+    except (TypeError, ValueError, OverflowError):
+        return None
+
+
 def build_temporal_context(
     conversations: list,
     questions_map: dict[str, Any],
@@ -61,8 +71,17 @@ def build_temporal_context(
             if s.time:
                 all_timestamps.append(_fmt_ts(s.time))
 
-    conv_start = min(all_timestamps) if all_timestamps else "unknown"
-    conv_end = max(all_timestamps) if all_timestamps else "unknown"
+    parsed_timestamps = [
+        (parsed, raw)
+        for raw in all_timestamps
+        if (parsed := _parse_ts(raw)) is not None
+    ]
+    if parsed_timestamps:
+        conv_start = min(parsed_timestamps, key=lambda item: item[0])[1]
+        conv_end = max(parsed_timestamps, key=lambda item: item[0])[1]
+    else:
+        conv_start = min(all_timestamps) if all_timestamps else "unknown"
+        conv_end = max(all_timestamps) if all_timestamps else "unknown"
 
     # Evidence timestamps
     evidence_ts: list[dict[str, str]] = []
@@ -252,10 +271,11 @@ def judge_batch(
                 reason = str(j.get("reason", "")).strip()
                 if not reason:
                     raise ValueError("Empty reason")
-                # The binary prompt does not constrain reason length; keep a
-                # generous bound to catch degenerate outputs without rejecting
-                # legitimate verbose reasons.
-                if len(reason.split()) > 60:
+                # The label is the scored field. Keep only a high sanity bound
+                # for genuinely degenerate output; temporal explanations can
+                # legitimately exceed 60 words even when the JSON and label
+                # are valid.
+                if len(reason.split()) > 200:
                     raise ValueError(
                         f"Reason too long ({len(reason.split())} words): "
                         f"{reason[:80]}..."
