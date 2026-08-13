@@ -54,6 +54,7 @@ class MiMRuntime:
         phase: str = "use",
         event_sink: Callable[[dict[str, Any]], None] | None = None,
         strict_construction: bool = False,
+        persist_access: bool = True,
     ):
         self._cfg = config
         self._mode = mode
@@ -61,6 +62,7 @@ class MiMRuntime:
         self._phase = phase
         self._event_sink = event_sink
         self._strict_construction = strict_construction
+        self._persist_access = persist_access
         self._construction_errors: list[dict[str, Any]] = []
 
         # DB path
@@ -523,33 +525,34 @@ class MiMRuntime:
             for message_id in gold_message_ids
             if message_id in existing_gold_ids
         ]
-        self._store.save_qa_case(
-            qa_id=question.qa_id,
-            conversation_id=self._conversation_id,
-            question=question.question,
-            reference_answer=question.reference_answer,
-            category=question.category,
-            gold_message_ids=gold_message_ids,
-        )
-        self._store.save_access_trace(
-            access_run_id=result.access_run_id,
-            run_id=self._run_id,
-            conversation_id=self._conversation_id,
-            qa_id=question.qa_id,
-            snapshot_commit_id=self._latest_commit_id or 0,
-            question=question.question,
-            prediction=result.answer,
-            skill_version_ids=result.used_skill_ids,
-            skill_trace=(
-                access_skill_trace.model_dump(mode="json")
-                if access_skill_trace
-                else {}
-            ),
-            answer_prompt_hash=result.answer_prompt_hash,
-            action_records=result.action_records,
-            visible_memories=result.visible_memories,
-            evidence_ids=result.evidence_ids,
-        )
+        if self._persist_access:
+            self._store.save_qa_case(
+                qa_id=question.qa_id,
+                conversation_id=self._conversation_id,
+                question=question.question,
+                reference_answer=question.reference_answer,
+                category=question.category,
+                gold_message_ids=gold_message_ids,
+            )
+            self._store.save_access_trace(
+                access_run_id=result.access_run_id,
+                run_id=self._run_id,
+                conversation_id=self._conversation_id,
+                qa_id=question.qa_id,
+                snapshot_commit_id=self._latest_commit_id or 0,
+                question=question.question,
+                prediction=result.answer,
+                skill_version_ids=result.used_skill_ids,
+                skill_trace=(
+                    access_skill_trace.model_dump(mode="json")
+                    if access_skill_trace
+                    else {}
+                ),
+                answer_prompt_hash=result.answer_prompt_hash,
+                action_records=result.action_records,
+                visible_memories=result.visible_memories,
+                evidence_ids=result.evidence_ids,
+            )
 
         at.actions = [a.model_dump(mode="json") for a in result.search_trace]
         at.final_evidence_ids = result.evidence_ids
