@@ -170,7 +170,7 @@ class MiMRuntime:
 
         # Trace
         self._tracer: Optional[TraceRecorder] = None
-        if run_dir:
+        if run_dir and self._persist_access:
             self._tracer = TraceRecorder(run_dir.path / "traces")
 
         # State
