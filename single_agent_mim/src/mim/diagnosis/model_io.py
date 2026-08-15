@@ -20,6 +20,9 @@ def call_json(
     payload: dict[str, Any],
     max_tokens: int,
 ) -> dict[str, Any]:
+    # DeepSeek thinking tokens share the completion budget. Diagnosis calls
+    # must leave room for the final JSON after the private reasoning trace.
+    effective_max_tokens = max(max_tokens, 16000)
     response = model.generate(
         [
             {"role": "system", "content": prompt},
@@ -28,8 +31,10 @@ def call_json(
                 "content": json.dumps(payload, ensure_ascii=False),
             },
         ],
-        temperature=0.0,
-        max_tokens=max_tokens,
+        # Diagnosis is deliberately sampled with thinking enabled. This is
+        # analysis-only; runtime baseline generation remains unchanged.
+        temperature=0.2,
+        max_tokens=effective_max_tokens,
         json_mode=True,
     )
     parsed = parse_json_object(response.text)

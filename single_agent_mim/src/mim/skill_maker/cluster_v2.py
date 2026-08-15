@@ -27,8 +27,32 @@ def cluster_v2(
     groups are recursively re-clustered; positional slicing is only a final
     fallback for identical vectors that cannot be separated by K-means.
     """
+    if not candidates:
+        return []
+
+    # Mechanism class is a hard boundary.  Embedding similarity is useful
+    # only inside a compatible failure family; otherwise topical neighbours
+    # (for example two "favorite" questions) can hide opposite operations.
+    if candidates[0].side == "access":
+        buckets: dict[str, list[SkillCandidate]] = {}
+        for candidate in candidates:
+            key = (candidate.target_first_break or "UNCLASSIFIED").upper()
+            buckets.setdefault(key, []).append(candidate)
+        if len(buckets) > 1:
+            groups = [
+                group
+                for key in sorted(buckets)
+                for group in cluster_v2(
+                    buckets[key],
+                    embedder,
+                    target_cluster_size=target_cluster_size,
+                    max_cluster_size=max_cluster_size,
+                )
+            ]
+            return groups
+
     if len(candidates) <= target_cluster_size:
-        return [list(candidates)] if candidates else []
+        return [list(candidates)]
 
     def split(group: list[SkillCandidate]) -> list[list[SkillCandidate]]:
         if len(group) <= max_cluster_size:

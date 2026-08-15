@@ -58,7 +58,12 @@ class AccessDiagnosisWorkflow:
         self._agent = agent
         self._evidence = evidence
 
-    def run(self, case: DiagnosisCase) -> AccessDiagnosisReport:
+    def run(
+        self,
+        case: DiagnosisCase,
+        *,
+        answer_context_sufficient: bool = False,
+    ) -> AccessDiagnosisReport:
         current_memories = self._evidence.current_related_memories(
             conversation_id=case.conversation_id,
             message_ids=case.gold_message_ids,
@@ -73,6 +78,7 @@ class AccessDiagnosisWorkflow:
             case,
             current_related_memories=current_memories,
             current_search_steps=current_steps,
+            answer_context_sufficient=answer_context_sufficient,
         )
         trace_loader = getattr(self._evidence, "access_skill_trace", None)
         report.skill_trace = (

@@ -20,6 +20,19 @@ import numpy as np
 
 from .vector_codec import encode_vector, decode_vector, decode_vectors
 
+_SOURCE_ID_PREFIX = "source:"
+_EXTERNAL_ID_PREFIXES = ("mem0:",)
+
+
+def _source_message_id(evidence_id: str) -> str | None:
+    if evidence_id.startswith(_SOURCE_ID_PREFIX):
+        return evidence_id[len(_SOURCE_ID_PREFIX):]
+    return None
+
+
+def _is_external_memory_id(evidence_id: str) -> bool:
+    return evidence_id.startswith(_EXTERNAL_ID_PREFIXES)
+
 # ── Domain types ─────────────────────────────────────────────────
 
 @dataclass
@@ -96,6 +109,7 @@ class MemoryHit:
     world_start: str | None = None
     world_end: str | None = None
     entities: list[str] = field(default_factory=list)
+    keywords: list[str] = field(default_factory=list)
     source_message_ids: list[str] = field(default_factory=list)
     score: float = 0.0
     matched_paths: list[str] = field(default_factory=list)
@@ -123,6 +137,7 @@ class SearchFilters:
     target_time: str | None = None
     target_time_end: str | None = None
     include_history: bool = False
+    include_sources: bool = False
 
 
 @dataclass
@@ -291,6 +306,44 @@ class SQLiteMemoryStore:
                     for m in messages
                 ],
             )
+
+    def load_uncovered_source_messages(
+        self,
+        conversation_id: str,
+        as_of_commit: int | None,
+    ) -> list[dict]:
+        """Return processed messages from which C1 produced no candidate.
+
+        This is a provenance-backed fallback view, not a second fact store.
+        Messages that produced an ADD *or* SKIP candidate are excluded so raw
+        text cannot resurrect superseded states or duplicate atomic memories.
+        """
+        commit_limit = as_of_commit if as_of_commit is not None else 2**63 - 1
+        with self._conn() as conn:
+            rows = conn.execute(
+                """SELECT DISTINCT
+                           m.message_id, m.session_id, m.turn_index, m.role,
+                           m.speaker, m.content, m.occurred_at
+                   FROM messages AS m
+                   JOIN construction_inputs AS ci
+                     ON ci.message_id = m.message_id
+                   JOIN construction_commits AS cc
+                     ON cc.commit_id = ci.commit_id
+                   WHERE m.conversation_id=?
+                     AND cc.status='committed'
+                     AND cc.commit_id <= ?
+                     AND NOT EXISTS (
+                         SELECT 1
+                         FROM candidate_message_edges AS cme
+                         JOIN memory_candidates AS mc
+                           ON mc.candidate_id = cme.candidate_id
+                         WHERE cme.message_id = m.message_id
+                           AND mc.commit_id <= ?
+                     )
+                   ORDER BY m.session_id, m.turn_index""",
+                (conversation_id, commit_limit, commit_limit),
+            ).fetchall()
+        return [dict(row) for row in rows]
 
     def source_exists(self, message_id: str, conversation_id: str) -> bool:
         with self._conn() as conn:
@@ -889,6 +942,42 @@ class SQLiteMemoryStore:
                             ],
                         )
 
+                        # ``supersedes`` is a temporal lifecycle relation, not
+                        # merely a graph edge.  The new fact remains a distinct
+                        # logical memory, while the superseded version is closed
+                        # at this transaction boundary so ordinary snapshots and
+                        # ``time_mode=current`` do not expose two current states.
+                        # Historical snapshots remain fully auditable through
+                        # ``include_history=True`` and the relation edge below.
+                        superseded_targets = {
+                            relation.target_version_id
+                            for relation in dec.relations
+                            if relation.relation_type == "supersedes"
+                        }
+                        for target_version_id in superseded_targets:
+                            cursor = conn.execute(
+                                """UPDATE memory_versions
+                                   SET system_to_commit=?,
+                                       close_reason='superseded',
+                                       world_end=COALESCE(world_end, ?)
+                                   WHERE version_id=?
+                                     AND conversation_id=?
+                                     AND system_to_commit IS NULL
+                                     AND system_from_commit < ?""",
+                                (
+                                    commit_id,
+                                    dec.world_start or cand.world_start,
+                                    target_version_id,
+                                    conversation_id,
+                                    commit_id,
+                                ),
+                            )
+                            if cursor.rowcount != 1:
+                                raise ValueError(
+                                    "Supersedes target is not an active prior "
+                                    f"version: {target_version_id}"
+                                )
+
                     elif dec.action == "UPDATE":
                         if not dec.target_memory_id:
                             errors.append(f"UPDATE without target_memory_id: {dec.candidate_id}")
@@ -1364,6 +1453,29 @@ class SQLiteMemoryStore:
         hits: list[MemoryHit],
     ):
         for i, h in enumerate(hits):
+            source_message_id = _source_message_id(h.version_id)
+            if source_message_id is not None:
+                conn.execute(
+                    """INSERT OR REPLACE INTO access_source_retrieval_hits
+                       (action_id, message_id, raw_rank, final_rank, fused_score,
+                        returned_to_agent, kept_in_workspace)
+                       VALUES (?, ?, ?, ?, ?, 1, 1)""",
+                    (action_id, source_message_id, i + 1, i + 1, h.score),
+                )
+                continue
+            if _is_external_memory_id(h.version_id):
+                conn.execute(
+                    """INSERT OR REPLACE INTO access_external_retrieval_hits
+                       (action_id, external_id, raw_rank, final_rank,
+                        fused_score, payload_json, returned_to_agent,
+                        kept_in_workspace)
+                       VALUES (?, ?, ?, ?, ?, ?, 1, 1)""",
+                    (
+                        action_id, h.version_id, i + 1, i + 1, h.score,
+                        json.dumps(h.__dict__, ensure_ascii=False, default=str),
+                    ),
+                )
+                continue
             conn.execute(
                 """INSERT OR REPLACE INTO access_retrieval_hits
                    (action_id, version_id, raw_rank, final_rank, fused_score,
@@ -1377,6 +1489,38 @@ class SQLiteMemoryStore:
         memories: list[dict],  # [{version_id, rendered_text, context_index, token_count}]
     ):
         for m in memories:
+            source_message_id = _source_message_id(str(m["version_id"]))
+            if source_message_id is not None:
+                conn.execute(
+                    """INSERT OR REPLACE INTO access_source_answer_context
+                       (access_run_id, message_id, context_index,
+                        rendered_text, token_count)
+                       VALUES (?, ?, ?, ?, ?)""",
+                    (
+                        access_run_id,
+                        source_message_id,
+                        m["context_index"],
+                        m["rendered_text"],
+                        m.get("token_count"),
+                    ),
+                )
+                continue
+            if _is_external_memory_id(str(m["version_id"])):
+                conn.execute(
+                    """INSERT OR REPLACE INTO access_external_answer_context
+                       (access_run_id, external_id, context_index,
+                        rendered_text, payload_json, token_count)
+                       VALUES (?, ?, ?, ?, ?, ?)""",
+                    (
+                        access_run_id,
+                        m["version_id"],
+                        m["context_index"],
+                        m["rendered_text"],
+                        json.dumps(m, ensure_ascii=False, default=str),
+                        m.get("token_count"),
+                    ),
+                )
+                continue
             conn.execute(
                 """INSERT OR REPLACE INTO access_answer_context
                    (access_run_id, version_id, context_index, rendered_text, token_count)
@@ -1390,6 +1534,27 @@ class SQLiteMemoryStore:
         evidence_ids: list[str],
     ):
         for i, vid in enumerate(evidence_ids):
+            source_message_id = _source_message_id(vid)
+            if source_message_id is not None:
+                if conn.execute(
+                    "SELECT 1 FROM messages WHERE message_id=?",
+                    (source_message_id,),
+                ).fetchone() is not None:
+                    conn.execute(
+                        """INSERT OR IGNORE INTO access_final_source_evidence
+                           (access_run_id, message_id, evidence_index)
+                           VALUES (?, ?, ?)""",
+                        (access_run_id, source_message_id, i),
+                    )
+                continue
+            if _is_external_memory_id(vid):
+                conn.execute(
+                    """INSERT OR IGNORE INTO access_final_external_evidence
+                       (access_run_id, external_id, evidence_index)
+                       VALUES (?, ?, ?)""",
+                    (access_run_id, vid, i),
+                )
+                continue
             # Provider output is validated against the in-memory search chain,
             # but a copied/resumed evaluation database can still lack an old
             # inspected version. Final-evidence persistence is diagnostic
@@ -1497,6 +1662,48 @@ class SQLiteMemoryStore:
                     version_id = hit.get("version_id")
                     if not version_id:
                         continue
+                    source_message_id = _source_message_id(str(version_id))
+                    if source_message_id is not None:
+                        conn.execute(
+                            """INSERT OR REPLACE INTO access_source_retrieval_hits
+                               (action_id, message_id, raw_rank, final_rank,
+                                fused_score, returned_to_agent, kept_in_workspace)
+                               VALUES (?, ?, ?, ?, ?, 1, ?)""",
+                            (
+                                record["action_id"],
+                                source_message_id,
+                                rank,
+                                rank,
+                                hit.get("score"),
+                                int(any(
+                                    m.get("version_id") == version_id
+                                    for m in visible_memories
+                                )),
+                            ),
+                        )
+                        continue
+                    if _is_external_memory_id(str(version_id)):
+                        conn.execute(
+                            """INSERT OR REPLACE INTO
+                               access_external_retrieval_hits
+                               (action_id, external_id, raw_rank, final_rank,
+                                fused_score, payload_json, returned_to_agent,
+                                kept_in_workspace)
+                               VALUES (?, ?, ?, ?, ?, ?, 1, ?)""",
+                            (
+                                record["action_id"],
+                                version_id,
+                                rank,
+                                rank,
+                                hit.get("score"),
+                                json.dumps(hit, ensure_ascii=False, default=str),
+                                int(any(
+                                    m.get("version_id") == version_id
+                                    for m in visible_memories
+                                )),
+                            ),
+                        )
+                        continue
                     conn.execute(
                         """INSERT OR REPLACE INTO access_retrieval_hits
                            (action_id, version_id, raw_rank, final_rank,
@@ -1520,6 +1727,7 @@ class SQLiteMemoryStore:
                 access_run_id,
                 [
                     {
+                        **m,
                         "version_id": m["version_id"],
                         "context_index": m.get("context_index", i),
                         "rendered_text": m.get("rendered_text", m.get("content", "")),
@@ -1557,8 +1765,29 @@ class SQLiteMemoryStore:
                    FROM access_answer_context c
                    JOIN memory_versions v ON v.version_id=c.version_id
                    WHERE c.access_run_id=?
-                   ORDER BY c.context_index""",
-                (access_run_id,),
+                   UNION ALL
+                   SELECT 'source:' || c.message_id AS version_id,
+                          c.context_index, c.rendered_text,
+                          m.content, 'source_message' AS memory_kind,
+                          COALESCE(m.speaker, m.role) AS subject,
+                          m.occurred_at AS world_start, NULL AS world_end
+                   FROM access_source_answer_context c
+                   JOIN messages m ON m.message_id=c.message_id
+                   WHERE c.access_run_id=?
+                   UNION ALL
+                   SELECT c.external_id AS version_id,
+                          c.context_index, c.rendered_text,
+                          json_extract(c.payload_json, '$.content') AS content,
+                          COALESCE(json_extract(c.payload_json, '$.memory_kind'),
+                                   'external') AS memory_kind,
+                          COALESCE(json_extract(c.payload_json, '$.subject'), '')
+                                   AS subject,
+                          json_extract(c.payload_json, '$.world_start') AS world_start,
+                          json_extract(c.payload_json, '$.world_end') AS world_end
+                   FROM access_external_answer_context c
+                   WHERE c.access_run_id=?
+                   ORDER BY context_index""",
+                (access_run_id, access_run_id, access_run_id),
             ).fetchall()
         return [dict(row) for row in rows]
 
@@ -1633,6 +1862,7 @@ def _row_to_hit(row: sqlite3.Row | dict) -> MemoryHit:
         world_start=d.get("world_start"),
         world_end=d.get("world_end"),
         entities=_parse_json_array(d.get("entities_json", "[]")),
+        keywords=_parse_json_array(d.get("keywords_json", "[]")),
         source_message_ids=_parse_json_array(d.get("source_message_ids", "[]")),
         system_from_commit=d.get("system_from_commit", 0),
         system_to_commit=d.get("system_to_commit"),

@@ -13,6 +13,10 @@ You may:
 - emit zero to the supplied maximum number of concise additional queries;
 - provide exact keywords and entities worth matching;
 - include historical versions only when past state/change is genuinely needed;
+- search raw source messages only when the initial atomic memories leave a
+  concrete evidence gap; source fallback is for Construction omissions, not a
+  reason to ignore sufficient structured memory; when enabled, an omitted
+  additional query automatically reuses the original question on that view;
 - set a time mode and absolute target time when supported by the question;
 - state the distinct evidence requirements needed to answer or combine facts.
 
@@ -23,7 +27,7 @@ the original query merely to consume the retrieval budget.
 Return exactly:
 
 ```json
-{"additional_queries":[],"keywords":[],"entities":[],"include_history":false,"time_mode":"none|current|point|before|after|range","target_time":null,"target_time_end":null,"evidence_requirements":[],"applied_skill_ids":[]}
+{"additional_queries":[],"keywords":[],"entities":[],"include_history":false,"include_sources":false,"time_mode":"none|current|point|before|after|range","target_time":null,"target_time_end":null,"evidence_requirements":[],"applied_skill_ids":[]}
 ```
 
 `applied_skill_ids` contains only supplied Skills whose guidance materially

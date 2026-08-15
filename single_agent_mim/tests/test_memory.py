@@ -193,7 +193,9 @@ def test_store_rejects_snapshot_from_a_different_embedding_space(tmp_path: Path)
         SQLiteMemoryStore(path, embedding_dim=32, embedding_model="new-model")
 
 
-def test_add_persists_append_only_memory_relation(tmp_path: Path):
+def test_add_supersedes_closes_current_version_but_preserves_history(
+    tmp_path: Path,
+):
     path = tmp_path / "memory.sqlite3"
     store = SQLiteMemoryStore(path, embedding_dim=32, embedding_model="test-hash")
     _save_input(store, "conv_a", "s1", "conv_a:D1:1", "Alice lived in Boston.", 0)
@@ -224,7 +226,14 @@ def test_add_persists_append_only_memory_relation(tmp_path: Path):
         "run", "mock", "p2", [], input_message_ids=new.source_message_ids,
     )
 
-    assert len(store.load_snapshot("conv_a", second.commit_id)) == 2
+    active = store.load_snapshot("conv_a", second.commit_id)
+    history = store.load_snapshot(
+        "conv_a", second.commit_id, include_history=True
+    )
+    assert [item.content for item in active] == [new.content]
+    assert [item.content for item in history] == [old.content, new.content]
+    assert history[0].system_to_commit == second.commit_id
+    assert history[0].close_reason == "superseded"
     with store.open_read_connection() as conn:
         edge = conn.execute(
             "SELECT target_version_id, relation_type FROM memory_relation_edges"

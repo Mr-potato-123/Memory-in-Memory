@@ -24,16 +24,19 @@ Attribution rules:
 1. CONSTRUCTION applies to a claim when the wrong-side current memory is
    missing, partial, or incorrect and a durable extraction difference can
    explain the contrast.
-2. ACCESS applies when useful memory exists on the wrong side but the access
-   A1 process fails to retrieve it or A2 fails to select/combine it. ACCESS and
-   CONSTRUCTION may both apply, including on different claims.
+2. ACCESS applies only to post-search evidence interpretation/composition or
+   answer-Skill routing when the wrong-side fixed Mem0 search already returned
+   sufficient evidence. A retrieval-coverage difference is an observational
+   Mem0 retrieval-system difference, not a learnable Skill; do not mark ACCESS.
 3. ANSWER applies only when every necessary claim is fully present and
    retrieved on both sides, yet the wrong side answers incorrectly. For an
    empty reference, ANSWER also applies when the correct side abstains and the
    wrong side gives an answer unsupported by the supplied memories, provided
    there is no upstream Access or Construction difference. ANSWER is exclusive:
    never mark it together with ACCESS or CONSTRUCTION.
-4. If the trace cannot establish a reusable behavioral difference, set
+4. Mem0 has no A1/A2, query rewrite, supplemental search, or Skill-controlled
+   top-k/depth. Never treat such behavior as a reusable contrast.
+5. If the trace cannot establish a reusable behavioral difference, set
    learnable=false. Do not force an attribution for judge/model variance,
    missing traces, equivalent behavior, or luck.
 

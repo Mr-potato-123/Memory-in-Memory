@@ -8,8 +8,10 @@ and uses the same retrieval implementation in use/train/evaluate/replay.
 from __future__ import annotations
 
 import json
+import hashlib
 import math
 import re
+import threading
 import uuid
 from collections import Counter
 from dataclasses import dataclass
@@ -108,9 +110,13 @@ def _bm25_scores(queries: list[str], documents: list[str]) -> np.ndarray:
                     frequency * 2.5 / max(denominator, 1e-12)
                 )
             row[doc_index] = score
-        maximum = float(np.max(row)) if len(row) else 0.0
-        if maximum > 0:
-            row /= maximum
+        # Keep lexical scores comparable across queries.  Max-normalising
+        # every row made the best Skill score 1.0 even when it matched only a
+        # generic word, which in turn forced one Construction Skill to fire
+        # for virtually every session.  Average over query terms and apply a
+        # bounded transform instead of ranking-relative normalisation.
+        row /= max(len(query_tokens), 1)
+        row = 1.0 - np.exp(-row)
         pooled = np.maximum(pooled, row)
     return pooled
 
@@ -121,6 +127,7 @@ def _rank_records(
     embedder: EmbedderLike,
     top_k: int | None,
     query_segments: list[str] | None = None,
+    document_vectors: np.ndarray | None = None,
 ) -> list[RankedSkill]:
     if not records:
         return []
@@ -140,7 +147,11 @@ def _rank_records(
         encode_queries = getattr(embedder, "encode_queries", embedder.encode)
         encode_documents = getattr(embedder, "encode_documents", embedder.encode)
         query_vecs = encode_queries(queries)
-        doc_vecs = encode_documents(texts)
+        doc_vecs = (
+            document_vectors
+            if document_vectors is not None
+            else encode_documents(texts)
+        )
         query_norms = np.linalg.norm(query_vecs, axis=1, keepdims=True)
         doc_norms = np.linalg.norm(doc_vecs, axis=1, keepdims=True)
         normalized_queries = query_vecs / np.maximum(query_norms, 1e-12)
@@ -334,6 +345,9 @@ class SkillBank:
         self._frozen = False
         self._selected: list[SkillRecord] | None = None
         self._published_name = self._repo.current_version
+        self._embedding_cache: dict[tuple[int, tuple[str, ...]], np.ndarray] = {}
+        self._embedding_cache_lock = threading.Lock()
+        self._persistent_embedding_cache: dict[tuple[str, tuple[str, ...]], np.ndarray] = {}
 
     @classmethod
     def load_or_create(cls, skills_dir: str | Path) -> "SkillBank":
@@ -364,6 +378,9 @@ class SkillBank:
             if item.get("status", "active") == "active"
         ]
         bank._published_name = bank_name
+        bank._embedding_cache = {}
+        bank._embedding_cache_lock = threading.Lock()
+        bank._persistent_embedding_cache = {}
         match = re.fullmatch(r"bank([1-9][0-9]*)", bank_name)
         bank._published_number = int(match.group(1)) if match else 0
         return bank
@@ -427,7 +444,173 @@ class SkillBank:
     def load_published(cls, bank_dir: str | Path) -> "SkillBank":
         """Load one published Bank without exposing maintenance snapshots."""
         bank_name, _, records = cls.read_published_records(bank_dir)
-        return cls.from_records(records, bank_name=bank_name)
+        bank = cls.from_records(records, bank_name=bank_name)
+        # ``from_records`` is also used for ephemeral validation views.  A
+        # published view, however, must retain its directory so the optional
+        # persistent embedding index can be loaded by every evaluator process.
+        bank._dir = Path(bank_dir)
+        return bank
+
+    @staticmethod
+    def _embedding_text(record: SkillRecord) -> str:
+        return f"{record.payload.name}. {record.payload.description}"
+
+    @staticmethod
+    def _answer_side_compatible(record: SkillRecord) -> bool:
+        """Return whether an Access Skill fits the fixed Mem0 topology.
+
+        Mem0-native Access performs exactly one default search followed by one
+        answer call.  A large part of the first Bank was learned from the
+        older iterative Access agent and contains instructions such as
+        ``perform a supplemental search``.  Injecting those instructions into
+        a single-pass answer prompt makes the model invent a second search or
+        treat a topical match as a recovery trigger.  Keep only procedures
+        that can be executed over the already returned evidence.
+        """
+        text = " ".join(
+            [
+                record.payload.description,
+                *record.payload.content,
+            ]
+        ).casefold()
+        retrieval_actions = (
+            r"\ba[12]\b",
+            r"\b(?:supplemental|additional|extra|another)\s+(?:search|retrieval)\b",
+            r"\b(?:increase|raise|change|adjust|set)\b[^.]{0,60}\b(?:top[ -]?k|depth)\b",
+            r"\b(?:perform|do|issue|run|conduct)\b[^.]{0,80}\b(?:search|retrieval)\b",
+            r"\b(?:search|retrieve|reformulate|expand)\b[^.]{0,80}\b(?:query|using|with)\b",
+            r"\bsearch\s+again\b",
+            r"\bretrieve\s+both\b",
+        )
+        return not any(re.search(pattern, text) for pattern in retrieval_actions)
+
+    @classmethod
+    def _records_fingerprint(cls, records: list[SkillRecord]) -> str:
+        payload = [
+            {
+                "version_id": record.version_id,
+                "text": cls._embedding_text(record),
+            }
+            for record in records
+        ]
+        encoded = json.dumps(
+            payload, ensure_ascii=False, separators=(",", ":")
+        ).encode("utf-8")
+        return hashlib.sha256(encoded).hexdigest()
+
+    @staticmethod
+    def _embedder_name(embedding_index: EmbedderLike) -> str:
+        return str(getattr(embedding_index, "model_name", ""))
+
+    @staticmethod
+    def _cache_path(directory: Path) -> Path:
+        return directory / "skill_embeddings.npz"
+
+    def precompute_embeddings(
+        self,
+        embedding_index: EmbedderLike,
+        *,
+        force: bool = False,
+    ) -> Path:
+        """Persist document-side Skill vectors for reuse across processes.
+
+        The cache is deliberately tied to the exact active Skill texts and the
+        embedding model identity.  It is therefore safe for a newly published
+        bank to coexist with older caches, and stale caches are ignored rather
+        than silently used.
+        """
+        if self._selected is not None:
+            records = list(self._selected)
+        else:
+            records = self.repository.list_active()
+        records = list(records)
+        texts = [self._embedding_text(record) for record in records]
+        version_ids = [record.version_id for record in records]
+        fingerprint = self._records_fingerprint(records)
+        model_name = self._embedder_name(embedding_index)
+        path = self._cache_path(self._dir)
+        if not force:
+            loaded = self._load_persistent_embeddings(
+                embedding_index, records, allow_missing=True
+            )
+            if loaded is not None:
+                return path
+        encode_documents = getattr(
+            embedding_index, "encode_documents", embedding_index.encode
+        )
+        vectors = encode_documents(texts)
+        vectors = np.asarray(vectors, dtype=np.float32)
+        if vectors.ndim != 2 or vectors.shape[0] != len(records):
+            raise ValueError(
+                "Skill embedding encoder returned an invalid shape: "
+                f"{vectors.shape}; expected ({len(records)}, dim)."
+            )
+        metadata = {
+            "schema_version": 1,
+            "model_name": model_name,
+            "dimension": int(vectors.shape[1]),
+            "records_sha256": fingerprint,
+            "version_ids": version_ids,
+        }
+        self._dir.mkdir(parents=True, exist_ok=True)
+        temporary = path.with_suffix(path.suffix + ".tmp")
+        with temporary.open("wb") as handle:
+            np.savez_compressed(
+                handle,
+                vectors=vectors,
+                metadata=np.asarray(json.dumps(metadata, ensure_ascii=False)),
+            )
+        temporary.replace(path)
+        key = (model_name, tuple(version_ids))
+        with self._embedding_cache_lock:
+            self._persistent_embedding_cache[key] = vectors
+        return path
+
+    def _load_persistent_embeddings(
+        self,
+        embedding_index: EmbedderLike,
+        records: list[SkillRecord],
+        *,
+        allow_missing: bool = False,
+    ) -> np.ndarray | None:
+        """Load and validate the on-disk document vectors for ``records``."""
+        version_ids = tuple(record.version_id for record in records)
+        model_name = self._embedder_name(embedding_index)
+        key = (model_name, version_ids)
+        with self._embedding_cache_lock:
+            cached = self._persistent_embedding_cache.get(key)
+            if cached is not None:
+                return cached
+        path = self._cache_path(self._dir)
+        if not path.exists():
+            if allow_missing:
+                return None
+            return None
+        try:
+            with np.load(path, allow_pickle=False) as payload:
+                vectors = np.asarray(payload["vectors"], dtype=np.float32)
+                raw_metadata = payload["metadata"]
+                metadata_text = str(raw_metadata.item())
+                metadata = json.loads(metadata_text)
+            expected_ids = [record.version_id for record in records]
+            if metadata.get("schema_version") != 1:
+                return None
+            if metadata.get("model_name", "") != model_name:
+                return None
+            if metadata.get("version_ids") != expected_ids:
+                return None
+            if metadata.get("records_sha256") != self._records_fingerprint(records):
+                return None
+            if vectors.ndim != 2 or vectors.shape[0] != len(records):
+                return None
+            expected_dim = getattr(embedding_index, "dim", None)
+            if expected_dim is not None and int(expected_dim) != vectors.shape[1]:
+                return None
+        except (OSError, ValueError, KeyError, json.JSONDecodeError):
+            return None
+        with self._embedding_cache_lock:
+            self._persistent_embedding_cache[key] = vectors
+        return vectors
 
     @classmethod
     def export_published(
@@ -522,6 +705,9 @@ class SkillBank:
         candidate_k: int = 10,
         disclose_k: int = 5,
         min_score: float = 0.0,
+        min_semantic_score: float = 0.0,
+        min_score_margin: float = 0.0,
+        answer_only: bool = False,
         reranker: SkillRerankerLike | None = None,
         query_segments: list[str] | None = None,
         trace_id: str | None = None,
@@ -531,16 +717,67 @@ class SkillBank:
             max(0, candidate_k),
             max(0, top_k) + max(0, disclose_k),
         )
+        active_records = self._active_records(side)
+        texts = [
+            self._embedding_text(record)
+            for record in active_records
+        ]
+        cache_key = (
+            id(embedding_index),
+            tuple(record.version_id for record in active_records),
+        )
+        with self._embedding_cache_lock:
+            document_vectors = self._embedding_cache.get(cache_key)
+        if document_vectors is None and texts:
+            # Prefer the bank-local persistent index.  It is generated once at
+            # publication time and shared by all evaluator processes; a
+            # missing/stale index falls back to the existing in-process cache.
+            all_records = self._active_records()
+            all_vectors = self._load_persistent_embeddings(
+                embedding_index, all_records, allow_missing=True
+            )
+            if all_vectors is not None:
+                positions = {
+                    record.version_id: index
+                    for index, record in enumerate(all_records)
+                }
+                indices = [
+                    positions[record.version_id] for record in active_records
+                ]
+                document_vectors = all_vectors[indices]
+            else:
+                encode_documents = getattr(
+                    embedding_index, "encode_documents", embedding_index.encode
+                )
+                document_vectors = encode_documents(texts)
+            with self._embedding_cache_lock:
+                self._embedding_cache[cache_key] = document_vectors
         ranked = _rank_records(
             query,
-            self._active_records(side),
+            active_records,
             embedding_index,
             first_stage_k,
             query_segments=query_segments,
+            document_vectors=document_vectors,
         )
         candidates = [
-            item for item in ranked if item.score >= min_score
+            item
+            for item in ranked
+            if item.score >= min_score
+            and item.semantic_score >= min_semantic_score
         ][: max(0, candidate_k)]
+        if answer_only and side == Side.ACCESS:
+            candidates = [
+                item
+                for item in candidates
+                if self._answer_side_compatible(item.record)
+            ]
+        # A narrow procedural trigger should be clearly more applicable than
+        # its nearest alternative.  Ambiguity means abstain, not arbitrarily
+        # inject the top-ranked instruction into Runtime.
+        if candidates and min_score_margin > 0.0 and len(ranked) > 1:
+            if candidates[0].score - ranked[1].score < min_score_margin:
+                candidates = []
         rerank_result = (
             reranker.rerank(
                 query=query,
@@ -607,6 +844,8 @@ class SkillBank:
             top_k=max(0, top_k),
             disclose_k=max(0, disclose_k),
             min_score=float(min_score),
+            min_semantic_score=float(min_semantic_score),
+            min_score_margin=float(min_score_margin),
             scoring_weights={"semantic": 0.70, "bm25": 0.30},
             retrieval_method="bank1_hybrid_router",
             candidate_k=max(0, candidate_k),
@@ -658,10 +897,26 @@ class RuntimeSkillQueryBuilder:
 
     def for_access_recovery(self, context: dict) -> str:
         """Route only after the first default search is observable."""
-        return (
-            "Question and first default-search observation:\n"
-            + json.dumps(context, ensure_ascii=False, sort_keys=True)
-        )
+        question = str(context.get("question", "")).strip()
+        observation = context.get("first_search", {})
+        hits = observation.get("hits", []) if isinstance(observation, dict) else []
+        lines = [
+            f"Question: {question}",
+            f"First retrieval returned {len(hits)} memories.",
+            "Returned memory contents:",
+        ]
+        for hit in hits:
+            if not isinstance(hit, dict):
+                continue
+            # Routing needs the evidence state, not storage IDs, scores, or
+            # JSON field names.  Removing that metadata keeps the asymmetric
+            # query embedding focused on the Skill trigger and answer gap.
+            content = " ".join(str(hit.get("content", "")).split())
+            if content:
+                lines.append(f"- {content[:320]}")
+        if len(lines) == 3:
+            lines.append("- (none)")
+        return "\n".join(lines)
 
     def for_construction(self, messages: list[dict]) -> str:
         """Construction Skills are triggered by the complete incoming session."""

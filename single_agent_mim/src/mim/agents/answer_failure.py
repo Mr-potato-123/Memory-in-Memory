@@ -88,9 +88,31 @@ class AnswerFailureAgent:
                     and not contradiction
                 )
             problem = case.judge_label in {"P", "I", "W"} and sufficient
+            failure_mode = str(result.get("failure_mode", "OTHER")).strip().upper()
+            observable_trigger = str(
+                result.get("observable_trigger", "")
+            ).strip()
+            corrective_operation = str(
+                result.get("corrective_operation", "")
+            ).strip()
+            requested_learnable = bool(result.get("skill_learnable", False))
+            skill_learnable = bool(
+                problem
+                and requested_learnable
+                and observable_trigger
+                and corrective_operation
+                and failure_mode not in {
+                    "GENERIC_INSTRUCTION_FOLLOWING",
+                    "OTHER",
+                }
+            )
 
             report.claims = claims
             report.unresolved_material_contradiction = contradiction
+            report.failure_mode = failure_mode
+            report.skill_learnable = skill_learnable
+            report.observable_trigger = observable_trigger
+            report.corrective_operation = corrective_operation
             report.retrieved_context_sufficient = sufficient
             report.problem_found = problem
             report.diagnosis_type = (
@@ -109,7 +131,7 @@ class AnswerFailureAgent:
                 # artifact, while candidate generation sees only the evidence
                 # needed to internalize a reusable answering rule.
                 report.repair_package = {
-                    "schema_version": "standard_answer_failure_v1",
+                    "schema_version": "mem0_answer_failure_v2",
                     "source_mode": "standard",
                     "side": "access",
                     "stage": "answer",
@@ -117,6 +139,15 @@ class AnswerFailureAgent:
                     "reference_answer": case.reference_answer,
                     "runtime_prediction": case.prediction,
                     "retrieved_context_sufficient": True,
+                    "eligible_for_skill_generation": skill_learnable,
+                    "failure_scope": (
+                        "memory_answering_procedure"
+                        if skill_learnable
+                        else "record_only_answer_failure"
+                    ),
+                    "failure_mode": failure_mode,
+                    "observable_trigger": observable_trigger,
+                    "corrective_operation": corrective_operation,
                     "essential_reference_claims": [
                         claim.model_dump(mode="json") for claim in claims
                     ],

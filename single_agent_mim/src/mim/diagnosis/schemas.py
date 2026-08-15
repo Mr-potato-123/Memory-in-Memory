@@ -54,6 +54,12 @@ class ClaimSupport(BaseModel):
     coverage: ClaimCoverage | None = None
 
 
+class AccessClaimSupport(ClaimSupport):
+    """Required snapshot evidence and the subset returned by fixed Mem0 search."""
+
+    retrieved_supporting_version_ids: list[str] = Field(default_factory=list)
+
+
 class BaseDiagnosisReport(BaseModel):
     schema_version: str
     diagnosis_id: str
@@ -84,6 +90,10 @@ class AnswerDiagnosisReport(BaseDiagnosisReport):
     retrieved_version_ids: list[str] = Field(default_factory=list)
     retrieved_context_sufficient: bool = False
     unresolved_material_contradiction: bool = False
+    failure_mode: str = ""
+    skill_learnable: bool = False
+    observable_trigger: str = ""
+    corrective_operation: str = ""
     search_steps: list[dict[str, Any]] = Field(default_factory=list)
 
 
@@ -92,7 +102,8 @@ class AccessDiagnosisReport(BaseDiagnosisReport):
 
     schema_version: str = "access_diagnosis_v3"
     access_run_id: str = ""
-    claims: list[ClaimSupport] = Field(default_factory=list)
+    claims: list[AccessClaimSupport] = Field(default_factory=list)
+    skill_learnable: bool = False
     current_related_memories: list[dict[str, Any]] = Field(default_factory=list)
     useful_current_version_ids: list[str] = Field(default_factory=list)
     retrieved_current_version_ids: list[str] = Field(default_factory=list)

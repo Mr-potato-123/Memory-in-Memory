@@ -19,6 +19,8 @@ from mim.retrieval.embedder import Embedder
 from mim.retrieval.hybrid import HybridRetriever
 from mim.schemas import AgentAction, Question, Side, SkillRecord
 from mim.storage.sqlite_store import (
+    ConstructionDecision,
+    ConstructionPlan,
     MemoryCandidate,
     MemoryHit,
     SearchFilters,
@@ -47,6 +49,9 @@ def _insert(
     kind: str = "event",
     entities: list[str] | None = None,
     world_start: str | None = None,
+    predicate: str | None = None,
+    object_text: str | None = None,
+    keywords: list[str] | None = None,
 ) -> None:
     store.insert_memory_version(
         memory_id=f"mem_conv_{number:04d}",
@@ -54,12 +59,12 @@ def _insert(
         conversation_id="conv",
         memory_kind=kind,
         subject=subject,
-        predicate=None,
-        object_text=None,
+        predicate=predicate,
+        object_text=object_text,
         content=content,
         source_message_ids=[],
         entities=entities or [subject],
-        keywords=[],
+        keywords=keywords or [],
         embedding=embedder.encode([content])[0],
         system_from_commit=0,
         world_start=world_start,
@@ -130,6 +135,234 @@ def test_bm25_and_keyword_routes_are_independently_available(tmp_path: Path):
     assert keyword_hits[0].memory_id == "mem_conv_0001"
     assert bm25_hits[0].matched_paths == ["bm25"]
     assert keyword_hits[0].matched_paths == ["keyword"]
+
+
+def test_bm25_normalizes_inflection_and_boosts_retrieval_fields(tmp_path: Path):
+    store, embedder, retriever = _components(tmp_path)
+    _insert(
+        store,
+        embedder,
+        1,
+        "Caroline is researching adoption agencies for prospective parents.",
+        subject="Caroline",
+        predicate="is researching adoption agencies",
+        object_text="adoption agencies",
+        keywords=["adoption agencies", "family"],
+    )
+    for number, topic in enumerate(
+        ["counseling", "running", "photography", "mental health"],
+        start=2,
+    ):
+        _insert(
+            store,
+            embedder,
+            number,
+            f"Caroline discussed {topic} with a friend.",
+            subject="Caroline",
+            predicate=f"discussed {topic}",
+        )
+
+    hits = retriever.search(
+        conversation_id="conv",
+        snapshot_commit_id=0,
+        query="What did Caroline research?",
+        keywords=["Caroline", "research"],
+        strategy="bm25",
+        top_k=5,
+    )
+
+    assert hits[0].memory_id == "mem_conv_0001"
+
+
+def test_source_fallback_returns_only_messages_omitted_by_construction(
+    tmp_path: Path,
+):
+    store, embedder, retriever = _components(tmp_path)
+    store.save_session(
+        session_id="conv:s1",
+        conversation_id="conv",
+        session_index=0,
+        occurred_at="2023-05-08T00:00:00Z",
+    )
+    store.save_messages([
+        {
+            "message_id": "conv:D1:1",
+            "conversation_id": "conv",
+            "session_id": "conv:s1",
+            "turn_index": 0,
+            "role": "user",
+            "speaker": "Caroline",
+            "content": "Researching adoption agencies is important to me.",
+            "occurred_at": "2023-05-08T00:00:00Z",
+        },
+        {
+            "message_id": "conv:D1:2",
+            "conversation_id": "conv",
+            "session_id": "conv:s1",
+            "turn_index": 1,
+            "role": "assistant",
+            "speaker": "Melanie",
+            "content": "Caroline enjoys running.",
+            "occurred_at": "2023-05-08T00:01:00Z",
+        },
+    ])
+    represented = MemoryCandidate(
+        candidate_id="cand_represented",
+        memory_kind="preference",
+        subject="Caroline",
+        predicate="enjoys",
+        object_text="running",
+        content="Caroline enjoys running.",
+        world_start=None,
+        world_end=None,
+        source_message_ids=["conv:D1:2"],
+        entities=["Caroline"],
+        keywords=["running"],
+        embedding=embedder.encode(["Caroline enjoys running."])[0],
+    )
+    commit = store.apply_construction_plan(
+        conversation_id="conv",
+        session_id="conv:s1",
+        base_commit_id=None,
+        plan=ConstructionPlan(
+            base_commit_id=None,
+            candidates=[represented],
+            decisions=[ConstructionDecision(
+                candidate_id=represented.candidate_id,
+                action="ADD",
+                merged_content=represented.content,
+                source_message_ids=represented.source_message_ids,
+            )],
+        ),
+        run_id="run",
+        runtime_model="mock",
+        prompt_hash="prompt",
+        skill_version_ids=[],
+        input_message_ids=["conv:D1:1", "conv:D1:2"],
+    )
+
+    filters = SearchFilters(
+        conversation_id="conv",
+        as_of_commit=commit.commit_id,
+        include_sources=True,
+    )
+    hits = retriever.search(
+        conversation_id="conv",
+        snapshot_commit_id=commit.commit_id,
+        query="What did Caroline research?",
+        keywords=["Caroline", "research"],
+        strategy="source",
+        filters=filters,
+        top_k=5,
+    )
+
+    assert [hit.version_id for hit in hits] == ["source:conv:D1:1"]
+    assert hits[0].memory_kind == "source_message"
+
+
+def test_source_evidence_persists_without_memory_version_foreign_key(
+    tmp_path: Path,
+):
+    store, embedder, retriever = _components(tmp_path)
+    store.save_session(
+        session_id="conv:s1", conversation_id="conv", session_index=0
+    )
+    store.save_messages([{
+        "message_id": "conv:D1:1",
+        "conversation_id": "conv",
+        "session_id": "conv:s1",
+        "turn_index": 0,
+        "role": "user",
+        "speaker": "Caroline",
+        "content": "Researching adoption agencies is important to me.",
+        "occurred_at": None,
+    }])
+    commit = store.apply_construction_plan(
+        "conv",
+        "conv:s1",
+        None,
+        ConstructionPlan(base_commit_id=None, candidates=[], decisions=[]),
+        "run",
+        "mock",
+        "prompt",
+        [],
+        input_message_ids=["conv:D1:1"],
+    )
+    source_id = "source:conv:D1:1"
+    visible = [{
+        "version_id": source_id,
+        "context_index": 0,
+        "rendered_text": "[source:conv:D1:1] source_message | Researching adoption agencies",
+        "content": "Researching adoption agencies is important to me.",
+    }]
+    store.save_access_trace(
+        access_run_id="access_source",
+        run_id="run",
+        conversation_id="conv",
+        qa_id="qa_source",
+        snapshot_commit_id=commit.commit_id,
+        question="What did Caroline research?",
+        prediction="Adoption agencies.",
+        skill_version_ids=[],
+        answer_prompt_hash="hash",
+        action_records=[{
+            "action_id": "access_source_a000",
+            "step_index": 0,
+            "action_type": "supplemental_search",
+            "request": {},
+            "response": {},
+            "retrieval_hits": [{
+                "version_id": source_id,
+                "score": 1.0,
+            }],
+        }],
+        visible_memories=visible,
+        evidence_ids=[source_id],
+    )
+
+    with store.open_read_connection() as conn:
+        assert conn.execute(
+            "SELECT message_id FROM access_source_retrieval_hits"
+        ).fetchone()[0] == "conv:D1:1"
+        assert conn.execute(
+            "SELECT message_id FROM access_final_source_evidence"
+        ).fetchone()[0] == "conv:D1:1"
+    assert store.get_answer_context("access_source")[0]["version_id"] == source_id
+
+
+def test_final_snapshot_store_reads_are_cached_without_reusing_mutated_hits(
+    tmp_path: Path,
+):
+    store, embedder, retriever = _components(tmp_path)
+    _insert(store, embedder, 1, "Alice enjoys pottery.", subject="Alice")
+    calls = {"snapshot": 0, "embeddings": 0}
+    original_snapshot = store.load_snapshot
+    original_embeddings = store.get_embeddings_for_snapshot
+
+    def counted_snapshot(*args, **kwargs):
+        calls["snapshot"] += 1
+        return original_snapshot(*args, **kwargs)
+
+    def counted_embeddings(*args, **kwargs):
+        calls["embeddings"] += 1
+        return original_embeddings(*args, **kwargs)
+
+    store.load_snapshot = counted_snapshot
+    store.get_embeddings_for_snapshot = counted_embeddings
+    filters = SearchFilters(conversation_id="conv", as_of_commit=0)
+
+    first = retriever.search(
+        conversation_id="conv", snapshot_commit_id=0,
+        query="Alice pottery", strategy="hybrid", filters=filters,
+    )
+    first[0].score = -999
+    second = retriever.search(
+        conversation_id="conv", snapshot_commit_id=0,
+        query="Alice pottery", strategy="hybrid", filters=filters,
+    )
+
+    assert calls == {"snapshot": 1, "embeddings": 1}
+    assert second[0].score >= 0
 
 
 def test_access_drops_unknown_memory_kind_filters(tmp_path: Path):
@@ -218,6 +451,80 @@ def test_access_v2_query_plan_is_deterministic():
     assert first == second
     assert first["entities"] == ["Evan"]
     assert first["original_query"] == question
+
+
+def test_access_v2_source_fallback_reuses_question_and_accepts_source_evidence(
+    tmp_path: Path,
+):
+    store, _, retriever = _components(tmp_path)
+    store.save_session(
+        session_id="conv:s1", conversation_id="conv", session_index=0
+    )
+    store.save_messages([{
+        "message_id": "conv:D1:1",
+        "conversation_id": "conv",
+        "session_id": "conv:s1",
+        "turn_index": 0,
+        "role": "user",
+        "speaker": "Caroline",
+        "content": "Researching adoption agencies is important to me.",
+        "occurred_at": None,
+    }])
+    commit = store.apply_construction_plan(
+        "conv",
+        "conv:s1",
+        None,
+        ConstructionPlan(base_commit_id=None, candidates=[], decisions=[]),
+        "run",
+        "mock",
+        "prompt",
+        [],
+        input_message_ids=["conv:D1:1"],
+    )
+    model = MockClient(ModelConfig(provider="mock", model="mock"))
+    model.set_script([
+        model._make_resp(json.dumps({
+            "additional_queries": [],
+            "keywords": ["Caroline", "research"],
+            "entities": ["Caroline"],
+            "include_history": False,
+            "include_sources": True,
+            "time_mode": "none",
+            "evidence_requirements": ["the researched subject"],
+            "applied_skill_ids": [],
+        })),
+        model._make_resp(json.dumps({
+            "selected_evidence_ids": ["source:conv:D1:1"],
+            "answer": "Adoption agencies.",
+            "coverage": [],
+            "applied_skill_ids": [],
+        })),
+    ])
+    agent = StableAccessAgent(
+        model,
+        store,
+        retriever,
+        planning_prompt="plan",
+        answer_prompt="answer",
+    )
+
+    result = agent.answer(
+        Question(
+            qa_id="qa_source_fallback",
+            question="What did Caroline research?",
+            reference_answer="Adoption agencies",
+            category=4,
+        ),
+        conversation_id="conv",
+        snapshot_commit_id=commit.commit_id,
+        skills=[],
+    )
+
+    assert result.answer == "Adoption agencies."
+    assert result.evidence_ids == ["source:conv:D1:1"]
+    assert result.search_trace[1].arguments["additional_queries"] == [
+        "What did Caroline research?"
+    ]
 
 
 def test_access_v2_filters_case_answering_but_keeps_retrieval_guidance():

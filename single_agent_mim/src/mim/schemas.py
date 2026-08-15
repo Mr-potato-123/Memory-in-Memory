@@ -118,6 +118,8 @@ class SkillRetrievalTrace(BaseModel):
     top_k: int
     disclose_k: int
     min_score: float = 0.0
+    min_semantic_score: float = 0.0
+    min_score_margin: float = 0.0
     scored_fields: list[str] = Field(
         default_factory=lambda: ["name", "description"]
     )

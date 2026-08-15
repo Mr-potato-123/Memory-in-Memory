@@ -208,6 +208,11 @@ def main() -> int:
     parser.add_argument("--build-workers", type=int, default=6)
     parser.add_argument("--qa-workers", type=int, default=6)
     parser.add_argument("--max-convs", type=int, default=0)
+    parser.add_argument(
+        "--conversation-ids", nargs="+",
+        help="Evaluate an explicit subset (useful for serial retry after a "
+             "per-conversation model-load failure).",
+    )
     parser.add_argument("--smoke-qa", type=int, default=0,
                         help="Answer only the first N questions per conversation.")
     args = parser.parse_args()
@@ -219,7 +224,7 @@ def main() -> int:
     conversations, questions_map = load_dataset(config.dataset.path)
     with open(config.dataset.split, encoding="utf-8") as handle:
         split_data = json.load(handle)
-    conv_ids = split_data.get(args.split, [])
+    conv_ids = list(args.conversation_ids or split_data.get(args.split, []))
     if args.max_convs > 0:
         conv_ids = conv_ids[: args.max_convs]
 

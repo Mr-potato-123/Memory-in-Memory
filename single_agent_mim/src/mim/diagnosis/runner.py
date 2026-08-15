@@ -55,12 +55,14 @@ class ComponentWorker:
         prompts: dict[str, str],
         judge_run_id: str,
         diagnosis_run_id: str,
+        output_root: Path,
     ):
         self._component = component
         self._config = config
         self._prompts = prompts
         self._judge_run_id = judge_run_id
         self._diagnosis_run_id = diagnosis_run_id
+        self._output_root = output_root
         self._local = threading.local()
 
     def run(self, item: WorkItem) -> BaseModel:
@@ -97,8 +99,20 @@ class ComponentWorker:
                     judge_reason=item.judge_reason,
                     gold_message_ids=list(item.gold_message_ids),
                 )
-                evidence = DiagnosisEvidenceRepository(conn)
-                report = self._workflow(evidence).run(case)
+                evidence = DiagnosisEvidenceRepository(
+                    conn,
+                    mem0_qdrant_path=item.db_path.parent / "mem0" / "qdrant",
+                )
+                workflow = self._workflow(evidence)
+                if self._component == "access":
+                    report = workflow.run(
+                        case,
+                        answer_context_sufficient=(
+                            self._answer_context_sufficient(item)
+                        ),
+                    )
+                else:
+                    report = workflow.run(case)
             finally:
                 conn.close()
             last_report = report
@@ -139,13 +153,35 @@ class ComponentWorker:
         if model is None:
             model_config = copy.deepcopy(self._config.models["maintenance"])
             model_config.supports_json_mode = True
-            # Diagnosis is a strict structured classification task. Flash
-            # thinking can consume the output budget before emitting JSON.
-            model_config.extra_body = {"thinking": {"type": "disabled"}}
+            # Diagnosis explicitly runs with DeepSeek thinking enabled. The
+            # structured parser accepts the final JSON while the reasoning
+            # trace remains provider-side and is not included in evidence.
+            model_config.temperature = 0.2
+            model_config.extra_body = {"thinking": {"type": "enabled"}}
+            # ``reasoning_effort`` is an OpenAI-only knob and DeepSeek V4
+            # exposes thinking through ``extra_body`` instead.
             model_config.reasoning_effort = None
+            model_config.reject_reasoning_output = False
             model = create_client(model_config)
             self._local.model = model
         return model
+
+    def _answer_context_sufficient(self, item: WorkItem) -> bool:
+        """Read the completed first-stage diagnosis for causal routing."""
+        path = (
+            self._output_root
+            / "answer_failure"
+            / "packages"
+            / item.conversation_id
+            / f"{item.qa_id}_answer_failure.json"
+        )
+        if not path.exists():
+            return False
+        try:
+            report = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return False
+        return bool(report.get("retrieved_context_sufficient", False))
 
     @staticmethod
     def _open_readonly(path: Path) -> sqlite3.Connection:
@@ -227,6 +263,7 @@ def run_component(component: str, argv: list[str] | None = None) -> int:
         prompts=prompts,
         judge_run_id=judge_path.parent.name,
         diagnosis_run_id=args.diagnosis_run_id,
+        output_root=output_root,
     )
     store.write_manifest(
         {
@@ -350,6 +387,8 @@ def _build_work_items(
     for conversation_id, source_run in sorted(source_runs.items()):
         prediction_path = source_run / "locomo_predictions.jsonl"
         db_path = source_run / "state" / "memory.sqlite3"
+        if not db_path.exists():
+            db_path = source_run / "state" / "mim_trace.sqlite3"
         for prediction in _load_jsonl(prediction_path):
             qa_id = str(prediction.get("qa_id", ""))
             judge = judge_by_qa.get(qa_id)

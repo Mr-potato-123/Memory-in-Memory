@@ -241,9 +241,16 @@ def test_candidate_skill_repairs_length_without_broadening():
             "solves": too_long,
             "related_existing_skill_ids": [],
             "skill": {
-                "name": "Narrow retry",
+                "name": "Narrow answer",
                 "description": "Use when an exact trigger is observed.",
-                "content": ["Perform one bounded retry, then stop."],
+                "content": ["Return only the directly supported item."],
+            },
+            "mechanism_signature": {
+                "observable_trigger": "A single exact item is requested.",
+                "evidence_precondition": "One item has direct support.",
+                "failed_behavior": "The answer adds alternatives.",
+                "corrective_operation": "Return only the supported item.",
+                "safety_boundary": "Do not apply to list questions."
             },
         })),
         model._make_resp(json.dumps({
@@ -254,14 +261,27 @@ def test_candidate_skill_repairs_length_without_broadening():
             ),
             "related_existing_skill_ids": [],
             "skill": {
-                "name": "Narrow retry",
+                "name": "Narrow answer",
                 "description": "Use when an exact trigger is observed.",
-                "content": ["Perform one bounded retry, then stop."],
+                "content": ["Return only the directly supported item."],
+            },
+            "mechanism_signature": {
+                "observable_trigger": "A single exact item is requested.",
+                "evidence_precondition": "One item has direct support.",
+                "failed_behavior": "The answer adds alternatives.",
+                "corrective_operation": "Return only the supported item.",
+                "safety_boundary": "Do not apply to list questions."
             },
         })),
     ])
     candidate = CandidateSkillAgent(model, prompt="Return JSON.").generate(
-        diagnosis={"diagnosis_id": "diag_1"},
+        diagnosis={
+            "diagnosis_id": "diag_1",
+            "diagnosis_type": "ANSWER_FAILURE",
+            "retrieved_context_sufficient": True,
+            "skill_learnable": True,
+            "repair_package": {"eligible_for_skill_generation": True},
+        },
         side="access",
     )
 
@@ -281,11 +301,18 @@ def test_w2w_candidate_keeps_maintenance_lineage_outside_skill_payload():
         "why_previous_round_failed": "The selected rule did not enforce coverage.",
         "solves": "Repairs a repeated evidence-coverage failure.",
         "related_existing_skill_ids": ["sk_access_existing"],
+        "mechanism_signature": {
+            "observable_trigger": "A list answer is requested.",
+            "evidence_precondition": "Returned memories support all items.",
+            "failed_behavior": "The answer omits a supported item.",
+            "corrective_operation": "Check coverage before answering.",
+            "safety_boundary": "Do not add unsupported items."
+        },
         "skill": {
             "name": "Verify unresolved evidence gap",
-            "description": "Use when the first search lacks one required claim; not when all claims are directly supported.",
+            "description": "Use when a list question has multiple supported items; not when evidence is incomplete.",
             "content": [
-                "Search once for the missing claim; do not apply when the first result already supports the complete answer."
+                "Check every requested item against returned memories before answering."
             ],
         },
     }))])
@@ -293,6 +320,13 @@ def test_w2w_candidate_keeps_maintenance_lineage_outside_skill_payload():
     candidate = CandidateSkillAgent(model, prompt="Return JSON.").generate(
         diagnosis={
             "diagnosis_id": "persistent_case_access",
+            "diagnosis_type": "ANSWER_FAILURE",
+            "retrieved_context_sufficient": True,
+            "skill_learnable": True,
+            "repair_package": {
+                "eligible_for_skill_generation": True,
+                "failure_mode": "LIST_COVERAGE",
+            },
             "transition": "W2W",
             "failure_age": 3,
             "maintenance_intent_hint": "REVISE",

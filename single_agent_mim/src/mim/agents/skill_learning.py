@@ -53,6 +53,16 @@ class CandidateSkillAgent:
             or diagnosis.get("failure_id")
             or f"diagnosis_{uuid.uuid4().hex[:10]}"
         )
+        if side == "access":
+            repair = diagnosis.get("repair_package")
+            repair = repair if isinstance(repair, dict) else {}
+            if not (
+                diagnosis.get("diagnosis_type") == "ANSWER_FAILURE"
+                and diagnosis.get("retrieved_context_sufficient") is True
+                and diagnosis.get("skill_learnable") is True
+                and repair.get("eligible_for_skill_generation") is True
+            ):
+                return None
         skill_trace = (
             diagnosis.get("skill_trace")
             if side == "access"
@@ -200,6 +210,7 @@ class CandidateSkillAgent:
                 content=skill.get("content", []),
             ),
             solves=str(data.get("solves", "")).strip(),
+            mechanism_signature=self._mechanism_signature(data),
             related_existing_skill_ids=list(dict.fromkeys(related)),
             source_diagnosis_id=diagnosis_id,
             source_failure_id=diagnosis_id,
@@ -211,6 +222,14 @@ class CandidateSkillAgent:
                 or failure_to_repair.get("why_previous_round_failed")
                 or ""
             ).strip(),
+            target_first_break=(
+                str(
+                    (diagnosis.get("repair_package") or {}).get(
+                        "failure_mode", diagnosis.get("failure_mode", "")
+                    )
+                ).strip()
+                or None
+            ),
             created_at=time.strftime(
                 "%Y-%m-%dT%H:%M:%SZ", time.gmtime()
             ),
@@ -225,6 +244,12 @@ class CandidateSkillAgent:
         if not candidate.solves:
             errors.append("solves is empty")
             valid = False
+        if side == "access" and len(candidate.mechanism_signature) != 5:
+            errors.append(
+                "access candidate requires a complete five-field "
+                "mechanism_signature"
+            )
+            valid = False
         if len(candidate.solves) > 600:
             errors.append("solves is longer than 600 characters")
             valid = False
@@ -233,6 +258,24 @@ class CandidateSkillAgent:
                 "Invalid generated candidate Skill: " + "; ".join(errors)
             )
         return candidate
+
+    @staticmethod
+    def _mechanism_signature(data: dict[str, Any]) -> dict[str, str]:
+        raw = data.get("mechanism_signature")
+        if not isinstance(raw, dict):
+            return {}
+        fields = (
+            "observable_trigger",
+            "evidence_precondition",
+            "failed_behavior",
+            "corrective_operation",
+            "safety_boundary",
+        )
+        result = {
+            field: str(raw.get(field, "")).strip()
+            for field in fields
+        }
+        return result if all(result.values()) else {}
 
     @staticmethod
     def _parse_json(text: str) -> dict[str, Any]:

@@ -1,0 +1,99 @@
+seed: 42
+output_dir: outputs
+
+dataset:
+  path: ../LoCoMo/data/locomo10.json
+  split: data/splits/locomo_swap_4_2_2.json
+
+models:
+  runtime:
+    provider: openai_compatible
+    model: deepseek-v4-flash
+    api_key_env: RUNTIME_API_KEY
+    base_url: ${RUNTIME_BASE_URL}
+    temperature: 0.0
+    max_tokens: 1600
+    supports_json_mode: true
+    extra_body:
+      thinking:
+        type: disabled
+    reject_reasoning_output: true
+  maintenance:
+    provider: openai_compatible
+    model: deepseek-v4-flash
+    api_key_env: MAINTENANCE_API_KEY
+    base_url: ${MAINTENANCE_BASE_URL}
+    temperature: 0.0
+    max_tokens: 12000
+    supports_json_mode: true
+    extra_body:
+      thinking:
+        type: disabled
+    reject_reasoning_output: true
+
+storage:
+  backend: mem0
+  # MiM trace ledger only; factual memories live in Mem0/Qdrant.
+  path: state/mim_trace.sqlite3
+  # Required experiment identity. Reuse exactly this value for Access-only
+  # baseline/Bank comparisons against one frozen Mem0 snapshot.
+  mem0_namespace: mem0_v2018_ds4_native_train_20260814
+  mem0_search_threshold: 0.0
+  mem0_rerank: false
+  mem0_config:
+    version: v1.1
+    llm:
+      provider: deepseek
+      config:
+        model: deepseek-v4-flash
+        temperature: 0.0
+        max_tokens: 4000
+        extra_body:
+          thinking:
+            type: disabled
+    embedder:
+      provider: huggingface
+      config:
+        model: Qwen/Qwen3-Embedding-0.6B
+        embedding_dims: 1024
+        model_kwargs:
+          device: cpu
+    vector_store:
+      provider: qdrant
+      config:
+        collection_name: mim_mem0_v3
+        embedding_model_dims: 1024
+        on_disk: true
+
+embedding:
+  # Used only for Skill routing, not factual-memory retrieval.
+  model: Qwen/Qwen3-Embedding-0.6B
+  device: cpu
+
+construction:
+  skill_candidate_k: 10
+  skill_top_k: 1
+  skill_disclose_k: 4
+  skill_min_score: 0.25
+  skill_min_semantic_score: 0.36
+  skill_min_score_margin: 0.025
+
+access:
+  mode: mem0_native
+  skill_answer_only: true
+  initial_top_k: 20
+  supplemental_top_k: 20
+  context_top_k: 20
+  max_additional_queries: 0
+  skill_candidate_k: 10
+  skill_top_k: 1
+  skill_disclose_k: 4
+  skill_min_score: 0.25
+  skill_min_semantic_score: 0.34
+  skill_min_score_margin: 0.015
+
+prompts:
+  construction_extraction: prompts/construction_extraction.md
+  construction_decision: prompts/construction_decision.md
+  access_plan: prompts/access_plan.md
+  access_answer: prompts/access_answer.md

@@ -154,12 +154,16 @@ class FlipDiagnosisAgent:
         construction = bool(raw_attr.get("construction")) or any(
             claim["deltas"]["construction"] for claim in claims
         )
-        access = bool(raw_attr.get("access")) or any(
+        requested_access = bool(raw_attr.get("access")) or any(
             claim["deltas"]["access"] for claim in claims
         )
-        answer_requested = bool(raw_attr.get("answer")) or any(
+        answer_requested = bool(raw_attr.get("answer")) or requested_access or any(
             claim["deltas"]["answer"] for claim in claims
         )
+        # Mem0 Runtime Skills run after one fixed search.  Fold evidence-use
+        # failures into the answer side when retrieval is sufficient; a true
+        # retrieval delta fails evidence parity and remains non-learnable.
+        access = False
         # Answer is a residual behavior error only when both sides had the
         # necessary memory and retrieval.  It can never coexist with an
         # upstream access/construction attribution.
@@ -242,7 +246,11 @@ class FlipDiagnosisAgent:
                 "schema_version": f"contrastive_{stage}_v2",
                 "diagnosis_id": diagnosis_id,
                 "diagnosis_type": (
-                    "CONS_FAILURE" if side == "construction" else "ACCESS_FAILURE"
+                    "CONS_FAILURE"
+                    if side == "construction"
+                    else "ANSWER_FAILURE"
+                    if stage == "answer"
+                    else "ACCESS_FAILURE"
                 ),
                 "status": "completed",
                 "problem_found": True,
@@ -263,10 +271,14 @@ class FlipDiagnosisAgent:
 
         if core["attribution"]["answer"]:
             report = base("answer", "access")
+            report["retrieved_context_sufficient"] = True
+            report["skill_learnable"] = True
             relevant = [claim for claim in core["claims"] if claim["deltas"]["answer"]]
             report["skill_trace"] = wrong.get("skill_trace")
             report["repair_package"] = {
                 "stage": "answer",
+                "eligible_for_skill_generation": True,
+                "failure_scope": "memory_answering_procedure",
                 "claim_evidence_parity": True,
                 "claim_deltas": relevant or core["claims"],
                 "correct_behavior": {
@@ -366,12 +378,13 @@ class PersistentFailureDiagnosisAgent:
         construction = bool(raw_attr.get("construction")) or any(
             claim["failure"]["construction"] for claim in claims
         )
-        access = bool(raw_attr.get("access")) or any(
+        requested_access = bool(raw_attr.get("access")) or any(
             claim["failure"]["access"] for claim in claims
         )
-        answer_requested = bool(raw_attr.get("answer")) or any(
+        answer_requested = bool(raw_attr.get("answer")) or requested_access or any(
             claim["failure"]["answer"] for claim in claims
         )
+        access = False
         reference_is_empty = not str(payload.get("reference_answer", "")).strip()
         current_evidence_sufficient = (
             reference_is_empty
@@ -464,7 +477,11 @@ class PersistentFailureDiagnosisAgent:
                 "schema_version": f"iteration_{stage}_v1",
                 "diagnosis_id": f"{core['case_id']}_{stage}",
                 "diagnosis_type": (
-                    "CONS_FAILURE" if side == "construction" else "ACCESS_FAILURE"
+                    "CONS_FAILURE"
+                    if side == "construction"
+                    else "ANSWER_FAILURE"
+                    if stage == "answer"
+                    else "ACCESS_FAILURE"
                 ),
                 "status": "completed",
                 "problem_found": True,
@@ -494,9 +511,13 @@ class PersistentFailureDiagnosisAgent:
         }
         if core["attribution"]["answer"]:
             report = base("answer", "access")
+            report["retrieved_context_sufficient"] = True
+            report["skill_learnable"] = True
             report["skill_trace"] = current.get("skill_trace")
             report["repair_package"] = {
                 "stage": "answer",
+                "eligible_for_skill_generation": True,
+                "failure_scope": "memory_answering_procedure",
                 "claim_evidence_parity": True,
                 "expected_behavior": expected,
                 "prior_wrong_behavior": {

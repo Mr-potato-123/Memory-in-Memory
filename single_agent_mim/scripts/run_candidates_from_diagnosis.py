@@ -1,6 +1,6 @@
 """Generate Skill candidates from standard Diagnosis repair packages.
 
-Reads ``<diagnosis-root>/<answer_failure|access_failure|cons_failure>/packages/*/*.json``
+Reads ``<diagnosis-root>/<answer_failure|cons_failure>/packages/*/*.json``
 (each row is a full V3 report with problem_found=True and a repair_package),
 feeds them to the CandidateSkillAgent, and saves candidates into a
 ``SkillRepository`` layout at ``<skills-dir>/candidates/<side>/<id>/candidate.json``
@@ -50,7 +50,7 @@ def _read_prompt(path: str) -> str:
 
 def _collect_packages(diagnosis_root: Path) -> list[dict]:
     by_qa: dict[str, list[dict]] = {}
-    for component in ("answer_failure", "access_failure", "cons_failure"):
+    for component in ("answer_failure", "cons_failure"):
         packages = diagnosis_root / component / "packages"
         if not packages.exists():
             continue
@@ -63,24 +63,33 @@ def _collect_packages(diagnosis_root: Path) -> list[dict]:
             )
             if not report.get("problem_found"):
                 continue
+            if component == "answer_failure":
+                repair = report.get("repair_package")
+                repair = repair if isinstance(repair, dict) else {}
+                if not (
+                    report.get("retrieved_context_sufficient") is True
+                    and report.get("skill_learnable") is True
+                    and repair.get("eligible_for_skill_generation") is True
+                    and repair.get("failure_scope")
+                    == "memory_answering_procedure"
+                ):
+                    continue
             qa_id = str(report.get("qa_id") or report.get("diagnosis_id") or path)
             by_qa.setdefault(qa_id, []).append(
                 {"side": side, "component": component,
                  "report": report, "path": path, "kind": "failure"}
             )
 
-    # Answer diagnoses are standalone. If answer evidence was sufficient,
-    # suppress retrieval/construction learning for the same QA. Access and
-    # Construction diagnoses may still coexist.
+    # Answer-side and Construction diagnoses remain separate. Fixed Mem0
+    # retrieval failures are intentionally absent because post-search Skills
+    # cannot repair them.
     rows: list[dict] = []
     for qa_id in sorted(by_qa):
         items = by_qa[qa_id]
-        answer = [item for item in items if item["component"] == "answer_failure"]
-        rows.extend(answer if answer else items)
+        rows.extend(items)
     component_order = {
         "answer_failure": 0,
-        "access_failure": 1,
-        "cons_failure": 2,
+        "cons_failure": 1,
     }
     rows.sort(key=lambda item: (
         component_order[item["component"]],
@@ -91,40 +100,9 @@ def _collect_packages(diagnosis_root: Path) -> list[dict]:
 
 
 def _load_success_packages(path: Path | None) -> list[dict]:
-    if path is None:
-        return []
-    rows: list[dict] = []
-    for line_no, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
-        if not line.strip():
-            continue
-        row = json.loads(line)
-        if not isinstance(row, dict):
-            raise ValueError(f"Expected object at {path}:{line_no}")
-        if (
-            str(row.get("judge_label", "")).upper() == "C"
-            and _has_nontrivial_positive_path(row)
-        ):
-            rows.append({"side": "access", "kind": "success",
-                         "report": row, "path": path})
-    return rows
-
-
-def _has_nontrivial_positive_path(row: dict) -> bool:
-    """Keep successes with an observed decision beyond the default lookup.
-
-    Single-search successes remain in NoSkillSuccessIndex as preservation
-    evidence, but the system prompt already teaches their default behaviour.
-    Positive Skill generation is reserved for alternate searches or explicit
-    memory inspection that can yield a reusable post-search decision.
-    """
-    actions = (row.get("trajectory") or {}).get("search_actions") or []
-    searches = sum(
-        1 for action in actions if action.get("action") == "search_memory"
-    )
-    inspections = sum(
-        1 for action in actions if action.get("action") == "inspect_memory"
-    )
-    return searches > 1 or inspections > 0
+    # Under fixed-search Mem0, a no-Skill success is a control example.  It is
+    # never positive evidence that a new Runtime Skill is necessary.
+    return []
 
 
 def main() -> int:

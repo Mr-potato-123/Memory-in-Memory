@@ -51,10 +51,19 @@ class DiagnosisArtifactStore:
     def completed_keys(self) -> set[str]:
         completed: set[str] = set()
         for row in self._read_jsonl(self.progress_path):
-            if row.get("status") in {
-                DiagnosisStatus.COMPLETED.value,
-                DiagnosisStatus.DATA_ERROR.value,
-            }:
+            # Runner-level data errors (which have no diagnosis type) are
+            # deliberately retryable: they commonly come from transient
+            # local-store locks.  A component may also intentionally emit a
+            # terminal DATA_ERROR report with a diagnosis type (for example,
+            # unsupported provenance); that report is safe to skip on resume.
+            status = row.get("status")
+            retryable_error = (
+                status == DiagnosisStatus.DATA_ERROR.value
+                and not row.get("diagnosis_type")
+            )
+            if status == DiagnosisStatus.COMPLETED.value or (
+                status == DiagnosisStatus.DATA_ERROR.value and not retryable_error
+            ):
                 completed.add(self.key(row["conversation_id"], row["qa_id"]))
         return completed
 

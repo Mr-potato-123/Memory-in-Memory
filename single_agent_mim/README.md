@@ -1,7 +1,10 @@
 # Memory in Memory (MiM)
 
-MiM is a minimum viable LoCoMo evaluation and Skill-learning system built
-around versioned, source-traceable memory.
+MiM is a procedural meta-memory and Skill-learning system.  The primary
+runtime uses Mem0 OSS as its factual-memory data plane; MiM owns only learned
+Skills, bounded access control, experiment traces, diagnosis, and Skill-bank
+maintenance.  The original SQLite factual backend remains available solely
+for historical experiment compatibility.
 
 ## Agents
 
@@ -21,9 +24,9 @@ Runtime and maintenance models are configured separately. The current
 experiment uses Qwen3-8B non-thinking for Runtime and `deepseek-v4-flash` for
 Diagnosis and Skill-Maker.
 
-The runtime is intentionally a minimal plugin demo: Construction Skills are
-optional extraction references, Access Skills are optional retrieval/answer
-references, and neither can bypass evidence or issue storage mutations.
+The runtime is intentionally a minimal plugin demo: Construction Skills may
+be supplied to Mem0 as additional extraction instructions, Access Skills guide
+retrieval/evidence use, and neither can directly mutate factual memory.
 
 ## Quick check
 
@@ -43,13 +46,19 @@ python main.py evaluate --config configs\default.yaml ...
 python main.py smoke
 ```
 
+For the Mem0-backed runtime use
+`configs\deepseek_v4_flash_mem0.yaml`.  Install `mem0ai`, configure its LLM,
+embedder, and vector store under `storage.mem0_config` (or use Mem0 defaults),
+and provide credentials only through environment variables.
+
 Do not use `main.py train` for diagnosis-only work because it proceeds into
 candidate generation and batch Skill publication.
 
 ## Storage rule
 
-- `outputs/`: ephemeral mutable run state, including SQLite; contents are not
-  source artifacts and may be deleted between experiments.
+- Mem0/Qdrant: factual-memory source of truth for new experiments.
+- `outputs/`: ephemeral mutable run state, including MiM's SQLite trace ledger;
+  contents are not source artifacts and may be deleted between experiments.
 - `data/splits/`: reproducible dataset split definitions used by the runtime.
 - repository root: source entry points only; no logs or temporary artifacts.
 

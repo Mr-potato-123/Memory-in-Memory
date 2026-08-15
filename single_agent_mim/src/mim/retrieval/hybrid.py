@@ -15,12 +15,15 @@ model while keeping retrieval policy available to the Access Agent/skills.
 
 from __future__ import annotations
 
+import copy
 import math
 import re
+import threading
 from collections import Counter
 from typing import Iterable
 
 import numpy as np
+from nltk.stem import PorterStemmer
 
 from .embedder import Embedder
 from ..storage.sqlite_store import MemoryHit, SearchFilters, SQLiteMemoryStore
@@ -29,6 +32,15 @@ from ..storage.sqlite_store import MemoryHit, SearchFilters, SQLiteMemoryStore
 _TOKEN_RE = re.compile(
     r"[A-Za-z0-9]+(?:['_-][A-Za-z0-9]+)*|[\u3400-\u4dbf\u4e00-\u9fff]"
 )
+_STEMMER = PorterStemmer()
+_LEXICAL_STOP_WORDS = {
+    "a", "an", "and", "are", "as", "at", "be", "been", "but", "by",
+    "did", "do", "does", "for", "from", "had", "has", "have", "he",
+    "her", "hers", "him", "his", "how", "i", "in", "is", "it", "its",
+    "me", "my", "of", "on", "or", "our", "she", "that", "the", "their",
+    "them", "they", "this", "to", "was", "we", "were", "what", "when",
+    "where", "which", "who", "why", "with", "would", "you", "your",
+}
 _DEPTH_MAP = {
     "shallow": 1,
     "standard": 2,
@@ -40,7 +52,10 @@ _STRATEGY_ALIASES = {
     "exact": "keyword",
     "temporal": "structured",
 }
-_VALID_STRATEGIES = {"semantic", "bm25", "keyword", "structured", "hybrid"}
+_VALID_STRATEGIES = {
+    "semantic", "bm25", "keyword", "structured", "source", "hybrid",
+}
+_SOURCE_ID_PREFIX = "source:"
 
 
 class HybridRetriever:
@@ -64,6 +79,7 @@ class HybridRetriever:
         bm25_weight: float = 0.30,
         keyword_weight: float = 0.15,
         structured_weight: float = 0.15,
+        source_weight: float = 0.35,
         entity_match_multiplier: float = 1.10,
         time_valid_multiplier: float = 1.20,
         current_active_multiplier: float = 1.05,
@@ -87,6 +103,7 @@ class HybridRetriever:
             "bm25": bm25_weight,
             "keyword": keyword_weight,
             "structured": structured_weight,
+            "source": source_weight,
         }
         self._entity_mul = entity_match_multiplier
         self._time_valid_mul = time_valid_multiplier
@@ -94,6 +111,63 @@ class HybridRetriever:
         self._temporal_mismatch_mul = temporal_mismatch_multiplier
         self._bm25_k1 = bm25_k1
         self._bm25_b = bm25_b
+        # Evaluation attaches an immutable final snapshot and may search it
+        # hundreds of times.  Cache raw store reads, but always return deep
+        # copies because ranking mutates MemoryHit.score/matched_paths.
+        self._snapshot_cache: dict[tuple[str, int | None, bool], list[MemoryHit]] = {}
+        self._embedding_cache: dict[
+            tuple[str, int | None, bool], tuple[list[str], np.ndarray]
+        ] = {}
+        self._source_cache: dict[tuple[str, int | None], list[dict]] = {}
+        self._cache_lock = threading.Lock()
+
+    @staticmethod
+    def _snapshot_key(filters: SearchFilters) -> tuple[str, int | None, bool]:
+        return (
+            filters.conversation_id,
+            filters.as_of_commit,
+            filters.include_history,
+        )
+
+    def _load_snapshot(self, filters: SearchFilters) -> list[MemoryHit]:
+        key = self._snapshot_key(filters)
+        with self._cache_lock:
+            cached = self._snapshot_cache.get(key)
+            if cached is None:
+                cached = self._store.load_snapshot(
+                    filters.conversation_id,
+                    filters.as_of_commit,
+                    include_history=filters.include_history,
+                )
+                self._snapshot_cache[key] = cached
+            return copy.deepcopy(cached)
+
+    def _load_snapshot_embeddings(
+        self, filters: SearchFilters
+    ) -> tuple[list[str], np.ndarray]:
+        key = self._snapshot_key(filters)
+        with self._cache_lock:
+            cached = self._embedding_cache.get(key)
+            if cached is None:
+                cached = self._store.get_embeddings_for_snapshot(
+                    filters.conversation_id,
+                    filters.as_of_commit,
+                    include_history=filters.include_history,
+                )
+                self._embedding_cache[key] = cached
+            return cached
+
+    def _load_uncovered_sources(self, filters: SearchFilters) -> list[dict]:
+        key = (filters.conversation_id, filters.as_of_commit)
+        with self._cache_lock:
+            cached = self._source_cache.get(key)
+            if cached is None:
+                cached = self._store.load_uncovered_source_messages(
+                    filters.conversation_id,
+                    filters.as_of_commit,
+                )
+                self._source_cache[key] = cached
+            return copy.deepcopy(cached)
 
     def search(
         self,
@@ -143,6 +217,10 @@ class HybridRetriever:
             hits = self._structured_search(
                 query, exact_terms, filters, self._struct_k * depth_value
             )
+        elif strategy == "source":
+            hits = self._source_search(
+                lexical_query, filters, self._key_k * depth_value
+            )
         else:
             hits = self._hybrid_search(
                 semantic_queries=semantic_queries,
@@ -180,11 +258,7 @@ class HybridRetriever:
         filters: SearchFilters,
         candidate_k: int,
     ) -> list[MemoryHit]:
-        version_ids, matrix = self._store.get_embeddings_for_snapshot(
-            filters.conversation_id,
-            filters.as_of_commit,
-            include_history=filters.include_history,
-        )
+        version_ids, matrix = self._load_snapshot_embeddings(filters)
         if not version_ids or matrix.shape[0] == 0:
             return []
         snapshot = self._snapshot_map(filters)
@@ -216,18 +290,14 @@ class HybridRetriever:
     ) -> list[MemoryHit]:
         memories = [
             hit
-            for hit in self._store.load_snapshot(
-                filters.conversation_id,
-                filters.as_of_commit,
-                include_history=filters.include_history,
-            )
+            for hit in self._load_snapshot(filters)
             if self._passes_hard_filters(hit, filters)
         ]
         query_tokens = _tokenize(query)
         if not memories or not query_tokens:
             return []
 
-        documents = [_tokenize(_search_text(hit)) for hit in memories]
+        documents = [_weighted_document_tokens(hit) for hit in memories]
         doc_freq = Counter()
         for document in documents:
             doc_freq.update(set(document))
@@ -283,11 +353,7 @@ class HybridRetriever:
         phrases = self._clean_terms([*keywords, query])
         query_tokens = set(_tokenize(" ".join(phrases)))
         scored: list[tuple[MemoryHit, float]] = []
-        for hit in self._store.load_snapshot(
-            filters.conversation_id,
-            filters.as_of_commit,
-            include_history=filters.include_history,
-        ):
+        for hit in self._load_snapshot(filters):
             if not self._passes_hard_filters(hit, filters):
                 continue
             text = _search_text(hit).casefold()
@@ -315,11 +381,7 @@ class HybridRetriever:
     ) -> list[MemoryHit]:
         query_tokens = set(_tokenize(" ".join([query, *keywords])))
         scored: list[tuple[MemoryHit, float]] = []
-        for hit in self._store.load_snapshot(
-            filters.conversation_id,
-            filters.as_of_commit,
-            include_history=filters.include_history,
-        ):
+        for hit in self._load_snapshot(filters):
             if not self._passes_hard_filters(hit, filters):
                 continue
             score = 0.0
@@ -339,6 +401,84 @@ class HybridRetriever:
                 hit.score = score
                 hit.matched_paths = ["structured"]
                 scored.append((hit, score))
+        scored.sort(key=lambda pair: pair[1], reverse=True)
+        return [hit for hit, _ in scored[:candidate_k]]
+
+    def _source_search(
+        self,
+        query: str,
+        filters: SearchFilters,
+        candidate_k: int,
+    ) -> list[MemoryHit]:
+        """BM25 over processed raw messages omitted by Construction C1."""
+        messages = self._load_uncovered_sources(filters)
+        query_tokens = _tokenize(query)
+        if not messages or not query_tokens:
+            return []
+
+        documents = [
+            _tokenize(
+                " ".join(
+                    value
+                    for value in (
+                        str(message.get("speaker") or ""),
+                        str(message.get("content") or ""),
+                    )
+                    if value
+                )
+            )
+            for message in messages
+        ]
+        doc_freq = Counter()
+        for document in documents:
+            doc_freq.update(set(document))
+        average_length = sum(map(len, documents)) / max(len(documents), 1)
+        query_counts = Counter(query_tokens)
+        scored: list[tuple[MemoryHit, float]] = []
+        for message, document in zip(messages, documents):
+            frequencies = Counter(document)
+            length = len(document)
+            score = 0.0
+            for token, query_frequency in query_counts.items():
+                frequency = frequencies.get(token, 0)
+                if not frequency:
+                    continue
+                document_frequency = doc_freq[token]
+                inverse_document_frequency = math.log(
+                    1
+                    + (len(documents) - document_frequency + 0.5)
+                    / (document_frequency + 0.5)
+                )
+                denominator = frequency + self._bm25_k1 * (
+                    1
+                    - self._bm25_b
+                    + self._bm25_b * length / max(average_length, 1.0)
+                )
+                score += (
+                    inverse_document_frequency
+                    * frequency
+                    * (self._bm25_k1 + 1)
+                    / denominator
+                    * (1 + math.log(query_frequency))
+                )
+            if score <= 0:
+                continue
+            message_id = str(message["message_id"])
+            speaker = str(message.get("speaker") or message.get("role") or "")
+            scored.append((MemoryHit(
+                version_id=f"{_SOURCE_ID_PREFIX}{message_id}",
+                memory_id=f"{_SOURCE_ID_PREFIX}{message_id}",
+                content=str(message.get("content") or ""),
+                memory_kind="source_message",
+                subject=speaker,
+                predicate="said",
+                object_text=str(message.get("content") or ""),
+                world_start=message.get("occurred_at"),
+                entities=[speaker] if speaker else [],
+                source_message_ids=[message_id],
+                score=score,
+                matched_paths=["source"],
+            ), score))
         scored.sort(key=lambda pair: pair[1], reverse=True)
         return [hit for hit, _ in scored[:candidate_k]]
 
@@ -394,6 +534,16 @@ class HybridRetriever:
                 ),
             ]
         )
+        if filters.include_sources:
+            rankings.append((
+                "source",
+                self._source_search(
+                    lexical_query,
+                    filters,
+                    self._key_k * depth,
+                ),
+                self._weights["source"],
+            ))
         return self._fuse_rankings(rankings)
 
     def _fuse_rankings(
@@ -438,11 +588,7 @@ class HybridRetriever:
     def _snapshot_map(self, filters: SearchFilters) -> dict[str, MemoryHit]:
         return {
             hit.version_id: hit
-            for hit in self._store.load_snapshot(
-                filters.conversation_id,
-                filters.as_of_commit,
-                include_history=filters.include_history,
-            )
+            for hit in self._load_snapshot(filters)
         }
 
     @staticmethod
@@ -514,7 +660,44 @@ class HybridRetriever:
 
 
 def _tokenize(text: str) -> list[str]:
-    return [token.casefold() for token in _TOKEN_RE.findall(text or "")]
+    normalized: list[str] = []
+    for raw_token in _TOKEN_RE.findall(text or ""):
+        token = raw_token.casefold()
+        if token in _LEXICAL_STOP_WORDS:
+            continue
+        # Porter stemming is deliberately limited to plain English words;
+        # names with punctuation, numbers, and CJK tokens remain untouched.
+        if token.isascii() and token.isalpha():
+            token = _STEMMER.stem(token)
+        normalized.append(token)
+    return normalized
+
+
+def _weighted_document_tokens(hit: MemoryHit) -> list[str]:
+    """Field-aware lexical document used by the in-process BM25 route.
+
+    Predicate/object/keywords carry the retrieval label of an atomic memory,
+    while a subject-only match is intentionally weak.  Repeating tokens is a
+    simple BM25-compatible field boost that keeps the implementation local and
+    deterministic.
+    """
+    content = _tokenize(hit.content)
+    predicate = _tokenize(hit.predicate or "")
+    object_text = _tokenize(hit.object_text or "")
+    keywords = _tokenize(" ".join(hit.keywords))
+    subject = _tokenize(hit.subject)
+    entities = _tokenize(" ".join(hit.entities))
+    return [
+        *content,
+        *predicate,
+        *predicate,
+        *object_text,
+        *object_text,
+        *keywords,
+        *keywords,
+        *subject,
+        *entities,
+    ]
 
 
 def _search_text(hit: MemoryHit) -> str:
@@ -524,6 +707,8 @@ def _search_text(hit: MemoryHit) -> str:
             hit.content,
             hit.subject,
             hit.predicate or "",
+            hit.object_text or "",
+            " ".join(hit.keywords),
             " ".join(hit.entities),
         ]
         if value

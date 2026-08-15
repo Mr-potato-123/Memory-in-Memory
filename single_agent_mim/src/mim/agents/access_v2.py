@@ -111,6 +111,11 @@ class StableAccessAgent:
         plan, planning_response, planning_error, a1_skill_ids = self._plan(
             question, profile, initial, selected_skills
         )
+        if plan["include_sources"] and not plan["additional_queries"]:
+            # Reusing the original wording is useful here because the route is
+            # different: the mandatory search covered atomic memories, while
+            # this request explicitly inspects C1-omitted source messages.
+            plan["additional_queries"] = [profile["original_query"]]
         supplemental: list[MemoryHit] = []
         retrieval_keywords = list(dict.fromkeys([
             *profile["keywords"], *plan["keywords"],
@@ -130,6 +135,7 @@ class StableAccessAgent:
                 time_mode=plan["time_mode"],
                 target_time=plan["target_time"],
                 target_time_end=plan["target_time_end"],
+                include_sources=plan["include_sources"],
             ))
         context = self._merge_context(initial, supplemental)
         answer, evidence_ids, answer_response, answer_error, a2_skill_ids = self._answer(
@@ -206,6 +212,7 @@ class StableAccessAgent:
         keywords: list[str], entities: list[str], top_k: int, *,
         include_history: bool = False, time_mode: str = "none",
         target_time: str | None = None, target_time_end: str | None = None,
+        include_sources: bool = False,
     ) -> list[MemoryHit]:
         return self._retriever.search(
             conversation_id=conversation_id,
@@ -220,6 +227,7 @@ class StableAccessAgent:
                 time_mode=time_mode,
                 target_time=target_time,
                 target_time_end=target_time_end,
+                include_sources=include_sources,
             ),
             top_k=top_k,
             keywords=keywords,
@@ -262,6 +270,7 @@ class StableAccessAgent:
             "keywords": self._strings(raw.get("keywords"))[:12],
             "entities": self._strings(raw.get("entities"))[:8],
             "include_history": bool(raw.get("include_history", False)),
+            "include_sources": bool(raw.get("include_sources", False)),
             "time_mode": time_mode if time_mode in _TIME_MODES else "none",
             "target_time": self._optional(raw.get("target_time")),
             "target_time_end": self._optional(raw.get("target_time_end")),

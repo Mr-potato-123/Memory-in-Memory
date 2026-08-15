@@ -35,12 +35,74 @@ def _resolve_env(value: Any) -> Any:
     return value
 
 
+def _load_local_model_credentials(config_path: Path, raw: dict[str, Any]) -> dict[str, Any]:
+    """Fill model credentials from the repository's local runtime config.
+
+    The Mem0 experiment config intentionally contains no secrets.  Earlier
+    runs loaded the local key pool from ``deepseek_runtime.yaml`` in the
+    launcher and exported it for every command, which made the workflow easy
+    to break when a new shell was used.  Keep the secret source local and
+    unadvertised, but make config loading deterministic: if a model has no
+    inline credential, copy the matching model's local key pool and endpoint.
+
+    Environment variables still take precedence after this step, so existing
+    deployments and CI remain compatible.  Nothing from the credential file
+    is written to resolved manifests because ``ModelConfig.api_keys`` is
+    excluded and callers already avoid persisting ``api_key``.
+    """
+    if not isinstance(raw, dict):
+        return raw
+    models = raw.get("models")
+    if not isinstance(models, dict):
+        return raw
+
+    # This is a deliberate, repo-local fallback rather than a machine-wide
+    # search.  It is the file used by the previous successful Mem0 runs.
+    credential_path = config_path.with_name("deepseek_runtime.yaml")
+    if credential_path.resolve() == config_path.resolve() or not credential_path.is_file():
+        return raw
+    try:
+        credential_raw = yaml.safe_load(credential_path.read_text(encoding="utf-8"))
+    except (OSError, yaml.YAMLError):
+        return raw
+    credential_models = (
+        credential_raw.get("models", {})
+        if isinstance(credential_raw, dict)
+        else {}
+    )
+    if not isinstance(credential_models, dict):
+        return raw
+
+    for role, model in models.items():
+        if not isinstance(model, dict):
+            continue
+        source = credential_models.get(role)
+        if not isinstance(source, dict):
+            continue
+        # Never borrow credentials for a different provider/model.
+        if source.get("provider") != model.get("provider"):
+            continue
+        if source.get("model") != model.get("model"):
+            continue
+        if not model.get("api_key") and source.get("api_key"):
+            model["api_key"] = source["api_key"]
+        if not model.get("api_keys") and source.get("api_keys"):
+            model["api_keys"] = list(source["api_keys"])
+        if (
+            not model.get("base_url")
+            or (isinstance(model.get("base_url"), str) and model["base_url"].startswith("${"))
+        ) and source.get("base_url"):
+            model["base_url"] = source["base_url"]
+    return raw
+
+
 # ── Pydantic models ────────────────────────────────────────────────
 
 class ModelConfig(BaseModel):
     provider: str  # "openai_compatible" | "anthropic" | "mock"
     model: str
-    api_key: Optional[str] = None
+    # Local-only credential; exclude it from resolved configs and hashes.
+    api_key: Optional[str] = Field(default=None, exclude=True)
     # Optional local-only key pool. Excluded from resolved configs/manifests.
     # The client factory distributes concurrent calls across these keys.
     api_keys: list[str] = Field(default_factory=list, exclude=True)
@@ -72,12 +134,21 @@ class EmbeddingConfig(BaseModel):
 
 class StorageConfig(BaseModel):
     backend: str = "sqlite"
-    # Relative to the run directory. Absolute paths are rejected by MiMRuntime
-    # so one run cannot silently overwrite another run's state.
+    # SQLite is the legacy factual backend.  With ``backend: mem0`` this path
+    # is retained only as MiM's local experiment/trace ledger.
     path: str = "state/memory.sqlite3"
     busy_timeout_ms: int = 5000
     journal_mode: str = "WAL"
     foreign_keys: bool = True
+    # Passed to ``mem0.Memory.from_config`` for reproducible OSS runs.  An
+    # empty mapping uses Mem0's defaults.  Credentials are injected only at
+    # runtime and are never part of this persisted configuration.
+    mem0_config: dict[str, Any] = Field(default_factory=dict)
+    # Stable factual-snapshot namespace.  Baseline and Skill Access runs that
+    # compare against one another must intentionally share this value.
+    mem0_namespace: str = ""
+    mem0_search_threshold: float = 0.0
+    mem0_rerank: bool = False
 
 
 class ConstructionConfig(BaseModel):
@@ -97,6 +168,11 @@ class ConstructionConfig(BaseModel):
     # A Skill is optional guidance, not mandatory context. Deterministic
     # routing may return no Skill below this relevance threshold.
     skill_min_score: float = 0.20
+    # Absolute semantic relevance and top-vs-runner-up separation.  These
+    # gates let the router abstain when every Skill is merely topical or when
+    # several triggers are equally plausible.
+    skill_min_semantic_score: float = 0.0
+    skill_min_score_margin: float = 0.0
 
 
 class RetrievalConfig(BaseModel):
@@ -123,10 +199,16 @@ class RetrievalConfig(BaseModel):
 
 class AccessConfig(BaseModel):
     mode: str = "plan_then_answer"
+    # Mem0-native Access is a fixed one-search/one-answer topology.  When
+    # enabled, runtime excludes Skills whose procedure requires supplemental
+    # retrieval and keeps only answer-time evidence rules.
+    skill_answer_only: bool = True
     skill_candidate_k: int = 10
     skill_top_k: int = 2
     skill_disclose_k: int = 5
     skill_min_score: float = 0.20
+    skill_min_semantic_score: float = 0.0
+    skill_min_score_margin: float = 0.0
     max_source_messages: int = 8
     initial_top_k: int = 16
     supplemental_top_k: int = 12
@@ -144,8 +226,9 @@ class TrainingConfig(BaseModel):
     skill_batch_bank_context: int = 25
     # Candidate support is an optional conservative publication gate.  Keep
     # it at one by default: a unique diagnosis can still yield a genuinely
-    # reusable Skill, and content quality is decided by CRUD + validation.
-    skill_min_candidate_support: int = 1
+    # A single failed question is not evidence of a reusable procedure.
+    # Require independent source candidates before publishing a new Skill.
+    skill_min_candidate_support: int = 2
 
 
 class PromptsConfig(BaseModel):
@@ -205,8 +288,10 @@ class MiMConfig(BaseModel):
     @classmethod
     def from_yaml(cls, path: str | Path) -> "MiMConfig":
         """Load config from YAML with env-var substitution."""
-        with open(path, "r", encoding="utf-8") as f:
+        config_path = Path(path).resolve()
+        with open(config_path, "r", encoding="utf-8") as f:
             raw = yaml.safe_load(f)
+        raw = _load_local_model_credentials(config_path, raw)
         raw = _resolve_env(raw)
         # A structural smoke run can bypass heavyweight local transformer
         # initialization without copying configs (and their local credentials).

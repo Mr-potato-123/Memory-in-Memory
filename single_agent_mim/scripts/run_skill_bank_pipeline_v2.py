@@ -132,6 +132,11 @@ def _parse_cluster_summary(
         )
         if not source_ids:
             raise ValueError(f"draft {index} has no source_candidate_ids")
+        if side == "access" and len(source_ids) < 2:
+            raise ValueError(
+                f"draft {index} has only {len(source_ids)} independent "
+                "source candidate; Mem0 answer Skills require at least 2"
+            )
         unknown = set(source_ids) - allowed
         if unknown:
             raise ValueError(f"draft {index} contains unknown source IDs: {unknown}")
@@ -164,6 +169,11 @@ def _parse_cluster_summary(
             for candidate in candidates
             if candidate.candidate_id in source_ids
         ]
+        signatures = [
+            candidate.mechanism_signature
+            for candidate in source_candidates
+            if candidate.mechanism_signature
+        ]
         transitions = sorted({
             candidate.transition
             for candidate in source_candidates
@@ -190,6 +200,14 @@ def _parse_cluster_summary(
                 side=side,
                 payload=payload,
                 solves=solves,
+                mechanism_signature=(
+                    signatures[0]
+                    if signatures and all(
+                        signature == signatures[0]
+                        for signature in signatures
+                    )
+                    else {}
+                ),
                 source_candidate_ids=source_ids,
                 source_cluster_id=cluster_id,
                 source_failure_id="cluster_summary",
@@ -225,6 +243,8 @@ def _summarize_cluster(
             "description": candidate.payload.description,
             "solves": candidate.solves,
             "content": candidate.payload.content,
+            "mechanism_signature": candidate.mechanism_signature,
+            "failure_mode": candidate.target_first_break,
         }
         for candidate in candidates
     ]

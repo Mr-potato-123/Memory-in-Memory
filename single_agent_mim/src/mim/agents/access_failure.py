@@ -11,6 +11,7 @@ from ..diagnosis.model_io import (
     unique_strings,
 )
 from ..diagnosis.schemas import (
+    AccessClaimSupport,
     AccessDiagnosisReport,
     ClaimSupport,
     DiagnosisCase,
@@ -33,6 +34,7 @@ class AccessFailureAgent:
         *,
         current_related_memories: list[dict[str, Any]],
         current_search_steps: list[dict[str, Any]],
+        answer_context_sufficient: bool = False,
     ) -> AccessDiagnosisReport:
         report = self._empty_report(
             case,
@@ -51,6 +53,17 @@ class AccessFailureAgent:
             if version_id
         }
         report.retrieved_current_version_ids = sorted(returned_ids)
+
+        # The answer diagnosis sees the exact runtime context first.  Once it
+        # establishes that this context was sufficient, omitted corroborating
+        # memories cannot causally explain the wrong answer.
+        if answer_context_sufficient:
+            report.reason = (
+                "Skipped fixed-search diagnosis because the preceding answer "
+                "diagnosis established that returned memories were sufficient."
+            )
+            report.confidence = 1.0
+            return report
 
         # An empty LoCoMo reference denotes an unanswerable/adversarial item.
         # There is no gold fact that Access was required to retrieve.
@@ -78,6 +91,7 @@ class AccessFailureAgent:
             claims = self._claims(
                 result.get("essential_reference_claims"),
                 allowed_ids=available_ids,
+                returned_ids=returned_ids,
             )
             useful_ids = sorted(
                 {
@@ -86,12 +100,18 @@ class AccessFailureAgent:
                     for version_id in claim.supporting_version_ids
                 }
             )
-            missing_ids = sorted(set(useful_ids) - returned_ids)
-            problem = bool(missing_ids)
+            required_missing_ids = sorted({
+                version_id
+                for claim in claims
+                if claim.coverage != "FULL"
+                for version_id in claim.supporting_version_ids
+                if version_id not in returned_ids
+            })
+            problem = any(claim.coverage != "FULL" for claim in claims)
 
             report.claims = claims
             report.useful_current_version_ids = useful_ids
-            report.missing_useful_current_version_ids = missing_ids
+            report.missing_useful_current_version_ids = required_missing_ids
             report.problem_found = problem
             report.diagnosis_type = (
                 DiagnosisType.ACCESS_FAILURE
@@ -110,14 +130,16 @@ class AccessFailureAgent:
                     if item.get("version_id")
                 }
                 report.repair_package = {
-                    "schema_version": "fixed_access_retrieval_repair_v1",
-                    "side": "access",
-                    "stage": "retrieval",
+                    "schema_version": "mem0_fixed_search_failure_v2",
+                    "side": "memory_system",
+                    "stage": "mem0_fixed_search",
+                    "eligible_for_skill_generation": False,
+                    "failure_owner": "mem0_retrieval",
                     "question": case.question,
                     "reference_answer": case.reference_answer,
                     "missing_useful_current_memories": [
                         memory_by_id[version_id]
-                        for version_id in missing_ids
+                        for version_id in required_missing_ids
                     ],
                     "retrieved_current_version_ids": sorted(returned_ids),
                     "search_steps": current_search_steps,
@@ -134,12 +156,13 @@ class AccessFailureAgent:
         value: Any,
         *,
         allowed_ids: set[str],
-    ) -> list[ClaimSupport]:
+        returned_ids: set[str],
+    ) -> list[AccessClaimSupport]:
         if not isinstance(value, list) or not value:
             raise InvalidModelOutput(
                 "essential_reference_claims must be a non-empty list."
             )
-        claims: list[ClaimSupport] = []
+        claims: list[AccessClaimSupport] = []
         for item in value:
             if not isinstance(item, dict):
                 raise InvalidModelOutput("Each claim must be an object.")
@@ -157,10 +180,29 @@ class AccessFailureAgent:
                 for version_id in version_ids
                 if version_id in allowed_ids
             ]
+            retrieved_supporting_ids = unique_strings(
+                item.get("supporting_retrieved_version_ids")
+            )
+            retrieved_supporting_ids = [
+                version_id
+                for version_id in retrieved_supporting_ids
+                if version_id in allowed_ids and version_id in returned_ids
+            ]
+            try:
+                coverage = str(item.get("retrieval_coverage", "")).upper()
+                if coverage not in {"FULL", "PARTIAL", "MISSING", "INCORRECT"}:
+                    raise ValueError
+            except (TypeError, ValueError) as exc:
+                raise InvalidModelOutput(
+                    "Each access claim must declare retrieval_coverage as "
+                    "FULL, PARTIAL, MISSING, or INCORRECT."
+                ) from exc
             claims.append(
-                ClaimSupport(
+                AccessClaimSupport(
                     claim=claim,
                     supporting_version_ids=version_ids,
+                    retrieved_supporting_version_ids=retrieved_supporting_ids,
+                    coverage=coverage,
                 )
             )
         return claims

@@ -13,6 +13,8 @@ def arguments() -> argparse.Namespace:
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--split-name", default="validation")
     parser.add_argument("--bank", default="bank1")
+    parser.add_argument("--model", default="qwen3-8b",
+                        help="Model label stored in the merged report.")
     parser.add_argument("--output-file", default="all.jsonl")
     parser.add_argument("inputs", nargs="+")
     return parser.parse_args()
@@ -58,7 +60,7 @@ def main() -> int:
         category_scores[int(row["category"])].append(score)
         conversation_scores[str(row["conversation_id"])].append(score)
     summary = {
-        "model": "qwen3-8b",
+        "model": args.model,
         "mode": "base" if args.bank == "bank0" else "mim",
         "bank": args.bank,
         "thinking": False,

@@ -21,15 +21,18 @@ Attribution rules:
 1. CONSTRUCTION applies when the current memory state lost, weakened, merged,
    or corrupted a claim supported by the gold source messages. It may coexist
    with ACCESS.
-2. ACCESS applies when useful current memory exists but A1 retrieval planning,
-   A2 evidence selection/composition, or Skill routing failed. Distinguish a missing rule
-   from an existing Skill that was not retrieved or was ineffective.
-3. ANSWER applies only when every required claim is fully present and retrieved
+2. ACCESS applies only to post-search evidence interpretation/composition or
+   answer-Skill routing when the fixed Mem0 search already returned sufficient
+   evidence. A missing required memory in the fixed top-k is a non-Skill Mem0
+   retrieval failure: set ACCESS=false and explain it in the reason.
+3. ANSWER applies when every required claim is fully present and retrieved
    on the current side, yet the answer is wrong. ANSWER is exclusive and is
    routed to the Access generator.
 4. If source evidence is absent, traces are insufficient, or the difference is
    model randomness rather than reusable behavior, set learnable=false.
-5. W2W is not automatically a reason to add another Skill. Explain whether the
+5. Mem0 has no A1/A2, query rewrite, supplemental search, or Skill-controlled
+   top-k/depth. Never propose those as repairs.
+6. W2W is not automatically a reason to add another Skill. Explain whether the
    prior repair was unaddressed, not retrieved, not followed, ineffective, or
    aimed at the wrong stage.
 

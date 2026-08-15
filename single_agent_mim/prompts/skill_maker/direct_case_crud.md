@@ -4,7 +4,8 @@ Skills most related to it. Directly decide whether those official Skills need
 CRUD. There is no Candidate Skill, clustering stage, or later summarizer.
 
 The target side is supplied as `side`:
-- access covers A1 bounded retrieval planning and A2 evidence selection and
+- access covers only post-search evidence interpretation, selection, and
+  answer composition after one fixed Mem0 search; it never changes retrieval
   composition. An Answer diagnosis therefore updates the Access Skill Bank.
 - construction covers C1 extraction and C2 append-only relation judgment.
 

@@ -74,7 +74,7 @@ def _claim(deltas: dict) -> dict:
     }
 
 
-def test_access_and_construction_are_projected_together():
+def test_fixed_search_delta_is_not_projected_with_construction():
     result = {
         "claims": [_claim({"construction": True, "access": True, "answer": False})],
         "attribution": {
@@ -90,15 +90,13 @@ def test_access_and_construction_are_projected_together():
     report = _agent(result).diagnose(_payload())
 
     assert report["core"]["schema_version"] == "contrastive_core_v2"
-    assert [item["stage"] for item in report["projections"]] == [
-        "access", "construction"
-    ]
-    cons = report["projections"][1]
+    assert [item["stage"] for item in report["projections"]] == ["construction"]
+    cons = report["projections"][0]
     assert cons["construction_skill_traces"][0]["selected"][0]["skill_id"] == "cons_bad"
     assert "access_bad" not in json.dumps(cons["construction_skill_traces"])
 
 
-def test_answer_is_exclusive_when_upstream_attribution_exists():
+def test_fixed_search_failure_is_not_misreported_as_answer_skill():
     result = {
         "claims": [_claim({"construction": False, "access": True, "answer": True})],
         "attribution": {
@@ -112,7 +110,8 @@ def test_answer_is_exclusive_when_upstream_attribution_exists():
     report = _agent(result).diagnose(_payload())
 
     assert report["core"]["attribution"]["answer"] is False
-    assert [item["stage"] for item in report["projections"]] == ["access"]
+    assert report["core"]["attribution"]["learnable"] is False
+    assert report["projections"] == []
 
 
 def test_pure_answer_projects_to_access_generator():
@@ -134,7 +133,10 @@ def test_pure_answer_projects_to_access_generator():
 
     assert projection["stage"] == "answer"
     assert projection["side"] == "access"
-    assert projection["diagnosis_type"] == "ACCESS_FAILURE"
+    assert projection["diagnosis_type"] == "ANSWER_FAILURE"
+    assert projection["retrieved_context_sufficient"] is True
+    assert projection["skill_learnable"] is True
+    assert projection["repair_package"]["eligible_for_skill_generation"] is True
     assert projection["repair_package"]["claim_evidence_parity"] is True
 
 
@@ -162,7 +164,7 @@ def test_empty_reference_abstention_projects_to_access_generator():
     assert report["projections"][0]["side"] == "access"
 
 
-def test_w2w_persistent_failure_projects_with_iteration_metadata():
+def test_w2w_fixed_search_failure_is_record_only():
     model = MockClient(ModelConfig(provider="mock", model="mock"))
     result = {
         "claims": [{
@@ -234,9 +236,5 @@ def test_w2w_persistent_failure_projects_with_iteration_metadata():
     ).diagnose(payload)
 
     assert report["core"]["schema_version"] == "persistent_failure_core_v1"
-    projection = report["projections"][0]
-    assert projection["source_mode"] == "iteration"
-    assert projection["transition"] == "W2W"
-    assert projection["failure_age"] == 2
-    assert projection["learning_polarity"] == "REPAIR_UNRESOLVED"
-    assert projection["maintenance_intent_hint"] == "ADD"
+    assert report["problem_found"] is False
+    assert report["projections"] == []

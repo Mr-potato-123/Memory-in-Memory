@@ -189,6 +189,22 @@ class SkillPayloadValidator:
             errors.append("access Skill requests a forbidden agent loop or reranker")
 
         if normalized_side == "access" and re.search(
+            r"\bA[12]\b|"
+            r"\b(?:increase|raise|change|adjust|set)\b[^.\n]{0,60}"
+            r"\b(?:top[ -]?k|depth|search|retrieval)\b|"
+            r"\b(?:supplemental|additional|extra|another|second)\b"
+            r"[^.\n]{0,30}\b(?:search|retrieval|query)\b|"
+            r"\b(?:search|retrieve|reformulate|rewrite|expand)\b"
+            r"[^.\n]{0,80}\b(?:query|again|memory|memories|terms?)\b",
+            combined,
+            re.IGNORECASE,
+        ):
+            errors.append(
+                "access Skill attempts to change fixed Mem0 retrieval or "
+                "uses obsolete A1/A2 stages"
+            )
+
+        if normalized_side == "access" and re.search(
             r"\bno information available\b|\babstain\b|"
             r"\b(?:return|respond|say|state)\s+(?:with\s+)?(?:exactly\s+)?"
             r"(?:the\s+)?(?:answer|response)\b|"

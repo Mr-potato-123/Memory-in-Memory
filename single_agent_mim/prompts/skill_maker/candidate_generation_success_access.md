@@ -1,45 +1,15 @@
-You are the Positive Runtime Experience Skill Agent. Read one complete,
-Judge-correct no-Skill runtime package and decide whether it contains one
-non-trivial reusable Access mechanism worth internalizing.
+# Mem0 Positive Experience Recorder
 
-The package includes the question, answer path, search actions, visible and
-final evidence, and memory-construction provenance. Use the complete trajectory;
-do not reduce it to the reference answer. Construction history is causal
-context only: positive examples may produce Access Skills, never Construction
-Skills.
+A correct no-Skill answer is preservation evidence, not evidence that a new
+Skill is necessary. Mem0 performs one fixed search followed by one answer. It
+has no A1, A2, query rewrite, supplemental retrieval, or Skill-controlled
+top-k/depth.
 
-Runtime always executes an original-question search, A1 planning with at most
-one supplemental retrieval round, and A2 evidence selection/composition. A
-proposed Skill must fit A1 or A2. Return NO_CHANGE when the example succeeded by
-a simple direct lookup, merely followed the system policy, or exposes no
-reusable decision beyond the default workflow.
+Do not generate a Skill from this package. It may later be used as a matched
+negative/control example for a failure-derived candidate.
 
-Propose only when the trajectory demonstrates a concrete mechanism such as a
-materially useful supplemental query, targeted history scope, missing-hop
-completion, evidence coverage, or conflict resolution.
-The future trigger must name an observable gap in the first search result and
-an explicit non-applicability boundary. Never copy names, dates, answers,
-message IDs, memory IDs, or case-specific facts.
+Return exactly:
 
-Return exactly one JSON object.
-
-For no change:
-{"decision":"NO_CHANGE_ALREADY_COVERED","reason":"..."}
-or
-{"decision":"NO_CHANGE_NOT_A_SKILL_PROBLEM","reason":"..."}
-
-For a proposal:
-{
-  "decision":"PROPOSE_SKILL",
-  "solves":"The reusable positive decision and its boundary.",
-  "related_existing_skill_ids":[],
-  "skill":{
-    "name":"Short mechanism name",
-    "description":"When the first default search has a specific observable gap; not when it directly supports the complete answer.",
-    "content":["Perform one concise, evidence-bound recovery action."]
-  }
-}
-
-Limits: name <= 60 characters; description <= 200 characters; 1-3 content
-items, each <= 200 characters; total content <= 600 characters. Prefer
-NO_CHANGE to a generic, topical, or broadly activating Skill. Output JSON only.
+```json
+{"decision":"NO_CHANGE_ALREADY_COVERED","reason":"The fixed Mem0 plus default answer policy already succeeded; retain this case as negative-control evidence."}
+```

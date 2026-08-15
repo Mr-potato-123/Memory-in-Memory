@@ -376,6 +376,22 @@ CREATE TABLE IF NOT EXISTS access_retrieval_hits (
 CREATE INDEX IF NOT EXISTS idx_access_hit_version
 ON access_retrieval_hits(version_id, action_id);
 
+-- Raw source fallback hits are kept separate because they are messages, not
+-- synthesized memory versions. This preserves foreign-key integrity and makes
+-- the evidence provenance explicit to diagnostics.
+CREATE TABLE IF NOT EXISTS access_source_retrieval_hits (
+    action_id          TEXT NOT NULL,
+    message_id         TEXT NOT NULL,
+    raw_rank           INTEGER NOT NULL,
+    final_rank         INTEGER,
+    fused_score        REAL,
+    returned_to_agent  INTEGER NOT NULL DEFAULT 1,
+    kept_in_workspace  INTEGER NOT NULL DEFAULT 1,
+    PRIMARY KEY (action_id, message_id),
+    FOREIGN KEY (action_id) REFERENCES access_actions(action_id),
+    FOREIGN KEY (message_id) REFERENCES messages(message_id)
+);
+
 -- ── Final Answer-Visible Context ──────────────────────────
 
 CREATE TABLE IF NOT EXISTS access_answer_context (
@@ -399,6 +415,63 @@ CREATE TABLE IF NOT EXISTS access_final_evidence (
     PRIMARY KEY (access_run_id, version_id),
     FOREIGN KEY (access_run_id) REFERENCES access_runs(access_run_id),
     FOREIGN KEY (version_id) REFERENCES memory_versions(version_id)
+);
+
+CREATE TABLE IF NOT EXISTS access_source_answer_context (
+    access_run_id   TEXT NOT NULL,
+    message_id      TEXT NOT NULL,
+    context_index   INTEGER NOT NULL,
+    rendered_text   TEXT NOT NULL,
+    token_count     INTEGER,
+    PRIMARY KEY (access_run_id, context_index),
+    UNIQUE (access_run_id, message_id),
+    FOREIGN KEY (access_run_id) REFERENCES access_runs(access_run_id),
+    FOREIGN KEY (message_id) REFERENCES messages(message_id)
+);
+
+CREATE TABLE IF NOT EXISTS access_final_source_evidence (
+    access_run_id   TEXT NOT NULL,
+    message_id      TEXT NOT NULL,
+    evidence_index  INTEGER NOT NULL,
+    PRIMARY KEY (access_run_id, message_id),
+    FOREIGN KEY (access_run_id) REFERENCES access_runs(access_run_id),
+    FOREIGN KEY (message_id) REFERENCES messages(message_id)
+);
+
+-- Memories owned by an external factual backend (currently Mem0).  These
+-- tables deliberately avoid a foreign key to ``memory_versions``: SQLite is
+-- the MiM trace ledger here, not a shadow factual database.
+CREATE TABLE IF NOT EXISTS access_external_retrieval_hits (
+    action_id          TEXT NOT NULL,
+    external_id        TEXT NOT NULL,
+    raw_rank           INTEGER NOT NULL,
+    final_rank         INTEGER,
+    fused_score        REAL,
+    payload_json       TEXT NOT NULL DEFAULT '{}',
+    returned_to_agent  INTEGER NOT NULL DEFAULT 1,
+    kept_in_workspace  INTEGER NOT NULL DEFAULT 1,
+    PRIMARY KEY (action_id, external_id),
+    FOREIGN KEY (action_id) REFERENCES access_actions(action_id)
+);
+
+CREATE TABLE IF NOT EXISTS access_external_answer_context (
+    access_run_id   TEXT NOT NULL,
+    external_id     TEXT NOT NULL,
+    context_index   INTEGER NOT NULL,
+    rendered_text   TEXT NOT NULL,
+    payload_json    TEXT NOT NULL DEFAULT '{}',
+    token_count     INTEGER,
+    PRIMARY KEY (access_run_id, context_index),
+    UNIQUE (access_run_id, external_id),
+    FOREIGN KEY (access_run_id) REFERENCES access_runs(access_run_id)
+);
+
+CREATE TABLE IF NOT EXISTS access_final_external_evidence (
+    access_run_id   TEXT NOT NULL,
+    external_id     TEXT NOT NULL,
+    evidence_index  INTEGER NOT NULL,
+    PRIMARY KEY (access_run_id, external_id),
+    FOREIGN KEY (access_run_id) REFERENCES access_runs(access_run_id)
 );
 
 -- ================================================================

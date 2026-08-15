@@ -24,11 +24,13 @@ from ..schemas import (
 from ..storage.sqlite_store import SQLiteMemoryStore
 from ..retrieval.embedder import Embedder
 from ..retrieval.hybrid import HybridRetriever
+from ..retrieval.mem0_backend import Mem0Backend
 from ..skills import RuntimeSkillQueryBuilder, SkillBank
 from ..llm import create_client
 from ..llm.base import ModelClient
 from ..agents.construction import ConstructionAgent
 from ..agents.access_v2 import StableAccessAgent
+from ..agents.mem0_native_access import Mem0NativeAccessAgent
 from ..artifacts import RunDir
 from ..tracing import TraceRecorder, ConstructionTrace, AccessTrace
 
@@ -55,6 +57,7 @@ class MiMRuntime:
         event_sink: Callable[[dict[str, Any]], None] | None = None,
         strict_construction: bool = False,
         persist_access: bool = True,
+        mem0_client: Any | None = None,
     ):
         self._cfg = config
         self._mode = mode
@@ -71,8 +74,11 @@ class MiMRuntime:
             raise ValueError(
                 "storage.path must be a safe path relative to the run directory"
             )
-        if config.storage.backend.lower() != "sqlite":
-            raise ValueError("This MVP supports only storage.backend=sqlite")
+        self._memory_backend_name = config.storage.backend.casefold()
+        if self._memory_backend_name not in {"sqlite", "mem0"}:
+            raise ValueError(
+                "storage.backend must be either 'sqlite' or 'mem0'"
+            )
         if run_dir:
             db_path = run_dir.path / configured_store_path
         else:
@@ -85,39 +91,55 @@ class MiMRuntime:
             device=config.embedding.device,
         )
 
-        # Store
+        # The local SQLite database is always retained as MiM's experiment
+        # ledger.  Under the Mem0 backend it is not the factual memory source.
         self._store = store or SQLiteMemoryStore(
             db_path=db_path,
             embedding_dim=self._embedder.dim,
             embedding_model=self._embedder.model_name,
         )
 
-        # Retriever
-        self._retriever = HybridRetriever(
-            store=self._store,
-            embedder=self._embedder,
-            semantic_candidate_k=config.retrieval.semantic_candidate_k,
-            bm25_candidate_k=config.retrieval.bm25_candidate_k,
-            keyword_candidate_k=config.retrieval.keyword_candidate_k,
-            structured_candidate_k=config.retrieval.structured_candidate_k,
-            result_top_k=config.retrieval.result_top_k,
-            max_result_top_k=config.retrieval.max_result_top_k,
-            max_query_expansions=config.retrieval.max_query_expansions,
-            max_depth=config.retrieval.max_depth,
-            rrf_k=config.retrieval.rrf_k,
-            semantic_weight=config.retrieval.semantic_weight,
-            bm25_weight=config.retrieval.bm25_weight,
-            keyword_weight=config.retrieval.keyword_weight,
-            structured_weight=config.retrieval.structured_weight,
-            entity_match_multiplier=config.retrieval.entity_match_multiplier,
-            time_valid_multiplier=config.retrieval.time_valid_multiplier,
-            current_active_multiplier=config.retrieval.current_active_multiplier,
-            temporal_mismatch_multiplier=(
-                config.retrieval.temporal_mismatch_multiplier
-            ),
-            bm25_k1=config.retrieval.bm25_k1,
-            bm25_b=config.retrieval.bm25_b,
-        )
+        self._mem0_backend: Mem0Backend | None = None
+        if self._memory_backend_name == "mem0":
+            mem0_storage_dir = (
+                str(run_dir.path / "state" / "mem0") if run_dir else None
+            )
+            self._mem0_backend = Mem0Backend(
+                client=mem0_client,
+                config=config.storage.mem0_config,
+                runtime_model_config=config.models["runtime"],
+                storage_dir=mem0_storage_dir,
+                namespace=config.storage.mem0_namespace,
+                threshold=config.storage.mem0_search_threshold,
+                rerank=config.storage.mem0_rerank,
+            )
+            self._retriever = self._mem0_backend
+        else:
+            self._retriever = HybridRetriever(
+                store=self._store,
+                embedder=self._embedder,
+                semantic_candidate_k=config.retrieval.semantic_candidate_k,
+                bm25_candidate_k=config.retrieval.bm25_candidate_k,
+                keyword_candidate_k=config.retrieval.keyword_candidate_k,
+                structured_candidate_k=config.retrieval.structured_candidate_k,
+                result_top_k=config.retrieval.result_top_k,
+                max_result_top_k=config.retrieval.max_result_top_k,
+                max_query_expansions=config.retrieval.max_query_expansions,
+                max_depth=config.retrieval.max_depth,
+                rrf_k=config.retrieval.rrf_k,
+                semantic_weight=config.retrieval.semantic_weight,
+                bm25_weight=config.retrieval.bm25_weight,
+                keyword_weight=config.retrieval.keyword_weight,
+                structured_weight=config.retrieval.structured_weight,
+                entity_match_multiplier=config.retrieval.entity_match_multiplier,
+                time_valid_multiplier=config.retrieval.time_valid_multiplier,
+                current_active_multiplier=config.retrieval.current_active_multiplier,
+                temporal_mismatch_multiplier=(
+                    config.retrieval.temporal_mismatch_multiplier
+                ),
+                bm25_k1=config.retrieval.bm25_k1,
+                bm25_b=config.retrieval.bm25_b,
+            )
 
         # LLM clients
         runtime_cfg = config.models["runtime"]
@@ -130,39 +152,49 @@ class MiMRuntime:
             config.prompts.construction_decision,
         )
         access_mode = config.access.mode.casefold()
-        if access_mode != "plan_then_answer":
+        if access_mode not in {"plan_then_answer", "mem0_native"}:
             raise ValueError(f"Unsupported access.mode: {config.access.mode}")
         access_plan_prompt = _load_prompt(config.prompts.access_plan)
         access_answer_prompt = _load_prompt(config.prompts.access_answer)
 
         # Construction Agent
-        self._construction_agent = ConstructionAgent(
-            model=self._runtime_model,
-            store=self._store,
-            embedder=self._embedder,
-            extraction_prompt=construction_extraction_prompt,
-            decision_prompt=construction_decision_prompt,
-            max_candidates_per_session=getattr(config.construction, 'max_candidates_per_session', 30),
-            related_memory_limit=getattr(config.construction, 'related_memory_limit', 10),
-            max_related_pool=getattr(config.construction, 'max_related_pool', 24),
-            max_decisions_per_call=getattr(
-                config.construction, 'max_decisions_per_call', 10
-            ),
-        )
+        self._construction_agent: ConstructionAgent | None = None
+        if self._memory_backend_name == "sqlite":
+            self._construction_agent = ConstructionAgent(
+                model=self._runtime_model,
+                store=self._store,
+                embedder=self._embedder,
+                extraction_prompt=construction_extraction_prompt,
+                decision_prompt=construction_decision_prompt,
+                max_candidates_per_session=getattr(config.construction, 'max_candidates_per_session', 30),
+                related_memory_limit=getattr(config.construction, 'related_memory_limit', 10),
+                max_related_pool=getattr(config.construction, 'max_related_pool', 24),
+                max_decisions_per_call=getattr(
+                    config.construction, 'max_decisions_per_call', 10
+                ),
+            )
 
         # Access Agent
-        self._access_agent = StableAccessAgent(
-            model=self._runtime_model,
-            store=self._store,
-            retriever=self._retriever,
-            planning_prompt=access_plan_prompt,
-            answer_prompt=access_answer_prompt,
-            initial_top_k=config.access.initial_top_k,
-            supplemental_top_k=config.access.supplemental_top_k,
-            context_top_k=config.access.context_top_k,
-            max_additional_queries=config.access.max_additional_queries,
-            event_sink=event_sink,
-        )
+        if access_mode == "mem0_native":
+            self._access_agent = Mem0NativeAccessAgent(
+                model=self._runtime_model,
+                retriever=self._retriever,
+                top_k=config.access.initial_top_k,
+                event_sink=event_sink,
+            )
+        else:
+            self._access_agent = StableAccessAgent(
+                model=self._runtime_model,
+                store=self._store,
+                retriever=self._retriever,
+                planning_prompt=access_plan_prompt,
+                answer_prompt=access_answer_prompt,
+                initial_top_k=config.access.initial_top_k,
+                supplemental_top_k=config.access.supplemental_top_k,
+                context_top_k=config.access.context_top_k,
+                max_additional_queries=config.access.max_additional_queries,
+                event_sink=event_sink,
+            )
 
         # Skill Bank
         self._skill_bank = skill_bank
@@ -204,12 +236,16 @@ class MiMRuntime:
 
         # Pre compute prompt hash
         import hashlib
-        prompt_hash = hashlib.sha256(
-            (
+        if self._construction_agent is not None:
+            construction_prompt = (
                 self._construction_agent._extraction_prompt
                 + "\n--- C2 ---\n"
                 + self._construction_agent._decision_prompt
-            ).encode("utf-8")
+            )
+        else:
+            construction_prompt = "mem0-native-construction"
+        prompt_hash = hashlib.sha256(
+            construction_prompt.encode("utf-8")
         ).hexdigest()[:16]
 
         for s_idx, session in enumerate(conversation.sessions):
@@ -260,6 +296,26 @@ class MiMRuntime:
                 })
             self._store.save_messages(msgs)
 
+            # A stable Mem0 namespace is a frozen factual snapshot.  Reusing
+            # it for baseline/Bank Access comparisons must not duplicate a
+            # session's extracted facts.
+            if (
+                self._mem0_backend is not None
+                and self._mem0_backend.has_session(
+                    conversation.conversation_id, session.session_id
+                )
+            ):
+                self._latest_commit_id = s_idx + 1
+                self._emit(
+                    "construction_session_resumed",
+                    conversation_id=conversation.conversation_id,
+                    session_id=session.session_id,
+                    session_index=s_idx,
+                    commit_id=self._latest_commit_id,
+                    backend="mem0",
+                )
+                continue
+
             # Retrieve Construction Skills
             skills: list = []
             construction_skill_trace = None
@@ -281,6 +337,12 @@ class MiMRuntime:
                     candidate_k=self._cfg.construction.skill_candidate_k,
                     disclose_k=self._cfg.construction.skill_disclose_k,
                     min_score=self._cfg.construction.skill_min_score,
+                    min_semantic_score=(
+                        self._cfg.construction.skill_min_semantic_score
+                    ),
+                    min_score_margin=(
+                        self._cfg.construction.skill_min_score_margin
+                    ),
                     reranker=None,
                     query_segments=session_segments,
                     trace_id=(
@@ -303,7 +365,63 @@ class MiMRuntime:
                 ),
             )
 
+            if self._mem0_backend is not None:
+                try:
+                    injected_ids = [
+                        f"{skill.skill_id}_v{skill.version}" for skill in skills
+                    ]
+                    response = self._mem0_backend.add_session(
+                        conversation_id=conversation.conversation_id,
+                        session_id=session.session_id,
+                        messages=msgs,
+                        session_time=session.time,
+                        skill_instructions=self._render_construction_skills(skills),
+                    )
+                    self._latest_commit_id = s_idx + 1
+                    ct.commit_id = self._latest_commit_id
+                    ct.commit_status = "committed"
+                    ct.skill_ids = injected_ids
+                    results = response.get("results", [])
+                    ct.candidates_count = len(results) if isinstance(results, list) else 0
+                    ct.decisions = [
+                        {
+                            "memory_id": item.get("id"),
+                            "action": item.get("event", "ADD"),
+                            "memory": item.get("memory", ""),
+                        }
+                        for item in results
+                        if isinstance(item, dict)
+                    ] if isinstance(results, list) else []
+                    self._emit(
+                        "mem0_session_added",
+                        conversation_id=conversation.conversation_id,
+                        session_id=session.session_id,
+                        session_index=s_idx,
+                        result_count=ct.candidates_count,
+                        injected_construction_skill_ids=injected_ids,
+                    )
+                except Exception as exc:
+                    ct.commit_status = "failed"
+                    ct.error_message = str(exc)
+                    failure = {
+                        "conversation_id": conversation.conversation_id,
+                        "session_id": session.session_id,
+                        "session_index": s_idx,
+                        "error": str(exc),
+                    }
+                    self._construction_errors.append(failure)
+                    self._emit("construction_session_error", **failure)
+                if self._tracer:
+                    self._tracer.record_construction(ct)
+                if ct.commit_status == "failed" and self._strict_construction:
+                    raise RuntimeError(
+                        f"Mem0 ingestion failed for {session.session_id}: "
+                        f"{ct.error_message}"
+                    )
+                continue
+
             try:
+                assert self._construction_agent is not None
                 # Stage A: Extract candidates
                 candidates = self._construction_agent.extract_candidates(
                     session_id=session.session_id,
@@ -406,7 +524,13 @@ class MiMRuntime:
 
         # Save final snapshot info
         if self._run_dir:
-            final = self._store.load_snapshot(self._conversation_id, self._latest_commit_id)
+            final = (
+                self._mem0_backend.list_memories(self._conversation_id)
+                if self._mem0_backend is not None
+                else self._store.load_snapshot(
+                    self._conversation_id, self._latest_commit_id
+                )
+            )
             self._run_dir.write_json(
                 f"memory/{self._conversation_id}/final.json",
                 {
@@ -453,6 +577,11 @@ class MiMRuntime:
                 candidate_k=self._cfg.access.skill_candidate_k,
                 disclose_k=self._cfg.access.skill_disclose_k,
                 min_score=self._cfg.access.skill_min_score,
+                min_semantic_score=(
+                    self._cfg.access.skill_min_semantic_score
+                ),
+                min_score_margin=self._cfg.access.skill_min_score_margin,
+                answer_only=self._cfg.access.skill_answer_only,
                 # Fixed-topology Access uses deterministic Skill routing; A1
                 # decides applicability inside its one planning call.
                 reranker=None,
@@ -571,6 +700,22 @@ class MiMRuntime:
 
     def attach(self, conversation_id: str) -> None:
         """Attach to an already constructed conversation without re-ingesting."""
+        if self._mem0_backend is not None:
+            if not self._mem0_backend.has_memories(conversation_id):
+                raise RuntimeError(
+                    f"No Mem0 memory found for conversation {conversation_id}"
+                )
+            self._store.ensure_conversation(conversation_id, self._phase)
+            self._conversation_id = conversation_id
+            self._latest_commit_id = 0
+            self._construction_errors = []
+            self._emit(
+                "memory_attached",
+                conversation_id=conversation_id,
+                latest_commit_id=0,
+                backend="mem0",
+            )
+            return
         latest_commit_id = self._store.latest_commit_id(conversation_id)
         if latest_commit_id is None:
             raise RuntimeError(
@@ -605,6 +750,24 @@ class MiMRuntime:
     @property
     def construction_errors(self) -> list[dict[str, Any]]:
         return list(self._construction_errors)
+
+    @staticmethod
+    def _render_construction_skills(skills: list) -> str | None:
+        if not skills:
+            return None
+        lines = [
+            "Extract durable memories using Mem0's normal policy, with these "
+            "additional learned procedural instructions when applicable:"
+        ]
+        for skill in skills:
+            lines.append(f"\n[{skill.skill_id}_v{skill.version}] {skill.name}")
+            lines.append(f"Use when: {skill.description}")
+            lines.extend(f"- {item}" for item in skill.content)
+        lines.append(
+            "Do not invent facts, and ignore an instruction when its trigger "
+            "does not match the current messages."
+        )
+        return "\n".join(lines)
 
     def _emit(self, event: str, **payload: Any) -> None:
         if self._event_sink is not None:

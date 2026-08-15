@@ -32,6 +32,30 @@ class _RouterModel:
         )
 
 
+class _CountingEmbedder:
+    model_name = "deterministic-hash"
+
+    def __init__(self):
+        self._inner = Embedder(self.model_name)
+        self.document_calls = 0
+        self.query_calls = 0
+
+    @property
+    def dim(self):
+        return self._inner.dim
+
+    def encode_documents(self, texts):
+        self.document_calls += 1
+        return self._inner.encode_documents(texts)
+
+    def encode_queries(self, texts):
+        self.query_calls += 1
+        return self._inner.encode_queries(texts)
+
+    def encode(self, texts):
+        return self._inner.encode(texts)
+
+
 def _candidate(skill_id: str, side: str = "access") -> SkillCandidate:
     return SkillCandidate(
         candidate_id=f"cand_{skill_id}",
@@ -152,6 +176,46 @@ def test_published_bank_loads_physically_isolated_files(
     ] == ["sk_construction"]
 
 
+def test_published_bank_reuses_persistent_skill_embeddings(tmp_path: Path):
+    repo = SkillRepository(tmp_path / "skills")
+    repo.publish(repo.stage_create(_candidate("sk_access", "access")))
+    repo.publish(
+        repo.stage_create(_candidate("sk_construction", "construction"))
+    )
+    records = [item.to_dict() for item in repo.list_active()]
+    bank_dir = tmp_path / "bank1"
+    bank_dir.mkdir()
+    for side in ("access", "construction"):
+        (bank_dir / SkillBank.published_filename(side, 1)).write_text(
+            json.dumps({
+                "bank": "bank1",
+                "side": side,
+                "skills": [item for item in records if item["side"] == side],
+            }),
+            encoding="utf-8",
+        )
+
+    writer = _CountingEmbedder()
+    bank = SkillBank.load_published(bank_dir)
+    cache = bank.precompute_embeddings(writer)
+    assert cache.exists()
+    assert writer.document_calls == 1
+
+    reader = _CountingEmbedder()
+    reloaded = SkillBank.load_published(bank_dir)
+    selected, _ = reloaded.retrieve_with_trace(
+        "prior or changed state",
+        Side.ACCESS,
+        reader,
+        top_k=1,
+        candidate_k=1,
+        min_score=0.0,
+    )
+    assert selected
+    assert reader.document_calls == 0
+    assert reader.query_calls == 1
+
+
 def test_initial_bank_is_seeded_as_one_version_zero_snapshot(tmp_path: Path):
     source = SkillRepository(tmp_path / "source")
     source.publish(source.stage_create(_candidate("sk_access", "access")))
@@ -192,6 +256,70 @@ def test_runtime_skill_retrieval_can_abstain_and_disclose_nearby(
         "sk_temporal"
     ]
     assert trace.min_score == 2.0
+
+
+def test_runtime_skill_retrieval_abstains_when_top_scores_are_ambiguous(
+    tmp_path: Path,
+):
+    repo = SkillRepository(tmp_path / "skills")
+    repo.publish(repo.stage_create(_candidate("sk_first")))
+    repo.publish(repo.stage_create(_candidate("sk_second")))
+    bank = SkillBank.from_repository(repo)
+
+    selected, trace = bank.retrieve_with_trace(
+        "prior changed state",
+        side=Side.ACCESS,
+        embedding_index=Embedder("deterministic-hash"),
+        top_k=2,
+        disclose_k=5,
+        min_score=0.0,
+        min_semantic_score=0.0,
+        min_score_margin=0.001,
+    )
+
+    assert selected == []
+    assert trace.selected == []
+    assert len(trace.nearby_not_selected) == 2
+    assert trace.min_score_margin == 0.001
+
+
+def test_mem0_access_excludes_skills_that_require_second_retrieval(
+    tmp_path: Path,
+):
+    repo = SkillRepository(tmp_path / "skills")
+    repo.publish(repo.stage_create(_candidate("sk_access_search")))
+    bank = SkillBank.from_repository(repo)
+
+    selected, trace = bank.retrieve_with_trace(
+        "Where does Alice live?",
+        side=Side.ACCESS,
+        embedding_index=Embedder("deterministic-hash"),
+        top_k=1,
+        min_score=0.0,
+        answer_only=True,
+    )
+
+    assert selected == []
+    assert trace.selected == []
+
+
+def test_access_recovery_query_keeps_evidence_content_without_storage_noise():
+    query = RuntimeSkillQueryBuilder().for_access_recovery({
+        "question": "Where does Alice live?",
+        "first_search": {
+            "hit_count": 1,
+            "hits": [{
+                "version_id": "mem0:secret-internal-id",
+                "score": 0.93,
+                "content": "Alice lives in Seattle.",
+            }],
+        },
+    })
+
+    assert "Question: Where does Alice live?" in query
+    assert "Alice lives in Seattle." in query
+    assert "secret-internal-id" not in query
+    assert '"score"' not in query
 
 
 def test_two_stage_runtime_retrieval_uses_applicability_reranker(
@@ -336,3 +464,16 @@ def test_payload_validator_rejects_construction_storage_mutation():
 
     assert not valid
     assert any("forbidden storage mutation" in error for error in errors)
+
+
+def test_payload_validator_rejects_obsolete_mem0_retrieval_skill():
+    payload = SkillPayload(
+        name="Expand preference lookup",
+        description="When the first search misses a favorite activity.",
+        content=["In A1, increase top-k and run a supplemental query."],
+    )
+
+    valid, errors = SkillPayloadValidator().validate(payload, side="access")
+
+    assert not valid
+    assert any("fixed Mem0 retrieval" in error for error in errors)

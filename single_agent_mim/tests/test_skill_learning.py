@@ -53,11 +53,11 @@ def _candidate(index: int, side: str = "access") -> SkillCandidate:
         payload=SkillPayload(
             name=f"Skill {index}",
             description=(
-                "Use when the retrieval query needs a related expression."
+                "Use when one requested item has stronger direct evidence."
             ),
-            content=[f"Expand the query using related expression {index}."],
+            content=[f"Prefer direct supported item {index} over tangential facts."],
         ),
-        solves="Prevents a relevant item from being missed by retrieval.",
+        solves="Prevents tangential facts from displacing direct evidence.",
         source_diagnosis_id=f"diag_{index}",
     )
 
@@ -117,30 +117,39 @@ def test_diagnosis_candidate_crud_publish_and_runtime_load_end_to_end(
     """A completed diagnosis must become a loadable official Skill."""
     diagnosis = {
         "diagnosis_id": "diag_access_e2e",
-        "diagnosis_type": "ACCESS_FAILURE",
+        "diagnosis_type": "ANSWER_FAILURE",
         "status": "completed",
         "problem_found": True,
         "review_required": False,
-        "stage": "A1",
-        "failure_to_repair": {
-            "mechanism": "The original wording omitted an explicit time scope."
+        "retrieved_context_sufficient": True,
+        "skill_learnable": True,
+        "repair_package": {
+            "eligible_for_skill_generation": True,
+            "failure_mode": "TEMPORAL_REASONING",
         },
     }
     candidate_response = {
         "decision": "PROPOSE_SKILL",
         "maintenance_intent": "ADD",
         "related_existing_skill_ids": [],
+        "mechanism_signature": {
+            "observable_trigger": "The question specifies a dated period.",
+            "evidence_precondition": "Returned memories contain several dated events.",
+            "failed_behavior": "The answer mixes events across periods.",
+            "corrective_operation": "Select evidence inside the requested period.",
+            "safety_boundary": "Do not infer dates missing from memories."
+        },
         "skill": {
             "name": "Restore explicit time scope",
             "description": (
-                "Use when a question asks about a dated period but the "
-                "initial query omits that period."
+                "Use when a question specifies a dated period and returned "
+                "memories contain events from multiple periods."
             ),
             "content": [
-                "In A1, include the stated period in one supplemental query."
+                "Use only events whose recorded dates fall inside the requested period."
             ],
         },
-        "solves": "Prevents retrieval from mixing events across time periods.",
+        "solves": "Prevents answers from mixing returned events across time periods.",
     }
     model = SimpleNamespace(
         generate=lambda *args, **kwargs: SimpleNamespace(
@@ -191,6 +200,7 @@ def test_diagnosis_candidate_crud_publish_and_runtime_load_end_to_end(
         retriever=BatchSkillRetriever(embedder),
         executor=SkillCrudExecutor(repository),
         run_id="e2e",
+        min_candidate_support=1,
     ).consolidate(side="access", batch_crud_agent=_CreateCrudAgent())
 
     assert outcome["published"] is True
@@ -213,19 +223,27 @@ def test_candidate_agent_repairs_overlong_instruction_without_truncation():
         "decision": "PROPOSE_SKILL",
         "skill": {
             "name": "Time scope",
-            "description": "Use when a dated query omits its time scope.",
+            "description": "Use when returned dated events span multiple periods.",
             "content": ["Keep the instruction complete. " * 12],
         },
-        "solves": "Prevents time-scope retrieval errors.",
+        "solves": "Prevents time-scope answer errors.",
+        "mechanism_signature": {
+            "observable_trigger": "A dated period is requested.",
+            "evidence_precondition": "Returned events span periods.",
+            "failed_behavior": "The answer mixes periods.",
+            "corrective_operation": "Filter evidence by stated period.",
+            "safety_boundary": "Do not infer missing dates."
+        },
     }
     repaired = {
         "decision": "PROPOSE_SKILL",
         "skill": {
             "name": "Time scope",
-            "description": "Use when a dated query omits its time scope.",
-            "content": ["Include the stated period in the supplemental query."],
+            "description": "Use when returned dated events span multiple periods.",
+            "content": ["Use only returned events inside the stated period."],
         },
-        "solves": "Prevents time-scope retrieval errors.",
+        "solves": "Prevents time-scope answer errors.",
+        "mechanism_signature": overlong["mechanism_signature"],
     }
     model = MockClient(ModelConfig(provider="mock", model="mock"))
     model.set_script([
@@ -234,15 +252,40 @@ def test_candidate_agent_repairs_overlong_instruction_without_truncation():
     ])
 
     candidate = CandidateSkillAgent(model, prompt="test").generate(
-        diagnosis={"diagnosis_id": "diag_retry"},
+        diagnosis={
+            "diagnosis_id": "diag_retry",
+            "diagnosis_type": "ANSWER_FAILURE",
+            "retrieved_context_sufficient": True,
+            "skill_learnable": True,
+            "repair_package": {"eligible_for_skill_generation": True},
+        },
         side="access",
     )
 
     assert candidate is not None
     assert candidate.payload.content == [
-        "Include the stated period in the supplemental query."
+        "Use only returned events inside the stated period."
     ]
     assert not candidate.payload.content[0].endswith("…")
+
+
+def test_access_candidate_agent_rejects_fixed_search_failure_without_calling_model():
+    model = MockClient(ModelConfig(provider="mock", model="mock"))
+
+    candidate = CandidateSkillAgent(model, prompt="test").generate(
+        diagnosis={
+            "diagnosis_id": "fixed_search_failure",
+            "diagnosis_type": "ACCESS_FAILURE",
+            "problem_found": True,
+            "repair_package": {
+                "eligible_for_skill_generation": False,
+                "failure_owner": "mem0_retrieval",
+            },
+        },
+        side="access",
+    )
+
+    assert candidate is None
 
 def test_one_crud_transaction_can_create_multiple_official_skills(
     tmp_path: Path,
@@ -315,10 +358,11 @@ def test_v2_clustering_is_semantic_before_size_bounding():
                 side="access",
                 payload=SkillPayload(
                     name=topic,
-                    description=f"{topic} retrieval failure",
-                    content=[f"repair {topic}"],
+                    description=f"Use when {topic} evidence is directly relevant.",
+                    content=[f"Prefer directly supported {topic} evidence."],
                 ),
                 solves=f"solve {topic}",
+                target_first_break="EVIDENCE_SELECTION",
             )
         )
 
@@ -334,6 +378,37 @@ def test_v2_clustering_is_semantic_before_size_bounding():
         len({candidate.payload.name for candidate in group}) == 1
         for group in groups
     )
+
+
+def test_v2_clustering_never_mixes_answer_failure_modes():
+    candidates = [
+        SkillCandidate(
+            candidate_id="cand_access_over",
+            side="access",
+            payload=SkillPayload(
+                name="favorite",
+                description="Use when one favorite is requested.",
+                content=["Return only the directly supported favorite."],
+            ),
+            solves="Avoid extra alternatives.",
+            target_first_break="OVER_INCLUSION",
+        ),
+        SkillCandidate(
+            candidate_id="cand_access_time",
+            side="access",
+            payload=SkillPayload(
+                name="favorite",
+                description="Use when a dated favorite is requested.",
+                content=["Respect the requested time period."],
+            ),
+            solves="Avoid mixing periods.",
+            target_first_break="TEMPORAL_REASONING",
+        ),
+    ]
+
+    groups = cluster_v2(candidates, _TopicEmbedder())
+
+    assert len(groups) == 2
 
 
 def test_crud_relation_ids_are_all_llm_visible(tmp_path: Path):

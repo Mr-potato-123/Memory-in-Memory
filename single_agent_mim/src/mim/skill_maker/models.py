@@ -53,6 +53,9 @@ class SkillCandidate(BaseModel):
     side: Literal["access", "construction"] = "access"
     payload: SkillPayload = Field(default_factory=SkillPayload)
     solves: str = ""
+    # Structured causal abstraction used for clustering and audit.  It never
+    # enters the Runtime-visible three-field Skill payload.
+    mechanism_signature: dict[str, str] = Field(default_factory=dict)
     related_existing_skill_ids: list[str] = Field(default_factory=list)
     # Draft Skills produced after semantic clustering retain explicit
     # provenance instead of hiding source IDs inside ``solves``.  Ordinary

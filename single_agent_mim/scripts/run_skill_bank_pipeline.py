@@ -115,9 +115,11 @@ def collect_eligible_packages(
     cons: list[dict] = []
     seen_diagnosis_ids: set[str] = set()
 
+    # Fixed-search Mem0 retrieval failures are observational memory-system
+    # defects.  Since Runtime Skills are injected only after search, they are
+    # not executable repairs and must never enter the Skill candidate stream.
     package_sources = [
         ("access", "answer_failure", {"ANSWER_FAILURE"}),
-        ("access", "access_failure", {"ACCESS_FAILURE"}),
         ("cons", "cons_failure", {"CONS_FAILURE"}),
     ]
     for side, suffix, accepted_types in package_sources:
@@ -142,6 +144,17 @@ def collect_eligible_packages(
                     continue
                 if pkg.get("review_required") is not False:
                     continue
+                if pkg.get("diagnosis_type") == "ANSWER_FAILURE":
+                    repair = pkg.get("repair_package")
+                    repair = repair if isinstance(repair, dict) else {}
+                    if not (
+                        pkg.get("retrieved_context_sufficient") is True
+                        and pkg.get("skill_learnable") is True
+                        and repair.get("eligible_for_skill_generation") is True
+                        and repair.get("failure_scope")
+                        == "memory_answering_procedure"
+                    ):
+                        continue
                 conv_id = pkg.get("conversation_id", "")
                 if conv_id not in train_ids:
                     continue

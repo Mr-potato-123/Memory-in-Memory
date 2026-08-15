@@ -59,6 +59,10 @@ def test_answer_failure_builds_access_package_when_context_is_sufficient():
                 "coverage": "FULL",
             }],
             "unresolved_material_contradiction": False,
+            "failure_mode": "ENTITY_ATTRIBUTION",
+            "skill_learnable": True,
+            "observable_trigger": "The question asks for one named entity.",
+            "corrective_operation": "Use evidence attributed to that entity.",
             "reason": "The returned memory directly states the answer.",
             "confidence": 0.9,
             "review_required": False,
@@ -84,6 +88,7 @@ def test_answer_failure_builds_access_package_when_context_is_sufficient():
     assert report.repair_package["side"] == "access"
     assert report.repair_package["stage"] == "answer"
     assert report.repair_package["retrieved_context_sufficient"] is True
+    assert report.repair_package["eligible_for_skill_generation"] is True
     assert report.repair_package["retrieved_version_ids"] == ["mem_v1"]
 
 
@@ -155,6 +160,8 @@ def test_access_failure_uses_set_difference_over_current_memory():
             "essential_reference_claims": [{
                 "claim": "Alice lives in Seattle.",
                 "supporting_current_version_ids": ["mem_v2"],
+                "supporting_retrieved_version_ids": [],
+                "retrieval_coverage": "MISSING",
             }],
             "reason": "The useful current memory was not returned.",
             "confidence": 0.95,
@@ -180,6 +187,55 @@ def test_access_failure_uses_set_difference_over_current_memory():
     assert report.missing_useful_current_version_ids == ["mem_v2"]
     assert report.repair_package is not None
     assert "query" not in report.repair_package
+    assert report.repair_package["eligible_for_skill_generation"] is False
+    assert report.repair_package["side"] == "memory_system"
+
+
+def test_access_failure_ignores_missing_redundant_support():
+    agent = AccessFailureAgent(
+        _mock({
+            "essential_reference_claims": [{
+                "claim": "Alice lives in Seattle.",
+                "supporting_current_version_ids": ["mem_v1", "mem_v2"],
+                "supporting_retrieved_version_ids": ["mem_v1"],
+                "retrieval_coverage": "FULL",
+            }],
+            "reason": "The returned memory is already sufficient.",
+            "confidence": 0.95,
+            "review_required": False,
+        }),
+        prompt="access prompt",
+    )
+    report = agent.diagnose(
+        _case(),
+        current_related_memories=[
+            {"version_id": "mem_v1", "content": "Alice lives in Seattle."},
+            {"version_id": "mem_v2", "content": "Alice is based in Seattle."},
+        ],
+        current_search_steps=[{
+            "returned_version_ids": ["mem_v1"],
+            "returned_memories": [{"version_id": "mem_v1"}],
+        }],
+    )
+
+    assert report.diagnosis_type == DiagnosisType.NO_ACCESS_FAILURE
+    assert report.problem_found is False
+    assert report.missing_useful_current_version_ids == []
+
+
+def test_access_diagnosis_skips_when_answer_context_was_sufficient():
+    report = AccessFailureAgent(
+        _mock(), prompt="access prompt"
+    ).diagnose(
+        _case(),
+        current_related_memories=[],
+        current_search_steps=[],
+        answer_context_sufficient=True,
+    )
+
+    assert report.diagnosis_type == DiagnosisType.NO_ACCESS_FAILURE
+    assert report.problem_found is False
+    assert "preceding answer diagnosis" in report.reason
 
 
 def test_empty_reference_skips_access_and_construction_gold_diagnosis():
@@ -439,7 +495,22 @@ def test_candidate_collector_routes_answer_and_access_to_access_side(
             json.dumps({
                 "diagnosis_id": component,
                 "problem_found": problem_found,
-                "repair_package": {"stage": "answer"},
+                "diagnosis_type": (
+                    "ANSWER_FAILURE"
+                    if actual_component == "answer_failure"
+                    else "CONS_FAILURE"
+                    if actual_component == "cons_failure"
+                    else "ACCESS_FAILURE"
+                ),
+                "retrieved_context_sufficient": actual_component == "answer_failure",
+                "skill_learnable": actual_component == "answer_failure",
+                "repair_package": {
+                    "stage": "answer",
+                    "eligible_for_skill_generation": (
+                        actual_component == "answer_failure"
+                    ),
+                    "failure_scope": "memory_answering_procedure",
+                },
             }),
             encoding="utf-8",
         )
@@ -452,7 +523,6 @@ def test_candidate_collector_routes_answer_and_access_to_access_side(
 
     assert [(row["report"]["diagnosis_id"], row["side"]) for row in rows] == [
         ("answer_failure", "access"),
-        ("access_failure", "access"),
         ("cons_failure", "construction"),
     ]
 
@@ -476,7 +546,15 @@ def test_formal_bank_pipeline_collects_answer_access_and_cons_packages(
                 "problem_found": True,
                 "review_required": False,
                 "conversation_id": "conv-30",
-                "repair_package": {"stage": directory},
+                "retrieved_context_sufficient": diagnosis_type == "ANSWER_FAILURE",
+                "skill_learnable": diagnosis_type == "ANSWER_FAILURE",
+                "repair_package": {
+                    "stage": directory,
+                    "eligible_for_skill_generation": (
+                        diagnosis_type == "ANSWER_FAILURE"
+                    ),
+                    "failure_scope": "memory_answering_procedure",
+                },
             }),
             encoding="utf-8",
         )
@@ -487,7 +565,5 @@ def test_formal_bank_pipeline_collects_answer_access_and_cons_packages(
     collect = runpy.run_path(str(script))["collect_eligible_packages"]
     access, cons = collect(tmp_path, ["conv-30"])
 
-    assert [item["diagnosis_id"] for item in access] == [
-        "answer_1", "access_1",
-    ]
+    assert [item["diagnosis_id"] for item in access] == ["answer_1"]
     assert [item["diagnosis_id"] for item in cons] == ["cons_1"]

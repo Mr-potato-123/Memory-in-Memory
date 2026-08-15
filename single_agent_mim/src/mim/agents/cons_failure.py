@@ -184,11 +184,18 @@ class ConsFailureAgent:
                 result.get("affected_memory_ids")
             )
             valid_memory_ids = self._valid_memory_ids(construction_history)
-            require_known_ids(
-                affected_memory_ids,
-                valid_memory_ids,
-                "affected_memory_ids",
-            )
+            if construction_history.get("backend") == "mem0_add_only":
+                affected_memory_ids = [
+                    memory_id
+                    for memory_id in affected_memory_ids
+                    if memory_id in valid_memory_ids
+                ]
+            else:
+                require_known_ids(
+                    affected_memory_ids,
+                    valid_memory_ids,
+                    "affected_memory_ids",
+                )
 
             report.problem_found = True
             report.diagnosis_type = DiagnosisType.CONS_FAILURE
@@ -335,35 +342,32 @@ class ConsFailureAgent:
             for item in group
             if item.get("commit_id") is not None
         }
+        mem0_add_only = construction_history.get("backend") == "mem0_add_only"
 
         message_ids = unique_strings(value.get("message_ids"))
+        if mem0_add_only:
+            message_ids = [
+                message_id
+                for message_id in message_ids
+                if message_id in valid_message_ids
+            ]
         before_ids = unique_strings(value.get("before_version_ids"))
-        require_known_ids(message_ids, valid_message_ids, "message_ids")
-        require_known_ids(
-            before_ids,
-            valid_version_ids,
-            "before_version_ids",
-        )
+        if not mem0_add_only:
+            require_known_ids(message_ids, valid_message_ids, "message_ids")
+        if not mem0_add_only:
+            require_known_ids(before_ids, valid_version_ids, "before_version_ids")
 
         candidate_id = self._optional_known(
-            value.get("candidate_id"),
-            valid_candidate_ids,
-            "candidate_id",
+            value.get("candidate_id"), valid_candidate_ids, "candidate_id"
         )
         decision_id = self._optional_known(
-            value.get("decision_id"),
-            valid_decision_ids,
-            "decision_id",
+            value.get("decision_id"), valid_decision_ids, "decision_id"
         )
         change_id = self._optional_known(
-            value.get("change_id"),
-            valid_change_ids,
-            "change_id",
+            value.get("change_id"), valid_change_ids, "change_id"
         )
         after_version_id = self._optional_known(
-            value.get("after_version_id"),
-            valid_version_ids,
-            "after_version_id",
+            value.get("after_version_id"), valid_version_ids, "after_version_id"
         )
         commit_id = value.get("commit_id")
         if commit_id is not None:
@@ -371,11 +375,21 @@ class ConsFailureAgent:
                 commit_id = int(commit_id)
             except (TypeError, ValueError) as exc:
                 raise InvalidModelOutput("commit_id must be an integer.") from exc
-            if commit_id not in valid_commits:
+            if commit_id not in valid_commits and not mem0_add_only:
                 raise InvalidModelOutput(
                     f"commit_id was not supplied: {commit_id}"
                 )
-        if before_ids or after_version_id or change_id:
+        if mem0_add_only:
+            # Mem0 exposes final ADD facts and exact source IDs, but no legacy
+            # before/after version or C2 decision log. Normalize any model
+            # attempt to copy those inapplicable fields instead of turning a
+            # valid add-only diagnosis into a spurious MODEL_ERROR.
+            before_ids = []
+            after_version_id = None
+            change_id = None
+            commit_id = None
+            decision_id = None
+        elif before_ids or after_version_id or change_id:
             raise InvalidModelOutput(
                 "Append-only diagnosis must not attribute a version rewrite."
             )
